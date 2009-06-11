@@ -114,19 +114,9 @@ procedure Comp_Zip is
 
   err_str: String(1..5);
 
-  function Exist(name:String) return Boolean is
-    f: File_Type;
-  begin
-    Open(f,in_file,name);
-    Close(f);
-    return True;
-  exception
-    when Name_Error => return False;
-  end Exist;
-
   function Try_with_zip(name: String) return String is
   begin
-    if Exist(name) then
+    if Zip.Exists(name) then
       return name;
     else
       return name & ".zip";

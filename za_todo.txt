@@ -1,0 +1,8 @@
+- text output for unzip
+- main comment extraction
+
+- reduce: partial (<2**n) follower table can be worth, see pkzip090 (if only 1 or 2 times used, a single follower is a loss of bits)
+- reduce meth: perhaps mimic pkzip092: if input_size_known and then input_size < 2KB then Shrink
+- reduce: increase lz cache to...
+
+- ReZip: option to limit methods to Deflate.

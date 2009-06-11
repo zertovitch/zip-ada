@@ -346,14 +346,16 @@ is
   -- LZ77 front-end compression --
   --------------------------------
 
-  LZ_cache_size: constant:= 2**16;
+  -- Cache for LZ-compressed data, to speedup the 2nd phase:
+
+  LZ_cache_size: constant:= 2**18; -- 256KB
   type LZ_buffer_range is mod LZ_cache_size;
-  type LZ_buffer is array(LZ_buffer_range) of Byte;
+  type LZ_buffer is array(LZ_buffer_range) of Byte; -- circular buffer
 
   type LZ_cache_type is record
-    buf: LZ_buffer;           -- circular buffer
+    buf: LZ_buffer;           -- buf's index arithmetic is mod LZ_cache_size
     nxt: LZ_buffer_range:= 0; -- position of next byte to be written
-    cnt: Natural:= 0;         -- (0..size) count of cached bytes
+    cnt: Natural:= 0;         -- [0..size]: count of cached bytes
   end record;
 
   LZ_cache: LZ_cache_type;

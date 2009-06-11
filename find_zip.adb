@@ -15,8 +15,9 @@ with UnZip.Streams;                     use UnZip.Streams;
 
 procedure Find_Zip is
 
-  str: String(1..1000); -- str(1..stl) = string to search
-  stl: Natural; -- length
+  max: constant:= 2**10; -- 1024
+  str: String(1..max);  -- str(1..stl) = string to search
+  stl: Natural; -- string length
   l: Character; -- last character of the search string
 
   z: Zip.Zip_info;
@@ -28,10 +29,12 @@ procedure Find_Zip is
     s: Stream_Access;
     c: Character;
     occ: Natural:= 0;
-    siz: constant:= 2**8; -- 2**n -> "mod" optimized to "and"
-    buf: array(0..siz-1) of Character:= (others => ' '); -- circular buffer
-    bup: Natural:= 0;
-    i,j: Natural;
+    -- Define a circular buffer
+    siz: constant:= max;
+    type Buffer_range is mod siz;
+    buf: array(Buffer_range) of Character:= (others => ' ');
+    i, bup: Buffer_range:= 0;
+    j: Natural;
   begin
     Open( f, z, name );
     s:= Stream(f);
@@ -40,11 +43,11 @@ procedure Find_Zip is
       if ignore_case then
         c:= To_Upper(c);
       end if;
-      if c = l then -- last character match, search further...
+      if c = l then -- last character do match, search further...
         i:= bup;
         j:= stl;
         match: loop
-          i:= (i-1) mod siz;
+          i:= i-1;
           j:= j-1;
           if j = 0 then -- we survived the whole search string
             occ:= occ+1;
@@ -54,7 +57,7 @@ procedure Find_Zip is
         end loop match;
       end if;
       buf(bup):= c;
-      bup:= (bup+1) mod siz;
+      bup:= bup+1;
     end loop;
     Close(f);
     if occ > 0 then
@@ -65,19 +68,9 @@ procedure Find_Zip is
 
   procedure Search_all_files is new Zip.Traverse( Search_1_file );
 
-  function Exist(name:String) return Boolean is
-    f: File_Type;
-  begin
-    Open(f,in_file,name);
-    Close(f);
-    return True;
-  exception
-    when Name_Error => return False;
-  end Exist;
-
   function Try_with_zip(name: String) return String is
   begin
-    if Exist(name) then
+    if Zip.Exists(name) then
       return name;
     else
       return name & ".zip";
@@ -113,6 +106,9 @@ begin
       s:= To_Upper(s);
     end if;
     stl:= s'Length;
+    if stl > str'Length then
+      raise Constraint_Error;
+    end if;
     str(1..stl):= s;
     l:= str(stl);
   end;
