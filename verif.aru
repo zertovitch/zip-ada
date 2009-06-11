@@ -1,0 +1,119 @@
+------------------------------------------
+-- AdaControl verification rules        --
+-- http://www.adalog.fr/adacontrol2.htm --
+------------------------------------------
+
+-- Set for Zip-Ada.
+
+------------------
+-- (1) Required --
+------------------
+check style (no_closing_name);
+check style (negative_condition);
+check style (compound_statement);
+check style (casing_keyword, lowercase);
+-- check max_nesting (6);
+check parameter_aliasing (certain);
+check simplifiable_expressions (range, logical); -- , parentheses
+check statements (goto, abort);
+-- check if_for_case;
+check expressions (real_equality);
+check entities (debug);
+-- check entities (all 'Unchecked_Access);
+-- check entity_inside_exception (ada.text_io.put_line);
+-- check exception_propagation (interface, C);
+-- check exception_propagation (task);
+-- check pragmas (elaborate_all, elaborate_body);
+check representation_clauses (at, 'address);
+check representation_clauses ('size);
+check directly_accessed_globals(plain);
+check max_line_length (99);
+-- check declarations (multiple_names);
+check abnormal_function_return;
+check reduceable_scope (variable, type);
+-- check improper_initialization;
+
+-------------------------------------
+-- Forbid GNAT-specific attributes --
+-------------------------------------
+Gnat_Specific_Attribute: Check Entities (all 'Abort_Signal,
+                                         all 'Address_Size,
+                                         all 'Asm_Input,
+                                         all 'Asm_Output,
+                                         all 'AST_Entry,
+                                         all 'Bit,
+                                         all 'Bit_Position,
+                                         all 'Code_Address,
+                                         all 'Default_Bit_Order,
+                                         all 'Elaborated,
+                                         all 'Elab_Body,
+                                         all 'Elab_Spec,
+                                         all 'Emax,
+                                         all 'Enum_Rep,
+                                         all 'Epsilon,
+                                         all 'Fixed_Value,
+                                         all 'Has_Access_Values,
+                                         all 'Has_Discriminants,
+                                         all 'Img,
+                                         all 'Integer_Value,
+                                         all 'Large,
+                                         all 'Machine_Size,
+                                         all 'Mantissa,
+                                         all 'Max_Interrupt_Priority,
+                                         all 'Max_Priority,
+                                         all 'Maximum_Alignment,
+                                         all 'Mechanism_Code,
+                                         all 'Null_Parameter,
+                                         all 'Object_Size,
+                                         all 'Passed_By_Reference,
+                                         all 'Range_Length,
+                                         all 'Safe_Emax,
+                                         all 'Safe_Large,
+                                         all 'Small,
+                                         all 'Storage_Unit,
+                                         all 'Target_Name,
+                                         all 'Tick,
+                                         all 'To_Address,
+                                         all 'Type_Class,
+                                         all 'UET_Address,
+                                         all 'Unconstrained_Array,
+                                         all 'Universal_Literal_String,
+                                         all 'Unrestricted_Access,
+                                         all 'VADS_Size,
+                                         all 'Value_Size,
+                                         all 'Wchar_T_Size,
+                                         all 'Word_Size);
+-- Check that old names (now renamings) of Ada 83 units are not used
+"Use Ada 95 name": check entities (
+   Unchecked_Conversion,
+   Unchecked_Deallocation,
+   Sequential_IO,
+   Direct_IO,
+   Text_IO,
+   IO_Exceptions,
+   Calendar,
+   Machine_Code
+);
+
+---------------------------------------------
+-- (2) Acceptable, but should be looked at --
+---------------------------------------------
+search unnecessary_use_clause;
+search with_clauses (reduceable);
+-- search style (multiple_elements);
+search style (casing_identifier, original);
+search parameter_aliasing (possible);
+--search max_nesting (4);
+search local_hiding;
+-- search expressions (array_others, record_others);
+search statements (delay);
+-- search default_parameter (all, all, used);
+-- search instantiations (ada.unchecked_deallocation);
+search instantiations (ada.unchecked_conversion);
+-- search local_instantiation (ada.unchecked_deallocation);
+search statements(multiple_exits); -- case_others_null, case_others
+-- search statements(exception_others_null); -- exception_others
+search pragmas (nonstandard);
+search simplifiable_statements;
+search characters (not_iso_646);
+search reduceable_scope (use);

@@ -1,0 +1,59 @@
+-gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecobj_dbg/debug.pra -Izip_lib -aOobj_dbg
+-aOobj_dbg
+
+
+WINDOWS_TARGET
+
+
+unzip-a
+Zip
+cnt
+';
+ZipFileStream
+mystream
+temp_zip_stream
+to_zip_stream
+temp_
+Process_External
+-- Begin compiler switches
+DEBUG <- active (current) build mode
+FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?
+debug o2 false
+debug inlining false
+debug unroll_loops false
+debug suppress_all_checks false
+debug debug_info true
+debug integer_overflow_check true
+debug stack_check true
+debug trace_back true
+debug all_validity_checks true
+debug strip_all_symbols false
+debug profiling false
+debug verbose_details true
+debug all_warnings true
+debug build_in_place true
+release o2 true
+release inlining true
+release unroll_loops true
+release suppress_all_checks true
+release debug_info false
+release integer_overflow_check false
+release stack_check false
+release trace_back false
+release all_validity_checks false
+release strip_all_symbols true
+release profiling false
+release verbose_details true
+release all_warnings true
+release build_in_place true
+-- End compiler switches
+-- Begin Release mode commands
+-gnatf -gnatwab -gnatyebfhkanp -Izip_lib -aOobj_opt
+-aOobj_opt
+
+
+-- End Release mode commands
+-- Begin run options
+prompt_arguments false
+ad_trace_back false
+-- End run options
