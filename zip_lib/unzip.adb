@@ -33,7 +33,10 @@ package body UnZip is
     method: PKZip_method;
 
     skip_this_file: Boolean:= False;
-    mode: constant array(Boolean) of Write_mode:= (write_to_file, just_test);
+    bin_text_mode: constant array(Boolean) of Write_mode:=
+      (write_to_binary_file, write_to_text_file);
+    mode: constant array(Boolean) of Write_mode:=
+      (bin_text_mode( options(extract_as_text) ), just_test);
     actual_mode: Write_mode:= mode( options(test_only) );
 
     true_packed_size: File_size_type; -- encryption adds 12 to packed size
@@ -70,7 +73,7 @@ package body UnZip is
       -- idx points on the index just before the name part
 
       if idx >= composed_name'First and then
-         actual_mode = write_to_file and then
+         actual_mode in Write_to_file and then
          file_system_routines.Create_Path /= null
       then
         -- Not only the name, also a path.
@@ -252,7 +255,7 @@ package body UnZip is
       if the_name_len = 0 or else the_name( the_name_len ) = '/' then
         -- This is a directory name (12-feb-2000)
         skip_this_file:= True;
-      elsif actual_mode = write_to_file then
+      elsif actual_mode in Write_to_file then
         Set_outfile_interactive( the_name(1..the_name_len));
       else -- only informational, no need for interaction
         Set_outfile(the_name(1..the_name_len));
@@ -265,7 +268,7 @@ package body UnZip is
           File_size_type(local_header.dd.uncompressed_size)
         );
       end if;
-      if actual_mode = write_to_file then
+      if actual_mode in Write_to_file then
         Set_outfile_interactive(out_name);
       else -- only informational, no need for interaction
         Set_outfile(out_name);
@@ -666,5 +669,27 @@ package body UnZip is
       Close (MyStream);
     end if;
   end Extract;
+
+  procedure Write_buffer_as_text(
+    file     : Ada.Text_IO.File_Type;
+    buf      : Zip.Byte_Buffer;
+    last_char: in out Character
+  )
+  is
+    c: Character;
+  begin
+    for i in buf'Range loop
+      c:= Character'Val(buf(i));
+      case c is
+        when ASCII.CR =>
+          Ada.Text_IO.New_Line(file);
+        when ASCII.LF =>
+          if last_char /= ASCII.CR then Ada.Text_IO.New_Line(file); end if;
+        when others =>
+          Ada.Text_IO.Put(file, c);
+      end case;
+      last_char:= c;
+    end loop;
+  end;
 
 end UnZip;

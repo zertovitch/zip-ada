@@ -2,7 +2,7 @@
 --  File:            UnZipAda.adb
 --  Description:     A minimal standalone command-line unzipping tool
 --                     using the Zip-Ada library.
---  Date/version:    26-Apr-2008 ; ... ; 1-Dec-1999
+--  Date/version:    14-Jun-2009; 26-Apr-2008 ; ... ; 1-Dec-1999
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -99,6 +99,7 @@ procedure UnZipAda is
     Put_Line("          -d dir : extract to ""dir"" instead of current");
     Put_Line("          -c     : case sensitive name matching");
     Put_Line("          -l     : force lower case on stored names");
+    Put_Line("          -a     : output as text file, with native line endings");
     Put_Line("          -s pwd : set a password (e.g. ""pwd"")");
     Put_Line("          -q     : quiet mode");
     Put_Line("          -v     : verbose, technical mode");
@@ -141,6 +142,8 @@ begin
               z_options( case_sensitive_match ):= True;
             when 'l' =>
               lower_case:= True;
+            when 'a' =>
+              z_options( extract_as_text ):= True;
             when 's' =>
               if i < Argument_Count then
                 declare

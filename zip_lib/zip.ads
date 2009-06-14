@@ -41,8 +41,8 @@ with Zip_Streams;
 
 package Zip is
 
-  version   : constant String:= "31";
-  reference : constant String:= "20-Feb-2009";
+  version   : constant String:= "33";
+  reference : constant String:= "14-Jun-2009";
   web       : constant String:= "http://unzip-ada.sf.net/";
 
   --------------

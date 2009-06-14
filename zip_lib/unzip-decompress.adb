@@ -53,7 +53,9 @@ package body UnZip.Decompress is
     end UnZ_Glob;
 
     package UnZ_IO is
-      outfile: Ada.Streams.Stream_IO.File_Type;
+      out_bin_file: Ada.Streams.Stream_IO.File_Type;
+      out_txt_file: Ada.Text_IO.File_Type;
+      last_char   : Character:= ' ';
 
       -- Centralize buffer initialisations - 29-Jun-2001
       procedure Init_Buffers;
@@ -125,6 +127,8 @@ package body UnZip.Decompress is
         index           : in out Natural;
         unflushed       : in out Boolean );
       pragma Inline(Copy_or_zero);
+
+      procedure Delete_output; -- an error has occured (bad compressed data)
 
     end UnZ_IO;
 
@@ -372,9 +376,13 @@ package body UnZip.Decompress is
         end if;
 
         case mode is
-          when write_to_file =>
+          when write_to_binary_file =>
             Zip.Byte_Buffer'Write(
-              Ada.Streams.Stream_IO.Stream(outfile), UnZ_Glob.slide(0..x-1)
+              Ada.Streams.Stream_IO.Stream(out_bin_file), UnZ_Glob.slide(0..x-1)
+            );
+          when write_to_text_file =>
+            UnZip.Write_buffer_as_text(
+              UnZ_IO.out_txt_file, UnZ_Glob.slide(0..x-1), UnZ_IO.last_char
             );
           when write_to_memory =>
             for i in 0..x-1 loop
@@ -541,6 +549,20 @@ package body UnZip.Decompress is
         end loop;
       end Copy_or_zero;
 
+      procedure Delete_output is -- an error has occured (bad compressed data)
+      begin
+        if no_trace then -- if there is a trace, we are debugging
+          case mode is   --  and want to keep the malformed file
+            when write_to_binary_file =>
+              Ada.Streams.Stream_IO.Delete( UnZ_IO.out_bin_file );
+            when write_to_text_file =>
+              Ada.Text_IO.Delete( UnZ_IO.out_txt_file );
+            when others =>
+              null;
+          end case;
+        end if;
+      end;
+
     end UnZ_IO;
 
     package body UnZ_Meth is
@@ -576,10 +598,14 @@ package body UnZip.Decompress is
           Ada.Text_IO.Put("[Unshrink_Flush]");
         end if;
         case mode is
-          when write_to_file =>
+          when write_to_binary_file =>
             Zip.Byte_Buffer'Write(
-              Ada.Streams.Stream_IO.Stream(UnZ_IO.outfile),
+              Ada.Streams.Stream_IO.Stream(UnZ_IO.out_bin_file),
               Writebuf(0..Write_Ptr-1)
+            );
+          when write_to_text_file =>
+            UnZip.Write_buffer_as_text(
+              UnZ_IO.out_txt_file, Writebuf(0..Write_Ptr-1), UnZ_IO.last_char
             );
           when write_to_memory =>
             for I in 0..Write_Ptr-1 loop
@@ -1870,10 +1896,16 @@ package body UnZip.Decompress is
     output_memory_access:= null;
     -- ^ this is an 'out' parameter, we have to set it anyway
     case mode is
-      when write_to_file =>
+      when write_to_binary_file =>
         Ada.Streams.Stream_IO.Create(
-          UnZ_IO.outfile,
+          UnZ_IO.out_bin_file,
           Ada.Streams.Stream_IO.Out_File,
+          output_file_name
+        );
+      when write_to_text_file =>
+        Ada.Text_IO.Create(
+          UnZ_IO.out_txt_file,
+          Ada.Text_IO.Out_File,
           output_file_name
         );
       when write_to_memory =>
@@ -1947,9 +1979,7 @@ package body UnZip.Decompress is
       end case;
     exception
       when others =>
-        if mode = write_to_file and no_trace then
-          Ada.Streams.Stream_IO.Delete( UnZ_IO.outfile );
-        end if;
+        UnZ_IO.Delete_output;
         raise;
     end;
     UnZ_Glob.crc32val := Zip.CRC.Final( UnZ_Glob.crc32val );
@@ -1964,33 +1994,41 @@ package body UnZip.Decompress is
         if memo_uncomp_size < Unsigned_32'Last and then --
            memo_uncomp_size /= hint.uncompressed_size
         then
-          if mode = write_to_file and no_trace then
-            Ada.Streams.Stream_IO.Delete( UnZ_IO.outfile );
-          end if;
+          UnZ_IO.Delete_output;
           raise Uncompressed_size_Error;
         end if;
       end;
     end if;
 
-    if mode = write_to_file then
-      Ada.Streams.Stream_IO.Close( UnZ_IO.outfile );
-    end if;
-
     if hint.crc_32 /= UnZ_Glob.crc32val then
-      if mode = write_to_file and no_trace then
-        Ada.Streams.Stream_IO.Delete( UnZ_IO.outfile );
-      end if;
+      UnZ_IO.Delete_output;
       raise CRC_Error;
     end if;
 
+    case mode is
+      when write_to_binary_file =>
+        Ada.Streams.Stream_IO.Close( UnZ_IO.out_bin_file );
+      when write_to_text_file =>
+        Ada.Text_IO.Close( UnZ_IO.out_txt_file );
+      when others =>
+        null;
+    end case;
+
   exception
 
-    when others=>
-      if mode = write_to_file and then
-         Ada.Streams.Stream_IO.Is_Open( UnZ_IO.outfile )
-      then
-        Ada.Streams.Stream_IO.Close( UnZ_IO.outfile );
-      end if;
+    when others => -- close the file in case of an error, if not yet closed
+      case mode is -- or deleted
+        when write_to_binary_file =>
+          if Ada.Streams.Stream_IO.Is_Open( UnZ_IO.out_bin_file ) then
+            Ada.Streams.Stream_IO.Close( UnZ_IO.out_bin_file );
+          end if;
+        when write_to_text_file =>
+          if Ada.Text_IO.Is_Open( UnZ_IO.out_txt_file ) then
+            Ada.Text_IO.Close( UnZ_IO.out_txt_file );
+          end if;
+        when others =>
+          null;
+      end case;
       raise;
 
   end Decompress_Data;
