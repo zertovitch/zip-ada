@@ -395,7 +395,7 @@ package body UnZip.Decompress is
           end case;
         exception
           when others =>
-            raise Write_Error;
+            raise UnZip.Write_Error;
         end;
         Zip.CRC.Update( UnZ_Glob.crc32val, UnZ_Glob.slide( 0..x-1 ) );
         if feedback /= null then -- inform user
@@ -595,28 +595,31 @@ package body UnZip.Decompress is
         if full_trace then
           Ada.Text_IO.Put("[Unshrink_Flush]");
         end if;
-        case mode is
-          when write_to_binary_file =>
-            Zip.Byte_Buffer'Write(
-              Ada.Streams.Stream_IO.Stream(UnZ_IO.out_bin_file),
-              Writebuf(0..Write_Ptr-1)
-            );
-          when write_to_text_file =>
-            UnZip.Write_buffer_as_text(
-              UnZ_IO.out_txt_file, Writebuf(0..Write_Ptr-1), UnZ_IO.last_char
-            );
-          when write_to_memory =>
-            for I in 0..Write_Ptr-1 loop
-              output_memory_access(UnZ_Glob.uncompressed_index):=
-                Stream_Element(Writebuf(I));
-              UnZ_Glob.uncompressed_index :=  UnZ_Glob.uncompressed_index + 1;
-            end loop;
-          when just_test =>
-            null;
-        end case;
-
+        begin
+          case mode is
+            when write_to_binary_file =>
+              Zip.Byte_Buffer'Write(
+                Ada.Streams.Stream_IO.Stream(UnZ_IO.out_bin_file),
+                Writebuf(0..Write_Ptr-1)
+              );
+            when write_to_text_file =>
+              UnZip.Write_buffer_as_text(
+                UnZ_IO.out_txt_file, Writebuf(0..Write_Ptr-1), UnZ_IO.last_char
+              );
+            when write_to_memory =>
+              for I in 0..Write_Ptr-1 loop
+                output_memory_access(UnZ_Glob.uncompressed_index):=
+                  Stream_Element(Writebuf(I));
+                UnZ_Glob.uncompressed_index :=  UnZ_Glob.uncompressed_index + 1;
+              end loop;
+            when just_test =>
+              null;
+          end case;
+        exception
+          when others =>
+            raise UnZip.Write_Error;
+        end;
         Zip.CRC.Update( UnZ_Glob.crc32val, Writebuf(0 .. Write_Ptr-1) );
-
         if feedback /= null then -- inform user
           UnZ_Glob.effective_writes:=
             UnZ_Glob.effective_writes + File_size_type(Write_Ptr);
@@ -735,7 +738,6 @@ package body UnZip.Decompress is
         while S > 0 and then not UnZ_Glob.Zip_EOF loop
           Read_Code;
           if Incode = Code_for_Special then
-
             Read_Code;
             case Incode is
               when Code_Increase_size =>
@@ -748,10 +750,8 @@ package body UnZip.Decompress is
                 if  Code_Size > Maximum_Code_Size then
                   raise Zip.Zip_file_Error;
                 end if;
-
               when Code_Clear_table =>
                 Clear_Leaf_Nodes;
-
               when others=>
                 raise Zip.Zip_file_Error;
             end case;
@@ -804,14 +804,7 @@ package body UnZip.Decompress is
         if some_trace then
           Ada.Text_IO.Put("[ Unshrink main loop finished ]");
         end if;
-
-        begin
-          Unshrink_Flush;
-        exception
-          when others=>
-            raise UnZip.Write_Error;
-        end;
-
+        Unshrink_Flush;
       end Unshrink;
 
       --------[ Method: Unreduce ]--------
