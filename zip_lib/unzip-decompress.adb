@@ -374,28 +374,30 @@ package body UnZip.Decompress is
         if full_trace then
           Ada.Text_IO.Put("[Flush...");
         end if;
-
-        case mode is
-          when write_to_binary_file =>
-            Zip.Byte_Buffer'Write(
-              Ada.Streams.Stream_IO.Stream(out_bin_file), UnZ_Glob.slide(0..x-1)
-            );
-          when write_to_text_file =>
-            UnZip.Write_buffer_as_text(
-              UnZ_IO.out_txt_file, UnZ_Glob.slide(0..x-1), UnZ_IO.last_char
-            );
-          when write_to_memory =>
-            for i in 0..x-1 loop
-              output_memory_access(UnZ_Glob.uncompressed_index):=
-                Ada.Streams.Stream_Element(UnZ_Glob.slide(i));
-              UnZ_Glob.uncompressed_index:= UnZ_Glob.uncompressed_index + 1;
-            end loop;
-          when just_test =>
-            null;
-        end case;
-
+        begin
+          case mode is
+            when write_to_binary_file =>
+              Zip.Byte_Buffer'Write(
+                Ada.Streams.Stream_IO.Stream(out_bin_file), UnZ_Glob.slide(0..x-1)
+              );
+            when write_to_text_file =>
+              UnZip.Write_buffer_as_text(
+                UnZ_IO.out_txt_file, UnZ_Glob.slide(0..x-1), UnZ_IO.last_char
+              );
+            when write_to_memory =>
+              for i in 0..x-1 loop
+                output_memory_access(UnZ_Glob.uncompressed_index):=
+                  Ada.Streams.Stream_Element(UnZ_Glob.slide(i));
+                UnZ_Glob.uncompressed_index:= UnZ_Glob.uncompressed_index + 1;
+              end loop;
+            when just_test =>
+              null;
+          end case;
+        exception
+          when others =>
+            raise Write_Error;
+        end;
         Zip.CRC.Update( UnZ_Glob.crc32val, UnZ_Glob.slide( 0..x-1 ) );
-
         if feedback /= null then -- inform user
           UnZ_Glob.effective_writes:=
             UnZ_Glob.effective_writes + File_size_type(x);
@@ -411,13 +413,9 @@ package body UnZip.Decompress is
             end if;
           end if;
         end if;
-
         if full_trace then
           Ada.Text_IO.Put_Line("finished]");
         end if;
-      exception
-        when others=>
-          raise Write_Error;
       end Flush;
 
       procedure Flush_if_full(W: in out Integer; unflushed: in out Boolean) is
@@ -561,7 +559,7 @@ package body UnZip.Decompress is
               null;
           end case;
         end if;
-      end;
+      end Delete_output;
 
     end UnZ_IO;
 
