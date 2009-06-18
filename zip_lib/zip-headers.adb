@@ -287,7 +287,7 @@ package body Zip.Headers is
     end if;
 
     -- Yes, we must _search_ for it...
-    -- because PKWARE put a variable comment _after_ it 8-(
+    -- because PKWARE put a variable-size comment _after_ it 8-(
 
     for i in reverse min_end_start .. Ada.Streams.Stream_IO.Count(Size(stream)) - 21 loop
       Zip_Streams.Set_Index(stream, Positive(i));

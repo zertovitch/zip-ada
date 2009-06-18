@@ -35,14 +35,14 @@
 -- NB: this is the MIT License, as found 12-Sep-2007 on the site
 -- http://www.opensource.org/licenses/mit-license.php
 
-with Interfaces;
-with Ada.Streams.Stream_IO;
 with Zip_Streams;
+with Ada.Streams.Stream_IO, Ada.Text_IO;
+with Interfaces;
 
 package Zip is
 
   version   : constant String:= "33";
-  reference : constant String:= "14-Jun-2009";
+  reference : constant String:= "18-Jun-2009";
   web       : constant String:= "http://unzip-ada.sf.net/";
 
   --------------
@@ -82,6 +82,8 @@ package Zip is
 
   function Zip_name( info: in Zip_info ) return String;
 
+  function Zip_comment( info: in Zip_info ) return String;
+
   function Zip_stream( info: in Zip_info ) return Zip_Streams.Zipstream_Class;
 
   function Entries( info: in Zip_info ) return Natural;
@@ -105,10 +107,6 @@ package Zip is
   );
 
   ---------
-
-  subtype Byte is Interfaces.Unsigned_8;
-  type Byte_Buffer is array(Integer range <>) of Byte;
-  type p_Byte_Buffer is access Byte_Buffer;
 
   -- Data sizes in archive
   subtype File_size_type is Interfaces.Unsigned_32;
@@ -193,11 +191,19 @@ package Zip is
       user_abort   : out Boolean   -- e.g. transmit a "click on Cancel" here
     );
 
+  -------------------------------------------------------------------------
+  -- Goodies - things used internally but that might be generally useful --
+  -------------------------------------------------------------------------
+
   -- General-purpose procedure (nothing really specific to Zip / UnZip):
   -- reads either the whole buffer from a file, or if the end of the file
   -- lays inbetween, a part of the buffer.
   --
   -- The procedure's names and parameters match Borland Pascal / Delphi
+
+  subtype Byte is Interfaces.Unsigned_8;
+  type Byte_Buffer is array(Integer range <>) of Byte;
+  type p_Byte_Buffer is access Byte_Buffer;
 
   procedure BlockRead(
     file         : in     Ada.Streams.Stream_IO.File_Type;
@@ -215,6 +221,26 @@ package Zip is
   -- Just there as helper for Ada 95 only systems
   --
   function Exists(name:String) return Boolean;
+
+  -- Write a string containing line endings (possible from another system)
+  --   into a text file, with the correct native line endings.
+  --   Works for displaying/saving correctly
+  --   CR&LF (DOS/Win), LF (UNIX), CR (Mac OS < 9)
+  --
+  procedure Put_Multi_Line(
+    out_file :        Ada.Text_IO.File_Type;
+    text     :        String
+  );
+
+  procedure Write_as_text(
+    out_file :        Ada.Text_IO.File_Type;
+    buffer   :        Zip.Byte_Buffer;
+    last_char: in out Character -- track line-ending characters between writes
+  );
+
+  -------------------
+  -- Private items --
+  -------------------
 
 private
   -- Zip_info, 23.VI.1999.
@@ -245,6 +271,7 @@ private
     -- ^ when not null, we use this and not zip_file_name
     dir_binary_tree : p_Dir_node;
     total_entries   : Natural;
+    zip_file_comment: p_String;
   end record;
 
 end Zip;

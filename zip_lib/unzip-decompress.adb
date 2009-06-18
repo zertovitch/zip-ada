@@ -381,7 +381,7 @@ package body UnZip.Decompress is
                 Ada.Streams.Stream_IO.Stream(out_bin_file), UnZ_Glob.slide(0..x-1)
               );
             when write_to_text_file =>
-              UnZip.Write_buffer_as_text(
+              Zip.Write_as_text(
                 UnZ_IO.out_txt_file, UnZ_Glob.slide(0..x-1), UnZ_IO.last_char
               );
             when write_to_memory =>
@@ -589,7 +589,7 @@ package body UnZip.Decompress is
       Writebuf : Zip.Byte_Buffer ( 0..Write_Max );  -- Write buffer
 
       procedure Unshrink_Flush is
-        use Zip, UnZip, Ada.Streams;
+        use Zip, UnZip, Ada.Streams, Ada.Streams.Stream_IO;
         user_aborting: Boolean;
       begin
         if full_trace then
@@ -598,14 +598,9 @@ package body UnZip.Decompress is
         begin
           case mode is
             when write_to_binary_file =>
-              Zip.Byte_Buffer'Write(
-                Ada.Streams.Stream_IO.Stream(UnZ_IO.out_bin_file),
-                Writebuf(0..Write_Ptr-1)
-              );
+              Zip.Byte_Buffer'Write(Stream(UnZ_IO.out_bin_file), Writebuf(0..Write_Ptr-1));
             when write_to_text_file =>
-              UnZip.Write_buffer_as_text(
-                UnZ_IO.out_txt_file, Writebuf(0..Write_Ptr-1), UnZ_IO.last_char
-              );
+              Zip.Write_as_text(UnZ_IO.out_txt_file, Writebuf(0..Write_Ptr-1), UnZ_IO.last_char);
             when write_to_memory =>
               for I in 0..Write_Ptr-1 loop
                 output_memory_access(UnZ_Glob.uncompressed_index):=
@@ -1260,8 +1255,7 @@ package body UnZip.Decompress is
            7041, 7169, 7297, 7425, 7553, 7681, 7809, 7937, 8065 );
 
         extra :
-          constant Length_array( 0..63 ) :=
-          ( 0..62 => 0, 63 => 8 );
+          constant Length_array( 0..63 ) := ( 0..62 => 0, 63 => 8 );
 
       begin
         Bl := 7;
@@ -1349,7 +1343,6 @@ package body UnZip.Decompress is
               HufT_free(Tb);
               raise Zip.Zip_file_Error;
           end;
-
           HufT_free ( Td );
           HufT_free ( Tl );
           HufT_free ( Tb );
@@ -1413,7 +1406,6 @@ package body UnZip.Decompress is
               HufT_free(Tl);
               raise Zip.Zip_file_Error;
           end;
-
           HufT_free ( Td );
           HufT_free ( Tl );
         end if;
@@ -1435,15 +1427,11 @@ package body UnZip.Decompress is
         if UnZ_IO.Decryption.Get_mode then
           absorbed:= 12;
         end if;
-
-        while  absorbed < size  loop
-
+        while absorbed < size loop
           read_in := size - absorbed;
-
           if read_in > wsize then
             read_in := wsize;
           end if;
-
           begin
             for I in 0 .. read_in-1 loop
               UnZ_IO.Read_byte( UnZ_Glob.slide( Natural(I) ) );
@@ -1452,7 +1440,6 @@ package body UnZip.Decompress is
             when others=>
               raise UnZip.Read_Error;
           end;
-
           begin
             UnZ_IO.Flush ( Natural(read_in) );  -- Takes care of CRC too
           exception
@@ -1461,7 +1448,6 @@ package body UnZip.Decompress is
           end;
           absorbed:= absorbed + read_in;
         end loop;
-
       end Copy_Stored;
 
       -- Note from Pascal source:
@@ -1599,8 +1585,7 @@ package body UnZip.Decompress is
 
       extra_bits_distance : constant Length_array( 0..31 ) :=
            ( 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
-             7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
-             12, 12, 13, 13, 14, 14 );
+             7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14 );
 
       max_dist: Integer:= 29; -- changed to 31 for deflate_e
 
@@ -1888,17 +1873,9 @@ package body UnZip.Decompress is
     -- ^ this is an 'out' parameter, we have to set it anyway
     case mode is
       when write_to_binary_file =>
-        Ada.Streams.Stream_IO.Create(
-          UnZ_IO.out_bin_file,
-          Ada.Streams.Stream_IO.Out_File,
-          output_file_name
-        );
+        Ada.Streams.Stream_IO.Create(UnZ_IO.out_bin_file,Ada.Streams.Stream_IO.Out_File, output_file_name);
       when write_to_text_file =>
-        Ada.Text_IO.Create(
-          UnZ_IO.out_txt_file,
-          Ada.Text_IO.Out_File,
-          output_file_name
-        );
+        Ada.Text_IO.Create(UnZ_IO.out_txt_file, Ada.Text_IO.Out_File, output_file_name);
       when write_to_memory =>
         output_memory_access:= new
           Ada.Streams.Stream_Element_Array(
@@ -1923,10 +1900,7 @@ package body UnZip.Decompress is
       work_index := Ada.Streams.Stream_IO.Positive_Count (Zip_Streams.Index(zip_file));
       password_passes: for p in 1..tolerance_wrong_password loop
         begin
-          UnZ_IO.Decryption.Init(
-            password  => To_String(password),
-            crc_check => hint.crc_32
-          );
+          UnZ_IO.Decryption.Init( To_String(password), hint.crc_32 );
           exit password_passes; -- the current password fits, then go on!
         exception
           when Wrong_password =>
@@ -1958,10 +1932,7 @@ package body UnZip.Decompress is
         when reduce_3 => Unreduce(3);
         when reduce_4 => Unreduce(4);
         when implode  =>
-          UnZ_Meth.Explode(
-            literal_tree => explode_literal_tree,
-            slide_8_KB   => explode_slide_8KB
-          );
+          UnZ_Meth.Explode( explode_literal_tree, explode_slide_8KB );
         when deflate | deflate_e =>
           UnZ_Meth.deflate_e_mode:= format = deflate_e;
           UnZ_Meth.Inflate;

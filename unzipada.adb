@@ -2,7 +2,7 @@
 --  File:            UnZipAda.adb
 --  Description:     A minimal standalone command-line unzipping tool
 --                     using the Zip-Ada library.
---  Date/version:    14-Jun-2009; 26-Apr-2008 ; ... ; 1-Dec-1999
+--  Date/version:    18-Jun-2009; ... ; 1-Dec-1999
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -31,6 +31,7 @@ procedure UnZipAda is
   quiet     : Boolean:= False;
   verbose   : Boolean:= False;
   lower_case: Boolean:= False;
+  comment   : Boolean:= False;
 
   fda:          Zip.feedback_proc     := My_feedback'Access;
   rca:          resolve_conflict_proc := My_resolve_conflict'Access;
@@ -100,10 +101,13 @@ procedure UnZipAda is
     Put_Line("          -c     : case sensitive name matching");
     Put_Line("          -l     : force lower case on stored names");
     Put_Line("          -a     : output as text file, with native line endings");
-    Put_Line("          -s pwd : set a password (e.g. ""pwd"")");
+    Put_Line("          -z     : display .zip archive comment only");
+    Put_Line("          -s pwd : define a password (e.g. ""pwd"")");
     Put_Line("          -q     : quiet mode");
     Put_Line("          -v     : verbose, technical mode");
   end Help;
+
+  zi: Zip.Zip_info;
 
 begin
   if Argument_Count=0 then
@@ -161,6 +165,8 @@ begin
               quiet:= True;
             when 'v' =>
               verbose:= True;
+            when 'z' =>
+              comment:= True;
             when others  =>
               Help;
               return;
@@ -186,6 +192,7 @@ begin
         archive_given: constant String:= Argument(last_option+1);
         zip_ext: Boolean:= False;
         extract_all: Boolean;
+        --
         function Archive return String is
         begin
           if zip_ext then
@@ -208,6 +215,8 @@ begin
 
         if not quiet then
           Blurb;
+        end if;
+        if not (quiet or comment) then
           if z_options( test_only ) then
             Put("Testing");
           else
@@ -223,7 +232,10 @@ begin
         end if;
 
         T0:= Clock;
-        if extract_all then
+        if comment then -- Option: -z , diplay comment only
+          Zip.Load( zi, Archive );
+          Zip.Put_Multi_Line(Standard_Output, Zip.Zip_comment(zi));
+        elsif extract_all then
           Extract(
             Archive,
             fda, rca, tda, gpw,
@@ -233,7 +245,6 @@ begin
           );
         else
           declare
-            zi       : Zip.Zip_info;
             total    : Natural;
             max_depth: Natural;
             avg_depth: Float;
@@ -270,7 +281,7 @@ begin
 
   seconds:= T1-T0;
 
-  if not quiet then
+  if not (quiet or comment) then
     New_Line(2);
     IIO.Put(Summary.Total_Entries, 7);
     Put(" entries  ------ Total ------");

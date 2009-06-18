@@ -48,7 +48,7 @@
 
 with Zip;
 
-with Ada.Calendar, Ada.Streams, Ada.Strings.Unbounded, Ada.Text_IO;
+with Ada.Calendar, Ada.Streams, Ada.Strings.Unbounded;
 
 package UnZip is
 
@@ -279,11 +279,5 @@ private
     range write_to_binary_file..write_to_text_file;
 
   type p_Stream_Element_Array is access all Ada.Streams.Stream_Element_Array;
-
-  procedure Write_buffer_as_text(
-    file     : Ada.Text_IO.File_Type;
-    buf      : Zip.Byte_Buffer;
-    last_char: in out Character
-  );
 
 end UnZip;

@@ -151,7 +151,7 @@ package Zip.Headers is
 
   -- A bit more elaborated: from an open file (not a stream),
   -- find the End-of-Central-dir and load it; keep the file open.
-   procedure Load(
+  procedure Load(
     stream : in     Zipstream_Class;
     the_end:    out End_of_Central_Dir
     );

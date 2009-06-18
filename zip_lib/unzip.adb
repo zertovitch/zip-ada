@@ -670,26 +670,4 @@ package body UnZip is
     end if;
   end Extract;
 
-  procedure Write_buffer_as_text(
-    file     : Ada.Text_IO.File_Type;
-    buf      : Zip.Byte_Buffer;
-    last_char: in out Character
-  )
-  is
-    c: Character;
-  begin
-    for i in buf'Range loop
-      c:= Character'Val(buf(i));
-      case c is
-        when ASCII.CR =>
-          Ada.Text_IO.New_Line(file);
-        when ASCII.LF =>
-          if last_char /= ASCII.CR then Ada.Text_IO.New_Line(file); end if;
-        when others =>
-          Ada.Text_IO.Put(file, c);
-      end case;
-      last_char:= c;
-    end loop;
-  end;
-
 end UnZip;

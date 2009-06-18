@@ -3,7 +3,6 @@ with Zip.Headers;
 with Ada.Characters.Handling;
 with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;
-with Ada.Text_IO;
 
 package body Zip is
 
@@ -173,16 +172,19 @@ package body Zip is
     the_end: Zip.Headers.End_of_Central_Dir;
     header : Zip.Headers.Central_File_Header;
     p      : p_Dir_node:= null;
-
-  zip_info_already_loaded: exception;
-
-  use Ada.Streams, Ada.Streams.Stream_IO;
+    zip_info_already_loaded: exception;
+    main_comment: p_String;
+    use Ada.Streams, Ada.Streams.Stream_IO;
 
   begin -- Load Zip_info
     if info.loaded then
       raise zip_info_already_loaded;
     end if; -- 15-Apr-2002
     Zip.Headers.Load(from, the_end);
+    -- We take the opportunity to read the comment
+    main_comment:= new String(1..Integer(the_end.main_comment_length));
+    String'Read(from, main_comment.all);
+    -- Process central directory:
     Zip_Streams.Set_Index(
         from, Positive(1 +
             Ada.Streams.Stream_IO.Count(the_end.central_dir_offset)));
@@ -227,7 +229,8 @@ package body Zip is
              zip_file_name    => new String'("This is a stream, no direct file!"),
              zip_input_stream => from,
              dir_binary_tree  => p,
-             total_entries    => Integer(the_end.total_entries)
+             total_entries    => Integer(the_end.total_entries),
+             zip_file_comment => main_comment
            );
   end Load;
 
@@ -276,6 +279,14 @@ package body Zip is
     end if;
     return info.zip_file_name.all;
   end Zip_name;
+
+  function Zip_comment( info: in Zip_info ) return String is
+  begin
+    if not info.loaded then
+      raise Forgot_to_load_zip_info;
+    end if;
+    return info.zip_file_comment.all;
+  end Zip_comment;
 
   function Zip_stream( info: in Zip_info ) return Zip_Streams.Zipstream_Class
   is
@@ -607,5 +618,49 @@ package body Zip is
     when Name_Error =>
       return False;
   end Exists;
+
+  procedure Put_Multi_Line(
+    out_file :        Ada.Text_IO.File_Type;
+    text     :        String
+  )
+  is
+    last_char: Character:= ' ';
+    c: Character;
+  begin
+    for i in text'Range loop
+      c:= text(i);
+      case c is
+        when ASCII.CR =>
+          Ada.Text_IO.New_Line(out_file);
+        when ASCII.LF =>
+          if last_char /= ASCII.CR then Ada.Text_IO.New_Line(out_file); end if;
+        when others =>
+          Ada.Text_IO.Put(out_file, c);
+      end case;
+      last_char:= c;
+    end loop;
+  end Put_Multi_Line;
+
+  procedure Write_as_text(
+    out_file :        Ada.Text_IO.File_Type;
+    buffer   :        Zip.Byte_Buffer;
+    last_char: in out Character -- track line-ending characters across writes
+  )
+  is
+    c: Character;
+  begin
+    for i in buffer'Range loop
+      c:= Character'Val(buffer(i));
+      case c is
+        when ASCII.CR =>
+          Ada.Text_IO.New_Line(out_file);
+        when ASCII.LF =>
+          if last_char /= ASCII.CR then Ada.Text_IO.New_Line(out_file); end if;
+        when others =>
+          Ada.Text_IO.Put(out_file, c);
+      end case;
+      last_char:= c;
+    end loop;
+  end Write_as_text;
 
 end Zip;

@@ -92,7 +92,8 @@ procedure ReZip is
     file_index :  Ada.Streams.Stream_IO.Positive_Count;
     comp_size  :  Zip.File_size_type;
     uncomp_size:  Zip.File_size_type;
-    file_out             : Ada.Streams.Stream_IO.File_Type;
+    file_out   : Ada.Streams.Stream_IO.File_Type;
+    use UnZip;
   begin
     Zip.Find_Offset(
       info           => archive,
@@ -116,15 +117,15 @@ procedure ReZip is
     Close(file_out);
     if unzip_rename /= "" then
       -- * Get the data, uncompressed
-      UnZip.Extract(
+      Extract(
         from    => archive,
         what    => data_name,
         rename  => unzip_rename,
         options =>
-        (
-            UnZip.test_only => False,
-            UnZip.junk_directories => False,
-            UnZip.case_sensitive_match => case_match
+        (   test_only => False,
+            junk_directories => False,
+            case_sensitive_match => case_match,
+            extract_as_text => False
         )
       );
     end if;

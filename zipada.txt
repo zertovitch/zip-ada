@@ -98,6 +98,10 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '33', 18-Jun-2009:
+  - UnZip: added extract_as_text option (cf. UnZipAda with -a option)
+  - Zip: Zip_comment function added (cf. UnZipAda with -z option)
+
 * Changes in '31', 20-Feb-2009:
   - Added tiny demos: Demo_Zip, Demo_UnZip
   -!- Zip.Create: Create / Finish: if Info.Stream is to a file,
@@ -251,7 +255,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 
 * New in '04' : 4-Jul-1999:
       Reduce method debugged. Now all PKZIPs from 1989 to 1999 are supported.
-      File unzipping is finished and works.
+      File unzipping is finished and is working.
       User information more complete (see unzipada.adb).
       1st publishing in the Public Ada Library.
 
@@ -273,6 +277,10 @@ Tucker Taft (himself!), SofCheck, for providing fixes (v.24) and
    an impressive targets in-use list
 
 Pascal Pignard, for testing the UnZipAda.adb tool under Mac OS X
+
+Manuel Op de Coul, Huygens-Fokker Foundation
+   http://www.huygens-fokker.org/scala/
+
 
 Open bugs (as of v.30)
 ======================
