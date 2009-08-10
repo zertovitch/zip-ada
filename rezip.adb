@@ -154,6 +154,8 @@ procedure ReZip is
      reduce_4 => reduce_4
     );
 
+  deflate_only: Boolean:= False;
+
   type Packer_info is record
     size            : Zip.File_size_type;
     zfm             : Unsigned_16;
@@ -344,6 +346,8 @@ procedure ReZip is
     summary: Ada.Text_IO.File_Type;
     T0, T1 : Time;
     seconds: Duration;
+    skip: array(Approach) of Boolean;
+
 
     procedure Process_one(unique_name: String) is
       comp_size  :  Zip.File_size_type;
@@ -354,6 +358,7 @@ procedure ReZip is
       StreamFile_out: constant Zipstream_Class := File_out'Unchecked_Access;
       choice: Approach:= original;
       deco: constant String:= "-->-->-->----" & unique_name'Length * '-';
+      use Zip;
     begin
       total_choice.count:= total_choice.count + 1;
       Put_Line(deco);
@@ -406,54 +411,56 @@ procedure ReZip is
       -- Try all approaches:
       --
       for a in Approach loop
-        Put("              -o-> " & Img(a));
-        case a is
-          --
-          when original =>
-            -- This is from the original .zip - just record size and method
-            e.info(a).size:= comp_size;
-            e.info(a).zfm := e.head.short_info.zip_type;
+        if not skip(a) then
+          Put("              -o-> " & Img(a));
+          case a is
             --
-          when Internal =>
-            SetName (StreamFile_in, Temp_name(False,original));
-            Open (File_in, In_File);
-            SetName (StreamFile_out, Temp_name(True,a));
-            Create (File_out, Out_File);
-            Zip.Compress.Compress_data
-            (
-              input            => StreamFile_in,
-              output           => StreamFile_out,
-              input_size_known => True,
-              input_size       => e.head.short_info.dd.uncompressed_size,
-              method           => Approach_to_Method(a),
-              feedback         => My_Feedback'Access,
-              CRC              => e.head.short_info.dd.crc_32,
-              -- we take the occasion to compute the CRC if not
-              -- yet available (e.g. JAR)
-              output_size      => e.info(a).size,
-              zip_type         => e.info(a).zfm
-            );
-            Close(File_in);
-            Close(File_out);
-            --
-          when External =>
-            New_Line;
-            Process_External(
-              S(ext(a).name),
-              S(ext(a).options),
-              Temp_name(True,a),
-              e.info(a)
-            );
-            e.head.made_by_version:= ext(a).made_by_version;
-            ext(a).expanded_options:= e.info(a).expanded_options;
-            --
-        end case;
-        total(a).size:= total(a).size + e.info(a).size;
-        if e.info(a).size < e.info(choice).size then
-          -- Hurra, we found a smaller size!
-          choice:= a;
+            when original =>
+              -- This is from the original .zip - just record size and method
+              e.info(a).size:= comp_size;
+              e.info(a).zfm := e.head.short_info.zip_type;
+              --
+            when Internal =>
+              SetName (StreamFile_in, Temp_name(False,original));
+              Open (File_in, In_File);
+              SetName (StreamFile_out, Temp_name(True,a));
+              Create (File_out, Out_File);
+              Zip.Compress.Compress_data
+              (
+                input            => StreamFile_in,
+                output           => StreamFile_out,
+                input_size_known => True,
+                input_size       => e.head.short_info.dd.uncompressed_size,
+                method           => Approach_to_Method(a),
+                feedback         => My_Feedback'Access,
+                CRC              => e.head.short_info.dd.crc_32,
+                -- we take the occasion to compute the CRC if not
+                -- yet available (e.g. JAR)
+                output_size      => e.info(a).size,
+                zip_type         => e.info(a).zfm
+              );
+              Close(File_in);
+              Close(File_out);
+              --
+            when External =>
+              New_Line;
+              Process_External(
+                S(ext(a).name),
+                S(ext(a).options),
+                Temp_name(True,a),
+                e.info(a)
+              );
+              e.head.made_by_version:= ext(a).made_by_version;
+              ext(a).expanded_options:= e.info(a).expanded_options;
+              --
+          end case;
+          total(a).size:= total(a).size + e.info(a).size;
+          if e.info(a).size < e.info(choice).size then
+            -- Hurra, we found a smaller size!
+            choice:= a;
+          end if;
+          New_Line;
         end if;
-        New_Line;
       end loop;
       total_choice.size:= total_choice.size + e.info(choice).size;
       total(choice).count:= total(choice).count + 1;
@@ -472,18 +479,20 @@ procedure ReZip is
       -- * Summary outputs
       Put(summary,"<tr><td><tt>" & unique_name & "</tt></td>");
       for a in Approach loop
-        if choice = a then
-          Put(summary,"<td bgcolor=lightgreen><b>");
-        elsif e.info(a).size = e.info(choice).size then -- ex aequo
-          Put(summary,"<td bgcolor=lightblue><b>");
-        else
-          Put(summary,"<td>");
+        if not skip(a) then
+          if choice = a then
+            Put(summary,"<td bgcolor=lightgreen><b>");
+          elsif e.info(a).size = e.info(choice).size then -- ex aequo
+            Put(summary,"<td bgcolor=lightblue><b>");
+          else
+            Put(summary,"<td>");
+          end if;
+          Put(summary, Zip.File_size_type'Image(e.info(a).size));
+          if choice = a then
+            Put(summary,"</b>");
+          end if;
+          Put(summary,"</td>");
         end if;
-        Put(summary, Zip.File_size_type'Image(e.info(a).size));
-        if choice = a then
-          Put(summary,"</b>");
-        end if;
-        Put(summary,"</td>");
       end loop;
       -- Recall winner size:
       Put(summary,"<td>" & Img(choice) & "</td>");
@@ -556,6 +565,14 @@ procedure ReZip is
 
   begin
     T0:= Clock;
+    for a in Approach loop
+      if a = original then
+        skip(a):= False;
+      else
+        skip(a):= (a in Internal and deflate_only) or
+                  (a in External and then (ext(a).made_by_version > 20 and deflate_only));
+      end if;
+    end loop;
     SetName (StreamFile, orig_name);
     Open (MyStream, In_File);
     Zip.Load( zi, StreamFile, True );
@@ -577,10 +594,12 @@ procedure ReZip is
     Put_Line(summary, "<table border=1 cellpadding=1 cellspacing=1>");
     Put(summary, "<tr bgcolor=lightyellow><td>File name</td>");
     for a in Approach loop
-      if a in External then
-        ext(a).expanded_options:= ext(a).options;
+      if not skip(a) then
+        if a in External then
+          ext(a).expanded_options:= ext(a).options;
+        end if;
+        Put(summary, "<td>" & Img(a) & "</td>");
       end if;
-      Put(summary, "<td>" & Img(a) & "</td>");
     end loop;
     Put_Line(summary,
       "<td><b>Choice</b></td><td>Smallest<br>size</td>" &
@@ -618,18 +637,22 @@ procedure ReZip is
     -- Cleanup
     --
     for a in Approach loop
-      Ada.Directories.Delete_File( Temp_name(True,a) );
-      if a = original then -- also an uncompressed data file to delete
-        Ada.Directories.Delete_File( Temp_name(False,a) );
+      if not skip(a) then
+        Ada.Directories.Delete_File( Temp_name(True,a) );
+        if a = original then -- also an uncompressed data file to delete
+          Ada.Directories.Delete_File( Temp_name(False,a) );
+        end if;
       end if;
     end loop;
     -- Report total bytes
     Put(summary,"<tr><td><b>T<small>OTAL BYTES</small></b></td>");
     for a in Approach loop
-      Put(summary,
-        "<td bgcolor=#" & Webcolor(a) & ">" &
-        Zip.File_size_type'Image(total(a).size) & "</td>"
-      );
+      if not skip(a) then
+        Put(summary,
+          "<td bgcolor=#" & Webcolor(a) & ">" &
+          Zip.File_size_type'Image(total(a).size) & "</td>"
+        );
+      end if;
     end loop;
     Put(summary,
       "<td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.size) &
@@ -654,10 +677,12 @@ procedure ReZip is
     -- Report total files per approach
     Put(summary,"<tr><td><b>T<small>OTAL FILES</small></b></td>");
     for a in Approach loop
-      Put(summary,
-        "<td bgcolor=#" & Webcolor(a) & ">" &
-        Integer'Image(total(a).count) & "</td>"
-      );
+      if not skip(a) then
+        Put(summary,
+          "<td bgcolor=#" & Webcolor(a) & ">" &
+          Integer'Image(total(a).count) & "</td>"
+        );
+      end if;
     end loop;
     Put(summary,
       "<td></td><td bgcolor=lightgreen><b>" & Integer'Image(total_choice.count) &
@@ -668,10 +693,12 @@ procedure ReZip is
     -- Report total saved bytes per approach
     Put(summary,"<tr><td><b>T<small>OTAL SAVED BYTES</small></b></td>");
     for a in Approach loop
-      Put(summary,
-        "<td bgcolor=#" & Webcolor(a) & ">" &
-        Zip.File_size_type'Image(total(a).saved) & "</td>"
-      );
+      if not skip(a) then
+        Put(summary,
+          "<td bgcolor=#" & Webcolor(a) & ">" &
+          Zip.File_size_type'Image(total(a).saved) & "</td>"
+        );
+      end if;
     end loop;
     Put(summary,
       "<td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.saved) &
@@ -720,7 +747,9 @@ procedure ReZip is
 begin
   Blurb;
   if Argument_Count = 0 then
-    Put_Line("Usage: rezip archive(s)[.zip]");
+    Put_Line("Usage: rezip [options] archive(s)[.zip]");
+    New_Line;
+    Put_Line("options:  -defl: use Deflate method only (most compatible)");
     return;
   end if;
   Reset(gen);
@@ -731,9 +760,20 @@ begin
       arg_rezip: constant String:= arg_zip & ".repacked.zip";
       arg_log  : constant String:= arg_zip & ".ReZip.html";
     begin
-      Repack_contents(arg_zip, arg_rezip, arg_log);
-      -- [_] here, as a post-processing, we could call deflopt
-      -- and finally check with comp_zip. But maybe better in a batch...
+      if arg(1) = '-' or arg(1) = '/' then
+        -- Options
+        declare
+          opt: constant String:= arg(arg'First+1..arg'Last) & "  ";
+        begin
+          if opt(opt'First..opt'First+3) = "defl" then
+            deflate_only:= True;
+          end if;
+        end;
+      else
+        Repack_contents(arg_zip, arg_rezip, arg_log);
+        -- [_] here, as a post-processing, we could call deflopt
+        -- and finally check with comp_zip. But maybe better in a batch...
+      end if;
     end;
   end loop;
 end ReZip;
