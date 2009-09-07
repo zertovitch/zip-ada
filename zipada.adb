@@ -137,15 +137,19 @@ begin
         end if;
         T0:= Clock;
         Zip.Create.Create(Info, ZipFileStream, arg_zip, method);
-      else
-        declare
-          StreamFile : constant Zipstream_Class := InStream (I)'Unchecked_Access;
-        begin
-          SetName (StreamFile, arg);
-          SetTime (StreamFile, Ada.Directories.Modification_Time(arg));
-          Open (ZipFile_Stream (StreamFile.all), In_File);
-          Add_1_Stream (StreamFile);
-        end;
+      else -- First real argument already used for archive's name
+        if Zip.Exists(arg) then
+          declare
+            StreamFile : constant Zipstream_Class := InStream (I)'Unchecked_Access;
+          begin
+            SetName (StreamFile, arg);
+            SetTime (StreamFile, Ada.Directories.Modification_Time(arg));
+            Open (ZipFile_Stream (StreamFile.all), In_File);
+            Add_1_Stream (StreamFile);
+          end;
+        else
+          Put_Line("  ** Warning: name not matched: " & arg);
+        end if;
       end if;
     end;
   end loop;
