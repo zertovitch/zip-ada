@@ -174,16 +174,18 @@ package body Zip.Create is
       ed.total_entries := 0;
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
-      for e in Info.Contains'Range loop
-         ed.total_entries := ed.total_entries + 1;
-         Zip.Headers.Write (Info.Stream, Info.Contains (e).head);
-         String'Write(Info.Stream, To_String (Info.Contains (e).name));
-         ed.central_dir_size :=
-           ed.central_dir_size +
-             Zip.Headers.central_header_length +
-               Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
-      end loop;
-      Dispose (Info.Contains);
+      if Info.Contains /= null then
+        for e in Info.Contains'Range loop
+           ed.total_entries := ed.total_entries + 1;
+           Zip.Headers.Write (Info.Stream, Info.Contains (e).head);
+           String'Write(Info.Stream, To_String (Info.Contains (e).name));
+           ed.central_dir_size :=
+             ed.central_dir_size +
+               Zip.Headers.central_header_length +
+                 Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
+        end loop;
+        Dispose (Info.Contains);
+      end if;
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;
