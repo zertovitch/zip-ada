@@ -1,6 +1,10 @@
 -- Draft of a zip repacker utility.
 -- Compression speed doesn't matter, only final size.
 --
+-- to do:
+-- - optional comp_zip at the end
+-- - packers as config file
+--
 -- External programs used (feel free to customize/add/remove):
 --
 --   7-Zip             http://7-zip.org/
@@ -160,7 +164,9 @@ procedure ReZip is
     size            : Zip.File_size_type;
     zfm             : Unsigned_16;
     count           : Natural;
-    saved           : Zip.File_size_type;
+    saved           : Integer_64;
+    -- can be negative if -defl chosen: suboptimal recompression,
+    -- but compatible method
     uncomp_size     : Unsigned_64;
     -- summed uncompressed sizes might be more than 2**32
     expanded_options: Unbounded_String;
@@ -359,6 +365,7 @@ procedure ReZip is
       choice: Approach:= original;
       deco: constant String:= "-->-->-->----" & unique_name'Length * '-';
       use Zip;
+      mth: PKZip_method;
     begin
       total_choice.count:= total_choice.count + 1;
       Put_Line(deco);
@@ -419,6 +426,7 @@ procedure ReZip is
               -- This is from the original .zip - just record size and method
               e.info(a).size:= comp_size;
               e.info(a).zfm := e.head.short_info.zip_type;
+              mth:= Method_from_code(e.info(a).zfm);
               --
             when Internal =>
               SetName (StreamFile_in, Temp_name(False,original));
@@ -459,6 +467,12 @@ procedure ReZip is
             -- Hurra, we found a smaller size!
             choice:= a;
           end if;
+          if choice = original and deflate_only and not (mth = store or mth = deflate) then
+            -- This occurs if we want to make a deflate/store only archive
+            -- As soon as a > original, the choice will be forced out of original if
+            -- method is not "compatible"
+            choice:= a;
+          end if;
           New_Line;
         end if;
       end loop;
@@ -467,9 +481,9 @@ procedure ReZip is
       total_choice.uncomp_size:=
         total_choice.uncomp_size + Unsigned_64(uncomp_size);
       total(choice).saved:=
-        total(choice).saved + e.info(original).size - e.info(choice).size;
+        total(choice).saved + Integer_64(e.info(original).size) - Integer_64(e.info(choice).size);
       total_choice.saved:=
-        total_choice.saved + e.info(original).size - e.info(choice).size;
+        total_choice.saved + Integer_64(e.info(original).size) - Integer_64(e.info(choice).size);
       --
       New_Line;
       Put(
@@ -696,12 +710,12 @@ procedure ReZip is
       if not skip(a) then
         Put(summary,
           "<td bgcolor=#" & Webcolor(a) & ">" &
-          Zip.File_size_type'Image(total(a).saved) & "</td>"
+          Integer_64'Image(total(a).saved) & "</td>"
         );
       end if;
     end loop;
     Put(summary,
-      "<td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.saved) &
+      "<td></td><td bgcolor=lightgreen><b>" & Integer_64'Image(total_choice.saved) &
       "</b></td>" &
       "<td>"
     );
@@ -771,8 +785,7 @@ begin
         end;
       else
         Repack_contents(arg_zip, arg_rezip, arg_log);
-        -- [_] here, as a post-processing, we could call deflopt
-        -- and finally check with comp_zip. But maybe better in a batch...
+        -- [_] here, as a post-processing, we could check with comp_zip.
       end if;
     end;
   end loop;
