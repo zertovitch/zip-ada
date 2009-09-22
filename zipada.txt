@@ -98,6 +98,12 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '34', xx-yyy-2009:
+  - ReZip: added '-defl' option for having a recompressed archive only
+             with Deflate or Store methods (most compatible)
+  - ReZip: added '-comp' option for comparing output against input
+  - Small fixes
+
 * Changes in '33', 18-Jun-2009:
   - UnZip: added extract_as_text option (cf. UnZipAda with -a option)
   - Zip: Zip_comment function added (cf. UnZipAda with -z option)

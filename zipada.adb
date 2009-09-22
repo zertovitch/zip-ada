@@ -54,13 +54,13 @@ procedure ZipAda is
     Put("  Adding ");
     declare
       maxlen: constant:= 24;
-      cut: constant String:= Cutname( GetName(Stream), maxlen );
+      cut: constant String:= CutName( GetName(Stream), maxlen );
     begin
       Put( cut & (1 + maxlen - cut'Length) * ' ');
     end;
     --
     Zip.Create.Add_Stream(
-      Info, Stream, My_Feedback'Access, Compressed_Size, Final_Method
+      Info, Stream, My_feedback'Access, Compressed_Size, Final_Method
     );
     --
     if Size(Stream) = 0 then
@@ -69,11 +69,11 @@ procedure ZipAda is
     Put(' ');
     declare
       meth: constant String:=
-        To_Lower(Zip.pkzip_method'Image(
+        To_Lower(Zip.PKZip_method'Image(
           Zip.Method_from_code(Final_Method)
         ));
     begin
-      Put( meth & (Zip.pkzip_method'Width - meth'Length) * ' ');
+      Put( meth & (Zip.PKZip_method'Width - meth'Length) * ' ');
     end;
     if Size(Stream) > 0 then
       Put(", to ");
@@ -86,21 +86,18 @@ procedure ZipAda is
   function Add_zip_ext(s: String) return String is
   begin
     if s'Length < 4 or else
-       To_Upper(s(s'Last-3..s'Last)) /= ".ZIP"
+       To_Upper(s(s'Last-3..s'Last)) = ".ZIP"
     then
-      return s & ".zip";
-    else
       return s;
+    else
+      return s & ".zip";
     end if;
   end Add_zip_ext;
-
-  zip_name_set: Boolean:= False;
-  answer: Character;
-  InStream : array(2..Argument_Count) of aliased ZipFile_Stream;
 
   use Zip.Compress;
 
   method: Compression_Method:= shrink;
+  zip_name_set: Boolean:= False;
 
 begin
   Blurb;
@@ -108,6 +105,7 @@ begin
     declare
       arg    : constant String:= Argument(I);
       arg_zip: constant String:= Add_zip_ext(arg);
+      answer : Character;
     begin
       if arg(1) = '-' or arg(1) = '/' then
         -- Options
@@ -140,6 +138,7 @@ begin
       else -- First real argument already used for archive's name
         if Zip.Exists(arg) then
           declare
+            InStream : array(2..Argument_Count) of aliased ZipFile_Stream;
             StreamFile : constant Zipstream_Class := InStream (I)'Unchecked_Access;
           begin
             SetName (StreamFile, arg);

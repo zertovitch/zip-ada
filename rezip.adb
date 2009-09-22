@@ -2,8 +2,7 @@
 -- Compression speed doesn't matter, only final size.
 --
 -- to do:
--- - optional comp_zip at the end
--- - packers as config file
+-- - external packers defined in a config file
 --
 -- External programs used (feel free to customize/add/remove):
 --
@@ -11,6 +10,12 @@
 --   KZip              http://www.advsys.net/ken/utils.htm
 --   Zip (info-zip)    http://info-zip.org/
 --   DeflOpt           http://www.walbeehm.com/download/
+
+with Zip.Headers, Zip.Compress, UnZip;
+with Comp_Zip_Prc;
+with Zip_Streams;                       use Zip_Streams;
+
+with My_feedback;
 
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
@@ -26,11 +31,6 @@ with Ada.Unchecked_Deallocation;
 with Ada.Numerics.Float_Random;         use Ada.Numerics.Float_Random;
 
 with Interfaces;                        use Interfaces;
-
-with Zip.Headers, Zip.Compress, UnZip;
-with Zip_Streams;                       use Zip_Streams;
-
-with My_feedback;
 
 with GNAT.OS_Lib;
 
@@ -159,6 +159,7 @@ procedure ReZip is
     );
 
   deflate_only: Boolean:= False;
+  compare: Boolean:= False;
 
   type Packer_info is record
     size            : Zip.File_size_type;
@@ -262,32 +263,31 @@ procedure ReZip is
     packer    :        String;
     options   :        String;
     other_args:        String;
-    expa      : in out Unbounded_String -- expanded arguments
+    expand    : in out Unbounded_String -- expanded arguments
   )
   is
-    repl: Unbounded_String;
     type Token is (rand);
-    idx: Natural;
   begin
-    expa:= U(options);
+    expand:= U(options);
     for t in Token loop
       declare
         tok: constant String:= '#' & Token'Image(t) & '#';
+        idx: constant Natural:= Index(expand, tok);
+        replace: Unbounded_String;
       begin
-        idx:= Index(expa, tok);
         if idx > 0 then
           case t is
             when rand =>
-              repl:=
+              replace:=
                 U(Trim(Integer'Image(Integer(
                   (Random(gen)**2) * 800.0
                 )),Left));
           end case;
-          Replace_Slice(expa, idx, idx + tok'Length - 1, S(repl));
+          Replace_Slice(expand, idx, idx + tok'Length - 1, S(replace));
         end if;
       end;
     end loop;
-    Call_external(packer, S(expa) & ' ' & other_args);
+    Call_external(packer, S(expand) & ' ' & other_args);
   end Call_external_expanded;
 
   procedure Process_External(
@@ -353,7 +353,7 @@ procedure ReZip is
     T0, T1 : Time;
     seconds: Duration;
     skip: array(Approach) of Boolean;
-
+    lightred: constant String:= "#f43048";
 
     procedure Process_one(unique_name: String) is
       comp_size  :  Zip.File_size_type;
@@ -366,6 +366,16 @@ procedure ReZip is
       deco: constant String:= "-->-->-->----" & unique_name'Length * '-';
       use Zip;
       mth: PKZip_method;
+      --
+      procedure Winner_color is
+      begin
+        if e.info(choice).size <= e.info(original).size then -- normal case
+          Put(summary,"<td bgcolor=lightgreen><b>");
+        else
+          Put(summary,"<td bgcolor=" & lightred & "><b>"); -- forced deflate
+        end if;
+      end Winner_color;
+      --
     begin
       total_choice.count:= total_choice.count + 1;
       Put_Line(deco);
@@ -494,8 +504,8 @@ procedure ReZip is
       Put(summary,"<tr><td><tt>" & unique_name & "</tt></td>");
       for a in Approach loop
         if not skip(a) then
-          if choice = a then
-            Put(summary,"<td bgcolor=lightgreen><b>");
+          if a = choice then
+            Winner_color;
           elsif e.info(a).size = e.info(choice).size then -- ex aequo
             Put(summary,"<td bgcolor=lightblue><b>");
           else
@@ -510,7 +520,7 @@ procedure ReZip is
       end loop;
       -- Recall winner size:
       Put(summary,"<td>" & Img(choice) & "</td>");
-      Put(summary,"<td bgcolor=lightgreen><b>");
+      Winner_color;
       Put(summary, Zip.File_size_type'Image(e.info(choice).size));
       Put(summary,"</b></td><td>");
       if e.info(original).size > 0 then
@@ -605,6 +615,14 @@ procedure ReZip is
     Put_Line(summary,
       "Library version " & Zip.version & " dated " & Zip.reference
     );
+    if deflate_only then
+      Put_Line(summary,
+        "<br><table border=0 cellpadding=0 cellspacing=0>" &
+        "<tr bgcolor=" & lightred &
+        "><td><b>Option 'force deflate method' is on, " &
+        "result(s) may be sub-optimal.</b></td></tr></table>"
+      );
+    end if;
     Put_Line(summary, "<table border=1 cellpadding=1 cellspacing=1>");
     Put(summary, "<tr bgcolor=lightyellow><td>File name</td>");
     for a in Approach loop
@@ -647,6 +665,7 @@ procedure ReZip is
     ed.disk_total_entries:= ed.total_entries;
     Zip.Headers.Write(Streamrepacked_zip_file, ed);
     Close(repacked_zip_file);
+    Close(MyStream);
     --
     -- Cleanup
     --
@@ -749,12 +768,11 @@ procedure ReZip is
 
   function Add_zip_ext(s: String) return String is
   begin
-    if Ada.Directories.Exists(s) then
+    if Zip.Exists(s) then
       return s;
-    elsif Ada.Directories.Exists(s & ".zip") then
-      return s & ".zip";
     else
-      return "";
+      return s & ".zip";
+      -- Maybe the file doesn't exist, but we tried our best...
     end if;
   end Add_zip_ext;
 
@@ -763,7 +781,8 @@ begin
   if Argument_Count = 0 then
     Put_Line("Usage: rezip [options] archive(s)[.zip]");
     New_Line;
-    Put_Line("options:  -defl: use Deflate method only (most compatible)");
+    Put_Line("options:  -defl: repack archive only with Deflate method (most compatible)");
+    Put_Line("          -comp: compare input and output archive (paranoid mode)");
     return;
   end if;
   Reset(gen);
@@ -773,6 +792,8 @@ begin
       arg_zip  : constant String:= Add_zip_ext(arg);
       arg_rezip: constant String:= arg_zip & ".repacked.zip";
       arg_log  : constant String:= arg_zip & ".ReZip.html";
+      info_zip,
+      info_rezip : Zip.Zip_info;
     begin
       if arg(1) = '-' or arg(1) = '/' then
         -- Options
@@ -781,11 +802,19 @@ begin
         begin
           if opt(opt'First..opt'First+3) = "defl" then
             deflate_only:= True;
+          elsif opt(opt'First..opt'First+3) = "comp" then
+            compare:= True;
           end if;
         end;
-      else
+      elsif Zip.Exists(arg_zip) then
         Repack_contents(arg_zip, arg_rezip, arg_log);
-        -- [_] here, as a post-processing, we could check with comp_zip.
+        if compare then
+          Zip.Load( info_zip, arg_zip );
+          Zip.Load( info_rezip, arg_rezip );
+          Comp_Zip_Prc(info_zip, info_rezip);
+        end if;
+      else
+        Put_Line("  ** Error: archive not found: " & arg_zip);
       end if;
     end;
   end loop;

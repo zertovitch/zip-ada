@@ -4,7 +4,7 @@ copy /b %1 %1.old.zip
 del *.tmp
 del $temp$.zip
 
-  rezip %1
-  del %1
-  move %1.repacked.zip %1
+rezip -comp %1
+del %1
+move %1.repacked.zip %1
 

@@ -5,16 +5,16 @@
 WINDOWS_TARGET
 
 
-unzip-a
-Zip
-cnt
-';
-ZipFileStream
-mystream
-temp_zip_stream
-to_zip_stream
-temp_
-Process_External
+mmc
+repacked_zip_file
+MyStream
+z(
+Directories
+add_
+Add_zip_ext
+deflate_only
+lightred
+ghtre
 -- Begin compiler switches
 DEBUG <- active (current) build mode
 FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?
