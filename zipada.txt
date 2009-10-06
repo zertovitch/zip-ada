@@ -102,7 +102,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
   - ReZip: added '-defl' option for having a recompressed archive only
              with Deflate or Store methods (most compatible)
   - ReZip: added '-comp' option for comparing output against input
-  - Small fixes
+  - ReZip: added '-touch' and '-lower' options
 
 * Changes in '33', 18-Jun-2009:
   - UnZip: added extract_as_text option (cf. UnZipAda with -a option)

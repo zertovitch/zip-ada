@@ -1,8 +1,13 @@
 -- Draft of a zip repacker utility.
 -- Compression speed doesn't matter, only final size.
 --
--- to do:
--- - external packers defined in a config file
+-- To do:
+--  * In order to facilitate customization, ReZip could have a config file (
+--    http://sf.net/projects/ini-files/ ) to store external packer program names.
+
+--  * #LIMIT=64# for giving an upper limit (e.g. 64 KB) to some methods (e.g.
+--    KZIP is very slow on big files and cannot use the 64KB slide of
+--    Deflate64).
 --
 -- External programs used (feel free to customize/add/remove):
 --
@@ -158,9 +163,6 @@ procedure ReZip is
      reduce_4 => reduce_4
     );
 
-  deflate_only: Boolean:= False;
-  compare: Boolean:= False;
-
   type Packer_info is record
     size            : Zip.File_size_type;
     zfm             : Unsigned_16;
@@ -219,9 +221,9 @@ procedure ReZip is
          U("7-Zip"),
          U("a -tzip -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
          U(""), 21),
-      (U("kzip.exe"),U("KZIP"),U("/rn /b0"), U(""), 20), -- KZIP 2007 or later
-      (U("kzip.exe"),U("KZIP"),U("/rn /b256"), U(""), 20),
-      (U("kzip.exe"),U("KZIP"),U("/rn /b#RAND#"), U(""), 20)
+      (U("kzip.exe"),U("KZIP"),U("/rn /b0"), U(""), 20),
+      (U("kzip.exe"),U("KZIP"),U("/rn /b#RAND#(0,128)"), U(""), 20),
+      (U("kzip.exe"),U("KZIP"),U("/rn /b#RAND#(128,1024)"), U(""), 20)
     );
 
   function Img(a: Approach) return String is
@@ -273,17 +275,27 @@ procedure ReZip is
       declare
         tok: constant String:= '#' & Token'Image(t) & '#';
         idx: constant Natural:= Index(expand, tok);
+        par: constant Natural:= Index(expand, ")");
         replace: Unbounded_String;
       begin
         if idx > 0 then
-          case t is
-            when rand =>
-              replace:=
-                U(Trim(Integer'Image(Integer(
-                  (Random(gen)**2) * 800.0
-                )),Left));
-          end case;
-          Replace_Slice(expand, idx, idx + tok'Length - 1, S(replace));
+          declare
+            opt: constant String:= S(expand); -- partially processed option string
+            curr: constant String:= opt(idx+1..opt'Last); -- current option
+            par_a: constant Natural:= Index(curr, "(");
+            par_z: constant Natural:= Index(curr, ")");
+            comma: constant Natural:= Index(curr, ",");
+            n1, n2, n: Integer;
+          begin
+            case t is
+              when rand =>
+                n1:= Integer'Value(curr(par_a+1..comma-1));
+                n2:= Integer'Value(curr(comma+1..par_z-1));
+                n:= n1 + Integer(Random(gen)*Float(n2-n1));
+                replace:= U(Trim(Integer'Image(n),Left));
+            end case;
+            Replace_Slice(expand, idx, par, S(replace));
+          end;
         end if;
       end;
     end loop;
@@ -335,6 +347,12 @@ procedure ReZip is
     -- uncomp_size should not matter (always the same).
     info.zfm        := header.zip_type;
   end Process_external;
+
+  deflate_only: Boolean:= False;
+  compare     : Boolean:= False;
+  lower       : Boolean:= False;
+  touch       : Boolean:= False;
+  time_0      : constant Time:= Clock;
 
   procedure Repack_contents(orig_name, repacked_name, log_name: String)
   is
@@ -414,6 +432,13 @@ procedure ReZip is
         case_match   => True,
         header       => e.head.short_info
       );
+      --
+      if touch then
+        e.head.short_info.file_timedate:= time_0;
+      end if;
+      if lower then
+        e.name:= U(To_Lower(S(e.name)));
+      end if;
       -- Get reliable data from zi
       Zip.Get_sizes(
         info           => zi,
@@ -781,8 +806,25 @@ begin
   if Argument_Count = 0 then
     Put_Line("Usage: rezip [options] archive(s)[.zip]");
     New_Line;
-    Put_Line("options:  -defl: repack archive only with Deflate method (most compatible)");
-    Put_Line("          -comp: compare input and output archive (paranoid mode)");
+    Put_Line("options:  -defl:  repack archive only with Deflate method (most compatible)");
+    Put_Line("          -touch: set time stamps to now");
+    Put_Line("          -lower: set full file names to lower case");
+    Put_Line("          -comp:  compare input and output archive (paranoid mode)");
+    New_Line;
+    Put_Line("external packers:");
+    New_Line;
+    declare
+      fix: String(1..15);
+    begin
+      for e in External loop
+        if e = External'First or else ext(e).name /= ext(External'Pred(e)).name then
+          fix:= (others => ' ');
+          Insert(fix,fix'First, S(ext(e).title));
+          Put_Line("   " & fix & " executable: " & S(ext(e).name));
+        end if;
+      end loop;
+    end;
+    New_Line;
     return;
   end if;
   Reset(gen);
@@ -795,15 +837,19 @@ begin
       info_zip,
       info_rezip : Zip.Zip_info;
     begin
-      if arg(1) = '-' or arg(1) = '/' then
+      if arg(arg'First) = '-' or arg(arg'First) = '/' then
         -- Options
         declare
-          opt: constant String:= arg(arg'First+1..arg'Last) & "  ";
+          opt: constant String:= arg(arg'First+1..arg'Last);
         begin
-          if opt(opt'First..opt'First+3) = "defl" then
+          if opt = "defl" then
             deflate_only:= True;
-          elsif opt(opt'First..opt'First+3) = "comp" then
+          elsif opt = "comp" then
             compare:= True;
+          elsif opt = "touch" then
+            touch:= True;
+          elsif opt = "lower" then
+            lower:= True;
           end if;
         end;
       elsif Zip.Exists(arg_zip) then
