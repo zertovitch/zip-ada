@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 
 if exist %1 set arch345239874621=%1
 if exist %1 goto ok
@@ -12,7 +12,7 @@ goto fin
 :ok
 
 rem Name only, no extension
-for %%z in (%1) do set name345239874621=%%~nz
+for %%z in (%1) do set name345239874621=%%~dz%%~pz%%~nz
 
 if exist %name345239874621%.old.zip del %name345239874621%.old.zip
 copy /b %arch345239874621% %name345239874621%.old.zip
