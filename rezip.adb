@@ -801,6 +801,38 @@ procedure ReZip is
     end if;
   end Add_zip_ext;
 
+  function Get_ext(s: String) return String is
+    dot: Integer:= s'Last;
+  begin
+    for i in reverse s'Range loop
+      if s(i)='.' then
+        dot:= i;
+        exit;
+      end if;
+    end loop;
+    if s="" or dot = s'Last then -- no extension in all cases:
+      return "zip";              -- "", "xxx." or "xxx"
+    else
+      return s(dot+1..s'Last);
+    end if;
+  end Get_ext;
+
+  function Remove_ext(s: String) return String is
+    dot: Integer:= s'Last+1;
+  begin
+    if s = "" then
+      return s;
+    end if;
+    for i in reverse s'Range loop
+      if s(i)='.' then
+        dot:= i;
+        exit;
+      end if;
+    end loop;
+    return s(s'First..dot-1);
+    -- "xxx" returned in all cases: "xxx.ext", "xxx." or "xxx"
+  end Remove_ext;
+
 begin
   Blurb;
   if Argument_Count = 0 then
@@ -832,8 +864,10 @@ begin
     declare
       arg      : constant String:= Argument(i);
       arg_zip  : constant String:= Add_zip_ext(arg);
-      arg_rezip: constant String:= arg_zip & ".repacked.zip";
-      arg_log  : constant String:= arg_zip & ".ReZip.html";
+      ext      : constant String:= Get_ext(arg_zip);
+      arg_nozip: constant String:= Remove_ext(arg_zip);
+      arg_rezip: constant String:= arg_nozip & ".repacked." & ext;
+      arg_log  : constant String:= arg_nozip & ".ReZip.html";
       info_zip,
       info_rezip : Zip.Zip_info;
     begin
