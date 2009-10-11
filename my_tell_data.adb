@@ -30,6 +30,10 @@ procedure My_tell_data
 
 begin
   New_Line;
+  if Summary.Total_Entries = 0 then
+    Put_Line(" Name                      Method         Compressed size     Uncompressed size");
+    Put_Line(" ------------------------- -------------- ------------------- -----------------");
+  end if;
   Put(' ');
   My_dots.done_dots:= 0;
   declare

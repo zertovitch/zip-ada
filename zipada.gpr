@@ -54,10 +54,10 @@ project ZipAda is
       case Build_Mode is
 
          when "Debug" =>
-            for Default_Switches ("ada") use ("-gnatf", "-gnato", "-fstack-check", "-g", "-gnatwa", "-gnatVa", "-gnatecdebug.pra");
+            for Default_Switches ("ada") use ("-gnatf", "-gnato", "-fstack-check", "-g", "-gnatwa", "-gnatVa", "-gnatec../debug.pra");
 
          when "Optimize" =>
-            for Default_Switches ("ada") use ("-O2", "-gnatn", "-funroll-loops", "-gnatp", "-fpeel-loops", "-ftracer", "-funswitch-loops", "-fweb", "-frename-registers", "-ffunction-sections");
+            for Default_Switches ("ada") use ("-O2", "-gnatn", "-funroll-loops", "-gnatp", "-fpeel-loops", "-ftracer", "-funswitch-loops", "-fweb", "-frename-registers", "-ffunction-sections", "-gnatec../za_elim.pra");
 
          when "Profiling" =>
             for Default_Switches ("ada") use ("-O2", "-gnatn", "-funroll-loops", "-gnatp", "-g", "-fpeel-loops", "-ftracer", "-funswitch-loops", "-fweb", "-frename-registers", "-pg");
@@ -65,7 +65,14 @@ project ZipAda is
    end Compiler;
 
    package Builder is
-      for Default_Switches ("ada") use ("-j2", "-C");
+      case Build_Mode is
+         when "Debug" =>
+            for Default_Switches ("ada") use ("-j2", "-C");
+         when "Optimize" =>
+            for Default_Switches ("ada") use ("-j2", "-C", "-a", "-x");
+         when "Profiling" =>
+            for Default_Switches ("ada") use ("-j2", "-C");
+      end case;
    end Builder;
 
 end ZipAda;

@@ -1,0 +1,10 @@
+--  GNATELIM (built with ASIS 2.0.R for GNAT GPL 2008 (20080521))
+--  Copyright 1997-2008, Free Software Foundation, Inc.
+---------------------------------------------------------
+--  List of unused entities to be placed in gnat.adc.  --
+---------------------------------------------------------
+--  Manual rework - will be more effective with a smart linker...
+--
+pragma Eliminate (Zip, Is_loaded);
+pragma Eliminate (UnZipAda, IIO.Get);
+pragma Eliminate (UnZipAda, MIO.Get);
