@@ -1,20 +1,20 @@
--gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecobj_dbg/debug.pra -Izip_lib -aOobj_dbg
+-gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -aOobj_dbg
 -aOobj_dbg
 
 
 WINDOWS_TARGET
 
 
+KZip
+DeflOpt
+7-
+d.zip
+.zip
 mmc
 repacked_zip_file
 MyStream
 z(
 Directories
-add_
-Add_zip_ext
-deflate_only
-lightred
-ghtre
 -- Begin compiler switches
 DEBUG <- active (current) build mode
 FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?

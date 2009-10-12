@@ -10,11 +10,8 @@
 --    Deflate64).
 --
 -- External programs used (feel free to customize/add/remove):
---
---   7-Zip             http://7-zip.org/
---   KZip              http://www.advsys.net/ken/utils.htm
---   Zip (info-zip)    http://info-zip.org/
---   DeflOpt           http://www.walbeehm.com/download/
+--   7-Zip, KZip, Zip (info-zip), DeflOpt
+--   Web URL's: see External_packer_info below or run ReZip without arguments.
 
 with Zip.Headers, Zip.Compress, UnZip;
 with Comp_Zip_Prc;
@@ -204,7 +201,7 @@ procedure ReZip is
   -- This might be better read from a config file...
 
   type External_packer_info is record
-    name, title, options: Unbounded_String;
+    name, title, URL, options: Unbounded_String;
     expanded_options    : Unbounded_String;
     -- options with dynamically expanded tokens
     made_by_version     : Unsigned_16;
@@ -212,19 +209,25 @@ procedure ReZip is
 
   ext: array(External) of External_packer_info:=
     (
-      (U("zip.exe"), U("Zip"), U("-9"), U(""), 20),      -- Zip 2.32 or later
+      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"), U("-9"), U(""), 20),
+       -- Zip 2.32 or later
       (U("7z.exe"),                                      -- 7-Zip 4.64 or later
-         U("7-Zip"),
+         U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mx9 -mm=deflate -mfb=258 -mpass=15 -mmc=10000"),
          U(""), 20),
       (U("7z.exe"),
-         U("7-Zip"),
+         U("7-Zip"), U(""),
          U("a -tzip -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
          U(""), 21),
-      (U("kzip.exe"),U("KZIP"),U("/rn /b0"), U(""), 20),
-      (U("kzip.exe"),U("KZIP"),U("/rn /b#RAND#(0,128)"), U(""), 20),
-      (U("kzip.exe"),U("KZIP"),U("/rn /b#RAND#(128,1024)"), U(""), 20)
+      (U("kzip.exe"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
+         U("/rn /b0"), U(""), 20),
+      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(0,128)"), U(""), 20),
+      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(128,1024)"), U(""), 20)
     );
+
+  defl_opt: constant External_packer_info:=
+    (U("deflopt.exe"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
+     U(""), U(""), 0);
 
   function Img(a: Approach) return String is
   begin
@@ -326,7 +329,7 @@ procedure ReZip is
       info.expanded_options
     );
     -- Post processing of "deflated" entries with DeflOpt:
-    Call_external("deflopt.exe", temp_zip);
+    Call_external(S(defl_opt.name), temp_zip);
     -- Now, rip
     SetName (StreamFile, temp_zip);
     Open (MyStream, In_File);
@@ -846,15 +849,22 @@ begin
     Put_Line("external packers:");
     New_Line;
     declare
-      fix: String(1..15);
+      procedure Display(p: External_packer_info)  is
+        fix: String(1..12):= (others => ' ');
+      begin
+        Insert(fix,fix'First, S(p.title));
+        Put("   " & fix);
+        fix:= (others => ' ');
+        Insert(fix,fix'First, S(p.name));
+        Put_Line(" exe: " & fix & "  URL: " & S(p.URL));
+      end Display;
     begin
       for e in External loop
         if e = External'First or else ext(e).name /= ext(External'Pred(e)).name then
-          fix:= (others => ' ');
-          Insert(fix,fix'First, S(ext(e).title));
-          Put_Line("   " & fix & " executable: " & S(ext(e).name));
+          Display(ext(e));
         end if;
       end loop;
+      Display(defl_opt);
     end;
     New_Line;
     return;
