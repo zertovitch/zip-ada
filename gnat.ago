@@ -1,22 +1,22 @@
 -gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -aOobj_dbg
--aOobj_dbg
+-C -aOobj_dbg
 
 
 WINDOWS_TARGET
 
 
+temp_name
+simple_n
+Delete_File
+Directories
+radix
+data_name
+Temp_name
+temp_n
 KZip
 DeflOpt
-7-
-d.zip
-.zip
-mmc
-repacked_zip_file
-MyStream
-z(
-Directories
 -- Begin compiler switches
-DEBUG <- active (current) build mode
+RELEASE <- active (current) build mode
 FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?
 debug o2 false
 debug inlining false
@@ -49,7 +49,7 @@ release build_in_place true
 -- End compiler switches
 -- Begin Release mode commands
 -gnatf -gnatwab -gnatyebfhkanp -Izip_lib -aOobj_opt
--aOobj_opt
+-C -aOobj_opt
 
 
 -- End Release mode commands

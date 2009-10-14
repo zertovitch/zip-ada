@@ -14,10 +14,11 @@
 --   Web URL's: see External_packer_info below or run ReZip without arguments.
 
 with Zip.Headers, Zip.Compress, UnZip;
-with Comp_Zip_Prc;
 with Zip_Streams;                       use Zip_Streams;
 
-with My_feedback;
+with Comp_Zip_Prc;
+
+with My_feedback, Flexible_temp_files;
 
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
@@ -193,6 +194,7 @@ procedure ReZip is
     initial: constant array(Boolean) of Character:= ('u','c');
   begin
     return
+      Flexible_temp_files.Radix &
       "_!" & initial(compressed) &
       '!' & Trim(Integer'Image(Approach'Pos(appr)), Left) &
       "!_.tmp";
@@ -311,14 +313,18 @@ procedure ReZip is
     out_name: String;
     info    : out Packer_info
   ) is
-    temp_zip: constant String:= "$temp$.zip";
-    data_name: constant String:= Temp_name(False,original);
+    use Ada.Directories;
+    temp_zip: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$temp$.zip";
+    data_name: constant String:= Simple_Name(Temp_name(False,original));
     zi_ext: Zip.Zip_info;
     header: Zip.Headers.Local_File_Header;
     MyStream   : aliased ZipFile_Stream;
     StreamFile : constant Zipstream_Class := MyStream'Unchecked_Access;
-    use Ada.Directories;
+    cur_dir: constant String:= Current_Directory;
   begin
+    -- We jump into the TEMP directory, to avoid putting pathes into the
+    -- temporary zip file.
+    Set_Directory(Containing_Directory(Flexible_temp_files.Radix));
     if Exists(temp_zip) then -- remove (eventually broken) zip
       Delete_File(temp_zip);
     end if;
@@ -349,6 +355,8 @@ procedure ReZip is
     info.uncomp_size:= Unsigned_64(header.dd.uncompressed_size);
     -- uncomp_size should not matter (always the same).
     info.zfm        := header.zip_type;
+    -- We jump back to the startup directory.
+    Set_Directory(cur_dir);
   end Process_external;
 
   deflate_only: Boolean:= False;
@@ -869,6 +877,7 @@ begin
     New_Line;
     return;
   end if;
+  Flexible_temp_files.Initialize;
   Reset(gen);
   for i in 1..Argument_Count loop
     declare
@@ -908,4 +917,5 @@ begin
       end if;
     end;
   end loop;
+  Flexible_temp_files.Finalize;
 end ReZip;
