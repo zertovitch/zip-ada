@@ -363,6 +363,7 @@ procedure ReZip is
   compare     : Boolean:= False;
   lower       : Boolean:= False;
   touch       : Boolean:= False;
+  del_comment : Boolean:= False;
   time_0      : constant Time:= Clock;
 
   procedure Repack_contents(orig_name, repacked_name, log_name: String)
@@ -406,6 +407,12 @@ procedure ReZip is
       end Winner_color;
       --
     begin
+      if unique_name = "" or else
+        (   unique_name(unique_name'Last)='\'
+         or unique_name(unique_name'Last)='/'
+        ) then
+        return; -- directories are useless entries!
+      end if;
       total_choice.count:= total_choice.count + 1;
       Put_Line(deco);
       Put_Line(
@@ -684,22 +691,32 @@ procedure ReZip is
     ed.total_entries:= 0;
     ed.central_dir_size:= 0;
     ed.main_comment_length:= 0;
-    -- Restart at the beginning of the list
-    e:= list;
-    while e /= null loop
-      ed.total_entries:= ed.total_entries + 1;
-      Zip.Headers.Write(Streamrepacked_zip_file, e.head);
-      String'Write(Streamrepacked_zip_file, S(e.name));
-      ed.central_dir_size:=
-        ed.central_dir_size +
-        Zip.Headers.central_header_length +
-        Unsigned_32(e.head.short_info.filename_length);
-      e:= e.next;
-    end loop;
-    ed.disknum:= 0;
-    ed.disknum_with_start:= 0;
-    ed.disk_total_entries:= ed.total_entries;
-    Zip.Headers.Write(Streamrepacked_zip_file, ed);
+    declare
+      comment: constant String:= Zip.Zip_comment(zi);
+    begin
+      if not del_comment then
+        ed.main_comment_length:= comment'Length;
+      end if;
+      -- Restart at the beginning of the list
+      e:= list;
+      while e /= null loop
+        ed.total_entries:= ed.total_entries + 1;
+        Zip.Headers.Write(Streamrepacked_zip_file, e.head);
+        String'Write(Streamrepacked_zip_file, S(e.name));
+        ed.central_dir_size:=
+          ed.central_dir_size +
+          Zip.Headers.central_header_length +
+          Unsigned_32(e.head.short_info.filename_length);
+        e:= e.next;
+      end loop;
+      ed.disknum:= 0;
+      ed.disknum_with_start:= 0;
+      ed.disk_total_entries:= ed.total_entries;
+      Zip.Headers.Write(Streamrepacked_zip_file, ed);
+      if not del_comment then
+        String'Write(Streamrepacked_zip_file, comment);
+      end if;
+    end;
     Close(repacked_zip_file);
     Close(MyStream);
     --
@@ -849,10 +866,11 @@ begin
   if Argument_Count = 0 then
     Put_Line("Usage: rezip [options] archive(s)[.zip]");
     New_Line;
-    Put_Line("options:  -defl:  repack archive only with Deflate method (most compatible)");
-    Put_Line("          -touch: set time stamps to now");
-    Put_Line("          -lower: set full file names to lower case");
-    Put_Line("          -comp:  compare input and output archive (paranoid mode)");
+    Put_Line("options:  -defl:     repack archive only with Deflate method (most compatible)");
+    Put_Line("          -touch:    set time stamps to now");
+    Put_Line("          -lower:    set full file names to lower case");
+    Put_Line("          -del_comm: delete comment");
+    Put_Line("          -comp:     compare input and output archive (paranoid mode)");
     New_Line;
     Put_Line("external packers:");
     New_Line;
@@ -893,7 +911,7 @@ begin
       if arg(arg'First) = '-' or arg(arg'First) = '/' then
         -- Options
         declare
-          opt: constant String:= arg(arg'First+1..arg'Last);
+          opt: constant String:= To_Lower(arg(arg'First+1..arg'Last));
         begin
           if opt = "defl" then
             deflate_only:= True;
@@ -903,6 +921,8 @@ begin
             touch:= True;
           elsif opt = "lower" then
             lower:= True;
+          elsif opt = "del_comm" then
+            del_comment:= True;
           end if;
         end;
       elsif Zip.Exists(arg_zip) then
