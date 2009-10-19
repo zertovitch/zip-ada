@@ -138,13 +138,14 @@ begin
       else -- First real argument already used for archive's name
         if Zip.Exists(arg) then
           declare
-            InStream : array(2..Argument_Count) of aliased ZipFile_Stream;
-            StreamFile : constant Zipstream_Class := InStream (I)'Unchecked_Access;
+            InStream   : aliased ZipFile_Stream;
+            StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
           begin
             SetName (StreamFile, arg);
             SetTime (StreamFile, Ada.Directories.Modification_Time(arg));
-            Open (ZipFile_Stream (StreamFile.all), In_File);
+            Open (InStream, In_File);
             Add_1_Stream (StreamFile);
+            Close (InStream);
           end;
         else
           Put_Line("  ** Warning: name not matched: " & arg);
