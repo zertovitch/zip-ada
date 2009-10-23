@@ -1,9 +1,14 @@
 -- *** Version of ZipAda downgraded to Ada 95 for testing with ObjectAda 7.2.2
 -- *** Just need to comment out / null-ify the references to Ada.Directories
 
+-- Draft of a zip archiving utility.
+--
+-- UZA v. 28: uses Zip.Create
+-- UZA v. 26: modified for new Zip_Stream
+
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
--- [2005] with Ada.Directories;
+-- with Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Streams;                       use Ada.Streams;
@@ -52,13 +57,13 @@ procedure ZipAda is
     Put("  Adding ");
     declare
       maxlen: constant:= 24;
-      cut: constant String:= Cutname( GetName(Stream), maxlen );
+      cut: constant String:= CutName( GetName(Stream), maxlen );
     begin
       Put( cut & (1 + maxlen - cut'Length) * ' ');
     end;
     --
     Zip.Create.Add_Stream(
-      Info, Stream, My_Feedback'Access, Compressed_Size, Final_Method
+      Info, Stream, My_feedback'Access, Compressed_Size, Final_Method
     );
     --
     if Size(Stream) = 0 then
@@ -67,11 +72,11 @@ procedure ZipAda is
     Put(' ');
     declare
       meth: constant String:=
-        To_Lower(Zip.pkzip_method'Image(
+        To_Lower(Zip.PKZip_method'Image(
           Zip.Method_from_code(Final_Method)
         ));
     begin
-      Put( meth & (Zip.pkzip_method'Width - meth'Length) * ' ');
+      Put( meth & (Zip.PKZip_method'Width - meth'Length) * ' ');
     end;
     if Size(Stream) > 0 then
       Put(", to ");
@@ -84,21 +89,18 @@ procedure ZipAda is
   function Add_zip_ext(s: String) return String is
   begin
     if s'Length < 4 or else
-       To_Upper(s(s'Last-3..s'Last)) /= ".ZIP"
+       To_Upper(s(s'Last-3..s'Last)) = ".ZIP"
     then
-      return s & ".zip";
-    else
       return s;
+    else
+      return s & ".zip";
     end if;
   end Add_zip_ext;
-
-  zip_name_set: Boolean:= False;
-  answer: Character;
-  InStream : array(2..Argument_Count) of aliased ZipFile_Stream;
 
   use Zip.Compress;
 
   method: Compression_Method:= shrink;
+  zip_name_set: Boolean:= False;
 
 begin
   Blurb;
@@ -106,6 +108,7 @@ begin
     declare
       arg    : constant String:= Argument(I);
       arg_zip: constant String:= Add_zip_ext(arg);
+      answer : Character;
     begin
       if arg(1) = '-' or arg(1) = '/' then
         -- Options
@@ -135,15 +138,21 @@ begin
         end if;
         T0:= Clock;
         Zip.Create.Create(Info, ZipFileStream, arg_zip, method);
-      else
-        declare
-          StreamFile : constant Zipstream_Class := InStream (I)'Unchecked_Access;
-        begin
-          SetName (StreamFile, arg);
-          -- SetTime (StreamFile, Ada.Directories.Modification_Time(arg));
-          Open (ZipFile_Stream (StreamFile.all), In_File);
-          Add_1_Stream (StreamFile);
-        end;
+      else -- First real argument already used for archive's name
+        if Zip.Exists(arg) then
+          declare
+            InStream   : aliased ZipFile_Stream;
+            StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
+          begin
+            SetName (StreamFile, arg);
+            -- SetTime (StreamFile, Ada.Directories.Modification_Time(arg));
+            Open (InStream, In_File);
+            Add_1_Stream (StreamFile);
+            Close (InStream);
+          end;
+        else
+          Put_Line("  ** Warning: name not matched: " & arg);
+        end if;
       end if;
     end;
   end loop;

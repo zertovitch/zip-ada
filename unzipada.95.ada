@@ -1,10 +1,18 @@
 -- *** Version of ZipAda downgraded to Ada 95 for testing with ObjectAda 7.2.2
 -- *** Just need to comment out / null-ify the references to Ada.Directories
 
+------------------------------------------------------------------------------
+--  File:            UnZipAda.adb
+--  Description:     A minimal standalone command-line unzipping tool
+--                     using the Zip-Ada library.
+--  Date/version:    18-Jun-2009; ... ; 1-Dec-1999
+--  Author:          Gautier de Montmollin
+------------------------------------------------------------------------------
+
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Calendar;                      use Ada.Calendar;
--- [2005] with Ada.Directories;
+-- with Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
@@ -26,6 +34,7 @@ procedure UnZipAda is
   quiet     : Boolean:= False;
   verbose   : Boolean:= False;
   lower_case: Boolean:= False;
+  comment   : Boolean:= False;
 
   fda:          Zip.feedback_proc     := My_feedback'Access;
   rca:          resolve_conflict_proc := My_resolve_conflict'Access;
@@ -66,7 +75,7 @@ procedure UnZipAda is
    ( Create_Path         => null, -- Ada.Directories.Create_Path'Access, -- Ada 2005
      Set_Time_Stamp      => null,
      Directory_Separator => Directory_Separator,
-     Compose_File_Name   => null  -- Compose_File_Name'Unrestricted_Access -- GNAT attr.
+     Compose_File_Name   => null  -- Compose_File_Name'Unrestricted_Access
    );
 
   T0, T1 : Time;
@@ -94,10 +103,14 @@ procedure UnZipAda is
     Put_Line("          -d dir : extract to ""dir"" instead of current");
     Put_Line("          -c     : case sensitive name matching");
     Put_Line("          -l     : force lower case on stored names");
-    Put_Line("          -s pwd : set a password (e.g. ""pwd"")");
+    Put_Line("          -a     : output as text file, with native line endings");
+    Put_Line("          -z     : display .zip archive comment only");
+    Put_Line("          -s pwd : define a password (e.g. ""pwd"")");
     Put_Line("          -q     : quiet mode");
     Put_Line("          -v     : verbose, technical mode");
   end Help;
+
+  zi: Zip.Zip_info;
 
 begin
   if Argument_Count=0 then
@@ -136,6 +149,8 @@ begin
               z_options( case_sensitive_match ):= True;
             when 'l' =>
               lower_case:= True;
+            when 'a' =>
+              z_options( extract_as_text ):= True;
             when 's' =>
               if i < Argument_Count then
                 declare
@@ -153,6 +168,8 @@ begin
               quiet:= True;
             when 'v' =>
               verbose:= True;
+            when 'z' =>
+              comment:= True;
             when others  =>
               Help;
               return;
@@ -178,6 +195,7 @@ begin
         archive_given: constant String:= Argument(last_option+1);
         zip_ext: Boolean:= False;
         extract_all: Boolean;
+        --
         function Archive return String is
         begin
           if zip_ext then
@@ -200,6 +218,8 @@ begin
 
         if not quiet then
           Blurb;
+        end if;
+        if not (quiet or comment) then
           if z_options( test_only ) then
             Put("Testing");
           else
@@ -215,7 +235,10 @@ begin
         end if;
 
         T0:= Clock;
-        if extract_all then
+        if comment then -- Option: -z , diplay comment only
+          Zip.Load( zi, Archive );
+          Zip.Put_Multi_Line(Standard_Output, Zip.Zip_comment(zi));
+        elsif extract_all then
           Extract(
             Archive,
             fda, rca, tda, gpw,
@@ -225,7 +248,6 @@ begin
           );
         else
           declare
-            zi       : Zip.Zip_info;
             total    : Natural;
             max_depth: Natural;
             avg_depth: Float;
@@ -262,7 +284,7 @@ begin
 
   seconds:= T1-T0;
 
-  if not quiet then
+  if not (quiet or comment) then
     New_Line(2);
     IIO.Put(Summary.Total_Entries, 7);
     Put(" entries  ------ Total ------");
@@ -295,4 +317,3 @@ begin
   end if;
 
 end UnZipAda;
-

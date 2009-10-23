@@ -43,7 +43,6 @@ package body Zip.Compress is
     zip_type        : out Interfaces.Unsigned_16
    )
   is
-    b: Zip.Byte;
     use Interfaces;
     counted: File_size_type;
     user_aborting: Boolean;
@@ -51,6 +50,7 @@ package body Zip.Compress is
     idx_out: constant Positive:= Index(output);
     reduction_factor: Positive;
     compression_ok: Boolean;
+    first_feedback: Boolean:= True;
   begin
     Zip.CRC.Init(CRC);
     case method is
@@ -62,14 +62,23 @@ package body Zip.Compress is
           if input_size_known and counted >= input_size then
             exit;
           end if;
-          counted:= counted + 1;
           -- Copy data
-          Byte'Read(input, b);
-          Byte'Write(output, b);
-          Zip.CRC.Update(CRC, (1=> b));
+          declare
+             Buffer_Size : constant Ada.Streams.Stream_Element_Offset := 1024;
+             Buffer      : Ada.Streams.Stream_Element_Array (1 .. Buffer_Size);
+             Last_Read   : Ada.Streams.Stream_Element_Offset;
+          begin
+             Read (input.all, Buffer, Last_Read);
+             counted:= counted + File_size_type (Last_Read);
+             Write (output.all, Buffer (1 .. Last_Read));
+             for I in 1 .. Last_Read loop
+                Zip.CRC.Update(CRC, (1 => Byte (Buffer (I))));
+             end loop;
+          end;
+
           -- Feedback
           if feedback /= null and then
-            ((counted=1) or (counted mod (2**16)=0) or
+            (first_feedback or (counted mod (2**16)=0) or
             (input_size_known and counted = input_size))
           then
             if input_size_known then
@@ -84,6 +93,7 @@ package body Zip.Compress is
                 entry_skipped => False,
                 user_abort    => user_aborting );
             end if;
+            first_feedback:= False;
             if user_aborting then
               raise User_abort;
             end if;
@@ -121,7 +131,7 @@ package body Zip.Compress is
       -- Go back to the beginning and just store the data
       Set_Index(input, idx_in);
       Set_Index(output, idx_out);
-      Compress_Data
+      Compress_data
         ( input, output, input_size_known, input_size,
           Store,      -- Force the "store" method this time
           feedback,
