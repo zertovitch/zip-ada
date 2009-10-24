@@ -207,29 +207,30 @@ procedure ReZip is
     expanded_options    : Unbounded_String;
     -- options with dynamically expanded tokens
     made_by_version     : Unsigned_16;
+    pkzm                : Zip.PKZip_method;
   end record;
 
   ext: array(External) of External_packer_info:=
     (
-      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"), U("-9"), U(""), 20),
+      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"), U("-9"), U(""), 20, Zip.deflate),
        -- Zip 2.32 or later
       (U("7z.exe"),                                      -- 7-Zip 4.64 or later
          U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mx9 -mm=deflate -mfb=258 -mpass=15 -mmc=10000"),
-         U(""), 20),
+         U(""), 20, Zip.deflate),
       (U("7z.exe"),
          U("7-Zip"), U(""),
          U("a -tzip -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
-         U(""), 21),
+         U(""), 21, Zip.deflate_e),
       (U("kzip.exe"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
-         U("/rn /b0"), U(""), 20),
-      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(0,128)"), U(""), 20),
-      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(128,1024)"), U(""), 20)
+         U("/rn /b0"), U(""), 20, Zip.deflate),
+      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(0,128)"), U(""), 20, Zip.deflate),
+      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(128,1024)"), U(""), 20, Zip.deflate)
     );
 
   defl_opt: constant External_packer_info:=
     (U("deflopt.exe"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
-     U(""), U(""), 0);
+     U(""), U(""), 0, Zip.deflate);
 
   function Img(a: Approach) return String is
   begin
@@ -544,7 +545,7 @@ procedure ReZip is
         "; writing data -"
       );
       -- * Summary outputs
-      Put(summary,"<tr><td><tt>" & unique_name & "</tt></td>");
+      Put(summary,"<tr><td bgcolor=lightgrey><tt>" & unique_name & "</tt></td>");
       for a in Approach loop
         if not skip(a) then
           if a = choice then
@@ -588,7 +589,7 @@ procedure ReZip is
         );
         Put(summary,"%");
       end if;
-      Put(summary,"</td></tr>");
+      Put_Line(summary,"</td></tr>");
       --
       -- Write winning data:
       --
@@ -672,13 +673,28 @@ procedure ReZip is
       );
     end if;
     Put_Line(summary, "<table border=1 cellpadding=1 cellspacing=1>");
-    Put(summary, "<tr bgcolor=lightyellow><td>File name</td>");
+    Put(summary, "<tr bgcolor=lightyellow><td align=right valign=top><b>Approach:</b></td>");
     for a in Approach loop
       if not skip(a) then
         if a in External then
           ext(a).expanded_options:= ext(a).options;
         end if;
-        Put(summary, "<td>" & Img(a) & "</td>");
+        Put(summary, "<td valign=top>" & Img(a) & "</td>");
+      end if;
+    end loop;
+    Put_Line(summary, "</tr>");
+    Put(summary, "<tr bgcolor=lightyellow><td bgcolor=lightgrey valign=bottom><b>File name:</b></td>");
+    for a in Approach loop
+      if not skip(a) then
+        case a is
+          when original =>
+            Put(summary, "<td align=right>Approach's<br>method/<br>format</td>");
+          when Internal =>
+            Put(summary, "<td>" & To_Lower(Compression_Method'Image(Approach_to_Method(a))) & "</td>");
+            -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
+          when External =>
+            Put(summary, "<td>" & To_Lower(Zip.PKZip_method'Image(ext(a).pkzm)) & "</td>");
+        end case;
       end if;
     end loop;
     Put_Line(summary,
@@ -746,7 +762,7 @@ procedure ReZip is
       end if;
     end loop;
     Put(summary,
-      "<td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.size) &
+      "<td></td><td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.size) &
       "</b></td><td>"
     );
     if total(original).size > 0 then
@@ -776,7 +792,7 @@ procedure ReZip is
       end if;
     end loop;
     Put(summary,
-      "<td></td><td bgcolor=lightgreen><b>" & Integer'Image(total_choice.count) &
+      "<td></td><td></td><td bgcolor=lightgreen><b>" & Integer'Image(total_choice.count) &
       "</b></td>" &
       "<td>"
     );
@@ -792,7 +808,7 @@ procedure ReZip is
       end if;
     end loop;
     Put(summary,
-      "<td></td><td bgcolor=lightgreen><b>" & Integer_64'Image(total_choice.saved) &
+      "<td></td><td></td><td bgcolor=lightgreen><b>" & Integer_64'Image(total_choice.saved) &
       "</b></td>" &
       "<td>"
     );
