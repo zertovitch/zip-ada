@@ -563,6 +563,11 @@ procedure ReZip is
       end loop;
       -- Recall winner size:
       Put(summary,"<td>" & Img(choice) & "</td>");
+      Put(summary,
+        "<td>" &
+        To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(choice).zfm))) &
+        "</td>"
+      );
       Winner_color;
       Put(summary, Zip.File_size_type'Image(e.info(choice).size));
       Put(summary,"</b></td><td>");
@@ -677,7 +682,7 @@ procedure ReZip is
       end if;
     end loop;
     Put_Line(summary,
-      "<td><b>Choice</b></td><td>Smallest<br>size</td>" &
+      "<td><b>Choice</b></td><td>Compression<br>method/<br>format</td><td>Smallest<br>size</td>" &
       "<td>% of<br>original</td><td>% of<br>uncompressed</td></tr>"
     );
     --
