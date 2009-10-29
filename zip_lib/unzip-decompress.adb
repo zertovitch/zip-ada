@@ -1873,9 +1873,11 @@ package body UnZip.Decompress is
     -- ^ this is an 'out' parameter, we have to set it anyway
     case mode is
       when write_to_binary_file =>
-        Ada.Streams.Stream_IO.Create(UnZ_IO.out_bin_file,Ada.Streams.Stream_IO.Out_File, output_file_name);
+         Ada.Streams.Stream_IO.Create(UnZ_IO.out_bin_file,Ada.Streams.Stream_IO.Out_File, output_file_name,
+                                      Form => To_String (Zip.Form_For_IO_Open_N_Create));
       when write_to_text_file =>
-        Ada.Text_IO.Create(UnZ_IO.out_txt_file, Ada.Text_IO.Out_File, output_file_name);
+         Ada.Text_IO.Create(UnZ_IO.out_txt_file, Ada.Text_IO.Out_File, Output_File_Name,
+                               Form => To_String (Zip.Form_For_IO_Open_N_Create));
       when write_to_memory =>
         output_memory_access:= new
           Ada.Streams.Stream_Element_Array(

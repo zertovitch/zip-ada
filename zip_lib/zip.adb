@@ -376,7 +376,7 @@ package body Zip is
     else
       avg_depth:= Float(sum_depth) / Float(total);
     end if;
-  end Tree_Stat;
+  end Tree_stat;
 
   -- 13-May-2001: Find_first_offset
 
@@ -531,7 +531,7 @@ package body Zip is
       info, name, case_sensitive, dummy_file_index,
       comp_size, uncomp_size
     );
-  end Get_Sizes;
+  end Get_sizes;
 
   -- General-purpose procedure (nothing really specific to Zip / UnZip):
   -- reads either the whole buffer from a file, or if the end of the file
@@ -611,7 +611,7 @@ package body Zip is
     use Ada.Text_IO;
     f: File_Type;
   begin
-    Open(f,In_File,name);
+    Open(f,In_File,name, Form => Ada.Strings.Unbounded.To_String (Form_For_IO_Open_N_Create));
     Close(f);
     return True;
   exception

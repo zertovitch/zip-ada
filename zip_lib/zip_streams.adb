@@ -5,7 +5,7 @@
 
 --with Ada.Strings.Unbounded.Text_IO; use Ada.Strings.Unbounded.Text_IO;
 --with Ada.Text_IO; use Ada.Text_IO;
-
+with Zip;
 package body Zip_Streams is
 
    ---------------------------------------------------------------------
@@ -117,12 +117,14 @@ package body Zip_Streams is
    --------------------------------------------
    procedure Open (Str : in out ZipFile_Stream; Mode : File_Mode) is
    begin
-      Ada.Streams.Stream_IO.Open(Str.File, Mode, To_String(Str.Name));
+      Ada.Streams.Stream_IO.Open(Str.File, Mode, To_String(Str.Name),
+                                 Form => To_String (Zip.Form_For_IO_Open_N_Create));
    end Open;
 
    procedure Create (Str : in out ZipFile_Stream; Mode : File_Mode) is
    begin
-      Ada.Streams.Stream_IO.Create(Str.File, Mode, To_String (Str.Name));
+      Ada.Streams.Stream_IO.Create(Str.File, Mode, To_String (Str.Name),
+                                 Form => To_String (Zip.Form_For_IO_Open_N_Create));
    end Create;
 
    procedure Close (Str : in out ZipFile_Stream) is

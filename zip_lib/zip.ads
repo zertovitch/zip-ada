@@ -36,7 +36,7 @@
 -- http://www.opensource.org/licenses/mit-license.php
 
 with Zip_Streams;
-with Ada.Streams.Stream_IO, Ada.Text_IO;
+with Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Strings.Unbounded;
 with Interfaces;
 
 package Zip is
@@ -74,9 +74,16 @@ package Zip is
     case_sensitive : in  Boolean:= False
   );
 
+
   Zip_file_Error,
   Zip_file_open_Error,
   Duplicate_name: exception;
+
+  -- Parameter Form added to *_IO.[Open|Create]
+  Form_For_IO_Open_N_Create : Ada.Strings.Unbounded.Unbounded_String
+    := Ada.Strings.Unbounded.Null_Unbounded_String;
+  -- See RM A.8.2: File Management
+  -- Example: "encoding=8bits"
 
   function Is_loaded( info: in Zip_info ) return Boolean;
 
