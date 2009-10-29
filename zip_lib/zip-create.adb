@@ -56,7 +56,17 @@ package body Zip.Create is
    is
       Last       : Integer := 1;
       mem1, mem2 : Integer := 1;
+      entry_name : String:= GetName (Stream);
    begin
+      -- Appnote.txt, V. J. :
+      -- " All slashes should be forward slashes '/' as
+      -- opposed to backwards slashes '\' "
+      for i in entry_name'Range loop
+        if entry_name(i) = '\' then
+          entry_name(i):= '/';
+        end if;
+      end loop;
+      --
       if Info.Contains /= null then
          Last := Info.Contains'Length + 1;
       end if;
@@ -75,9 +85,9 @@ package body Zip.Create is
       Info.Contains (Last).head.short_info.dd.uncompressed_size   :=
         Unsigned_32 (Size (Stream));
       Info.Contains (Last).head.short_info.filename_length        :=
-        GetName (Stream)'Length;
+        entry_name'Length;
       Info.Contains (Last).head.short_info.extra_field_length     := 0;
-      Info.Contains (Last).name := To_Unbounded_String (GetName (Stream));
+      Info.Contains (Last).name := To_Unbounded_String (entry_name);
 
       mem1 := Index (Info.Stream);
       Info.Contains (Last).head.local_header_offset := Unsigned_32 (mem1) - 1;
