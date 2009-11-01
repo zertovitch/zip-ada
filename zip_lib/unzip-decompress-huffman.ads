@@ -40,7 +40,7 @@ private package UnZip.Decompress.Huffman is
 
   -- *********** build huffman table from code lengths given by array b.all
 
-  procedure HufT_Build ( b    : Length_array;
+  procedure HufT_build ( b    : Length_array;
                          s    : Integer;
                          d, e : Length_array;
                          tl   :    out p_Table_list;

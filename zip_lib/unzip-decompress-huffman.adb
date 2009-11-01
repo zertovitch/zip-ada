@@ -10,7 +10,7 @@ package body UnZip.Decompress.Huffman is
 
   -- ******** free huffman tables starting with table where t points to
 
-  procedure HufT_Free ( tl: in out p_Table_list ) is
+  procedure HufT_free ( tl: in out p_Table_list ) is
 
     procedure  Dispose is new
       Ada.Unchecked_Deallocation( HufT_table, p_HufT_table );
@@ -37,11 +37,11 @@ package body UnZip.Decompress.Huffman is
     if full_trace then
       Ada.Text_IO.Put_Line( Integer'Image(tcount)& " tables]" );
     end if;
-  end HufT_Free;
+  end HufT_free;
 
   -- *********** build huffman table from code lengths given by array b
 
-  procedure HufT_Build ( b    : Length_array;
+  procedure HufT_build ( b    : Length_array;
                          s    : Integer;
                          d, e : Length_array;
                          tl   :    out p_Table_list;
@@ -331,6 +331,6 @@ package body UnZip.Decompress.Huffman is
     when others =>
       HufT_free( tl );
       raise;
-  end huft_build;
+  end HufT_build;
 
 end UnZip.Decompress.Huffman;

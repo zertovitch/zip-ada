@@ -4,7 +4,7 @@ with Ada.Streams.Stream_IO;
 
 package body UnZip.Decompress is
 
-  procedure Decompress_Data(
+  procedure Decompress_data(
     zip_file            : Zip_Streams.Zipstream_Class;
     format              : PKZip_method;
     mode                : Write_mode;
@@ -102,9 +102,9 @@ package body UnZip.Decompress is
         procedure Dump_to_byte_boundary;
 
         function Read_and_dump( n: Natural ) return Integer;
-          pragma Inline(Read_and_Dump);
+          pragma Inline(Read_and_dump);
         function Read_and_dump_U32( n: Natural ) return Unsigned_32;
-          pragma Inline(Read_and_Dump_U32);
+          pragma Inline(Read_and_dump_U32);
 
       end Bit_buffer;
 
@@ -176,7 +176,7 @@ package body UnZip.Decompress is
         else
           begin
             Zip.BlockRead(
-              file          => zip_file,
+              stream        => zip_file,
               buffer        => UnZ_Glob.inbuf,
               actually_read => UnZ_Glob.readpos
             );
@@ -364,7 +364,7 @@ package body UnZip.Decompress is
           return res;
         end Read_and_dump_U32;
 
-      end Bit_Buffer;
+      end Bit_buffer;
       -- **************** Flush x bytes directly from slide to file *******
 
       procedure Flush ( x: Natural ) is
@@ -377,9 +377,7 @@ package body UnZip.Decompress is
         begin
           case mode is
             when write_to_binary_file =>
-              Zip.Byte_Buffer'Write(
-                Ada.Streams.Stream_IO.Stream(out_bin_file), UnZ_Glob.slide(0..x-1)
-              );
+              BlockWrite(Ada.Streams.Stream_IO.Stream(out_bin_file).all, UnZ_Glob.slide(0..x-1));
             when write_to_text_file =>
               Zip.Write_as_text(
                 UnZ_IO.out_txt_file, UnZ_Glob.slide(0..x-1), UnZ_IO.last_char
@@ -598,7 +596,7 @@ package body UnZip.Decompress is
         begin
           case mode is
             when write_to_binary_file =>
-              Zip.Byte_Buffer'Write(Stream(UnZ_IO.out_bin_file), Writebuf(0..Write_Ptr-1));
+              BlockWrite(Stream(UnZ_IO.out_bin_file).all, Writebuf(0..Write_Ptr-1));
             when write_to_text_file =>
               Zip.Write_as_text(UnZ_IO.out_txt_file, Writebuf(0..Write_Ptr-1), UnZ_IO.last_char);
             when write_to_memory =>
@@ -804,7 +802,7 @@ package body UnZip.Decompress is
 
       --------[ Method: Unreduce ]--------
 
-      procedure Unreduce( Factor: Reduction_factor ) is
+      procedure Unreduce( factor: Reduction_factor ) is
 
         -- Original slide limit: 16#4000#
         DLE_code: constant:= 144;
@@ -870,7 +868,7 @@ package body UnZip.Decompress is
           UnZ_Glob.slide(UnZ_Glob.slide_index):= b;
           UnZ_Glob.slide_index:= UnZ_Glob.slide_index + 1;
           UnZ_IO.Flush_if_full(UnZ_Glob.slide_index,unflushed);
-        end Out_Byte;
+        end Out_byte;
 
         V: Unsigned_32:= 0;
         type State_type is (normal, length_a, length_b, distance);
@@ -1215,7 +1213,7 @@ package body UnZip.Decompress is
 
       -- ****************************** explode ******************************
 
-      procedure Explode( Literal_Tree, Slide_8_KB: Boolean ) is
+      procedure Explode( literal_tree, slide_8_KB: Boolean ) is
 
         Tb, Tl, Td : p_Table_list;
         Bb, Bl, Bd : Integer;
@@ -1269,7 +1267,7 @@ package body UnZip.Decompress is
           Bb := 9;
           Get_Tree ( L );
           begin
-            HufT_Build( L, 256, empty, empty, Tb, Bb, huft_incomplete );
+            HufT_build( L, 256, empty, empty, Tb, Bb, huft_incomplete );
             if huft_incomplete then
               HufT_free (Tb);
               raise Zip.Zip_file_Error;
@@ -1288,7 +1286,7 @@ package body UnZip.Decompress is
           end;
 
           begin
-            HufT_Build (
+            HufT_build (
               L( 0..63 ), 0, cp_length_3_trees, extra, Tl, Bl, huft_incomplete
             );
             if huft_incomplete then
@@ -1313,7 +1311,7 @@ package body UnZip.Decompress is
 
           begin
             if slide_8_KB then
-              HufT_Build (
+              HufT_build (
                 L( 0..63 ), 0, cp_dist_8KB, extra, Td, Bd, huft_incomplete
               );
               if huft_incomplete then
@@ -1325,7 +1323,7 @@ package body UnZip.Decompress is
               -- ** Exploding, method: 8k slide, 3 trees **
               Explode_Lit ( 7, Tb, Tl, Td, Bb, Bl, Bd );
             else
-              HufT_Build (
+              HufT_build (
                 L( 0..63 ), 0, cp_dist_4KB, extra, Td, Bd, huft_incomplete
               );
               if huft_incomplete then
@@ -1357,7 +1355,7 @@ package body UnZip.Decompress is
           end;
 
           begin
-            HufT_Build (
+            HufT_build (
               L( 0..63 ), 0, cp_length_2_trees, extra, Tl, Bl, huft_incomplete
             );
             if huft_incomplete then
@@ -1379,7 +1377,7 @@ package body UnZip.Decompress is
 
           begin
             if slide_8_KB then
-              HufT_Build (
+              HufT_build (
                 L( 0..63 ), 0, cp_dist_8KB, extra, Td, Bd, huft_incomplete
               );
               if huft_incomplete then
@@ -1390,7 +1388,7 @@ package body UnZip.Decompress is
               -- ** Exploding, method: 8k slide, 2 trees **
               Explode_Nolit( 7, Tl, Td, Bl, Bd );
             else
-              HufT_Build (
+              HufT_build (
                 L( 0..63 ), 0, cp_dist_4KB, extra, Td, Bd, huft_incomplete
               );
               if huft_incomplete then
@@ -1419,7 +1417,7 @@ package body UnZip.Decompress is
 
       -- 13-Dec-2002: fixed bug preventing copying encrypted files
 
-      procedure Copy_Stored is
+      procedure Copy_stored is
         size: constant UnZip.File_size_type:= UnZ_Glob.compsize;
         read_in, absorbed : UnZip.File_size_type;
       begin
@@ -1448,7 +1446,7 @@ package body UnZip.Decompress is
           end;
           absorbed:= absorbed + read_in;
         end loop;
-      end Copy_Stored;
+      end Copy_stored;
 
       -- Note from Pascal source:
       -- C code by info-zip group, translated to pascal by Christian Ghisler
@@ -1597,7 +1595,7 @@ package body UnZip.Decompress is
         Bl, Bd : Integer;          -- lookup bits for tl/bd
         huft_incomplete : Boolean;
 
-        -- length list for huft_build (literal table)
+        -- length list for HufT_build (literal table)
         L: constant Length_array( 0..287 ):=
           ( 0..143=> 8, 144..255=> 9, 256..279=> 7, 280..287=> 8);
 
@@ -1608,7 +1606,7 @@ package body UnZip.Decompress is
 
         -- make a complete, but wrong code set
         Bl := 7;
-        HufT_Build(
+        HufT_build(
           L, 257, copy_lengths_literal, extra_bits_literal,
           Tl, Bl, huft_incomplete
         );
@@ -1616,7 +1614,7 @@ package body UnZip.Decompress is
         -- Make an incomplete code set
         Bd := 5;
         begin
-          HufT_Build(
+          HufT_build(
             (0..max_dist => 5), 0,
             copy_offset_distance, extra_bits_distance,
             Td, Bd, huft_incomplete
@@ -1706,7 +1704,7 @@ package body UnZip.Decompress is
         -- Build decoding table for trees--single level, 7 bit lookup
         Bl := 7;
         begin
-          HufT_Build (
+          HufT_build (
             Ll( 0..18 ), 19, empty, empty, Tl, Bl, huft_incomplete
           );
           if huft_incomplete then
@@ -1760,7 +1758,7 @@ package body UnZip.Decompress is
         -- Build the decoding tables for literal/length codes
         Bl := Lbits;
         begin
-          HufT_Build (
+          HufT_build (
             Ll( 0..Nl-1 ), 257,
             copy_lengths_literal, extra_bits_literal,
             Tl, Bl, huft_incomplete
@@ -1777,7 +1775,7 @@ package body UnZip.Decompress is
         -- Build the decoding tables for distance codes
         Bd := Dbits;
         begin
-          HufT_Build (
+          HufT_build (
             Ll( Nl..Nl+Nd-1 ), 0,
             copy_offset_distance, extra_bits_distance,
             Td, Bd, huft_incomplete
@@ -1876,7 +1874,7 @@ package body UnZip.Decompress is
          Ada.Streams.Stream_IO.Create(UnZ_IO.out_bin_file,Ada.Streams.Stream_IO.Out_File, output_file_name,
                                       Form => To_String (Zip.Form_For_IO_Open_N_Create));
       when write_to_text_file =>
-         Ada.Text_IO.Create(UnZ_IO.out_txt_file, Ada.Text_IO.Out_File, Output_File_Name,
+         Ada.Text_IO.Create(UnZ_IO.out_txt_file, Ada.Text_IO.Out_File, output_file_name,
                                Form => To_String (Zip.Form_For_IO_Open_N_Create));
       when write_to_memory =>
         output_memory_access:= new
@@ -1995,6 +1993,6 @@ package body UnZip.Decompress is
       end case;
       raise;
 
-  end Decompress_Data;
+  end Decompress_data;
 
 end UnZip.Decompress;

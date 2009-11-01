@@ -214,14 +214,19 @@ package Zip is
 
   procedure BlockRead(
     file         : in     Ada.Streams.Stream_IO.File_Type;
-    buffer       :    out Zip.Byte_Buffer;
+    buffer       :    out Byte_Buffer;
     actually_read:    out Natural
   );
 
   procedure BlockRead(
-    file         : in     Zip_Streams.Zipstream_Class;
-    buffer       :    out Zip.Byte_Buffer;
+    stream       : in     Zip_Streams.Zipstream_Class;
+    buffer       :    out Byte_Buffer;
     actually_read:    out Natural
+  );
+
+  procedure BlockWrite(
+    stream: in out Ada.Streams.Root_Stream_Type'Class;
+    buffer: in     Byte_Buffer
   );
 
   -- This does the same as Ada 2005's Ada.Directories.Exists
@@ -241,7 +246,7 @@ package Zip is
 
   procedure Write_as_text(
     out_file :        Ada.Text_IO.File_Type;
-    buffer   :        Zip.Byte_Buffer;
+    buffer   :        Byte_Buffer;
     last_char: in out Character -- track line-ending characters between writes
   );
 

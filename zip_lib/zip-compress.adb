@@ -64,18 +64,20 @@ package body Zip.Compress is
           end if;
           -- Copy data
           declare
-             Buffer_Size : constant Ada.Streams.Stream_Element_Offset := 1024;
-             Buffer      : Ada.Streams.Stream_Element_Array (1 .. Buffer_Size);
-             Last_Read   : Ada.Streams.Stream_Element_Offset;
+            -- The usage of Stream_Element_Array instead of Byte_Buffer is
+            -- a workaround for the severe xxx'Read xxx'Write performance
+            -- problems in the GNAT and ObjectAda compilers (as in 2009)
+            Buffer_Size : constant Ada.Streams.Stream_Element_Offset := 1024;
+            Buffer      : Ada.Streams.Stream_Element_Array (1 .. Buffer_Size);
+            Last_Read   : Ada.Streams.Stream_Element_Offset;
           begin
-             Read (input.all, Buffer, Last_Read);
-             counted:= counted + File_size_type (Last_Read);
-             Write (output.all, Buffer (1 .. Last_Read));
-             for I in 1 .. Last_Read loop
-                Zip.CRC.Update(CRC, (1 => Byte (Buffer (I))));
-             end loop;
+            Read (input.all, Buffer, Last_Read);
+            counted:= counted + File_size_type (Last_Read);
+            Write (output.all, Buffer (1 .. Last_Read));
+            for I in 1 .. Last_Read loop
+              Zip.CRC.Update(CRC, (1 => Byte (Buffer (I))));
+            end loop;
           end;
-
           -- Feedback
           if feedback /= null and then
             (first_feedback or (counted mod (2**16)=0) or

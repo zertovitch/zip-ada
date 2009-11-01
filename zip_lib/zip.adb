@@ -193,12 +193,8 @@ package body Zip is
       Zip.Headers.Read_and_check(from, header );
       declare
         this_name: String(1..Natural(header.short_info.filename_length));
-        b: Byte;
       begin
-         for k in this_name'Range loop
-           Byte'Read( from, b );
-           this_name(k):= Character'Val( Natural(b) );
-        end loop;
+        String'Read(from, this_name);
         Zip_Streams.Set_Index(
           from, Positive (
           Ada.Streams.Stream_IO.Count(Zip_Streams.Index( from )) +
@@ -457,12 +453,8 @@ package body Zip is
       end;
       declare
         this_name: String(1..Natural(header.short_info.filename_length));
-        b: Unsigned_8;
       begin
-        for k in this_name'Range loop
-          Byte'Read(file, b);
-          this_name(k):= Character'Val( Natural(b) );
-        end loop;
+        String'Read(file, this_name);
         Set_Index( file, Index( file ) +
                 Natural (Ada.Streams.Stream_IO.Count
                   (header.short_info.extra_field_length +
@@ -533,49 +525,98 @@ package body Zip is
     );
   end Get_sizes;
 
-  -- General-purpose procedure (nothing really specific to Zip / UnZip):
-  -- reads either the whole buffer from a file, or if the end of the file
-  -- lays inbetween, a part of the buffer.
+  -- Workaround for the severe xxx'Read xxx'Write performance
+  -- problems in the GNAT and ObjectAda compilers (as in 2009)
+  -- This possible if and only if Byte = Stream_Element and
+  -- arrays types are both packed.
+  workaround_possible: Boolean;
+
+  procedure Check_workaround is
+    test_a: constant Byte_Buffer(1..10):= (others => 0);
+    test_b: constant Ada.Streams.Stream_Element_Array(1..10):= (others => 0);
+  begin
+    workaround_possible:= test_a'Size = test_b'Size;
+  end Check_workaround;
+
+  -- BlockRead - general-purpose procedure (nothing really specific
+  -- to Zip / UnZip): reads either the whole buffer from a file, or
+  -- if the end of the file lays inbetween, a part of the buffer.
 
   procedure BlockRead(
     file         : in     Ada.Streams.Stream_IO.File_Type;
-    buffer       :    out Zip.Byte_Buffer;
+    buffer       :    out Byte_Buffer;
     actually_read:    out Natural
   )
   is
-    use Ada.Streams.Stream_IO;
+    use Ada.Streams, Ada.Streams.Stream_IO;
+    SE_Buffer   : Stream_Element_Array (1 .. buffer'Length);
+    for SE_Buffer'Address use buffer'Address;
+    pragma Import (Ada, SE_Buffer);
+    Last_Read   : Stream_Element_Offset;
   begin
-    if End_Of_File(file) then
-      actually_read:= 0;
+    if workaround_possible then
+      Read(Stream(file).all, SE_Buffer, Last_Read);
+      actually_read:= Natural(Last_Read);
     else
-      actually_read:=
-        Integer'Min( buffer'Length, Integer(Size(file) - Index(file) + 1) );
-      Zip.Byte_Buffer'Read(
-        Stream(file),
-        buffer(buffer'First .. buffer'First + actually_read - 1)
-      );
+      if End_Of_File(file) then
+        actually_read:= 0;
+      else
+        actually_read:=
+          Integer'Min( buffer'Length, Integer(Size(file) - Index(file) + 1) );
+        Byte_Buffer'Read(
+          Stream(file),
+          buffer(buffer'First .. buffer'First + actually_read - 1)
+        );
+      end if;
     end if;
   end BlockRead;
 
   procedure BlockRead(
-    file         : in     Zip_Streams.Zipstream_Class;
-    buffer       :    out Zip.Byte_Buffer;
+    stream       : in     Zip_Streams.Zipstream_Class;
+    buffer       :    out Byte_Buffer;
     actually_read:    out Natural
   )
   is
     use Ada.Streams, Ada.Streams.Stream_IO, Zip_Streams;
+    SE_Buffer   : Stream_Element_Array (1 .. buffer'Length);
+    for SE_Buffer'Address use buffer'Address;
+    pragma Import (Ada, SE_Buffer);
+    Last_Read   : Stream_Element_Offset;
   begin
-    if End_Of_Stream(file) then
-      actually_read:= 0;
+    if workaround_possible then
+      Read(stream.all, SE_Buffer, Last_Read);
+      actually_read:= Natural(Last_Read);
     else
-      actually_read:=
-        Integer'Min( buffer'Length, Integer(Size(file) - Index(file) + 1) );
-      Zip.Byte_Buffer'Read(
-        file,
-        buffer(buffer'First .. buffer'First + actually_read - 1)
-      );
+      if End_Of_Stream(stream) then
+        actually_read:= 0;
+      else
+        actually_read:=
+          Integer'Min( buffer'Length, Integer(Size(stream) - Index(stream) + 1) );
+        Byte_Buffer'Read(
+          stream,
+          buffer(buffer'First .. buffer'First + actually_read - 1)
+        );
+      end if;
     end if;
   end BlockRead;
+
+  procedure BlockWrite(
+    stream: in out Ada.Streams.Root_Stream_Type'Class;
+    buffer: in     Byte_Buffer
+  )
+  is
+    use Ada.Streams;
+    SE_Buffer   : Stream_Element_Array (1 .. buffer'Length);
+    for SE_Buffer'Address use buffer'Address;
+    pragma Import (Ada, SE_Buffer);
+  begin
+    if workaround_possible then
+      Ada.Streams.Write(stream, SE_Buffer);
+    else
+      Byte_Buffer'Write(stream'Access, buffer);
+      -- ^This is 30x to 70x slower on GNAT 2009 !
+    end if;
+  end BlockWrite;
 
   function Method_from_code(x: Natural) return PKZip_method is
     -- An enumeration clause might be more elegant, but needs
@@ -643,7 +684,7 @@ package body Zip is
 
   procedure Write_as_text(
     out_file :        Ada.Text_IO.File_Type;
-    buffer   :        Zip.Byte_Buffer;
+    buffer   :        Byte_Buffer;
     last_char: in out Character -- track line-ending characters across writes
   )
   is
@@ -663,4 +704,6 @@ package body Zip is
     end loop;
   end Write_as_text;
 
+begin
+  Check_workaround;
 end Zip;

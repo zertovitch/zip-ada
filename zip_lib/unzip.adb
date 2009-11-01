@@ -101,10 +101,10 @@ package body UnZip is
 
     function Full_Path_Name (Archive_File_Name : String) return String is
     begin
-       if File_System_Routines.Compose_File_Name = null then
+       if file_system_routines.Compose_File_Name = null then
           return Archive_File_Name;
        else
-          return File_System_Routines.Compose_File_Name.all (Archive_File_Name);
+          return file_system_routines.Compose_File_Name.all (Archive_File_Name);
        end if;
     end Full_Path_Name;
 
@@ -237,14 +237,7 @@ package body UnZip is
 
     if name_from_header then
       the_name_len:= Natural(local_header.filename_length);
-      declare
-        b: Unsigned_8;
-      begin
-        for i in 1..the_name_len loop
-          Byte'Read(zip_file, b);
-          the_name(i):= Character'Val( Natural(b) );
-        end loop;
-      end;
+      String'Read(zip_file, the_name(1..the_name_len));
       if not data_descriptor_after_data then
         Inform_User(
           the_name(1..the_name_len),

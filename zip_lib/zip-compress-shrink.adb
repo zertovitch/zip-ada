@@ -54,7 +54,7 @@ is
   procedure Read_Block is
   begin
     Zip.BlockRead(
-      file          => input,
+      stream        => input,
       buffer        => InBuf.all,
       actually_read => MaxInBufIdx
     );
@@ -77,7 +77,7 @@ is
       -- uncompressed size.
       raise Compression_unefficient;
     end if;
-    Byte_Buffer'Write(output, OutBuf(1 .. amount));
+    Zip.BlockWrite(output.all, OutBuf(1 .. amount));
     OutBufIdx := 1;
   end Write_Block;
 
@@ -398,7 +398,7 @@ is
         Last_code:= Suffix;           --  Reset Last_code code for new char
         if (
              Code_size < Max_bits and
-             not Table_Full
+             not Table_full
              -- 12-Dec-2007: the Pascal code had an out-of-range access
              --  with Free_list(Next_free) below when the table was full!
              --  NB: according to tests, and surely it can be proven,
@@ -457,7 +457,7 @@ is
         Last_processed:= I;
         if input_size_known and then Bytes_in >= Integer(input_size) then
           -- The job is done, even though there are more in the buffer
-          InputEof:= True;
+          InputEoF:= True;
           exit;
         end if;
       end loop;
