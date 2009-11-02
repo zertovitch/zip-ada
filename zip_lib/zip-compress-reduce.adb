@@ -70,9 +70,24 @@ is
 
   BUFSIZE: constant  := 10240;
 
-  OutBuf: Byte_Buffer(1..BUFSIZE);
+  InBuf, OutBuf: Byte_Buffer(1..BUFSIZE);
 
+  InBufIdx: Positive;  --  Points to next char in buffer to be read
   OutBufIdx: Positive; --  Points to next free space in output buffer
+
+  MaxInBufIdx: Natural;  --  Count of valid chars in input buffer
+  InputEoF: Boolean;     --  End of file indicator
+
+  procedure Read_Block is
+  begin
+    Zip.BlockRead(
+      stream        => input,
+      buffer        => InBuf,
+      actually_read => MaxInBufIdx
+    );
+    InputEoF:= MaxInBufIdx = 0;
+    InBufIdx := 1;
+  end Read_Block;
 
   -- Exception for the case where compression works but produces
   -- a bigger file than the file to be compressed (data is too "random").
@@ -89,7 +104,7 @@ is
       -- uncompressed size.
       raise Compression_unefficient;
     end if;
-    Byte_Buffer'Write(output, OutBuf(1 .. amount));
+    Zip.BlockWrite(output.all, OutBuf(1 .. amount));
     OutBufIdx := 1;
   end Write_Block;
 
@@ -121,7 +136,7 @@ is
     end if;
   end Flush_output;
 
-  procedure Put_code(Code : Byte; Code_Size: Natural) is
+  procedure Put_code(Code : Byte; Code_size: Natural) is
     Code_work: Byte;
     temp, Save_byte_local, Bits_used_local: Byte;
   begin
@@ -161,9 +176,9 @@ is
   procedure Save_Followers is
   begin
     for X in reverse Symbol_range loop
-      Put_Code(Byte(Slen(X)),6); -- max 2**6 followers per symbol
+      Put_code(Byte(Slen(X)),6); -- max 2**6 followers per symbol
       for I in 0 .. Slen(X)-1  loop
-        Put_Code(Byte(Followers(X,I)),8);
+        Put_code(Byte(Followers(X,I)),8);
       end loop;
     end loop;
   end Save_Followers;
@@ -214,7 +229,7 @@ is
      end if;
     New_Line;
     for si in subrange loop
-      Show_Symbol(si);
+      Show_symbol(si);
       Put("| ");
       for sj in min..max loop
         if ordered then -- show top probas
@@ -222,7 +237,7 @@ is
         else -- show probas in the same subrange
           sk:= sj;
         end if;
-        Show_Symbol(sk);
+        Show_symbol(sk);
         Put(':' & Count'Image(markov_d(si,sj)) & ' ');
       end loop;
       if ordered then
@@ -389,13 +404,14 @@ is
     X_Percent: Natural;
     Bytes_in   : Natural;   --  Count of input file bytes processed
     user_aborting: Boolean;
-    real_pct: constant array(Phase_Type) of Integer:= (0, 50);
+    real_pct: constant array(Phase_type) of Integer:= (0, 50);
     PctDone: Natural;
 
     function Read_byte return Byte is
       b: Byte;
     begin
-      Byte'Read(input, b);
+      b:= InBuf(InBufIdx);
+      InBufIdx:= InBufIdx + 1;
       if phase = stats then
         Zip.CRC.Update(CRC, (1=> b));
       end if;
@@ -424,7 +440,10 @@ is
 
     function More_bytes return Boolean is
     begin
-      return not End_of_Stream(input);
+      if InBufIdx > MaxInBufIdx then
+        Read_Block;
+      end if;
+      return not InputEoF;
     end More_bytes;
 
     upper_shift: constant Integer:= 2**(8-reduction_factor);
@@ -463,20 +482,20 @@ is
         when compress => -- Probabilistic reduction
           if Slen(last_b) = 0 then
             -- follower set is empty for this character
-            Put_Code(b, 8);
+            Put_code(b, 8);
           else
             follo:= has_follower(last_b,curr_b);
-            Put_Code(1-Boolean'Pos(follo), 1);
+            Put_code(1-Boolean'Pos(follo), 1);
             if follo then
-              Put_Code(Byte(follower_pos(last_b,curr_b)), B_Table( Slen(last_b) ));
+              Put_code(Byte(follower_pos(last_b,curr_b)), B_Table( Slen(last_b) ));
             else
-              Put_Code(b, 8);
+              Put_code(b, 8);
             end if;
           end if;
       end case;
       last_b:= curr_b;
       if phase = compress and then
-         using_lz77 and then
+         using_LZ77 and then
          (lz77_size - lz77_pos) < File_size_type(LZ_cache.cnt)
         -- We have entered the zone covered by the cache.
       then
@@ -545,7 +564,8 @@ is
       end loop;
     end Finish_Cache;
 
-  begin
+  begin -- Encode
+    Read_Block;
     R:= String_buffer_size-Look_Ahead;
     Bytes_in := 0;
     if input_size_known then
@@ -557,7 +577,7 @@ is
     My_LZ77;
   exception
     when Derail_LZ77 =>
-      using_lz77:= False;
+      using_LZ77:= False;
       Finish_Cache;
       if feedback /= null then
         feedback(100, False, user_aborting);

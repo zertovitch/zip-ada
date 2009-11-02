@@ -41,8 +41,8 @@ with Interfaces;
 
 package Zip is
 
-  version   : constant String:= "34";
-  reference : constant String:= "12-Oct-2009";
+  version   : constant String:= "35";
+  reference : constant String:= "2-Nov-2009";
   web       : constant String:= "http://unzip-ada.sf.net/";
 
   --------------

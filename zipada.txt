@@ -98,7 +98,13 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '34', xx-yyy-2009:
+* Changes in '35',  2-Nov-2009:
+  - *major* performance improvement:
+      decompression 7x faster, compression 3x faster, thanks to
+      a workaround for slow 'Read, 'Write attributes in GNAT & ObjectAda
+  - ReZip: HTML display improved
+
+* Changes in '34', 12-Oct-2009:
   - ReZip: added '-defl' option for having a recompressed archive only
              with Deflate or Store methods (most compatible)
   - ReZip: added '-comp' option for comparing output against input
@@ -274,8 +280,9 @@ Thanks to...
 The ITEC team (NXP Semiconductors), for extending the medium for
    zip archives from file only to streams of any sort (v.26)
 
-Jérôme Haguet, CADWIN, for nice discussions and contributions
-   (UnZip.File_System_Routines.Compose_File_Name)
+Jérôme Haguet, CADWIN, for nice discussions and contributions:
+   the major performance boost in v. 35 and later,
+   UnZip.File_System_Routines.Compose_File_Name and other things
 
 Arnaud Lefebvre, CADWIN
 
