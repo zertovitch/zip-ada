@@ -100,8 +100,9 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 
 * Changes in '35',  2-Nov-2009:
   - *major* performance improvement:
-      decompression 7x faster, compression 3x faster, thanks to
-      a workaround for slow 'Read, 'Write attributes in GNAT & ObjectAda
+      decompression 10x faster, compression 3x faster (figures for GNAT),
+      thanks to a workaround for slow 'Read, 'Write attributes
+      in GNAT & ObjectAda
   - ReZip: HTML display improved
 
 * Changes in '34', 12-Oct-2009:
@@ -280,11 +281,11 @@ Thanks to...
 The ITEC team (NXP Semiconductors), for extending the medium for
    zip archives from file only to streams of any sort (v.26)
 
-Jérôme Haguet, CADWIN, for nice discussions and contributions:
+Jérôme Haguet, Stratégies, for nice discussions and contributions:
    the major performance boost in v. 35 and later,
    UnZip.File_System_Routines.Compose_File_Name and other things
 
-Arnaud Lefebvre, CADWIN
+Arnaud Lefebvre, Stratégies
 
 Tucker Taft (himself!), SofCheck, for providing fixes (v.24) and
    an impressive targets in-use list
@@ -323,7 +324,9 @@ To do further
   - Zip.Compress with a strong compression
   - Make a public access to UnZip.Decompress, as a zlib proxy
   - support recent formats incorporated into the .zip format
-      (see appnote.txt) - for LZMA: 7-Zip sources, C/LzmaDec.c
+      (see appnote.txt) 
+      - LZMA: 7-Zip sources, C/LzmaDec.c
+      - bzip2: standalone decompressor already working (oct 2009)
 
 Note on portability
 ===================
