@@ -124,6 +124,15 @@ package UnZip is
   -- Simple extraction procedures without re-searching central directory --
   -------------------------------------------------------------------------
 
+  -- Extract all files from an archive (from)
+  -- Needs Zip.Load(from, ...) prior to the extraction
+
+  procedure Extract( from                 : Zip.Zip_info;
+                     options              : Option_set:= no_option;
+                     password             : String:= "";
+                     file_system_routines : FS_routines_type:= null_routines
+                   );
+
   -- Extract one precise file (what) from an archive (from)
   -- Needs Zip.Load(from, ...) prior to the extraction
 
@@ -229,7 +238,6 @@ package UnZip is
   -- Needs Zip.Load(from, ...) prior to the extraction
 
   procedure Extract( from                 : Zip.Zip_info;
-                     what                 : String;
                      feedback             : Zip.Feedback_proc;
                      help_the_file_exists : Resolve_conflict_proc;
                      tell_data            : Tell_data_proc;
@@ -240,6 +248,21 @@ package UnZip is
                    );
 
   -- Extract one precise file (what) from an archive (from)
+  -- Needs Zip.Load(from, ...) prior to the extraction
+
+  procedure Extract( from                 : Zip.Zip_info;
+                     what                 : String;
+                     feedback             : Zip.Feedback_proc;
+                     help_the_file_exists : Resolve_conflict_proc;
+                     tell_data            : Tell_data_proc;
+                     get_pwd              : Get_password_proc;
+                     options              : Option_set:= no_option;
+                     password             : String:= "";
+                     file_system_routines : FS_routines_type:= null_routines
+                   );
+
+  -- Extract one precise file (what) from an archive (from),
+  -- but save under a new name (rename)
   -- Needs Zip.Load(from, ...) prior to the extraction
 
   procedure Extract( from                 : Zip.Zip_info;

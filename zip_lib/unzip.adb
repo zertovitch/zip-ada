@@ -380,6 +380,16 @@ package body UnZip is
   end Extract;
 
   procedure Extract( from                 : Zip.Zip_info;
+                     options              : Option_set:= no_option;
+                     password             : String:= "";
+                     file_system_routines : FS_routines_type:= null_routines
+                ) is
+  begin
+    Extract( from, null, null, null, null,
+             options, password, file_system_routines );
+  end Extract;
+
+  procedure Extract( from                 : Zip.Zip_info;
                      what                 : String;
                      options              : Option_set:= no_option;
                      password             : String:= "";
@@ -558,6 +568,39 @@ package body UnZip is
   -- Needs Zip.Load(from, ...) prior to the extraction
 
   procedure Extract( from                 : Zip.Zip_info;
+                     feedback             : Zip.Feedback_proc;
+                     help_the_file_exists : Resolve_conflict_proc;
+                     tell_data            : Tell_data_proc;
+                     get_pwd              : Get_password_proc;
+                     options              : Option_set:= no_option;
+                     password             : String:= "";
+                     file_system_routines : FS_routines_type:= null_routines
+                ) 
+  is
+    procedure Extract_1_file( name: String ) is
+    begin
+      Extract(from => from, 
+              what => name,
+              feedback => feedback,
+              help_the_file_exists => help_the_file_exists,
+              tell_data => tell_data,
+              get_pwd => get_pwd,
+              options => options,
+              password => password,
+              file_system_routines => file_system_routines
+      );                             
+    end Extract_1_file;
+    --
+    procedure Extract_all_files is new Zip.Traverse( Extract_1_file );
+    --
+  begin
+    Extract_all_files(from);
+  end Extract;
+
+  -- Extract one precise file (what) from an archive (from)
+  -- Needs Zip.Load(from, ...) prior to the extraction
+
+  procedure Extract( from                 : Zip.Zip_info;
                      what                 : String;
                      feedback             : Zip.Feedback_proc;
                      help_the_file_exists : Resolve_conflict_proc;
@@ -609,6 +652,7 @@ package body UnZip is
   end Extract;
 
   -- Extract one precise file (what) from an archive (from)
+  -- but save under a new name (rename)
   -- Needs Zip.Load(from, ...) prior to the extraction
 
   procedure Extract( from                 : Zip.Zip_info;
