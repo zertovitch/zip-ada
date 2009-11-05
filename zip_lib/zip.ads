@@ -209,7 +209,7 @@ package Zip is
   -- The procedure's names and parameters match Borland Pascal / Delphi
 
   subtype Byte is Interfaces.Unsigned_8;
-  type Byte_Buffer is array(Integer range <>) of Byte;
+  type Byte_Buffer is array(Integer range <>) of aliased Byte;
   type p_Byte_Buffer is access Byte_Buffer;
 
   procedure BlockRead(

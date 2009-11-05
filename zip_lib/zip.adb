@@ -529,14 +529,10 @@ package body Zip is
   -- problems in the GNAT and ObjectAda compilers (as in 2009)
   -- This possible if and only if Byte = Stream_Element and
   -- arrays types are both packed.
-  workaround_possible: Boolean;
-
-  procedure Check_workaround is
-    test_a: constant Byte_Buffer(1..10):= (others => 0);
-    test_b: constant Ada.Streams.Stream_Element_Array(1..10):= (others => 0);
-  begin
-    workaround_possible:= test_a'Size = test_b'Size;
-  end Check_workaround;
+  --
+  subtype Size_test_a is Byte_Buffer(1..16);
+  subtype Size_test_b is Ada.Streams.Stream_Element_Array(1..16);
+  workaround_possible: constant Boolean:= Size_test_a'Size = Size_test_b'Size;
 
   -- BlockRead - general-purpose procedure (nothing really specific
   -- to Zip / UnZip): reads either the whole buffer from a file, or
@@ -704,6 +700,4 @@ package body Zip is
     end loop;
   end Write_as_text;
 
-begin
-  Check_workaround;
 end Zip;
