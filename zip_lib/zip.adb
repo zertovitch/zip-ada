@@ -145,25 +145,36 @@ package body Zip is
     from           : in  Zip_Streams.Zipstream_Class;
     case_sensitive : in  Boolean:= False)
   is
-    procedure Insert( name: String;
-                      file_index: Ada.Streams.Stream_IO.Positive_Count;
-                      comp_size, uncomp_size: File_size_type;
-                      node: in out p_Dir_node ) is
+    procedure Insert(
+      name: String;
+      file_index : Ada.Streams.Stream_IO.Positive_Count;
+      comp_size,
+      uncomp_size: File_size_type;
+      crc_32     : Unsigned_32;
+      date_time  : Ada.Calendar.Time;
+      method     : PKZip_method;
+      node       : in out p_Dir_node
+      )
+    is
     begin
       if node = null then
         node:= new Dir_node'
-          ( (name_len => name'Length,
-             left => null, right => null,
-             name => name,
-             file_index => file_index,
-             comp_size => comp_size,
-             uncomp_size => uncomp_size
+          ( (name_len    => name'Length,
+             left        => null,
+             right       => null,
+             name        => name,
+             file_index  => file_index,
+             comp_size   => comp_size,
+             uncomp_size => uncomp_size,
+             crc_32      => crc_32,
+             date_time   => date_time,
+             method      => method
              )
           );
       elsif name > node.name then
-        Insert( name, file_index, comp_size, uncomp_size, node.right );
+        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, node.right );
       elsif name < node.name then
-        Insert( name, file_index, comp_size, uncomp_size, node.left );
+        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, node.left );
       else
         raise Duplicate_name;
       end if;
@@ -209,6 +220,9 @@ package body Zip is
                  (1 + header.local_header_offset),
                 comp_size   => header.short_info.dd.compressed_size,
                 uncomp_size => header.short_info.dd.uncompressed_size,
+                crc_32      => header.short_info.dd.crc_32,
+                date_time   => header.short_info.file_timedate,
+                method      => Method_from_code(header.short_info.zip_type),
                 node        => p );
         -- Since the files are usually well ordered, the tree as inserted
         -- is very unbalanced; we need to rebalance it from time to time
@@ -340,6 +354,29 @@ package body Zip is
   begin
     Traverse(z.dir_binary_tree);
   end Traverse;
+
+  procedure Traverse_verbose( z: Zip_info ) is
+
+    procedure Traverse( p: p_Dir_node ) is
+    begin
+      if p /= null then
+        Traverse(p.left);
+        Action(
+          p.name,
+          Positive(p.file_index),
+          p.comp_size,
+          p.uncomp_size,
+          p.crc_32,
+          p.date_time,
+          p.method
+        );
+        Traverse(p.right);
+      end if;
+    end Traverse;
+
+  begin
+    Traverse(z.dir_binary_tree);
+  end Traverse_verbose;
 
   procedure Tree_stat(
     z        : in     Zip_info;

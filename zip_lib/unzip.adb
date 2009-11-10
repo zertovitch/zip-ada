@@ -575,11 +575,11 @@ package body UnZip is
                      options              : Option_set:= no_option;
                      password             : String:= "";
                      file_system_routines : FS_routines_type:= null_routines
-                ) 
+                )
   is
     procedure Extract_1_file( name: String ) is
     begin
-      Extract(from => from, 
+      Extract(from => from,
               what => name,
               feedback => feedback,
               help_the_file_exists => help_the_file_exists,
@@ -588,7 +588,7 @@ package body UnZip is
               options => options,
               password => password,
               file_system_routines => file_system_routines
-      );                             
+      );
     end Extract_1_file;
     --
     procedure Extract_all_files is new Zip.Traverse( Extract_1_file );

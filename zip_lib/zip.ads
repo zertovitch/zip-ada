@@ -36,7 +36,7 @@
 -- http://www.opensource.org/licenses/mit-license.php
 
 with Zip_Streams;
-with Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Strings.Unbounded;
+with Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Strings.Unbounded, Ada.Calendar;
 with Interfaces;
 
 package Zip is
@@ -99,24 +99,10 @@ package Zip is
 
   Forgot_to_load_zip_info: exception;
 
-  -- Traverse a whole Zip_info directory in sorted order, giving the
-  -- name for each entry to an user-defined "Action" procedure.
-  generic
-    with procedure Action( name: String );
-  procedure Traverse( z: Zip_info );
-
-  -- Academic: see how well the name tree is balanced
-  procedure Tree_stat(
-    z        : in     Zip_info;
-    total    :    out Natural;
-    max_depth:    out Natural;
-    avg_depth:    out Float
-  );
-
-  ---------
-
   -- Data sizes in archive
   subtype File_size_type is Interfaces.Unsigned_32;
+
+  ---------
 
   -- Compression methods or formats in the "official" PKWARE Zip format.
   -- Details in appnote.txt, part V.J
@@ -134,7 +120,7 @@ package Zip is
      tokenize,
      deflate,   --   D
      deflate_e, --   D - Enhanced deflate
-     bzip2,
+     bzip2,     --   D
      lzma,
      ppmd,
      unknown
@@ -143,6 +129,37 @@ package Zip is
   -- Technical: translates the method code as set in zip archives
   function Method_from_code(x: Interfaces.Unsigned_16) return PKZip_method;
   function Method_from_code(x: Natural) return PKZip_method;
+
+  -- Traverse a whole Zip_info directory in sorted order, giving the
+  -- name for each entry to an user-defined "Action" procedure.
+  -- Concretely, you can process a whole Zip file that way, by extracting data
+  -- with Extract, or open a reader stream with UnZip.Streams.
+  -- See the Comp_Zip or Find_Zip tools as application examples.
+  generic
+    with procedure Action( name: String ); -- 'name' is compressed entry's name
+  procedure Traverse( z: Zip_info );
+
+  -- Same as Traverse, but Action gives also technical informations about the
+  -- compressed entry.
+  generic
+    with procedure Action(
+      name           : String; -- 'name' is compressed entry's name
+      file_index     : Positive;
+      comp_size      : File_size_type;
+      uncomp_size    : File_size_type;
+      crc_32         : Interfaces.Unsigned_32;
+      date_time      : Ada.Calendar.Time;
+      method         : PKZip_method
+    );
+  procedure Traverse_verbose( z: Zip_info );
+
+  -- Academic: see how well the name tree is balanced
+  procedure Tree_stat(
+    z        : in     Zip_info;
+    total    :    out Natural;
+    max_depth:    out Natural;
+    avg_depth:    out Float
+  );
 
   --------------------------------------------------------------------------
   -- Offsets - various procedures giving 1-based indexes to local headers --
@@ -272,6 +289,9 @@ private
     file_index  : Ada.Streams.Stream_IO.Positive_Count;
     comp_size   : File_size_type;
     uncomp_size : File_size_type;
+    crc_32      : Interfaces.Unsigned_32;
+    date_time   : Ada.Calendar.Time;
+    method      : PKZip_method;
   end record;
 
   type p_String is access String;

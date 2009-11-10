@@ -143,7 +143,7 @@ procedure ReZip is
     shrink,
     reduce_1, reduce_2, reduce_3, reduce_4,
     external_1, external_2, external_3, external_4,
-    external_5, external_6
+    external_5, external_6, external_7
   );
 
   subtype Internal is Approach
@@ -214,6 +214,8 @@ procedure ReZip is
     (
       (U("zip.exe"), U("Zip"), U("http://info-zip.org/"), U("-9"), U(""), 20, Zip.deflate),
        -- Zip 2.32 or later
+      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"), U("-#RAND#(1,9) -Z bzip2"), U(""), 46, Zip.bzip2),
+       -- Zip 3.0 or later
       (U("7z.exe"),                                      -- 7-Zip 4.64 or later
          U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mx9 -mm=deflate -mfb=258 -mpass=15 -mmc=10000"),
