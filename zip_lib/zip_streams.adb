@@ -1,10 +1,11 @@
 -- Changes
 --
+-- 11-Nov-2009 (GdM): Unbounded_Stream.Write and .Set_Index are buffered
 -- 18-Jan-2009 (GdM): Fixed Read(Stream, Item...) which read
 --                      only 1st element of Item
 
 --with Ada.Strings.Unbounded.Text_IO; use Ada.Strings.Unbounded.Text_IO;
---with Ada.Text_IO; use Ada.Text_IO;
+--with Ada.Text_IO;-- use Ada.Text_IO;
 with Zip;
 package body Zip_Streams is
 
@@ -48,27 +49,56 @@ package body Zip_Streams is
          null; -- what could be read has been read; T'Read will raise End_Error
    end Read;
 
+   max_chunk_size: constant:= 16 * 1024;
+
    procedure Write
      (Stream : in out Unbounded_Stream;
-      Item   : Stream_Element_Array) is
+      Item   : Stream_Element_Array)
+   is
+     I: Stream_Element_Offset:= Item'First;
+     chunk_size: Integer;
+     tmp: String(1..max_chunk_size);
    begin
-      for I in Item'Range loop
-         if Length(Stream.Unb) < Stream.Loc then
-            Append(Stream.Unb, Character'Val(Item(I)));
-         else
-            Replace_Element(Stream.Unb, Stream.Loc, Character'Val(Item(I)));
-         end if;
-         Stream.Loc := Stream.Loc + 1;
-      end loop;
+     while I <= Item'Last loop
+       chunk_size:= Integer'Min(Integer(Item'Last-I+1), max_chunk_size);
+       if Stream.Loc > Length(Stream.Unb) then
+         -- ...we are off the string's bounds, we need to extend it.
+         for J in 1..chunk_size loop
+           tmp(J):= Character'Val(Item(I));
+           I:= I + 1;
+         end loop;
+         Append(Stream.Unb, tmp(1..chunk_size));
+       else
+         -- ...we can work (at least for a part) within the string's bounds.
+         chunk_size:= Integer'Min(chunk_size, Length(Stream.Unb)-Stream.Loc+1);
+         for J in 0..chunk_size-1 loop
+           Replace_Element(Stream.Unb, Stream.Loc+J, Character'Val(Item(I)));
+           -- GNAT 2008's Replace_Slice does something very general
+           -- even in the trivial case where one can make:
+           -- Source.Reference(Low..High):= By;
+           -- -> still faster with elem by elem replacement
+           -- Anyway, this place is not critical for zipping: only the
+           -- local header before compressed data is rewritten after
+           -- compression. So usually, we are off bounds.
+           I:= I + 1;
+         end loop;
+       end if;
+       Stream.Loc := Stream.Loc + chunk_size;
+     end loop;
    end Write;
 
    procedure Set_Index (S : access Unbounded_Stream; To : Positive) is
+     I, chunk_size: Integer;
    begin
-      if Length(S.Unb) < To then
-         for I in Length(S.Unb) .. To loop
-            Append(S.Unb, ASCII.NUL);
-         end loop;
-      end if;
+     if To > Length(S.Unb) then
+       -- ...we are off the string's bounds, we need to extend it.
+       I:= Length(S.Unb) + 1;
+       while I <= To loop
+         chunk_size:= Integer'Min(To-I+1, max_chunk_size);
+         Append(S.Unb, (1..chunk_size => ASCII.NUL));
+         I:= I + chunk_size;
+       end loop;
+     end if;
      S.Loc := To;
    end Set_Index;
 

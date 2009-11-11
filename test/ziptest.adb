@@ -10,12 +10,14 @@
 --  File1 (StreamFile1) => Stream pointing to a Unbounded_String which has the content of a file from a disk.
 --  File2 (StreamFile2) => Stream pointing to a file directly from disk.
 
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Zip_Streams; use Zip_Streams;
-with RW_File; use RW_File;
 with Zip.Compress;
 with Zip.Create;   use Zip.Create;
+with RW_File; use RW_File;
+
 with Ada.Streams.Stream_IO; use Ada.Streams.Stream_IO;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Ada.IO_Exceptions, Ada.Text_IO;
 
 procedure ZipTest is
 
@@ -68,4 +70,8 @@ begin
    Get (MyStream_memory, UnbZipFile);
    RW_File.Write_File (GetName(acc_MyStream_memory), UnbZipFile);
 
+exception
+   when Ada.IO_Exceptions.Name_Error =>
+      Ada.Text_IO.Put_Line("file1.txt or file2.txt is missing! Press Enter.");
+      Ada.Text_IO.Skip_Line;
 end ZipTest;

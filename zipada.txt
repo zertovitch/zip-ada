@@ -281,6 +281,8 @@ Thanks to...
 The ITEC team (NXP Semiconductors), for extending the medium for
    zip archives from file only to streams of any sort (v.26)
 
+Nicolas Brunot, Stratégies, for constructive discussions
+
 Jérôme Haguet, Stratégies, for nice discussions and contributions:
    the major performance boost in v. 35 and later,
    UnZip.File_System_Routines.Compose_File_Name and other things
@@ -307,26 +309,27 @@ Open bugs (as of v.30)
 	unzip-decompress.adb:1469 Inflate_codes E = invalid
 	unzip-decompress.adb:1809 Inflate_Block block type 3
     )...
-    but accept all archives with the same contents and compression
+    but accepts all archives with the same contents and compression
     method from 7-Zip (7z -mm=deflate64)! Since 7-Zip compresses a lot
-    better also with that method, just use it and not WinZip...
+    better also with that "enhanced deflate" format, just use it and
+    not WinZip...
     
 To do
 =====
-  - a serious profiling/optimization exercise, sorting out the
-      external I/O part; see prof_za.bat
   - store (some) file attributes in Zip_info
   - use tasking for decoding in UnZip.Streams, instead of storing
-      the whole decoded data in a buffer (may be difficult!)
+      the whole decoded data in a buffer (this exercise may be difficult!)
+  - a Freshen_Zip tool that freshen files from an archive, or files
+      to an archive, or both (i.e. like "zip -f" and/or "unzip -f" combined)
 
 To do further
 =============
   - Zip.Compress with a strong compression
   - Make a public access to UnZip.Decompress, as a zlib proxy
-  - support recent formats incorporated into the .zip format
+  - support other recent formats incorporated into the .zip format
       (see appnote.txt) 
       - LZMA: 7-Zip sources, C/LzmaDec.c
-      - bzip2: standalone decompressor already working (oct 2009)
+      - PPMd
 
 Note on portability
 ===================

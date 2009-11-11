@@ -3,9 +3,9 @@ project ZipAda is
    type Build_Mode_Type is
       ("Debug", "Optimize", "Profiling");
    Build_Mode : Build_Mode_Type := external ("Build_Mode", "Debug");
-   for Source_Dirs use (".", "zip_lib", "test");
+   for Source_Dirs use (".", "zip_lib", "test", "extras");
    for Exec_Dir use ".";
-   for Main use ("unzipada.adb", "zipada.adb", "comp_zip.adb", "find_zip.adb", "rezip.adb", "test_unz_streams.adb", "test_chunk.adb", "ziptest.adb", "demo_csv_into_zip.adb", "demo_zip.adb", "demo_unzip.adb", "test_extract.adb", 
+   for Main use ("unzipada.adb", "zipada.adb", "comp_zip.adb", "find_zip.adb", "rezip.adb", "bunzip", "demo_csv_into_zip.adb", "demo_zip.adb", "demo_unzip.adb", "test_unz_streams.adb", "test_chunk.adb", "ziptest.adb", "ziptest_tb.ads", "test_extract.adb", 
 "test_extract_tb.ads", "uza_gnat.ads");
 
    case Build_Mode is
