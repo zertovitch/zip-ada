@@ -6,10 +6,10 @@ if (%2)==() goto vide
 if exist *.tmp del *.tmp
 del %2.zip
 
-ren %1 $14_kzip.tmp
-kzip %2 $14_kzip.tmp
+ren %1 $13_kzip.tmp
+kzip %2 $13_kzip.tmp
 
-ren $14_kzip.tmp $00store.tmp
+ren $13_kzip.tmp $00store.tmp
 pkzip250 -e0 %2 $00store.tmp
 
 ren $00store.tmp $01redu1.tmp
@@ -48,10 +48,13 @@ pkzip204 -ex %2 $11defl4.tmp
 ren $11defl4.tmp $12defl5.tmp
 pkzip250 -exx -stralala %2 $12defl5.tmp
 
-ren $12defl5.tmp $13_df64.tmp
-call 7z a -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000 %2.zip $13_df64.tmp
+ren $12defl5.tmp $14_df64.tmp
+call 7z a -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000 %2.zip $14_df64.tmp
 
-ren $13_df64.tmp %1
+ren $14_df64.tmp $15_bzp2.tmp
+zip -Z bzip2 %2 $15_bzp2.tmp
+
+ren $15_bzp2.tmp %1
 
 echo All! | unzipada -s tralala %2.zip
 
@@ -70,8 +73,9 @@ fc /B %1 $09defl2.tmp
 fc /B %1 $10defl3.tmp
 fc /B %1 $11defl4.tmp
 fc /B %1 $12defl5.tmp
-fc /B %1 $13_df64.tmp
-fc /B %1 $14_kzip.tmp
+fc /B %1 $13_kzip.tmp
+fc /B %1 $14_df64.tmp
+fc /B %1 $15_bzp2.tmp
 
 pause
 

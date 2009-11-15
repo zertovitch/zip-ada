@@ -4,7 +4,7 @@ What is Zip-Ada ?
 Zip-Ada is a library for dealing with the Zip compressed archive
 file format. It supplies:
 
- - decompression for all methods up to the "enhanced deflate"
+ - decompression for all methods up to BZip2
  - decryption (v. 2.x)
  - compression (only store, shrink & reduce methods so far)
  - unconditional portability (see below a list of in-use platforms)
@@ -13,9 +13,10 @@ file format. It supplies:
  - Zip_info and Zip_Create_info to handle quickly and easily archives
  - cross format compatibility with the most various tools and file formats
      based on the Zip format: PKZip, WinZip, Info-Zip's Zip, Java's JARs,
-     OpenDocument files, and many others (see Open bugs list for the rare
-     exceptions)
+     OpenDocument files, MS Office 2007+, and many others (see Open bugs
+     list for the rare exceptions)
  - task safety: this library can be used ad libitum in parallel processing
+ - endian-neutral I/O
 
 The full source is in Ada: pure Ada, not even a single dependency
 to a compiler, a CPU architecture, an OS or an external package or library!
@@ -281,7 +282,9 @@ Thanks to...
 The ITEC team (NXP Semiconductors), for extending the medium for
    zip archives from file only to streams of any sort (v.26)
 
-Nicolas Brunot, Stratégies, for constructive discussions
+Nicolas Brunot, Stratégies, for constructive discussions and 
+   in-depth profiling of the library (and compilers' run-time
+   libraries as well!) 
 
 Jérôme Haguet, Stratégies, for nice discussions and contributions:
    the major performance boost in v. 35 and later,

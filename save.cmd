@@ -1,5 +1,3 @@
-call clean_uza
+call clean_za
 
-zip -9 uza_src_%date%_.zip *.ad* *.cmd u*.txt *.ago *.gpr
-zip -9 uza_src_%date%_.zip zip_lib/*.ad* zip_lib/*.ago
-zip -9 uza_src_%date%_.zip obj_dbg/*.pra
+zipada za_src_%date%_.zip *.ad* *.cmd z*.txt *.ago *.gpr zip_lib/*.ad* zip_lib/*.ago *.pra test/*.ad* extras/*.ad*

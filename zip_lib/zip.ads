@@ -219,9 +219,9 @@ package Zip is
   -- Goodies - things used internally but that might be generally useful --
   -------------------------------------------------------------------------
 
-  -- General-purpose procedure (nothing really specific to Zip / UnZip):
-  -- reads either the whole buffer from a file, or if the end of the file
-  -- lays inbetween, a part of the buffer.
+  -- BlockRead: general-purpose procedure (nothing really specific to Zip /
+  -- UnZip): reads either the whole buffer from a file, or if the end of
+  -- the file lays inbetween, a part of the buffer.
   --
   -- The procedure's names and parameters match Borland Pascal / Delphi
 
@@ -233,17 +233,33 @@ package Zip is
     file         : in     Ada.Streams.Stream_IO.File_Type;
     buffer       :    out Byte_Buffer;
     actually_read:    out Natural
+    -- = buffer'Length if no end of file before last buffer element
   );
 
+  -- Same for general streams
+  --
   procedure BlockRead(
     stream       : in     Zip_Streams.Zipstream_Class;
     buffer       :    out Byte_Buffer;
     actually_read:    out Natural
+    -- = buffer'Length if no end of stream before last buffer element
   );
 
+  -- Same, but instead of giving actually_read, raises End_Error if
+  -- the buffer cannot be fully read.
+  -- This mimics the 'Read stream attribute; can be a lot faster, depending
+  -- on the compiler's run-time library.
+  procedure BlockRead(
+    stream : in     Zip_Streams.Zipstream_Class;
+    buffer :    out Byte_Buffer
+  );
+
+  -- This mimics the 'Write stream attribute; can be a lot faster, depending
+  -- on the compiler's run-time library.
+  -- NB: here we can use the root stream type: no question of size, index,...
   procedure BlockWrite(
-    stream: in out Ada.Streams.Root_Stream_Type'Class;
-    buffer: in     Byte_Buffer
+    stream : in out Ada.Streams.Root_Stream_Type'Class;
+    buffer : in     Byte_Buffer
   );
 
   -- This does the same as Ada 2005's Ada.Directories.Exists

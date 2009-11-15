@@ -15,6 +15,7 @@ echo pkzip204.exe
 echo pkzip250.exe
 echo 7z.exe
 echo kzip.exe
+echo zip.exe (v.3 or later)
 echo.
 
 echo The PK compressors are renamed from "pkzip.exe" in various versions

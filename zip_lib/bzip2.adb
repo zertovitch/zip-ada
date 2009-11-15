@@ -13,7 +13,7 @@
 
 with Ada.Unchecked_Deallocation;
 
-package body bzip2 is
+package body BZip2 is
 
   procedure Decompress is
 
@@ -344,8 +344,8 @@ package body bzip2 is
       procedure move_mtf_block is
         j, k: Natural;
       begin
-        k:= MTFA_SIZE;
-        for i in reverse 0 .. 256  /  MTFL_SIZE-1 loop
+        k:= mtfa_size;
+        for i in reverse 0 .. 256  /  mtfl_size-1 loop
           j:= mtfbase(i);
           mtfa(k-16..k-1):= mtfa(j..j+15);
           k:= k - 16;
@@ -404,8 +404,8 @@ package body bzip2 is
             mtfa(q):= n;
           else
             --  General case.
-            lno:= nn   /   MTFL_SIZE;
-            off:= nn  mod  MTFL_SIZE;
+            lno:= nn   /   mtfl_size;
+            off:= nn  mod  mtfl_size;
             p:= mtfbase(lno);
             q:= p + off;
             n:= mtfa(q);
@@ -416,7 +416,7 @@ package body bzip2 is
             u:= mtfbase'First;
             v:= u + lno;
             loop
-              mtfa(mtfbase(v)):= mtfa(mtfbase(v-1)+MTFL_SIZE-1);
+              mtfa(mtfbase(v)):= mtfa(mtfbase(v-1)+mtfl_size-1);
               v:= v - 1;
               mtfbase(v):= mtfbase(v) - 1;
               exit when v = u;
@@ -544,7 +544,7 @@ package body bzip2 is
       procedure Update( CRC: in out Unsigned_32; val: Unsigned_8 ) is
       begin
         CRC :=
-          CRC32_Table( 16#FF# and ( Shift_right(CRC, 24) xor Unsigned_32( val ) ) )
+          CRC32_Table( 16#FF# and ( Shift_Right(CRC, 24) xor Unsigned_32( val ) ) )
           xor
           Shift_Left( CRC , 8 );
       end Update;
@@ -748,7 +748,7 @@ package body bzip2 is
       end if;
       rle_read;
       last:= last - shorten;
-    end read;
+    end Read;
 
   begin
     Init;
@@ -760,4 +760,4 @@ package body bzip2 is
     Dispose(tt);
   end Decompress;
 
-end bzip2;
+end BZip2;

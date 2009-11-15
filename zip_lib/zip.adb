@@ -3,6 +3,7 @@ with Zip.Headers;
 with Ada.Characters.Handling;
 with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;
+with Ada.IO_Exceptions;
 
 package body Zip is
 
@@ -633,9 +634,22 @@ package body Zip is
     end if;
   end BlockRead;
 
+  procedure BlockRead(
+    stream : in     Zip_Streams.Zipstream_Class;
+    buffer :    out Byte_Buffer
+  )
+  is
+    actually_read: Natural;
+  begin
+    BlockRead(stream, buffer, actually_read);
+    if actually_read < buffer'Length then
+      raise Ada.IO_Exceptions.End_Error;
+    end if;
+  end BlockRead;
+
   procedure BlockWrite(
-    stream: in out Ada.Streams.Root_Stream_Type'Class;
-    buffer: in     Byte_Buffer
+    stream : in out Ada.Streams.Root_Stream_Type'Class;
+    buffer : in     Byte_Buffer
   )
   is
     use Ada.Streams;

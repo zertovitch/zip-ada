@@ -1,7 +1,14 @@
--- Draft of a zip archiving utility.
+------------------------------------------------------------------------------
+--  File:            ZipAda.adb
+--  Description:     A minimal standalone command-line zip archiving utility
+--                     using the Zip-Ada library.
+--  Date/version:    19-Oct-2009; ... ; Dec-2007
+--  Author:          Gautier de Montmollin
+------------------------------------------------------------------------------
+-- Important changes:
 --
--- UZA v. 28: uses Zip.Create
--- UZA v. 26: modified for new Zip_Stream
+-- ZA v. 28: uses Zip.Create
+-- ZA v. 26: modified for new Zip_Stream
 
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;

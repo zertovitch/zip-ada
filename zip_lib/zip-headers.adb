@@ -122,7 +122,7 @@ package body Zip.Headers is
   is
     chb: Byte_Buffer( 1..46 );
   begin
-    Byte_Buffer'Read(stream, chb);
+    BlockRead(stream, chb);
 
     if not PK_signature(chb, 1) then
       raise bad_central_header;
@@ -171,7 +171,7 @@ package body Zip.Headers is
     chb(39..42):= Intel_bf( header.external_attributes );
     chb(43..46):= Intel_bf( header.local_header_offset );
 
-    Byte_Buffer'Write(stream, chb);
+    BlockWrite(stream.all, chb);
   end Write;
 
   -----------------------------------------------------------------------
@@ -184,7 +184,7 @@ package body Zip.Headers is
   is
     lhb: Byte_Buffer( 1..30 );
   begin
-    Byte_Buffer'Read(stream, lhb);
+    BlockRead(stream, lhb);
 
     if not PK_signature(lhb, 3) then
       raise bad_local_header;
@@ -221,7 +221,7 @@ package body Zip.Headers is
     lhb(27..28):= Intel_bf( header.filename_length );
     lhb(29..30):= Intel_bf( header.extra_field_length );
 
-    Byte_Buffer'Write(stream, lhb);
+    BlockWrite(stream.all, lhb);
   end Write;
 
   -------------------------------------------
@@ -254,7 +254,7 @@ package body Zip.Headers is
   is
     eb: Byte_Buffer( 1..22 );
   begin
-    Byte_Buffer'Read(stream, eb);
+    BlockRead(stream, eb);
     Copy_and_check(eb, the_end);
   end Read_and_check;
 
@@ -330,7 +330,7 @@ package body Zip.Headers is
     eb(17..20):= Intel_bf( the_end.central_dir_offset );
     eb(21..22):= Intel_bf( the_end.main_comment_length );
 
-    Byte_Buffer'Write(stream, eb);
+    BlockWrite(stream.all, eb);
   end Write;
 
   ------------------------------------------------------------------
@@ -359,7 +359,7 @@ package body Zip.Headers is
   is
     ddb: Byte_Buffer( 1..16 );
   begin
-    Byte_Buffer'Read(stream, ddb);
+    BlockRead(stream, ddb);
     Copy_and_check(ddb, the_data_desc);
   end Read_and_check;
 
@@ -376,7 +376,7 @@ package body Zip.Headers is
     ddb( 9..12):= Intel_bf( the_data_desc.compressed_size );
     ddb(13..16):= Intel_bf( the_data_desc.uncompressed_size );
 
-    Byte_Buffer'Write(stream, ddb);
+    BlockWrite(stream.all, ddb);
   end Write;
 
 end Zip.Headers;

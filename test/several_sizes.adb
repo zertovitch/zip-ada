@@ -79,7 +79,7 @@ begin
   --
   s:= 128;
   loop
-    for i in -5..5 loop
+    for i in -60..60 loop
       Test(s+i);
     end loop;
     s:= s * 2;
