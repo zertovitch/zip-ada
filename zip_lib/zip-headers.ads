@@ -11,7 +11,12 @@
 -- * Copying a header from a buffer (Copy_and_check)
 -- * Writing a header to a data stream (Write)
 
-with Ada.Calendar, Interfaces;
+-- Change log:
+-- ==========
+-- 16-Nov-2009: GdM: Replaced Ada.Calendar.Time by Zip.Time in headers, due to
+--                   performance issues in some Ada.Calendar.Time_Of
+
+with Interfaces;
 with Zip_Streams;  use Zip_Streams;
 
 package Zip.Headers is
@@ -59,7 +64,7 @@ package Zip.Headers is
     needed_extract_version : Unsigned_16;  --  5.. 6
     bit_flag,
     zip_type               : Unsigned_16;
-    file_timedate          : Time;         -- (DOS Date, Unsigned_32)
+    file_timedate          : Time;
     dd                     : Data_descriptor;
     filename_length,
     extra_field_length     : Unsigned_16;

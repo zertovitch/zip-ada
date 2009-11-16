@@ -36,7 +36,7 @@
 -- http://www.opensource.org/licenses/mit-license.php
 
 with Zip_Streams;
-with Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Strings.Unbounded, Ada.Calendar;
+with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Strings.Unbounded;
 with Interfaces;
 
 package Zip is
@@ -130,6 +130,10 @@ package Zip is
   function Method_from_code(x: Interfaces.Unsigned_16) return PKZip_method;
   function Method_from_code(x: Natural) return PKZip_method;
 
+  subtype Time is Interfaces.Unsigned_32; -- DOS format (appnote: part V., J.)
+  function Convert(date : in Ada.Calendar.Time) return Zip.Time;
+  function Convert(date : in Zip.Time) return Ada.Calendar.Time;
+
   -- Traverse a whole Zip_info directory in sorted order, giving the
   -- name for each entry to an user-defined "Action" procedure.
   -- Concretely, you can process a whole Zip file that way, by extracting data
@@ -148,7 +152,7 @@ package Zip is
       comp_size      : File_size_type;
       uncomp_size    : File_size_type;
       crc_32         : Interfaces.Unsigned_32;
-      date_time      : Ada.Calendar.Time;
+      date_time      : Time;
       method         : PKZip_method
     );
   procedure Traverse_verbose( z: Zip_info );
@@ -306,7 +310,7 @@ private
     comp_size   : File_size_type;
     uncomp_size : File_size_type;
     crc_32      : Interfaces.Unsigned_32;
-    date_time   : Ada.Calendar.Time;
+    date_time   : Time;
     method      : PKZip_method;
   end record;
 

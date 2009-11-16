@@ -59,59 +59,6 @@ package body Zip.Headers is
     buf(1..4) := (16#50#, 16#4B#, code, code+1); -- PK12, PK34, ...
   end PK_signature;
 
-
-  -----------------------------------------------------
-  -- DOS Time. Valid through Year 2107, but          --
-  -- still better than Ada95's Ada.Calendar's 2099 ! --
-  -----------------------------------------------------
-
-  function DOS_Time(date : in Time) return Unsigned_32 is
-    year            : Year_Number;
-    month           : Month_Number;
-    day             : Day_Number;
-    seconds_day_dur : Day_Duration;
-    seconds_day     : Unsigned_32;
-    hours           : Unsigned_32;
-    minutes         : Unsigned_32;
-    seconds         : Unsigned_32;
-  begin
-    Split(date, year, month, day, seconds_day_dur);
-    if year < 1980 then -- avoid invalid DOS date
-      year:= 1980;
-    end if;
-    seconds_day:= Unsigned_32(seconds_day_dur);
-    hours:= seconds_day / 3600;
-    minutes:=  (seconds_day / 60) mod 60;
-    seconds:= seconds_day mod 60;
-    return
-      -- MSDN formula:
-        Unsigned_32( (year - 1980) * 512 + month * 32 + day ) * 65536 -- Date
-      +
-        hours * 2048 + minutes * 32 + seconds/2; -- Time
-  end DOS_Time;
-
-  function Ada_Time(DOS_date: Unsigned_32) return Time is
-    d_date : constant Integer:= Integer(DOS_date  /  65536);
-    d_time : constant Integer:= Integer(DOS_date and 65535);
-    year   : Year_Number;
-    month  : Month_Number;
-    day    : Day_Number;
-    hours  : Integer;
-    minutes: Integer;
-    seconds: Integer;
-  begin
-    year := 1980 + d_date / 512;
-    month:= (d_date / 32) mod 16;
-    day  := d_date mod 32;
-    hours   := d_time / 2048;
-    minutes := (d_time / 32) mod 64;
-    seconds := 2 * (d_time mod 32);
-    return Time_Of(
-      year, month, day,
-      Day_Duration(hours * 3600 + minutes * 60 + seconds)
-    );
-  end Ada_Time;
-
   -------------------------------------------------------
   -- PKZIP file header, as in central directory - PK12 --
   -------------------------------------------------------
@@ -132,7 +79,8 @@ package body Zip.Headers is
     header.short_info.needed_extract_version:= Intel_nb( chb( 7.. 8) );
     header.short_info.bit_flag:=               Intel_nb( chb( 9..10) );
     header.short_info.zip_type:=               Intel_nb( chb(11..12) );
-    header.short_info.file_timedate:= Ada_Time(Intel_nb( chb(13..16) ));
+    header.short_info.file_timedate:=
+                         Zip.Time(Unsigned_32'(Intel_nb( chb(13..16) )));
     header.short_info.dd.crc_32:=              Intel_nb( chb(17..20) );
     header.short_info.dd.compressed_size:=     Intel_nb( chb(21..24) );
     header.short_info.dd.uncompressed_size:=   Intel_nb( chb(25..28) );
@@ -159,7 +107,7 @@ package body Zip.Headers is
     chb( 7.. 8):= Intel_bf( header.short_info.needed_extract_version );
     chb( 9..10):= Intel_bf( header.short_info.bit_flag );
     chb(11..12):= Intel_bf( header.short_info.zip_type );
-    chb(13..16):= Intel_bf( DOS_Time(header.short_info.file_timedate) );
+    chb(13..16):= Intel_bf( Zip.Time(header.short_info.file_timedate) );
     chb(17..20):= Intel_bf( header.short_info.dd.crc_32 );
     chb(21..24):= Intel_bf( header.short_info.dd.compressed_size );
     chb(25..28):= Intel_bf( header.short_info.dd.uncompressed_size );
@@ -193,7 +141,8 @@ package body Zip.Headers is
     header.needed_extract_version:= Intel_nb( lhb( 5.. 6) );
     header.bit_flag:=               Intel_nb( lhb( 7.. 8) );
     header.zip_type:=               Intel_nb( lhb( 9..10) );
-    header.file_timedate:= Ada_Time(Intel_nb( lhb(11..14) ));
+    header.file_timedate:=
+              Zip.Time(Unsigned_32'(Intel_nb( lhb(11..14) )));
     header.dd.crc_32:=              Intel_nb( lhb(15..18) );
     header.dd.compressed_size:=     Intel_nb( lhb(19..22) );
     header.dd.uncompressed_size:=   Intel_nb( lhb(23..26) );
@@ -214,7 +163,7 @@ package body Zip.Headers is
     lhb( 5.. 6):= Intel_bf( header.needed_extract_version );
     lhb( 7.. 8):= Intel_bf( header.bit_flag );
     lhb( 9..10):= Intel_bf( header.zip_type );
-    lhb(11..14):= Intel_bf( DOS_Time(header.file_timedate) );
+    lhb(11..14):= Intel_bf( Zip.Time(header.file_timedate) );
     lhb(15..18):= Intel_bf( header.dd.crc_32 );
     lhb(19..22):= Intel_bf( header.dd.compressed_size );
     lhb(23..26):= Intel_bf( header.dd.uncompressed_size );

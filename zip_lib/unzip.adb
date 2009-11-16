@@ -306,7 +306,7 @@ package body UnZip is
       if file_system_routines.Set_Time_Stamp /= null then
         file_system_routines.Set_Time_Stamp(
           To_String(the_output_name),
-          local_header.file_timedate
+          Convert(local_header.file_timedate)
         );
       end if;
 

@@ -31,7 +31,7 @@ with Ada.Strings.Fixed;                 use Ada.Strings.Fixed, Ada.Strings;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Unchecked_Deallocation;
-with Ada.Numerics.Float_Random;         use Ada.Numerics.Float_Random;
+with Ada.Numerics.Discrete_Random;
 
 with Interfaces;                        use Interfaces;
 
@@ -267,8 +267,6 @@ procedure ReZip is
     end if;
   end Call_external;
 
-  gen: Generator;
-
   procedure Call_external_expanded(
     packer    :        String;
     options   :        String;
@@ -299,7 +297,14 @@ procedure ReZip is
               when rand =>
                 n1:= Integer'Value(curr(par_a+1..comma-1));
                 n2:= Integer'Value(curr(comma+1..par_z-1));
-                n:= n1 + Integer(Random(gen)*Float(n2-n1));
+                declare
+                  subtype rng is Integer range n1..n2;
+                  package Rnd is new Ada.Numerics.Discrete_Random(rng);
+                  gen: Rnd.Generator;
+                begin
+                  Rnd.Reset(gen);
+                  n:= Rnd.Random(gen);
+                end;
                 replace:= U(Trim(Integer'Image(n),Left));
             end case;
             Replace_Slice(expand, idx, par, S(replace));
@@ -455,7 +460,7 @@ procedure ReZip is
       );
       --
       if touch then
-        e.head.short_info.file_timedate:= time_0;
+        e.head.short_info.file_timedate:= Convert(time_0);
       end if;
       if lower then
         e.name:= U(To_Lower(S(e.name)));
@@ -919,7 +924,6 @@ begin
     return;
   end if;
   Flexible_temp_files.Initialize;
-  Reset(gen);
   for i in 1..Argument_Count loop
     declare
       arg      : constant String:= Argument(i);
