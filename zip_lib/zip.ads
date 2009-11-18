@@ -42,7 +42,7 @@ with Interfaces;
 package Zip is
 
   version   : constant String:= "36";
-  reference : constant String:= "xx-Nov-2009";
+  reference : constant String:= "21-Nov-2009";
   web       : constant String:= "http://unzip-ada.sf.net/";
 
   --------------

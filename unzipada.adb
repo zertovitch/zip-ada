@@ -9,11 +9,13 @@
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Calendar;                      use Ada.Calendar;
-with Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Interfaces;                        use Interfaces;
+
+with Ada.Directories; -- Ada 2005
+with Ada_Directories_Extensions; -- Ada 201X items forgotten in Ada 2005...
 
 with Zip, UnZip;
 
@@ -24,6 +26,18 @@ with My_feedback, My_resolve_conflict, My_tell_data, My_get_password;
 with Summary;
 
 procedure UnZipAda is
+
+  -------------------------------------------
+  -- Ada 201X items, need the non-standard --
+  -- Ada_Directories_Extensions            --
+  -------------------------------------------
+  Directory_Separator: constant Character:=
+    Ada_Directories_Extensions.Directory_Separator;
+    -- alt.: '\' or GNAT.OS_Lib.Directory_Separator;
+  Set_Time_Stamp: constant UnZip.Set_Time_Stamp_proc:=
+    Ada_Directories_Extensions.Set_Modification_Time'Access;
+    -- alt.: null;
+  -------------------------------------------
 
   use UnZip;
 
@@ -42,10 +56,6 @@ procedure UnZipAda is
 
   password, exdir: String( 1..1024 );
   pass_len, exdir_len: Natural:= 0;
-
-  Directory_Separator: constant Character:= '\';
-  -- For GNAT: GNAT.Os_Lib.Directory_Separator.
-  -- That should be part of the Ada standard, one day...
 
   function Add_extract_directory(File_Name : String) return String is
     -- OK for UNIX & Windows, but VMS has "[x.y.z]filename.ext"
@@ -70,7 +80,7 @@ procedure UnZipAda is
 
   My_FS_routines: constant FS_routines_type:=
    ( Create_Path         => Ada.Directories.Create_Path'Access, -- Ada 2005
-     Set_Time_Stamp      => null,
+     Set_Time_Stamp      => Set_Time_Stamp,
      Directory_Separator => Directory_Separator,
      Compose_File_Name   => Compose_File_Name'Unrestricted_Access
    );
@@ -220,9 +230,11 @@ begin
           if z_options( test_only ) then
             Put("Testing");
           else
-            Put_Line(" Warning: time stamps and attributes of files" &
-                     " in archive are not reproduced !");
-            New_Line;
+            if Set_Time_Stamp = null then
+              Put_Line(" Warning: time stamps and attributes of files" &
+                       " in archive are not reproduced !");
+              New_Line;
+            end if;
             Put("Extracting");
           end if;
           if not extract_all then

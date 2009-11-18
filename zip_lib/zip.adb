@@ -565,8 +565,8 @@ package body Zip is
 
   -- Workaround for the severe xxx'Read xxx'Write performance
   -- problems in the GNAT and ObjectAda compilers (as in 2009)
-  -- This possible if and only if Byte = Stream_Element and
-  -- arrays types are both packed.
+  -- This is possible if and only if Byte = Stream_Element and
+  -- arrays types are both packed the same way.
   --
   subtype Size_test_a is Byte_Buffer(1..16);
   subtype Size_test_b is Ada.Streams.Stream_Element_Array(1..16);

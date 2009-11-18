@@ -1,13 +1,25 @@
--- Draft of a zip repacker utility.
--- Compression speed doesn't matter, only final size.
+------------------------------------------------------------------------------
+--  File:            ReZip.adb
+--  Description:     Recompression tool to make archives smaller.
+--                     Uses brute force and pick-and-choose among compression
+--                     tools and methods. Typically the optimal archive will
+--                     contain some entries compressed with the BZip2 format,
+--                     and others with the Deflate one.
+--                     Compression speed doesn't matter, only the final size.
+--                     NB: due to random parameters to some compressors, only
+--                     several runs of ReZip will result in the optimal size.
+--                     See rezip_loop.cmd.
+--
+--  Date/version:    ... ; 11-Jan-2008
+--  Author:          Gautier de Montmollin
+------------------------------------------------------------------------------
 --
 -- To do:
 --  * In order to facilitate customization, ReZip could have a config file (
 --    http://sf.net/projects/ini-files/ ) to store external packer program names.
 
---  * #LIMIT=64# for giving an upper limit (e.g. 64 KB) to some methods (e.g.
---    KZIP is very slow on big files and cannot use the 64KB slide of
---    Deflate64).
+--  * #KB_LIMIT=xx# for giving an upper limit (e.g. xx KB) to some methods. e.g.
+--    KZIP is very slow on big files. Shrink is good for some tiny files.
 --
 -- External programs used (feel free to customize/add/remove):
 --   7-Zip, KZip, Zip (info-zip), DeflOpt
@@ -50,7 +62,7 @@ procedure ReZip is
 
   -- Copy a chunk from a stream into another one:
   procedure Copy_chunk(from : Zipstream_Class;
-                        into : Ada.Streams.Stream_IO.File_Type; bytes: Natural) is
+                       into : Ada.Streams.Stream_IO.File_Type; bytes: Natural) is
     buf: Zip.Byte_Buffer(1..32768);
     actually_read, remains: Natural;
   begin
@@ -62,7 +74,7 @@ procedure ReZip is
         raise Zip.Zip_File_Error;
       end if;
       remains:= remains - actually_read;
-      Zip.Byte_buffer'Write(Stream(into), buf(1..actually_read));
+      Zip.BlockWrite(Stream(into).all, buf(1..actually_read));
     end loop;
   end Copy_chunk;
 
@@ -76,7 +88,7 @@ procedure ReZip is
     loop
       Zip.BlockRead(f,buf,actually_read);
       exit when actually_read = 0; -- this is expected
-      Zip.Byte_buffer'Write(into, buf(1..actually_read));
+      Zip.BlockWrite(into.all, buf(1..actually_read));
     end loop;
     Close(f);
   end Copy;
@@ -569,10 +581,10 @@ procedure ReZip is
           Put(summary,"</td>");
         end if;
       end loop;
-      -- Recall winner size:
+      -- Recall winner approach, method and size:
       Put(summary,"<td>" & Img(choice) & "</td>");
       Put(summary,
-        "<td>" &
+        "<td bgcolor=#fafa64>" &
         To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(choice).zfm))) &
         "</td>"
       );
@@ -643,14 +655,15 @@ procedure ReZip is
         sb(sb'Last-2..sb'Last-1);
     end Webcolor;
 
-  begin
+  begin -- Repack_contents
     T0:= Clock;
     for a in Approach loop
       if a = original then
         skip(a):= False;
       else
         skip(a):= (a in Internal and deflate_only) or
-                  (a in External and then (ext(a).made_by_version > 20 and deflate_only));
+                  (a in External and then (ext(a).made_by_version > 20 and deflate_only)) or
+                  (a in Reduce_1..Reduce_4); -- Never saw these win
       end if;
     end loop;
     SetName (StreamFile, orig_name);
@@ -695,17 +708,17 @@ procedure ReZip is
       if not skip(a) then
         case a is
           when original =>
-            Put(summary, "<td align=right>Approach's<br>method/<br>format</td>");
+            Put(summary, "<td align=right bgcolor=#dddd00>Approach's<br>method/<br>format</td>");
           when Internal =>
-            Put(summary, "<td>" & To_Lower(Compression_Method'Image(Approach_to_Method(a))) & "</td>");
+            Put(summary, "<td bgcolor=#fafa64>" & To_Lower(Compression_Method'Image(Approach_to_Method(a))) & "</td>");
             -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
           when External =>
-            Put(summary, "<td>" & To_Lower(Zip.PKZip_method'Image(ext(a).pkzm)) & "</td>");
+            Put(summary, "<td bgcolor=#fafa64>" & To_Lower(Zip.PKZip_method'Image(ext(a).pkzm)) & "</td>");
         end case;
       end if;
     end loop;
     Put_Line(summary,
-      "<td><b>Choice</b></td><td>Compression<br>method/<br>format</td><td>Smallest<br>size</td>" &
+      "<td><b>Choice</b></td><td bgcolor=#dddd00>Choice's<br>method/<br>format</td><td>Smallest<br>size</td>" &
       "<td>% of<br>original</td><td>% of<br>uncompressed</td></tr>"
     );
     --
