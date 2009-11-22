@@ -99,6 +99,11 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '36', 21-Nov-2009:
+  - BZip2 method added for decompression
+  - Added Zip.Traverse_verbose
+  - Added an UnZip.Extract to extract all files, using a Zip_Info variable
+
 * Changes in '35',  2-Nov-2009:
   - *major* performance improvement:
       decompression 10x faster, compression 3x faster (figures for GNAT),
@@ -354,6 +359,8 @@ Solaris				SPARC (32 or 64 bit)
 Solaris				Intel x64 (64 bit)
 MS-DOS, DR-DOS (Novell)		Intel x86 (16/32 bit)
 OpenBSD				(one of several)
+FreeBSD				Intel x86 (32 bit)
+FreeBSD				Intel x64 (64 bit)
 
 MS Windows 95,98,NT,2K,XP	Intel x86 (32 bit)	Aonix - ObjectAda
 
