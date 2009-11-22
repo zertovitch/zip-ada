@@ -324,6 +324,7 @@ Open bugs (as of v.30)
     
 To do
 =====
+  - more profiling - see test/prof.cmd
   - store (some) file attributes in Zip_info
   - use tasking for decoding in UnZip.Streams, instead of storing
       the whole decoded data in a buffer (this exercise may be difficult!)

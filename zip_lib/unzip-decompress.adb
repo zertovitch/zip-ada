@@ -91,8 +91,7 @@ package body UnZip.Decompress is
           pragma Inline(Read_and_dump_U32);
       end Bit_buffer;
 
-      -- *************** Flush x bytes directly from slide to file *********
-      procedure Flush ( x: Natural );
+      procedure Flush ( x: Natural ); -- directly from slide to output stream
 
       procedure Flush_if_full(W: in out Integer; unflushed: in out Boolean);
         pragma Inline(Flush_if_full);
@@ -144,8 +143,6 @@ package body UnZip.Decompress is
         Zip.CRC.Init( UnZ_Glob.crc32val );
         Bit_buffer.Init;
       end Init_Buffers;
-
-      -- ********************* fill inbuf from zip_file *********************
 
       procedure Read_buffer is
       begin
@@ -349,7 +346,6 @@ package body UnZip.Decompress is
         end Read_and_dump_U32;
 
       end Bit_buffer;
-      -- **************** Flush x bytes directly from slide to file *******
 
       procedure Flush ( x: Natural ) is
         use Zip, UnZip, Ada.Streams;
@@ -981,15 +977,12 @@ package body UnZip.Decompress is
         end if;
       end Get_Tree;
 
-      -- **************** exploding, method with 3 trees ******************
-
-      procedure Explode_Lit (
+      procedure Explode_Lit ( -- method with 3 trees
         Needed: Integer;
         Tb, Tl, Td : p_Table_list;
         Bb, Bl, Bd : Integer
       )
       is
-
         S       : Unsigned_32;
         E, N, D : Integer;
 
@@ -1098,9 +1091,7 @@ package body UnZip.Decompress is
         end if;
       end Explode_Lit;
 
-      -- **************** exploding, method with 2 trees ***************
-
-      procedure Explode_Nolit (
+      procedure Explode_Nolit ( -- method with 2 trees
           Needed: Integer;
           Tl, Td : p_Table_list;
           Bl, Bd : Integer
@@ -1194,8 +1185,6 @@ package body UnZip.Decompress is
         end if;
 
       end Explode_Nolit;
-
-      -- ****************************** explode ******************************
 
       procedure Explode( literal_tree, slide_8_KB: Boolean ) is
 
@@ -1304,7 +1293,7 @@ package body UnZip.Decompress is
                 HufT_free(Tb);
                 raise Zip.Zip_file_Error;
               end if;
-              -- ** Exploding, method: 8k slide, 3 trees **
+              -- Exploding, method: 8k slide, 3 trees
               Explode_Lit ( 7, Tb, Tl, Td, Bb, Bl, Bd );
             else
               HufT_build (
@@ -1316,7 +1305,7 @@ package body UnZip.Decompress is
                 HufT_free(Tb);
                 raise Zip.Zip_file_Error;
               end if;
-              -- ** Exploding, method: 4k slide, 3 trees **
+              -- Exploding, method: 4k slide, 3 trees
               Explode_Lit ( 6, Tb, Tl, Td, Bb, Bl, Bd );
             end if;
           exception
@@ -1369,7 +1358,7 @@ package body UnZip.Decompress is
                 HufT_free(Tl);
                 raise Zip.Zip_file_Error;
               end if;
-              -- ** Exploding, method: 8k slide, 2 trees **
+              -- Exploding, method: 8k slide, 2 trees
               Explode_Nolit( 7, Tl, Td, Bl, Bd );
             else
               HufT_build (
@@ -1380,7 +1369,7 @@ package body UnZip.Decompress is
                 HufT_free(Tl);
                 raise Zip.Zip_file_Error;
               end if;
-              -- ** Exploding, method: 4k slide, 2 trees **
+              -- Exploding, method: 4k slide, 2 trees
               Explode_Nolit( 6, Tl, Td, Bl, Bd );
             end if;
           exception

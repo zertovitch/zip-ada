@@ -35,11 +35,10 @@ private package UnZip.Decompress.Huffman is
 
   empty : constant Length_array( 1..0 ):= ( others=> 0 );
 
-  -- *************** free huffman tables starting with table where t points to
+  -- Free huffman tables starting with table where t points to
   procedure HufT_free ( tl: in out p_Table_list );
 
-  -- *********** build huffman table from code lengths given by array b.all
-
+  -- Build huffman table from code lengths given by array b.all
   procedure HufT_build ( b    : Length_array;
                          s    : Integer;
                          d, e : Length_array;
@@ -48,7 +47,6 @@ private package UnZip.Decompress.Huffman is
               huft_incomplete :    out Boolean);
 
   -- Possible exceptions occuring in huft_build
-
   huft_error,                    -- bad tree constructed
   huft_out_of_memory: exception; -- not enough memory
 

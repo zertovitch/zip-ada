@@ -8,7 +8,7 @@ package body UnZip.Decompress.Huffman is
   -- C code by info-zip group, translated to pascal by Christian Ghisler
   -- based on unz51g.zip
 
-  -- ******** free huffman tables starting with table where t points to
+  -- Free huffman tables starting with table where t points to
 
   procedure HufT_free ( tl: in out p_Table_list ) is
 
@@ -39,7 +39,7 @@ package body UnZip.Decompress.Huffman is
     end if;
   end HufT_free;
 
-  -- *********** build huffman table from code lengths given by array b
+  -- Build huffman table from code lengths given by array b
 
   procedure HufT_build ( b    : Length_array;
                          s    : Integer;
@@ -215,7 +215,7 @@ package body UnZip.Decompress.Huffman is
             j:= el - w;       -- Make EOB code end at table
           end if;
           if w = 0 then
-            j := m;  -- *** Fix: main table always m bits!
+            j := m;  -- Fix: main table always m bits!
           end if;
           z:= Integer(Shift_Left(Unsigned_32'(1), j)); -- z:= 2 ** j;
           bits(table_level) := j;

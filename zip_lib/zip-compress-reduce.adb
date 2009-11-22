@@ -62,9 +62,9 @@ is
       65..128 => 7,
      129..255 => 8 );
 
-  ---------------------
-  -- ** Buffered I/O **
-  ---------------------
+  ------------------
+  -- Buffered I/O --
+  ------------------
 
   --  Define data types needed to implement input and output file buffers
 
@@ -119,9 +119,9 @@ is
 
   --------------------------------------------------------------------------
 
-  --------------------
-  -- ** Code buffer **
-  --------------------
+  -----------------
+  -- Code buffer --
+  -----------------
 
   Save_byte: Byte;  --  Output code buffer
   Bits_used: Byte;  --  Index into output code buffer

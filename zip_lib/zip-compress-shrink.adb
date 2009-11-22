@@ -31,9 +31,9 @@ procedure Zip.Compress.Shrink
 is
   --------------------------------------------------------------------------
 
-  ---------------------
-  -- ** Buffered I/O **
-  ---------------------
+  ------------------
+  -- Buffered I/O --
+  ------------------
 
   --  Define data types needed to implement input and output file buffers
 
@@ -99,9 +99,9 @@ is
 
   --------------------------------------------------------------------------
 
-  --------------------
-  -- ** Code buffer **
-  --------------------
+  -----------------
+  -- Code buffer --
+  -----------------
 
   Save_byte: Unsigned_8;  --  Output code buffer
   Bits_used: Unsigned_8;  --  Index into output code buffer
