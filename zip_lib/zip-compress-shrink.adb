@@ -237,7 +237,7 @@ is
       --  Turn on ClearList bit to indicate a cleared entry
       ClearList(CurrChild / 8) :=
           ClearList(CurrChild / 8)  or
-          (2 **  (CurrChild  mod  8));
+          (Shift_Left(1, CurrChild  mod  8));
       CurrChild:= Code_table(Parent).Child;
     end loop;
 
@@ -253,7 +253,7 @@ is
 
           ClearList(NextSibling / 8) :=
             ClearList(NextSibling / 8)  or
-            (2 **  (NextSibling  mod  8));
+            (Shift_Left(1, NextSibling  mod  8));
           NextSibling := Code_table(CurrChild).Sibling;
         else
           CurrChild := NextSibling;
@@ -276,7 +276,7 @@ is
     --  Next, re-initialize our list of free table entries
     Next_free := TABLESIZE + 1;
     for Node in reverse FIRSTENTRY .. TABLESIZE loop
-      if (ClearList(Node / 8)  and  (2 **  (Node  mod  8))) /= 0 then
+      if (ClearList(Node / 8)  and  (Shift_Left(1, Node  mod  8))) /= 0 then
         Next_free:= Next_free - 1;
         Free_list(Next_free) := Node;
       end if;

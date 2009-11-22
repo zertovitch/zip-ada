@@ -315,13 +315,13 @@ package body UnZip.Decompress is
         function Read_U32 ( n: Natural ) return Unsigned_32 is
         begin
           Need(n);
-          return B and (2**n - 1);
+          return B and (Shift_Left(1,n) - 1);
         end Read_U32;
 
         function Read_inverted ( n: Natural ) return Integer is
         begin
           Need(n);
-          return Integer((not B) and (2**n - 1));
+          return Integer((not B) and (Shift_Left(1,n) - 1));
         end Read_inverted;
 
         function Read ( n: Natural ) return Integer is
@@ -840,7 +840,7 @@ package body UnZip.Decompress is
         S: UnZip.File_size_type:= UnZ_Glob.uncompsize;
         -- number of bytes left to decompress
         unflushed: Boolean:= True;
-        maximum_AND_mask: constant Unsigned_32:= 2**(8-factor)-1;
+        maximum_AND_mask: constant Unsigned_32:= Shift_Left(1,8-factor) - 1;
 
         procedure Out_byte(b: Zip.Byte) is
         begin
