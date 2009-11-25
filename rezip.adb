@@ -384,7 +384,7 @@ procedure ReZip is
   lower       : Boolean:= False;
   touch       : Boolean:= False;
   del_comment : Boolean:= False;
-  time_0      : constant Time:= Clock;
+  time_0      : constant Ada.Calendar.Time:= Clock;
 
   procedure Repack_contents(orig_name, repacked_name, log_name: String)
   is
@@ -400,7 +400,7 @@ procedure ReZip is
     -- total(a).saved counts the saved bytes when approach 'a' was optimal
     total_choice: Packer_info:= (0,0,0,0,0,U(""));
     summary: Ada.Text_IO.File_Type;
-    T0, T1 : Time;
+    T0, T1 : Ada.Calendar.Time;
     seconds: Duration;
     skip: array(Approach) of Boolean;
     lightred: constant String:= "#f43048";

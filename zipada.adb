@@ -27,7 +27,7 @@ with My_feedback;
 
 procedure ZipAda is
 
-  T0, T1 : Time;
+  T0, T1 : Ada.Calendar.Time;
   seconds: Duration;
 
   procedure Blurb is

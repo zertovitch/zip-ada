@@ -80,7 +80,7 @@ package body Zip.Headers is
     header.short_info.bit_flag:=               Intel_nb( chb( 9..10) );
     header.short_info.zip_type:=               Intel_nb( chb(11..12) );
     header.short_info.file_timedate:=
-                         Zip.Time(Unsigned_32'(Intel_nb( chb(13..16) )));
+     Zip_Streams.Calendar.Convert(Unsigned_32'(Intel_nb( chb(13..16) )));
     header.short_info.dd.crc_32:=              Intel_nb( chb(17..20) );
     header.short_info.dd.compressed_size:=     Intel_nb( chb(21..24) );
     header.short_info.dd.uncompressed_size:=   Intel_nb( chb(25..28) );
@@ -107,7 +107,9 @@ package body Zip.Headers is
     chb( 7.. 8):= Intel_bf( header.short_info.needed_extract_version );
     chb( 9..10):= Intel_bf( header.short_info.bit_flag );
     chb(11..12):= Intel_bf( header.short_info.zip_type );
-    chb(13..16):= Intel_bf( Zip.Time(header.short_info.file_timedate) );
+    chb(13..16):= Intel_bf( Zip_Streams.Calendar.Convert(
+                            header.short_info.file_timedate)
+                          );
     chb(17..20):= Intel_bf( header.short_info.dd.crc_32 );
     chb(21..24):= Intel_bf( header.short_info.dd.compressed_size );
     chb(25..28):= Intel_bf( header.short_info.dd.uncompressed_size );
@@ -141,8 +143,9 @@ package body Zip.Headers is
     header.needed_extract_version:= Intel_nb( lhb( 5.. 6) );
     header.bit_flag:=               Intel_nb( lhb( 7.. 8) );
     header.zip_type:=               Intel_nb( lhb( 9..10) );
-    header.file_timedate:=
-              Zip.Time(Unsigned_32'(Intel_nb( lhb(11..14) )));
+    header.file_timedate:= Zip_Streams.Calendar.Convert(Unsigned_32'(
+                                    Intel_nb( lhb(11..14) )
+                                  ));
     header.dd.crc_32:=              Intel_nb( lhb(15..18) );
     header.dd.compressed_size:=     Intel_nb( lhb(19..22) );
     header.dd.uncompressed_size:=   Intel_nb( lhb(23..26) );
@@ -163,7 +166,7 @@ package body Zip.Headers is
     lhb( 5.. 6):= Intel_bf( header.needed_extract_version );
     lhb( 7.. 8):= Intel_bf( header.bit_flag );
     lhb( 9..10):= Intel_bf( header.zip_type );
-    lhb(11..14):= Intel_bf( Zip.Time(header.file_timedate) );
+    lhb(11..14):= Intel_bf( Zip_Streams.Calendar.Convert(header.file_timedate) );
     lhb(15..18):= Intel_bf( header.dd.crc_32 );
     lhb(19..22):= Intel_bf( header.dd.compressed_size );
     lhb(23..26):= Intel_bf( header.dd.uncompressed_size );

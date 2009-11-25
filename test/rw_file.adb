@@ -1,3 +1,5 @@
+-- NB: implementation for test purposes, very slow !!
+
 with Ada.Sequential_IO;
 
 package body RW_File is

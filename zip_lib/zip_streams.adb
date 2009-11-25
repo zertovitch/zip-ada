@@ -9,6 +9,18 @@
 with Zip;
 package body Zip_Streams is
 
+   procedure SetTime(S : Zipstream_Class;
+                     ModificationTime : Ada.Calendar.Time) is
+   begin
+     SetTime(S, Calendar.Convert(ModificationTime));
+   end SetTime;
+
+   function GetTime(S : Zipstream_Class)
+                    return Ada.Calendar.Time is
+   begin
+     return Calendar.Convert(GetTime(S));
+   end GetTime;
+
    ---------------------------------------------------------------------
    -- Unbounded_Stream: stream based on an in-memory Unbounded_String --
    ---------------------------------------------------------------------
@@ -217,5 +229,96 @@ package body Zip_Streams is
    begin
       return Ada.Streams.Stream_IO.End_Of_File(S.File);
    end End_Of_Stream;
+
+   package body Calendar is
+
+      -----------------------------------------------
+      -- Time = DOS Time. Valid through Year 2107. --
+      -----------------------------------------------
+
+      procedure Split
+        (Date    : Time;
+         Year    : out Year_Number;
+         Month   : out Month_Number;
+         Day     : out Day_Number;
+         Seconds : out Day_Duration)
+      is
+         d_date : constant Integer:= Integer(Date  /  65536);
+         d_time : constant Integer:= Integer(Date and 65535);
+         use Interfaces;
+         hours       : Integer;
+         minutes     : Integer;
+         seconds_only: Integer;
+      begin
+         Year := 1980 + d_date / 512;
+         Month:= (d_date / 32) mod 16;
+         Day  := d_date mod 32;
+         hours   := d_time / 2048;
+         minutes := (d_time / 32) mod 64;
+         seconds_only := 2 * (d_time mod 32);
+         Seconds:= Day_Duration(hours * 3600 + minutes * 60 + seconds_only);
+      end Split;
+      --
+      function Time_Of
+        (Year    : Year_Number;
+         Month   : Month_Number;
+         Day     : Day_Number;
+         Seconds : Day_Duration := 0.0) return Time
+      is
+         year_2          : Integer:= Year;
+         use Interfaces;
+         hours           : Unsigned_32;
+         minutes         : Unsigned_32;
+         seconds_only    : Unsigned_32;
+         seconds_day     : Unsigned_32;
+         result: Unsigned_32;
+      begin
+
+         if year_2 < 1980 then -- avoid invalid DOS date
+           year_2:= 1980;
+         end if;
+         seconds_day:= Unsigned_32(Seconds);
+         hours:= seconds_day / 3600;
+         minutes:=  (seconds_day / 60) mod 60;
+         seconds_only:= seconds_day mod 60;
+         result:=
+           -- MSDN formula for encoding:
+             Unsigned_32( (year_2 - 1980) * 512 + Month * 32 + Day ) * 65536 -- Date
+           +
+             hours * 2048 + minutes * 32 + seconds_only/2; -- Time
+         return Time(result);
+      end Time_Of;
+
+      function Convert(date : in Ada.Calendar.Time) return Time is
+         year            : Year_Number;
+         month           : Month_Number;
+         day             : Day_Number;
+         seconds_day_dur : Day_Duration;
+      begin
+         Split(date, year, month, day, seconds_day_dur);
+         return Time_Of(year, month, day, seconds_day_dur);
+      end Convert;
+
+      function Convert(date : in Time) return Ada.Calendar.Time is
+         year            : Year_Number;
+         month           : Month_Number;
+         day             : Day_Number;
+         seconds_day_dur : Day_Duration;
+      begin
+         Split(date, year, month, day, seconds_day_dur);
+         return Time_Of(year, month, day, seconds_day_dur);
+      end Convert;
+
+      function Convert(date : in DOS_Time) return Time is
+      begin
+         return Time(date);     -- currently a trivial conversion
+      end Convert;
+
+      function Convert(date : in Time) return DOS_Time is
+      begin
+         return DOS_Time(date); -- currently a trivial conversion
+      end Convert;
+
+   end Calendar;
 
 end Zip_Streams;

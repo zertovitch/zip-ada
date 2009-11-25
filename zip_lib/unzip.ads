@@ -73,19 +73,25 @@ package UnZip is
   type Set_Time_Stamp_proc is access
     procedure (file_name: String; stamp: Ada.Calendar.Time);
 
+  -- Alternatively, you can use Zip.Time to set file time stamps
+  type Set_ZTime_Stamp_proc is access
+    procedure (file_name: String; stamp: Zip.Time);
+  -- NB: use Zip.Convert to change Ada.Calendar.Time to Zip.Time
+
   -- This is for modifying output file names (e.g. adding a
   -- work directory, modifying the archived path, etc.)
-  type compose_func is access function (File_Name : String) return String;
+  type Compose_func is access function (File_Name : String) return String;
 
   -- File System dependent settings
   type FS_routines_type is record
     Create_Path            : Create_Path_proc;
     Set_Time_Stamp         : Set_Time_Stamp_proc;
     Directory_Separator    : Character;
-    Compose_File_Name      : Compose_Func;
+    Compose_File_Name      : Compose_func;
+    Set_ZTime_Stamp        : Set_ZTime_Stamp_proc;
   end record;
 
-  null_routines: constant FS_routines_type:= (null,null,'\',null);
+  null_routines: constant FS_routines_type:= (null,null,'\',null,null);
 
 
   ----------------------------------

@@ -1,20 +1,40 @@
 -- Contributed by ITEC - NXP Semiconductors
 -- June 2008
 --
+-- The Zip_Streams package defines an abstract stream type with name, time and
+-- an index for random access.
+-- In addition, this package provides two ready-to-use derivations:
+--
+--   - Unbounded_Stream, for using in-memory streaming
+--
+--   - ZipFile_Stream, for accessing files
+--
 -- Change log:
 -- ==========
+--
+-- 25-Nov-2009: GdM: Added an own time type -> it is possible to bypass Ada.Calendar
 -- 18-Jan-2009: GdM: Fixed Zip_Streams.Read which did read
 --                     only Item's first element
 
-with Ada.Calendar;          use Ada.Calendar;
 with Ada.Streams;           use Ada.Streams;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Streams.Stream_IO; use Ada.Streams.Stream_IO;
 
+with Ada.Calendar, Interfaces;
+
 package Zip_Streams is
 
-  type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with null record;
-  type Zipstream_Class is access all Root_Zipstream_Type'Class;
+   type Time is private;
+   -- ^ we define an own Time (Ada.Calendar's body can be very time-consuming!)
+   -- See subpackage Calendar below for own Split, Time_Of and Convert from/to
+   -- Ada.Calendar.Time.
+
+   ----------------------------------------------------
+   -- Root_Zipstream_Type: root abstract stream type --
+   ----------------------------------------------------
+
+   type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with null record;
+   type Zipstream_Class is access all Root_Zipstream_Type'Class;
 
    -- Set the index on the stream
    procedure Set_Index (S : access Root_Zipstream_Type;
@@ -37,10 +57,16 @@ package Zip_Streams is
    -- this procedure sets the ModificationTime of the stream
    procedure SetTime(S : access Root_Zipstream_Type;
                      ModificationTime : Time) is abstract;
+   -- same, with the standard Time type
+   procedure SetTime(S : Zipstream_Class;
+                     ModificationTime : Ada.Calendar.Time);
 
    -- this procedure returns the ModificationTime of the stream
    function GetTime(S : access Root_Zipstream_Type)
                     return Time is abstract;
+   -- same, with the standard Time type
+   function GetTime(S : Zipstream_Class)
+                    return Ada.Calendar.Time;
 
    -- returns true if the index is at the end of the stream, else false
    function End_Of_Stream (S : access Root_Zipstream_Type)
@@ -74,14 +100,51 @@ package Zip_Streams is
    -- Close the ZipFile_Stream
    procedure Close (Str : in out ZipFile_Stream);
 
+   --------------------------
+   -- Routines around Time --
+   --------------------------
+
+   package Calendar is
+      --
+      function Convert(date : in Ada.Calendar.Time) return Time;
+      function Convert(date : in Time) return Ada.Calendar.Time;
+      --
+      subtype DOS_Time is Interfaces.Unsigned_32;
+      function Convert(date : in DOS_Time) return Time;
+      function Convert(date : in Time) return DOS_Time;
+      --
+      use Ada.Calendar;
+      --
+      procedure Split
+        (Date    : Time;
+         Year    : out Year_Number;
+         Month   : out Month_Number;
+         Day     : out Day_Number;
+         Seconds : out Day_Duration);
+      --
+      function Time_Of
+        (Year    : Year_Number;
+         Month   : Month_Number;
+         Day     : Day_Number;
+         Seconds : Day_Duration := 0.0) return Time;
+      --
+   end Calendar;
+
 private
+
+   type Time is new Interfaces.Unsigned_32;
+   -- Currently: DOS format (pkzip appnote.txt: part V., J.), as stored
+   -- in zip archives. Subject to change, this is why this type is private.
+
+   some_time: constant Time:= 16789 * 65536;
+
    -- Unbounded Stream spec
    type Unbounded_Stream is new Root_Zipstream_Type with
       record
          Unb : Unbounded_String;
          Loc : Integer := 1;
          Name : Unbounded_String;
-         ModificationTime : Time := Ada.Calendar.Clock;
+         ModificationTime : Time := some_time;
       end record;
    -- Read data from the stream.
    procedure Read
@@ -126,7 +189,7 @@ private
       record
          File : File_Type;
          Name : Unbounded_String;
-         ModificationTime : Time := Ada.Calendar.Clock;
+         ModificationTime : Time := some_time;
       end record;
    -- Read data from the stream.
    procedure Read

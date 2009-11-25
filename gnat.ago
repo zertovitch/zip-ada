@@ -1,22 +1,22 @@
--gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -aOobj_dbg
+-gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -Iextras -aOobj_dbg
 -C -aOobj_dbg
 
 
 WINDOWS_TARGET
 
 
-temp_name
-simple_n
-Delete_File
+warning
+Set_Time_Stamp
+Ada_Directories_Extensions
 Directories
-radix
-data_name
-Temp_name
-temp_n
-KZip
-DeflOpt
+set_
+set_m
+fafaa7
+deflate_only
+'writ
+Copy
 -- Begin compiler switches
-RELEASE <- active (current) build mode
+DEBUG <- active (current) build mode
 FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?
 debug o2 false
 debug inlining false
@@ -48,7 +48,7 @@ release all_warnings true
 release build_in_place true
 -- End compiler switches
 -- Begin Release mode commands
--gnatf -gnatwab -gnatyebfhkanp -Izip_lib -aOobj_opt
+-gnatf -gnatwab -fpeel-loops -funswitch-loops -ftracer -fweb -frename-registers -ffunction-sections -gnatyebfhkanp -Izip_lib -Iextras -aOobj_opt
 -C -aOobj_opt
 
 

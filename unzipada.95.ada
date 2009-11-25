@@ -75,7 +75,8 @@ procedure UnZipAda is
    ( Create_Path         => null, -- Ada.Directories.Create_Path'Access, -- Ada 2005
      Set_Time_Stamp      => null,
      Directory_Separator => Directory_Separator,
-     Compose_File_Name   => null  -- Compose_File_Name'Unrestricted_Access
+     Compose_File_Name   => null, -- Compose_File_Name'Unrestricted_Access
+     others              => null
    );
 
   T0, T1 : Time;

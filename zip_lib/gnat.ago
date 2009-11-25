@@ -1,20 +1,20 @@
--gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatec../obj_dbg/debug.pra -aO../obj_dbg
+-gnatf -gnatwal -gnatVa -gnatyebfhkanpr -gnat95 -gnatec../debug.pra -aO../obj_dbg
 -i -I..\obj_dbg
 
 
 WINDOWS_TARGET
 
 
+read_rle
+Read_and_dump_U32
+need
+inflate_co
+read
+need_b
+put_code
+_Atom
 **
-unzip-a
-63
--- 6
-appnote
-62
-big d
-big_d
-655
-max_follo
+Free_list
 -- Begin compiler switches
 DEBUG <- active (current) build mode
 FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?

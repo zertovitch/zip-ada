@@ -41,8 +41,8 @@ with Interfaces;
 
 package Zip is
 
-  version   : constant String:= "36";
-  reference : constant String:= "21-Nov-2009";
+  version   : constant String:= "36.2";
+  reference : constant String:= "25-Nov-2009";
   web       : constant String:= "http://unzip-ada.sf.net/";
 
   --------------
@@ -130,9 +130,12 @@ package Zip is
   function Method_from_code(x: Interfaces.Unsigned_16) return PKZip_method;
   function Method_from_code(x: Natural) return PKZip_method;
 
-  subtype Time is Interfaces.Unsigned_32; -- DOS format (appnote: part V., J.)
-  function Convert(date : in Ada.Calendar.Time) return Zip.Time;
-  function Convert(date : in Zip.Time) return Ada.Calendar.Time;
+  -- Internal time definition
+  subtype Time is Zip_Streams.Time;
+  function Convert(date : in Ada.Calendar.Time) return Time
+    renames Zip_Streams.Calendar.Convert;
+  function Convert(date : in Time) return Ada.Calendar.Time
+    renames Zip_Streams.Calendar.Convert;
 
   -- Traverse a whole Zip_info directory in sorted order, giving the
   -- name for each entry to an user-defined "Action" procedure.
