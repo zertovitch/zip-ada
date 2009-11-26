@@ -1,6 +1,3 @@
-- move comments to .ads in zip.compress
-- reduce: better comment, say it is optimal
-
 - profiling
   OK:
     2**n expanded to 
