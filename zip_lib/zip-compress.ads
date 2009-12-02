@@ -23,6 +23,12 @@ with Zip_Streams;
 
 package Zip.Compress is
 
+  -- Compression_Method is really reflecting the way of compressing
+  -- data, not only the final compression format called "method" in
+  -- Zip specifications. In future versions, there might be
+  -- enumeration items like "Deflate_zlib_like",
+  -- "Deflate_64KB_brute_force", or "PPMd_variant_x".
+
   type Compression_Method is
     (Store,
      Shrink,
