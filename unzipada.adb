@@ -297,7 +297,7 @@ begin
   if not (quiet or comment) then
     New_Line(2);
     IIO.Put(Summary.Total_Entries, 7);
-    Put(" entries  ------ Total ------");
+    Put(" entries  ------ Total ------ ");
     MIO.Put(Summary.total_compressed, 10);
     if Summary.total_uncompressed = 0 then
       Put(" :         ");

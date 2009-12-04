@@ -6,13 +6,13 @@
 
 -- UnZip
 --------
--- This library allows to uncompress deflated, enhanced deflated,
--- imploded, reduced, shrunk and stored files from a Zip file.
+-- This library allows to uncompress deflated, enhanced deflated, bzip2-ed,
+-- imploded, reduced, shrunk and stored streams from a Zip archive stream.
 --
 -- Pure Ada 95 code, 100% portable: OS-, CPU- and compiler- independent.
 
---  Ada translation & substantial rewriting by Gautier de Montmollin
---    Web: see the Zip.web constant
+--  Ada translation and substantial rewriting by Gautier de Montmollin
+--    On the web: see the Zip.web constant below.
 --  based on Pascal version 2.10 by Abimbola A Olowofoyeku,
 --    http://www.greatchief.plus.com/
 --  itself based on Pascal version by Christian Ghisler,
@@ -76,7 +76,8 @@ package UnZip is
   -- Alternatively, you can use Zip.Time to set file time stamps
   type Set_ZTime_Stamp_proc is access
     procedure (file_name: String; stamp: Zip.Time);
-  -- NB: use Zip.Convert to change Ada.Calendar.Time to Zip.Time
+  -- NB: you can use Zip.Convert to change Ada.Calendar.Time from/to Zip.Time
+  --     or use our Split to avoid using Ada.Calendar at all.
 
   -- This is for modifying output file names (e.g. adding a
   -- work directory, modifying the archived path, etc.)
@@ -88,7 +89,7 @@ package UnZip is
     Set_Time_Stamp         : Set_Time_Stamp_proc;
     Directory_Separator    : Character;
     Compose_File_Name      : Compose_func;
-    Set_ZTime_Stamp        : Set_ZTime_Stamp_proc;
+    Set_ZTime_Stamp        : Set_ZTime_Stamp_proc; -- alt. to Set_Time_Stamp
   end record;
 
   null_routines: constant FS_routines_type:= (null,null,'\',null,null);
