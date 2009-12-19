@@ -1,4 +1,5 @@
-- profiling
+- demo for a self-extractor
+- more profiling - see prof_za.cmd and test/prof.cmd
   OK:
     2**n expanded to 
     interfaces__unsigned_32($system__exp_uns__exp_unsigned(2, n) and 16#FFFF_FFFF#)

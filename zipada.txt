@@ -65,6 +65,7 @@ Contents
   - ZipTest.adb          : test for Zip archive creation with various stream types
   - Demo_csv_into_zip.adb: demo showing how to produce many files directly
                              into a Zip file, with only 1 temp file
+  - bunzip               : a decompressor for BZip2 files (.bz2)
 
   These demos can be built as main programs. 
   Some are using Ada 2005's Ada.Directories for directory creation (UnZipAda)

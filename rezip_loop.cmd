@@ -16,8 +16,14 @@ set size=xxx
 set size1=xxx
 set size2=xxx
 set size3=xxx
+set size4=xxx
+set size5=xxx
+set size6=xxx
 
 :loop
+  set size7=%size6%
+  set size6=%size5%
+  set size5=%size4%
   set size4=%size3%
   set size3=%size2%
   set size2=%size1%
@@ -33,8 +39,9 @@ set size3=xxx
   rem We let a chance, for a few iterations with the same size,
   rem to a recompression with a lucky random parameter
 
-
-  if "%size4%"=="%size%" goto fin
+  set size >sizes.txt
+  
+  if "%size7%"=="%size%" goto fin
 
 
 goto loop
