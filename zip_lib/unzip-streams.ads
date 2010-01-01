@@ -1,37 +1,14 @@
---  ___  ____  ____  ____  ________  ___   ______       ______     ___
---  |.|  |../  |...\ |../ /___..._/  |.|   |.___.\     /. __ .\  __|.|   ____
---  |.|  |.|   |.|\.\|.|     /../    |.|   |.____/     |.|__|.| /....|  __\..\
---  |.|__|.|   |.| \...|   _/../___  |.|   |.|    ===  |..__..||. = .| | = ..|
---  |______|  /__|  \__|  /_______/  |_|  /__|        /__|  |_| \__\_|  \__\_|
+--  ________  ___   ______       ______     ___
+-- /___..._/  |.|   |.___.\     /. __ .\  __|.|   ____
+--    /../    |.|   |.____/     |.|__|.| /....|  __\..\
+--  _/../___  |.|   |.|    ===  |..__..||. = .| | = ..|
+-- /_______/  |_|  /__|        /__|  |_| \__\_|  \__\_|
 
 -- UnZip.Streams
 ----------------
--- UnZips as a stream a file which is compressed in a file archive
-
--- Legal licensing note:
-
---  Copyright (c) 1999..2007 Gautier de Montmollin
-
---  Permission is hereby granted, free of charge, to any person obtaining a copy
---  of this software and associated documentation files (the "Software"), to deal
---  in the Software without restriction, including without limitation the rights
---  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
---  copies of the Software, and to permit persons to whom the Software is
---  furnished to do so, subject to the following conditions:
-
---  The above copyright notice and this permission notice shall be included in
---  all copies or substantial portions of the Software.
-
---  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
---  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
---  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
---  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
---  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
---  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
---  THE SOFTWARE.
-
--- NB: this is the MIT License, as found 12-Sep-2007 on the site
--- http://www.opensource.org/licenses/mit-license.php
+-- Extracts, as a stream, a file which is has been compressed into a Zip archive.
+-- The Zip archive itself (the input) can be a file or a more general stream.
+-- This package is resembling Ada.Streams.Stream_IO, to facilitate transition.
 
 with Zip, Zip_Streams;
 

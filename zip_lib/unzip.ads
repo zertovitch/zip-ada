@@ -23,7 +23,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 1999..2009 Gautier de Montmollin
+--  Copyright (c) 1999..2010 Gautier de Montmollin
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal

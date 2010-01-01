@@ -12,7 +12,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 1999..2009 Gautier de Montmollin
+--  Copyright (c) 1999..2010 Gautier de Montmollin
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal
@@ -41,8 +41,8 @@ with Interfaces;
 
 package Zip is
 
-  version   : constant String:= "36.3";
-  reference : constant String:= "4-Dec-2009";
+  version   : constant String:= "37";
+  reference : constant String:= "1-Jan-2010";
   web       : constant String:= "http://unzip-ada.sf.net/";
 
   --------------
