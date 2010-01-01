@@ -100,6 +100,10 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '37',  1-Jan-2010:
+  - Minor changes which leads to a significant speedup on GNAT;
+      active use of Ada.Calendar can be totally avoided if desired
+
 * Changes in '36', 21-Nov-2009:
   - BZip2 method added for decompression
   - Added Zip.Traverse_verbose
