@@ -1,3 +1,4 @@
+- comp_zip: optionally, check only CRC
 - demo for a self-extractor
 - more profiling - see prof_za.cmd and test/prof.cmd
   OK:

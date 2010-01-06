@@ -1,6 +1,6 @@
 rem ************* Pack Zip-Ada Win32 binaries - tools only.
 
-del *.exe
+rem del *.exe
 
 call opti_za
 
@@ -13,9 +13,9 @@ upx --ultra-brute zipada.exe
 upx --ultra-brute bunzip.exe
 :skip_upx
 
-set version=36
+set version=37
 
-zip zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe bunzip.exe
+zip zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe
 
 rezip -defl -comp zipada%version%-bin-win32.zip
 

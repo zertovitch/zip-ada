@@ -265,6 +265,8 @@ sub protect_string
     $string =~ s/&/&amp;/g;
     $string =~ s/</&lt;/g;
     $string =~ s/>/&gt;/g;
+    # expand URLs: "http://" followed by most URL characters (but not '&' !) 
+    $string =~ s!(http://[\w\./?~=\+-:%]+)!<a href="$1">$1</a>!gi;
     return $string;
 }
 
