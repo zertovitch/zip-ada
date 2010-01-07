@@ -14,14 +14,14 @@
 -- Change log:
 -- ==========
 -- 16-Nov-2009: GdM: Replaced Ada.Calendar.Time by Zip.Time in headers, due to
---                   performance issues in some Ada.Calendar.Time_Of
+--                   perf. issues in some run-times' Ada.Calendar.Time_Of
 
 with Interfaces;
 with Zip_Streams;  use Zip_Streams;
 
 package Zip.Headers is
 
-  use Interfaces, Ada.Calendar;
+  use Interfaces;
 
   ----------------------------------------------------------------------
   -- PKZIP data descriptor, put after streamed compressed data - PK78 --

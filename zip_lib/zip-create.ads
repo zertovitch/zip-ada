@@ -77,7 +77,7 @@ private
 
    type Zip_Create_info is record
       Stream   : Zipstream_Class;
-      compress : Zip.Compress.Compression_Method;
+      Compress : Zip.Compress.Compression_Method;
       Contains : Pdir_entries:= null;
    end record;
 

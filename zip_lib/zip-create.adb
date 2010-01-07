@@ -81,7 +81,7 @@ package body Zip.Create is
         10; -- Value put by Zip/PKZip
       Info.Contains (Last).head.short_info.bit_flag               := 0;
       Info.Contains (Last).head.short_info.file_timedate          :=
-        Convert(GetTime (Stream));
+        GetTime (Stream);
       Info.Contains (Last).head.short_info.dd.uncompressed_size   :=
         Unsigned_32 (Size (Stream));
       Info.Contains (Last).head.short_info.filename_length        :=
