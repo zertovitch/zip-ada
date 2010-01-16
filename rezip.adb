@@ -17,13 +17,10 @@
 -- To do:
 --  * In order to facilitate customization, ReZip could have a config file (
 --    http://sf.net/projects/ini-files/ ) to store external packer program names.
-
---  * #KB_LIMIT=xx# for giving an upper limit (e.g. xx KB) to some methods. e.g.
---    KZIP is very slow on big files. Shrink is good for some tiny files.
 --
 -- External programs used (feel free to customize/add/remove):
 --   7-Zip, KZip, Zip (info-zip), DeflOpt
---   Web URL's: see External_packer_info below or run ReZip without arguments.
+--   Web URL's: see Zipper_specification below or run ReZip without arguments.
 
 with Zip.Headers, Zip.Compress, UnZip;
 with Zip_Streams;                       use Zip_Streams;
@@ -163,14 +160,12 @@ procedure ReZip is
   subtype External is Approach
     range external_1 .. Approach'Last;
 
-  use Zip.Compress;
-
-  Approach_to_Method: constant array(Internal) of Compression_Method:=
-    (shrink   => shrink,
-     reduce_1 => reduce_1,
-     reduce_2 => reduce_2,
-     reduce_3 => reduce_3,
-     reduce_4 => reduce_4
+  Approach_to_Method: constant array(Internal) of Zip.Compress.Compression_Method:=
+    (shrink   => Zip.Compress.shrink,
+     reduce_1 => Zip.Compress.reduce_1,
+     reduce_2 => Zip.Compress.reduce_2,
+     reduce_3 => Zip.Compress.reduce_3,
+     reduce_4 => Zip.Compress.reduce_4
     );
 
   type Packer_info is record
@@ -213,38 +208,50 @@ procedure ReZip is
   end Temp_name;
 
   -- This might be better read from a config file...
-
-  type External_packer_info is record
+  --
+  type Zipper_specification is record
     name, title, URL, options: Unbounded_String;
     expanded_options    : Unbounded_String;
     -- options with dynamically expanded tokens
     made_by_version     : Unsigned_16;
     pkzm                : Zip.PKZip_method;
+    limit               : Zip.File_size_type;
+    -- Compression is considered too slow or unefficient beyond limit
+    -- E.g., kzip's algorithm might be O(N^2) or worse; on large files,
+    --   deflate_e or other methods are better anyway
   end record;
 
-  ext: array(External) of External_packer_info:=
+  NN: constant Unbounded_String:= Null_Unbounded_String;
+
+  kzip_limit: constant:= 500_000;
+
+  ext: array(External) of Zipper_specification:=
     (
-      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"), U("-9"), U(""), 20, Zip.deflate),
+      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"),
+         U("-9"), NN, 20, Zip.deflate, 0),
        -- Zip 2.32 or later
-      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"), U("-#RAND#(1,9) -Z bzip2"), U(""), 46, Zip.bzip2),
+      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"),
+         U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0),
        -- Zip 3.0 or later
       (U("7z.exe"),                                      -- 7-Zip 4.64 or later
          U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mx9 -mm=deflate -mfb=258 -mpass=15 -mmc=10000"),
-         U(""), 20, Zip.deflate),
+         NN, 20, Zip.deflate, 0),
       (U("7z.exe"),
-         U("7-Zip"), U(""),
+         U("7-Zip"), NN,
          U("a -tzip -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
-         U(""), 21, Zip.deflate_e),
+         NN, 21, Zip.deflate_e, 0),
       (U("kzip.exe"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
-         U("/rn /b0"), U(""), 20, Zip.deflate),
-      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(0,128)"), U(""), 20, Zip.deflate),
-      (U("kzip.exe"),U("KZIP"),U(""), U("/rn /b#RAND#(128,1024)"), U(""), 20, Zip.deflate)
+         U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit),
+      (U("kzip.exe"),U("KZIP"),NN,
+         U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_limit),
+      (U("kzip.exe"),U("KZIP"),NN,
+         U("/rn /b#RAND#(128,1024)"), NN, 20, Zip.deflate, kzip_limit)
     );
 
-  defl_opt: constant External_packer_info:=
+  defl_opt: constant Zipper_specification:=
     (U("deflopt.exe"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
-     U(""), U(""), 0, Zip.deflate);
+     NN, NN, 0, Zip.deflate, 0);
 
   function Img(a: Approach) return String is
   begin
@@ -380,6 +387,7 @@ procedure ReZip is
   end Process_external;
 
   deflate_only: Boolean:= False;
+  fast_decomp : Boolean:= False;
   compare     : Boolean:= False;
   lower       : Boolean:= False;
   touch       : Boolean:= False;
@@ -388,6 +396,7 @@ procedure ReZip is
 
   procedure Repack_contents(orig_name, repacked_name, log_name: String)
   is
+    use type Zip.PKZip_method;
     zi: Zip.Zip_info;
     MyStream   : aliased ZipFile_Stream;
     StreamFile : constant Zipstream_Class := MyStream'Unchecked_Access;
@@ -395,14 +404,21 @@ procedure ReZip is
     list, e, curr: p_Dir_entry:= null;
     repacked_zip_file   : aliased ZipFile_Stream;
     Streamrepacked_zip_file : constant Zipstream_Class := repacked_zip_file'Unchecked_Access;
-    total: Packer_info_array:= (others => (0,0,0,0,0,U("")));
+    total: Packer_info_array:= (others => (0,0,0,0,0,NN));
     -- total(a).count counts the files where approach 'a' was optimal
     -- total(a).saved counts the saved bytes when approach 'a' was optimal
-    total_choice: Packer_info:= (0,0,0,0,0,U(""));
+    total_choice: Packer_info:= (0,0,0,0,0,NN);
     summary: Ada.Text_IO.File_Type;
     T0, T1 : Ada.Calendar.Time;
     seconds: Duration;
-    skip: array(Approach) of Boolean;
+    --
+    type Approach_Filtering is array(Approach) of Boolean;
+    always_consider: Approach_Filtering;
+    Is_fast_decomp_method: constant array(Zip.PKZip_method) of Boolean:=
+      (Zip.store .. Zip.deflate_e => True,
+       Zip.bzip2 => False,
+       others => False);
+    --
     lightred: constant String:= "#f43048";
 
     procedure Process_one(unique_name: String) is
@@ -414,19 +430,21 @@ procedure ReZip is
       StreamFile_out: constant Zipstream_Class := File_out'Unchecked_Access;
       choice: Approach:= original;
       deco: constant String:= "-->-->-->----" & unique_name'Length * '-';
-      use Zip;
-      mth: PKZip_method;
+      mth: Zip.PKZip_method;
+      consider: Approach_Filtering;
       --
       procedure Winner_color is
       begin
         if e.info(choice).size <= e.info(original).size then -- normal case
           Put(summary,"<td bgcolor=lightgreen><b>");
         else
-          Put(summary,"<td bgcolor=" & lightred & "><b>"); -- forced deflate
+          Put(summary,"<td bgcolor=" & lightred & "><b>");
+          -- Forced method with less efficient compression
         end if;
       end Winner_color;
       --
     begin
+      consider:= always_consider;
       if unique_name = "" or else
         (   unique_name(unique_name'Last)='\'
          or unique_name(unique_name'Last)='/'
@@ -472,7 +490,7 @@ procedure ReZip is
       );
       --
       if touch then
-        e.head.short_info.file_timedate:= Convert(time_0);
+        e.head.short_info.file_timedate:= Zip.Convert(time_0);
       end if;
       if lower then
         e.name:= U(To_Lower(S(e.name)));
@@ -486,12 +504,28 @@ procedure ReZip is
         uncomp_size    => uncomp_size
       );
       Put_Line(" done");
+      for a in Approach loop
+        if consider(a) then
+          --
+          -- Apply limitations
+          --
+          if a = shrink and then uncomp_size > 5000 then
+            -- Shrink (LZW) is sometimes better for tiny files, but only them.
+            consider(a):= False;
+          elsif a in External and then
+            ext(a).limit /= 0 and then
+            uncomp_size > ext(a).limit
+          then
+            consider(a):= False;
+          end if;
+        end if;
+      end loop;
       Put_Line("    Phase 2:  try different tactics...");
       --
-      -- Try all approaches:
+      Try_all_approaches:
       --
       for a in Approach loop
-        if not skip(a) then
+        if consider(a) then
           Put("              -o-> " & Img(a));
           case a is
             --
@@ -499,7 +533,7 @@ procedure ReZip is
               -- This is from the original .zip - just record size and method
               e.info(a).size:= comp_size;
               e.info(a).zfm := e.head.short_info.zip_type;
-              mth:= Method_from_code(e.info(a).zfm);
+              mth:= Zip.Method_from_code(e.info(a).zfm);
               --
             when Internal =>
               SetName (StreamFile_in, Temp_name(False,original));
@@ -540,15 +574,21 @@ procedure ReZip is
             -- Hurra, we found a smaller size!
             choice:= a;
           end if;
-          if choice = original and deflate_only and not (mth = store or mth = deflate) then
+          if choice = original and
+            (
+              (deflate_only and not (mth = Zip.store or mth = Zip.deflate)) or
+              (fast_decomp and not Is_fast_decomp_method(mth))
+            )
+          then
             -- This occurs if we want to make a deflate/store only archive
-            -- As soon as a > original, the choice will be forced out of original if
-            -- method is not "compatible"
+            -- As soon as a /= original, the choice will be forced out of original if
+            -- method is not "compatible", even with a worse size
             choice:= a;
           end if;
           New_Line;
         end if;
-      end loop;
+      end loop Try_all_approaches;
+      --
       total_choice.size:= total_choice.size + e.info(choice).size;
       total(choice).count:= total(choice).count + 1;
       total_choice.uncomp_size:=
@@ -566,15 +606,19 @@ procedure ReZip is
       -- * Summary outputs
       Put(summary,"<tr><td bgcolor=lightgrey><tt>" & unique_name & "</tt></td>");
       for a in Approach loop
-        if not skip(a) then
-          if a = choice then
+        if always_consider(a) then
+          if not consider(a) then
+            Put(summary,"<td bgcolor=lightgray>skipped");
+          elsif a = choice then
             Winner_color;
           elsif e.info(a).size = e.info(choice).size then -- ex aequo
             Put(summary,"<td bgcolor=lightblue><b>");
           else
             Put(summary,"<td>");
           end if;
-          Put(summary, Zip.File_size_type'Image(e.info(a).size));
+          if consider(a) then
+            Put(summary, Zip.File_size_type'Image(e.info(a).size));
+          end if;
           if choice = a then
             Put(summary,"</b>");
           end if;
@@ -640,9 +684,13 @@ procedure ReZip is
       v: Float;
       sr,sg,sb: String(1..10);
     begin
-      if total_choice.saved > 0 then
+      if total_choice.saved > 0 and
+        -- with options like -defl ot -fast_dec, we may have
+        -- negative values or other strange things:
+         total(a).saved >= 0
+      then
         v:= Float(total(a).saved) / Float(total_choice.saved);
-        -- contribution of approach 'a'
+        -- ^ contribution of approach 'a'
       else
         v:= 0.0;
       end if;
@@ -659,11 +707,16 @@ procedure ReZip is
     T0:= Clock;
     for a in Approach loop
       if a = original then
-        skip(a):= False;
+        always_consider(a):= True;
+      elsif deflate_only then
+        always_consider(a):=
+          a in External and then ext(a).pkzm = Zip.deflate;
+      elsif fast_decomp then
+        always_consider(a):=
+          a = shrink or
+          (a in External and then Is_fast_decomp_method(ext(a).pkzm));
       else
-        skip(a):= (a in Internal and deflate_only) or
-                  (a in External and then (ext(a).made_by_version > 20 and deflate_only)) or
-                  (a in Reduce_1..Reduce_4); -- Never saw these win
+        always_consider(a):= a not in reduce_1..reduce_4;
       end if;
     end loop;
     SetName (StreamFile, orig_name);
@@ -684,18 +737,18 @@ procedure ReZip is
     Put_Line(summary,
       "Library version " & Zip.version & " dated " & Zip.reference
     );
-    if deflate_only then
+    if deflate_only or fast_decomp then
       Put_Line(summary,
         "<br><table border=0 cellpadding=0 cellspacing=0>" &
         "<tr bgcolor=" & lightred &
-        "><td><b>Option 'force deflate method' is on, " &
-        "result(s) may be sub-optimal.</b></td></tr></table>"
+        "><td><b>An option that filters methods is on, " &
+        "result(s) may be sub-optimal.</b></td></tr></table><br>"
       );
     end if;
     Put_Line(summary, "<table border=1 cellpadding=1 cellspacing=1>");
     Put(summary, "<tr bgcolor=lightyellow><td align=right valign=top><b>Approach:</b></td>");
     for a in Approach loop
-      if not skip(a) then
+      if always_consider(a) then
         if a in External then
           ext(a).expanded_options:= ext(a).options;
         end if;
@@ -705,12 +758,12 @@ procedure ReZip is
     Put_Line(summary, "</tr>");
     Put(summary, "<tr bgcolor=lightyellow><td bgcolor=lightgrey valign=bottom><b>File name:</b></td>");
     for a in Approach loop
-      if not skip(a) then
+      if always_consider(a) then
         case a is
           when original =>
             Put(summary, "<td align=right bgcolor=#dddd00>Approach's<br>method/<br>format</td>");
           when Internal =>
-            Put(summary, "<td bgcolor=#fafa64>" & To_Lower(Compression_Method'Image(Approach_to_Method(a))) & "</td>");
+            Put(summary, "<td bgcolor=#fafa64>" & To_Lower( Zip.Compress.Compression_Method'Image(Approach_to_Method(a))) & "</td>");
             -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
           when External =>
             Put(summary, "<td bgcolor=#fafa64>" & To_Lower(Zip.PKZip_method'Image(ext(a).pkzm)) & "</td>");
@@ -764,7 +817,7 @@ procedure ReZip is
     -- Cleanup
     --
     for a in Approach loop
-      if not skip(a) then
+      if always_consider(a) then
         Ada.Directories.Delete_File( Temp_name(True,a) );
         if a = original then -- also an uncompressed data file to delete
           Ada.Directories.Delete_File( Temp_name(False,a) );
@@ -774,7 +827,7 @@ procedure ReZip is
     -- Report total bytes
     Put(summary,"<tr><td><b>T<small>OTAL BYTES</small></b></td>");
     for a in Approach loop
-      if not skip(a) then
+      if always_consider(a) then
         Put(summary,
           "<td bgcolor=#" & Webcolor(a) & ">" &
           Zip.File_size_type'Image(total(a).size) & "</td>"
@@ -804,7 +857,7 @@ procedure ReZip is
     -- Report total files per approach
     Put(summary,"<tr><td><b>T<small>OTAL FILES</small></b></td>");
     for a in Approach loop
-      if not skip(a) then
+      if always_consider(a) then
         Put(summary,
           "<td bgcolor=#" & Webcolor(a) & ">" &
           Integer'Image(total(a).count) & "</td>"
@@ -820,7 +873,7 @@ procedure ReZip is
     -- Report total saved bytes per approach
     Put(summary,"<tr><td><b>T<small>OTAL SAVED BYTES</small></b></td>");
     for a in Approach loop
-      if not skip(a) then
+      if always_consider(a) then
         Put(summary,
           "<td bgcolor=#" & Webcolor(a) & ">" &
           Integer_64'Image(total(a).saved) & "</td>"
@@ -908,15 +961,16 @@ begin
     Put_Line("Usage: rezip [options] archive(s)[.zip]");
     New_Line;
     Put_Line("options:  -defl:     repack archive only with Deflate method (most compatible)");
+    Put_Line("          -fast_dec: repack archive only with fast decompressing methods");
     Put_Line("          -touch:    set time stamps to now");
     Put_Line("          -lower:    set full file names to lower case");
     Put_Line("          -del_comm: delete comment");
-    Put_Line("          -comp:     compare input and output archive (paranoid mode)");
+    Put_Line("          -comp:     compare original and repacked archives (paranoid mode)");
     New_Line;
     Put_Line("external packers:");
     New_Line;
     declare
-      procedure Display(p: External_packer_info)  is
+      procedure Display(p: Zipper_specification)  is
         fix: String(1..12):= (others => ' ');
       begin
         Insert(fix,fix'First, S(p.title));
@@ -955,6 +1009,8 @@ begin
         begin
           if opt = "defl" then
             deflate_only:= True;
+          elsif opt = "fast_dec" then
+            fast_decomp:= True;
           elsif opt = "comp" then
             compare:= True;
           elsif opt = "touch" then
