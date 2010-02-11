@@ -219,6 +219,7 @@ procedure ReZip is
     -- Compression is considered too slow or unefficient beyond limit
     -- E.g., kzip's algorithm might be O(N^2) or worse; on large files,
     --   deflate_e or other methods are better anyway
+    randomized          : Boolean;
   end record;
 
   NN: constant Unbounded_String:= Null_Unbounded_String;
@@ -228,30 +229,30 @@ procedure ReZip is
   ext: array(External) of Zipper_specification:=
     (
       (U("zip.exe"), U("Zip"), U("http://info-zip.org/"),
-         U("-9"), NN, 20, Zip.deflate, 0),
+         U("-9"), NN, 20, Zip.deflate, 0, False),
        -- Zip 2.32 or later
       (U("zip.exe"), U("Zip"), U("http://info-zip.org/"),
-         U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0),
+         U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
        -- Zip 3.0 or later
       (U("7z.exe"),                                      -- 7-Zip 4.64 or later
          U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mx9 -mm=deflate -mfb=258 -mpass=15 -mmc=10000"),
-         NN, 20, Zip.deflate, 0),
+         NN, 20, Zip.deflate, 0, False),
       (U("7z.exe"),
          U("7-Zip"), NN,
          U("a -tzip -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
-         NN, 21, Zip.deflate_e, 0),
+         NN, 21, Zip.deflate_e, 0, False),
       (U("kzip.exe"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
-         U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit),
+         U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit, True),
       (U("kzip.exe"),U("KZIP"),NN,
-         U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_limit),
+         U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_limit, True),
       (U("kzip.exe"),U("KZIP"),NN,
-         U("/rn /b#RAND#(128,1024)"), NN, 20, Zip.deflate, kzip_limit)
+         U("/rn /b#RAND#(128,1024)"), NN, 20, Zip.deflate, kzip_limit, True)
     );
 
   defl_opt: constant Zipper_specification:=
     (U("deflopt.exe"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
-     NN, NN, 0, Zip.deflate, 0);
+     NN, NN, 0, Zip.deflate, 0, False);
 
   function Img(a: Approach) return String is
   begin

@@ -93,11 +93,11 @@ procedure ZipAda is
   function Add_zip_ext(s: String) return String is
   begin
     if s'Length < 4 or else
-       To_Upper(s(s'Last-3..s'Last)) = ".ZIP"
+       To_Upper(s(s'Last-3..s'Last)) /= ".ZIP"
     then
-      return s;
-    else
       return s & ".zip";
+    else
+      return s;
     end if;
   end Add_zip_ext;
 
@@ -140,6 +140,7 @@ begin
             return;
           end if;
         end if;
+        Put_Line("Creating archive " & arg_zip);
         T0:= Clock;
         Zip.Create.Create(Info, ZipFileStream, arg_zip, method);
       else -- First real argument already used for archive's name

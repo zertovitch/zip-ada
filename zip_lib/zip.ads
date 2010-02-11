@@ -41,10 +41,6 @@ with Interfaces;
 
 package Zip is
 
-  version   : constant String:= "37.1";
-  reference : constant String:= "7-Jan-2010";
-  web       : constant String:= "http://unzip-ada.sf.net/";
-
   --------------
   -- Zip_info --
   --------------
@@ -289,6 +285,15 @@ package Zip is
     buffer   :        Byte_Buffer;
     last_char: in out Character -- track line-ending characters between writes
   );
+
+  --------------------------------------------------------------
+  -- Information about this package - e.g. for an "about" box --
+  --------------------------------------------------------------
+
+  version   : constant String:= "37.2";
+  reference : constant String:= "7-Jan-2010";
+  web       : constant String:= "http://unzip-ada.sf.net/";
+  -- hopefully the latest version is at that URL...  ---^
 
   -------------------
   -- Private items --
