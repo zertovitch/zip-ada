@@ -184,6 +184,7 @@ procedure ReZip is
 
   type Dir_entry;
   type p_Dir_entry is access Dir_entry;
+  --
   type Dir_entry is record
     head: Zip.Headers.Central_File_Header;
     name: Unbounded_String;
@@ -335,10 +336,21 @@ procedure ReZip is
     Call_external(packer, S(expand) & ' ' & other_args);
   end Call_external_expanded;
 
+  deflate_only: Boolean:= False;
+  fast_decomp : Boolean:= False;
+  compare     : Boolean:= False;
+  lower       : Boolean:= False;
+  touch       : Boolean:= False;
+  del_comment : Boolean:= False;
+  rand_stable : Positive:= 1;
+  -- ^ we want to reach a stable size over n=rand_stable attempts
+  --   on a method with randomized parameters.
+
   procedure Process_External(
     packer  : String;
     options : String;
     out_name: String;
+    is_rand : Boolean;
     info    : out Packer_info
   ) is
     use Ada.Directories;
@@ -353,32 +365,40 @@ procedure ReZip is
     -- We jump into the TEMP directory, to avoid putting pathes into the
     -- temporary zip file.
     Set_Directory(Containing_Directory(Flexible_temp_files.Radix));
-    if Exists(temp_zip) then -- remove (eventually broken) zip
+    loop
+      if Exists(temp_zip) then -- remove (eventually broken) zip
+        Delete_File(temp_zip);
+      end if;
+      Call_external_expanded(
+        packer,
+        options,
+        temp_zip & ' ' & data_name,
+        info.expanded_options
+      );
+      -- Post processing of "deflated" entries with DeflOpt:
+      Call_external(S(defl_opt.name), temp_zip);
+      -- Now, rip
+      SetName (StreamFile, temp_zip);
+      Open (MyStream, In_File);
+      Zip.Load( zi_ext, StreamFile, False );
+      Rip_data(
+        archive      => zi_ext,
+        InputStream  => StreamFile,
+        data_name    => data_name,
+        rip_rename   => out_name,
+        unzip_rename => "",
+        case_match   => False, -- external packers are DOS/Windows
+        header       => header
+      );
+      Close (MyStream);
       Delete_File(temp_zip);
-    end if;
-    Call_external_expanded(
-      packer,
-      options,
-      temp_zip & ' ' & data_name,
-      info.expanded_options
-    );
-    -- Post processing of "deflated" entries with DeflOpt:
-    Call_external(S(defl_opt.name), temp_zip);
-    -- Now, rip
-    SetName (StreamFile, temp_zip);
-    Open (MyStream, In_File);
-    Zip.Load( zi_ext, StreamFile, False );
-    Rip_data(
-      archive      => zi_ext,
-      InputStream  => StreamFile,
-      data_name    => data_name,
-      rip_rename   => out_name,
-      unzip_rename => "",
-      case_match   => False, -- external packers are DOS/Windows
-      header       => header
-    );
-    Close (MyStream);
-    Delete_File(temp_zip);
+      exit when not is_rand or rand_stable = 1;
+      --
+      -- !! Here, process the cases where compressed sizes need
+      -- to be reduced and we expect a stable size over n=rand_stable
+      -- attempts.
+      --
+    end loop;
     info.size       := header.dd.compressed_size;
     info.uncomp_size:= Unsigned_64(header.dd.uncompressed_size);
     -- uncomp_size should not matter (always the same).
@@ -387,12 +407,6 @@ procedure ReZip is
     Set_Directory(cur_dir);
   end Process_external;
 
-  deflate_only: Boolean:= False;
-  fast_decomp : Boolean:= False;
-  compare     : Boolean:= False;
-  lower       : Boolean:= False;
-  touch       : Boolean:= False;
-  del_comment : Boolean:= False;
   time_0      : constant Ada.Calendar.Time:= Clock;
 
   procedure Repack_contents(orig_name, repacked_name, log_name: String)
@@ -564,6 +578,7 @@ procedure ReZip is
                 S(ext(a).name),
                 S(ext(a).options),
                 Temp_name(True,a),
+                ext(a).randomized,
                 e.info(a)
               );
               e.head.made_by_version:= ext(a).made_by_version;
