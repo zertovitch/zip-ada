@@ -343,7 +343,7 @@ procedure ReZip is
   touch       : Boolean:= False;
   del_comment : Boolean:= False;
   rand_stable : Positive:= 1;
-  -- ^ we want to reach a stable size over n=rand_stable attempts
+  -- ^ we want to reach a stable size after n=rand_stable attempts
   --   on a method with randomized parameters.
 
   procedure Process_External(
@@ -355,12 +355,17 @@ procedure ReZip is
   ) is
     use Ada.Directories;
     temp_zip: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$temp$.zip";
+    rand_win: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$rand$.tmp";
+    options_winner: Unbounded_String;
     data_name: constant String:= Simple_Name(Temp_name(False,original));
     zi_ext: Zip.Zip_info;
     header: Zip.Headers.Local_File_Header;
     MyStream   : aliased ZipFile_Stream;
     StreamFile : constant Zipstream_Class := MyStream'Unchecked_Access;
     cur_dir: constant String:= Current_Directory;
+    size_memory: array(1..rand_stable) of Zip.File_size_type:= (others => 0);
+    size: Zip.File_size_type:= 0;
+    attempt: Positive:= 1;
   begin
     -- We jump into the TEMP directory, to avoid putting pathes into the
     -- temporary zip file.
@@ -390,16 +395,56 @@ procedure ReZip is
         case_match   => False, -- external packers are DOS/Windows
         header       => header
       );
-      Close (MyStream);
+      Close(MyStream);
       Delete_File(temp_zip);
-      exit when not is_rand or rand_stable = 1;
+      Zip.Delete(zi_ext);
       --
-      -- !! Here, process the cases where compressed sizes need
+      if rand_stable = 1 or not is_rand then -- normal behaviour (1 attempts)
+        size:= header.dd.compressed_size;
+        exit;
+      end if;
+      --
+      -- Here, we process the cases where compressed sizes need
       -- to be reduced and we expect a stable size over n=rand_stable
       -- attempts.
       --
+      if attempt = 1 or else
+        header.dd.compressed_size < size -- better size
+      then
+        size:= header.dd.compressed_size;
+        if Exists(rand_win) then
+          Delete_file(rand_win);
+        end if;
+        Rename(out_name, rand_win);
+        options_winner:= info.expanded_options;
+      end if;
+      --
+      -- Manage the array of last n=rand_stable sizes
+      --
+      if attempt > size_memory'Last then
+        for i in size_memory'First+1..size_memory'Last loop
+          size_memory(i-1):= size_memory(i);
+        end loop;
+        size_memory(size_memory'Last):= size;
+      else
+        size_memory(attempt):= size;
+      end if;
+      --
+      -- Check stability over n=rand_stable attempts
+      --
+      if attempt >= rand_stable then
+        if size_memory(rand_stable) = size_memory(1) then
+          if Exists(out_name) then
+            Delete_file(out_name);
+          end if;
+          Rename(rand_win, out_name);
+          info.expanded_options:= options_winner;
+          exit;
+        end if;
+      end if;
+      attempt:= attempt + 1;
     end loop;
-    info.size       := header.dd.compressed_size;
+    info.size       := size;
     info.uncomp_size:= Unsigned_64(header.dd.uncompressed_size);
     -- uncomp_size should not matter (always the same).
     info.zfm        := header.zip_type;
@@ -719,6 +764,8 @@ procedure ReZip is
         sb(sb'Last-2..sb'Last-1);
     end Webcolor;
 
+    use Ada.Directories;
+
   begin -- Repack_contents
     T0:= Clock;
     for a in Approach loop
@@ -834,9 +881,11 @@ procedure ReZip is
     --
     for a in Approach loop
       if always_consider(a) then
-        Ada.Directories.Delete_File( Temp_name(True,a) );
+        if Exists(Temp_name(True,a)) then
+          Delete_File( Temp_name(True,a) );
+        end if;
         if a = original then -- also an uncompressed data file to delete
-          Ada.Directories.Delete_File( Temp_name(False,a) );
+          Delete_File( Temp_name(False,a) );
         end if;
       end if;
     end loop;
@@ -983,6 +1032,10 @@ begin
     Put_Line("          -del_comm: delete comment");
     Put_Line("          -comp:     compare original and repacked archives (paranoid mode)");
     New_Line;
+    Put_Line("          -rand_stable=n: loop many times over a single compression approach");
+    Put_Line("                          having randomization, and stop when size is stable");
+    Put_Line("                          after n attempts");
+    New_Line;
     Put_Line("external packers:");
     New_Line;
     declare
@@ -1035,6 +1088,10 @@ begin
             lower:= True;
           elsif opt = "del_comm" then
             del_comment:= True;
+          elsif opt'Length > 12 and then
+             opt(opt'First..opt'First+11) = "rand_stable="
+          then
+            rand_stable:= Integer'Value(opt(opt'First+12..opt'Last));
           end if;
         end;
       elsif Zip.Exists(arg_zip) then

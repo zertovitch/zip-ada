@@ -1,4 +1,9 @@
-rem @echo off
+@echo off
+
+rem Try temp directory in a RAM-disk; if not available, use normal temp dir
+set mytemp=R:\temp
+if exist %mytemp%\nul set temp=%mytemp%
+if exist %mytemp%\nul set tmp=%mytemp%
 
 if exist %1 set arch345239874621=%1
 if exist %1 goto ok
@@ -20,7 +25,7 @@ copy /b %arch345239874621% %name345239874621%.old.zip
 del *.tmp
 del $temp$.zip
 
-rezip -comp %1
+rezip -comp -defl %1
 
 del %arch345239874621%
 move %name345239874621%.repacked.zip %arch345239874621%
