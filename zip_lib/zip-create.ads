@@ -3,6 +3,8 @@
 --
 -- Change log:
 -- ==========
+-- 25-Feb-2010: GdM: Fixed major bottlenecks around Dir_entries
+--                     -> 5x faster overall for 1000 files, 356x for 100'000 !
 -- 17-Feb-2009: GdM: Added procedure Add_String
 -- 10-Feb-2009: GdM: Create / Finish: if Info.Stream is to a file,
 --                     the underling file is also created / closed in time
@@ -69,16 +71,18 @@ private
 
    type Dir_entry is record
       head : Zip.Headers.Central_File_Header;
-      name : Unbounded_String;
+      name : p_String;
    end record;
 
-   type Dir_entries is array (Integer range <>) of Dir_entry;
+   type Dir_entries is array (Positive range <>) of Dir_entry;
    type Pdir_entries is access Dir_entries;
 
    type Zip_Create_info is record
-      Stream   : Zipstream_Class;
-      Compress : Zip.Compress.Compression_Method;
-      Contains : Pdir_entries:= null;
+      Stream    : Zipstream_Class;
+      Compress  : Zip.Compress.Compression_Method;
+      Contains  : Pdir_entries:= null;
+      Last_entry: Natural:= 0;
+      -- 'Contains' has unused room, to avoid reallocating each time
    end record;
 
 end Zip.Create;

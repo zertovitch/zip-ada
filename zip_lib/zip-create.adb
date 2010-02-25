@@ -1,3 +1,4 @@
+with Ada.Exceptions;
 with Ada.Unchecked_Deallocation;
 with Ada.Text_IO;
 with Interfaces;                        use Interfaces;
@@ -24,6 +25,8 @@ package body Zip.Create is
 
    procedure Dispose is new
      Ada.Unchecked_Deallocation (Dir_entries, Pdir_entries);
+   procedure Dispose is new
+     Ada.Unchecked_Deallocation (String, p_String);
 
    procedure Resize (A    : in out Pdir_entries;
                      Size : Integer) is
@@ -54,9 +57,9 @@ package body Zip.Create is
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural)
    is
-      Last       : Integer := 1;
       mem1, mem2 : Integer := 1;
       entry_name : String:= GetName (Stream);
+      Last: Positive;
    begin
       -- Appnote.txt, V. J. :
       -- " All slashes should be forward slashes '/' as
@@ -67,10 +70,17 @@ package body Zip.Create is
         end if;
       end loop;
       --
-      if Info.Contains /= null then
-         Last := Info.Contains'Length + 1;
+      if Info.Contains = null then
+        Info.Last_entry:= 1;
+        Resize (Info.Contains, 16);
+      else
+        Info.Last_entry:= Info.Last_entry + 1;
+        if Info.Last_entry > Info.Contains'Last then
+          -- Info.Contains is full, time to resize it !
+          Resize (Info.Contains, Info.Last_entry * 2);
+        end if;
       end if;
-      Resize (Info.Contains, Last);
+      Last:= Info.Last_entry;
       --  Administration
       Info.Contains (Last).head.made_by_version      := 23; -- version 2.30
       Info.Contains (Last).head.comment_length       := 0;
@@ -87,14 +97,14 @@ package body Zip.Create is
       Info.Contains (Last).head.short_info.filename_length        :=
         entry_name'Length;
       Info.Contains (Last).head.short_info.extra_field_length     := 0;
-      Info.Contains (Last).name := To_Unbounded_String (entry_name);
+      Info.Contains (Last).name := new String'(entry_name);
 
       mem1 := Index (Info.Stream);
       Info.Contains (Last).head.local_header_offset := Unsigned_32 (mem1) - 1;
       --  Write the local header with incomplete informations
       Zip.Headers.Write (Info.Stream, Info.Contains (Last).head.short_info);
 
-      String'Write(Info.Stream, To_String (Info.Contains (Last).name));
+      String'Write(Info.Stream, Info.Contains (Last).name.all);
 
       --  Write compressed file
       Zip.Compress.Compress_data
@@ -184,17 +194,23 @@ package body Zip.Create is
       ed.total_entries := 0;
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
+      if Info.Last_entry > Integer(Unsigned_16'Last) then
+        Ada.Exceptions.Raise_Exception
+          (Constraint_Error'Identity, "Too many entries - need ZIP64");
+      end if;
       if Info.Contains /= null then
-        for e in Info.Contains'Range loop
+        for e in 1..Info.Last_entry loop
            ed.total_entries := ed.total_entries + 1;
            Zip.Headers.Write (Info.Stream, Info.Contains (e).head);
-           String'Write(Info.Stream, To_String (Info.Contains (e).name));
+           String'Write(Info.Stream, Info.Contains (e).name.all);
            ed.central_dir_size :=
              ed.central_dir_size +
                Zip.Headers.central_header_length +
                  Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
+          Dispose(Info.Contains(e).name);
         end loop;
         Dispose (Info.Contains);
+        Info.Last_entry:= 0;
       end if;
       ed.disknum := 0;
       ed.disknum_with_start := 0;
