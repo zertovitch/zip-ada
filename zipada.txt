@@ -100,6 +100,10 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '38', 27-Feb-2010:
+  - Zip.Create: fixed major bottlenecks around Dir_entries
+      -> 5x faster overall for 1000 files, 356x for 100'000 !
+
 * Changes in '37',  1-Jan-2010:
   - Minor changes which leads to a significant speedup on GNAT;
       active use of Ada.Calendar can be totally avoided if this is desired
