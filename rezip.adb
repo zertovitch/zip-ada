@@ -178,6 +178,7 @@ procedure ReZip is
     uncomp_size     : Unsigned_64;
     -- summed uncompressed sizes might be more than 2**32
     expanded_options: Unbounded_String;
+    iter            : Positive; -- iterations needed
   end record;
 
   type Packer_info_array is array(Approach) of Packer_info;
@@ -352,7 +353,8 @@ procedure ReZip is
     out_name: String;
     is_rand : Boolean;
     info    : out Packer_info
-  ) is
+  )
+  is
     use Ada.Directories;
     temp_zip: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$temp$.zip";
     rand_win: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$rand$.tmp";
@@ -401,6 +403,7 @@ procedure ReZip is
       --
       if rand_stable = 1 or not is_rand then -- normal behaviour (1 attempts)
         size:= header.dd.compressed_size;
+        info.iter:= 1;
         exit;
       end if;
       --
@@ -439,6 +442,7 @@ procedure ReZip is
           end if;
           Rename(rand_win, out_name);
           info.expanded_options:= options_winner;
+          info.iter:= attempt;
           exit;
         end if;
       end if;
@@ -464,10 +468,10 @@ procedure ReZip is
     list, e, curr: p_Dir_entry:= null;
     repacked_zip_file   : aliased ZipFile_Stream;
     Streamrepacked_zip_file : constant Zipstream_Class := repacked_zip_file'Unchecked_Access;
-    total: Packer_info_array:= (others => (0,0,0,0,0,NN));
+    total: Packer_info_array:= (others => (0,0,0,0,0,NN,1));
     -- total(a).count counts the files where approach 'a' was optimal
     -- total(a).saved counts the saved bytes when approach 'a' was optimal
-    total_choice: Packer_info:= (0,0,0,0,0,NN);
+    total_choice: Packer_info:= (0,0,0,0,0,NN,1);
     summary: Ada.Text_IO.File_Type;
     T0, T1 : Ada.Calendar.Time;
     seconds: Duration;
@@ -587,6 +591,7 @@ procedure ReZip is
       for a in Approach loop
         if consider(a) then
           Put("              -o-> " & Img(a));
+          e.info(a).iter:= 1;
           case a is
             --
             when original =>
@@ -713,6 +718,8 @@ procedure ReZip is
         );
         Put(summary,"%");
       end if;
+      Put(summary,"</td><td>");
+      Put(summary,Integer'Image(e.info(choice).iter));
       Put_Line(summary,"</td></tr>");
       --
       -- Write winning data:
@@ -835,7 +842,7 @@ procedure ReZip is
     end loop;
     Put_Line(summary,
       "<td><b>Choice</b></td><td bgcolor=#dddd00>Choice's<br>method/<br>format</td><td>Smallest<br>size</td>" &
-      "<td>% of<br>original</td><td>% of<br>uncompressed</td></tr>"
+      "<td>% of<br>original</td><td>% of<br>uncompressed</td><td>Iterations</td></tr>"
     );
     --
     -- 1/ Recompress each file into the new archive:
