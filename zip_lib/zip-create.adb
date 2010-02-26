@@ -70,14 +70,16 @@ package body Zip.Create is
         end if;
       end loop;
       --
-      if Info.Contains = null then
+      if Info.Last_entry = 0 then
         Info.Last_entry:= 1;
-        Resize (Info.Contains, 16);
+        Resize (Info.Contains, 32);
       else
         Info.Last_entry:= Info.Last_entry + 1;
         if Info.Last_entry > Info.Contains'Last then
-          -- Info.Contains is full, time to resize it !
-          Resize (Info.Contains, Info.Last_entry * 2);
+          -- Info.Contains is full, time to resize it!
+          -- We do nothing less than double the size - better than
+          -- whatever offer you'd get in your e-mails.
+          Resize (Info.Contains, Info.Contains'Last * 2);
         end if;
       end if;
       Last:= Info.Last_entry;
@@ -210,8 +212,8 @@ package body Zip.Create is
           Dispose(Info.Contains(e).name);
         end loop;
         Dispose (Info.Contains);
-        Info.Last_entry:= 0;
       end if;
+      Info.Last_entry:= 0;
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;

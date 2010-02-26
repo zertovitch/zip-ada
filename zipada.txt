@@ -101,8 +101,9 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '38', 27-Feb-2010:
+  - ReZip: added '-fast_dec' and 'rand_stable' options
   - Zip.Create: fixed major bottlenecks around Dir_entries
-      -> 5x faster overall for 1000 files, 356x for 100'000 !
+      -> 5x faster overall for 1000 files, 356x for 100'000 files !
 
 * Changes in '37',  1-Jan-2010:
   - Minor changes which leads to a significant speedup on GNAT;
