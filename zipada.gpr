@@ -65,15 +65,12 @@ project ZipAda is
    end Compiler;
 
    package Builder is
-      case Build_Mode is
-         when "Debug" =>
-            for Default_Switches ("ada") use ("-j2", "-C");
-         when "Optimize" =>
-            for Default_Switches ("ada") use ("-j2", "-C", "-a", "-x");
-         when "Profiling" =>
-            for Default_Switches ("ada") use ("-j2", "-C");
-      end case;
+      for Default_Switches ("ada") use ("-j2", "-C");
    end Builder;
 
+   package Ide is
+      for Default_Switches ("adacontrol") use ("-f", "verif.aru");
+   end Ide;
+   
 end ZipAda;
 

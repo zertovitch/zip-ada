@@ -124,173 +124,170 @@ begin
   if Argument_Count=0 then
     Help;
     return;
-  else
-    for i in 1..Argument_Count loop
-      if Argument(i)(1)='-' or else Argument(i)(1)='/' then
-        if last_option = i then
-          null; -- was in fact an argument for previous option (e.g. "-s")
-        else
-          last_option:= i;
-          if Argument(i)'Length=1 then
+  end if;
+  for i in 1..Argument_Count loop
+    if Argument(i)(1)='-' or else Argument(i)(1)='/' then
+      if last_option = i then
+        null; -- was in fact an argument for previous option (e.g. "-s")
+      else
+        last_option:= i;
+        if Argument(i)'Length=1 then
+          Help;
+          return;
+        end if;
+        case To_Lower( Argument(i)(2) ) is
+          when 't' =>
+            z_options( test_only ):= True;
+          when 'j' =>
+            z_options( junk_directories ):= True;
+          when 'd' =>
+            if i = Argument_Count then
+              Help;
+              return;-- "-d" without the directory or anything ?!
+            end if;
+            declare
+              arg_exdir: constant String:= Argument(i+1);
+            begin
+              exdir( 1..arg_exdir'Length ):= arg_exdir;
+              exdir_len:= arg_exdir'Length;
+            end;
+            last_option:= i+1;
+          when 'c' =>
+            z_options( case_sensitive_match ):= True;
+          when 'l' =>
+            lower_case:= True;
+          when 'a' =>
+            z_options( extract_as_text ):= True;
+          when 's' =>
+            if i = Argument_Count then
+              Help;
+              return; -- "-s" without the password or anything ?!
+            end if;
+            declare
+              arg_pass: constant String:= Argument(i+1);
+            begin
+              password( 1..arg_pass'Length ):= arg_pass;
+              pass_len:= arg_pass'Length;
+            end;
+            last_option:= i+1;
+          when 'q' =>
+            quiet:= True;
+          when 'v' =>
+            verbose:= True;
+          when 'z' =>
+            comment:= True;
+          when others  =>
             Help;
             return;
-          end if;
-          case To_Lower( Argument(i)(2) ) is
-            when 't' =>
-              z_options( test_only ):= True;
-            when 'j' =>
-              z_options( junk_directories ):= True;
-            when 'd' =>
-              if i < Argument_Count then
-                declare
-                  arg_exdir: constant String:= Argument(i+1);
-                begin
-                  exdir( 1..arg_exdir'Length ):= arg_exdir;
-                  exdir_len:= arg_exdir'Length;
-                end;
-                last_option:= i+1;
-              else
-                Help;
-                return; -- "-d" without the directory or anything ?!
-              end if;
-            when 'c' =>
-              z_options( case_sensitive_match ):= True;
-            when 'l' =>
-              lower_case:= True;
-            when 'a' =>
-              z_options( extract_as_text ):= True;
-            when 's' =>
-              if i < Argument_Count then
-                declare
-                  arg_pass: constant String:= Argument(i+1);
-                begin
-                  password( 1..arg_pass'Length ):= arg_pass;
-                  pass_len:= arg_pass'Length;
-                end;
-                last_option:= i+1;
-              else
-                Help;
-                return; -- "-s" without the password or anything ?!
-              end if;
-            when 'q' =>
-              quiet:= True;
-            when 'v' =>
-              verbose:= True;
-            when 'z' =>
-              comment:= True;
-            when others  =>
-              Help;
-              return;
-          end case;
-        end if;
+        end case;
       end if;
-    end loop;
+    end if;
+  end loop;
 
-    current_user_attitude:= yes;
+  current_user_attitude:= yes;
 
-    if quiet then
-      fda:= null;
-      rca:= null;
-      tda:= null;
+  if quiet then
+    fda:= null;
+    rca:= null;
+    tda:= null;
+  end if;
+
+  Summary.Reset;
+
+  if Argument_Count = last_option then -- options only ?!
+    Help;
+    return;
+  end if;
+  declare
+    archive_given: constant String:= Argument(last_option+1);
+    zip_ext: Boolean:= False;
+    extract_all: Boolean;
+    --
+    function Archive return String is
+    begin
+      if zip_ext then
+        return archive_given & ".zip";
+      else
+        return archive_given;
+      end if;
+    end Archive;
+  begin
+    if not Zip.Exists(Archive) then
+      zip_ext:= True;
+      if not Zip.Exists(Archive) then
+        Put_Line("Archive file '" & archive_given &
+                 "' or '" & Archive & "' not found");
+        return;
+      end if;
+    end if;
+    extract_all:= Argument_Count = last_option+1;
+    -- options and zipfile only
+
+    if not quiet then
+      Blurb;
+    end if;
+    if not (quiet or comment) then
+      if z_options( test_only ) then
+        Put("Testing");
+      else
+        if Set_Time_Stamp = null then
+          Put_Line(" Warning: time stamps and attributes of files" &
+                   " in archive are not reproduced !");
+          New_Line;
+        end if;
+        Put("Extracting");
+      end if;
+      if not extract_all then
+        Put(" some file(s) from");
+      end if;
+      Put_Line(" archive " & Archive);
     end if;
 
-    Summary.Reset;
-
-    if Argument_Count = last_option then -- options only ?!
-      Help;
+    T0:= Clock;
+    if comment then -- Option: -z , diplay comment only
+      Zip.Load( zi, Archive );
+      Zip.Put_Multi_Line(Standard_Output, Zip.Zip_comment(zi));
+    elsif extract_all then
+      Extract(
+        Archive,
+        fda, rca, tda, gpw,
+        z_options,
+        password( 1..pass_len ),
+        My_FS_routines
+      );
     else
       declare
-        archive_given: constant String:= Argument(last_option+1);
-        zip_ext: Boolean:= False;
-        extract_all: Boolean;
-        --
-        function Archive return String is
-        begin
-          if zip_ext then
-            return archive_given & ".zip";
-          else
-            return archive_given;
-          end if;
-        end Archive;
+        total    : Natural;
+        max_depth: Natural;
+        avg_depth: Float;
       begin
-        if not Zip.Exists(Archive) then
-          zip_ext:= True;
-          if not Zip.Exists(Archive) then
-            Put_Line("Archive file '" & archive_given &
-                     "' or '" & Archive & "' not found");
-            return;
-          end if;
-        end if;
-        extract_all:= Argument_Count = last_option+1;
-        -- options and zipfile only
-
-        if not quiet then
-          Blurb;
-        end if;
-        if not (quiet or comment) then
-          if z_options( test_only ) then
-            Put("Testing");
-          else
-            if Set_Time_Stamp = null then
-              Put_Line(" Warning: time stamps and attributes of files" &
-                       " in archive are not reproduced !");
-              New_Line;
-            end if;
-            Put("Extracting");
-          end if;
-          if not extract_all then
-            Put(" some file(s) from");
-          end if;
-          Put_Line(" archive " & Archive);
-        end if;
-
-        T0:= Clock;
-        if comment then -- Option: -z , diplay comment only
-          Zip.Load( zi, Archive );
-          Zip.Put_Multi_Line(Standard_Output, Zip.Zip_comment(zi));
-        elsif extract_all then
-          Extract(
-            Archive,
+        Zip.Load( zi, Archive );
+        for i in last_option+2 .. Argument_Count loop
+          Extract( zi, Argument(i),
             fda, rca, tda, gpw,
             z_options,
             password( 1..pass_len ),
             My_FS_routines
           );
-        else
-          declare
-            total    : Natural;
-            max_depth: Natural;
-            avg_depth: Float;
-          begin
-            Zip.Load( zi, Archive );
-            for i in last_option+2 .. Argument_Count loop
-              Extract( zi, Argument(i),
-                fda, rca, tda, gpw,
-                z_options,
-                password( 1..pass_len ),
-                My_FS_routines
-              );
-            end loop;
-            if verbose then
-              Zip.Tree_stat(zi, total, max_depth, avg_depth);
-              New_Line;
-              Put("Dictionary tree: entries=");
-              IIO.Put(total,0);
-              Put(" as log_2:");
-              Put(log(Float(total)) / log(2.0), 0, 1, 0);
-              Put("; max depth=");
-              IIO.Put(max_depth,0);
-              Put("; avg depth=");
-              Put(avg_depth, 0, 2, 0);
-            end if;
-            Zip.Delete( zi );
-          end;
-
+        end loop;
+        if verbose then
+          Zip.Tree_stat(zi, total, max_depth, avg_depth);
+          New_Line;
+          Put("Dictionary tree: entries=");
+          IIO.Put(total,0);
+          Put(" as log_2:");
+          Put(log(Float(total)) / log(2.0), 0, 1, 0);
+          Put("; max depth=");
+          IIO.Put(max_depth,0);
+          Put("; avg depth=");
+          Put(avg_depth, 0, 2, 0);
         end if;
-        T1:= Clock;
+        Zip.Delete( zi );
       end;
+
     end if;
-  end if;
+    T1:= Clock;
+  end;
 
   seconds:= T1-T0;
 

@@ -15,6 +15,7 @@ check style (casing_keyword, lowercase);
 -- check max_nesting (6);
 check parameter_aliasing (certain);
 check simplifiable_expressions (range, logical); -- , parentheses
+check simplifiable_statements;
 check statements (goto, abort);
 -- check if_for_case;
 check expressions (real_equality);
@@ -114,6 +115,5 @@ search instantiations (ada.unchecked_conversion);
 search statements(multiple_exits); -- case_others_null, case_others
 -- search statements(exception_others_null); -- exception_others
 search pragmas (nonstandard);
-search simplifiable_statements;
 search characters (not_iso_646);
 search reduceable_scope (use);

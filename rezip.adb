@@ -64,8 +64,7 @@ procedure ReZip is
     actually_read, remains: Natural;
   begin
     remains:= bytes;
-    loop
-      exit when remains = 0;
+    while remains > 0 loop
       Zip.BlockRead(from,buf(1..Integer'Min(remains, buf'Last)),actually_read);
       if actually_read = 0 then -- premature end, unexpected
         raise Zip.Zip_File_Error;
