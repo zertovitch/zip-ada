@@ -566,11 +566,13 @@ package body Zip is
   -- Workaround for the severe xxx'Read xxx'Write performance
   -- problems in the GNAT and ObjectAda compilers (as in 2009)
   -- This is possible if and only if Byte = Stream_Element and
-  -- arrays types are both packed the same way.
+  -- arrays types are both packed and aligned the same way.
   --
-  subtype Size_test_a is Byte_Buffer(1..16);
-  subtype Size_test_b is Ada.Streams.Stream_Element_Array(1..16);
-  workaround_possible: constant Boolean:= Size_test_a'Size = Size_test_b'Size;
+  subtype Size_test_a is Byte_Buffer(1..19);
+  subtype Size_test_b is Ada.Streams.Stream_Element_Array(1..19);
+  workaround_possible: constant Boolean:=
+    Size_test_a'Size = Size_test_b'Size and
+    Size_test_a'Alignment = Size_test_b'Alignment;
 
   -- BlockRead - general-purpose procedure (nothing really specific
   -- to Zip / UnZip): reads either the whole buffer from a file, or
