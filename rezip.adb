@@ -498,8 +498,12 @@ procedure ReZip is
       --
       procedure Winner_color is
       begin
-        if e.info(choice).size <= e.info(original).size then -- normal case
+        if e.info(choice).size < e.info(original).size then
           Put(summary,"<td bgcolor=lightgreen><b>");
+          -- We were able to reduce the size
+        elsif e.info(choice).size = e.info(original).size then
+          Put(summary,"<td><b>");
+          -- Original was the best, alas...
         else
           Put(summary,"<td bgcolor=" & lightred & "><b>");
           -- Forced method with less efficient compression
