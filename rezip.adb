@@ -4,11 +4,8 @@
 --                     Uses brute force and pick-and-choose among compression
 --                     tools and methods. Typically the optimal archive will
 --                     contain some entries compressed with the BZip2 format,
---                     and others with the Deflate one.
+--                     and others with the Deflate or Deflate_e ones.
 --                     Compression speed doesn't matter, only the final size.
---                     NB: due to random parameters to some compressors, only
---                     several runs of ReZip will result in the optimal size.
---                     See rezip_loop.cmd.
 --
 --  Date/version:    ... ; 11-Jan-2008
 --  Author:          Gautier de Montmollin
@@ -229,30 +226,30 @@ procedure ReZip is
 
   ext: array(External) of Zipper_specification:=
     (
-      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"),
+      (U("zip"), U("Zip"), U("http://info-zip.org/"),
          U("-9"), NN, 20, Zip.deflate, 0, False),
        -- Zip 2.32 or later
-      (U("zip.exe"), U("Zip"), U("http://info-zip.org/"),
+      (U("zip"), U("Zip"), U("http://info-zip.org/"),
          U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
        -- Zip 3.0 or later
-      (U("7z.exe"),                                      -- 7-Zip 4.64 or later
+      (U("7z"),                                      -- 7-Zip 4.64 or later
          U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mx9 -mm=deflate -mfb=258 -mpass=15 -mmc=10000"),
          NN, 20, Zip.deflate, 0, False),
-      (U("7z.exe"),
+      (U("7z"),
          U("7-Zip"), NN,
          U("a -tzip -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
          NN, 21, Zip.deflate_e, 0, False),
-      (U("kzip.exe"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
+      (U("kzip"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
          U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit, True),
-      (U("kzip.exe"),U("KZIP"),NN,
+      (U("kzip"),U("KZIP"),NN,
          U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_limit, True),
-      (U("kzip.exe"),U("KZIP"),NN,
+      (U("kzip"),U("KZIP"),NN,
          U("/rn /b#RAND#(128,1024)"), NN, 20, Zip.deflate, kzip_limit, True)
     );
 
   defl_opt: constant Zipper_specification:=
-    (U("deflopt.exe"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
+    (U("deflopt"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
      NN, NN, 0, Zip.deflate, 0, False);
 
   function Img(a: Approach) return String is
@@ -1046,17 +1043,17 @@ begin
     Put_Line("                          having randomization, and stop when size is stable");
     Put_Line("                          after n attempts");
     New_Line;
-    Put_Line("external packers:");
+    Put_Line("external packers (available for Windows and Linux):");
     New_Line;
     declare
       procedure Display(p: Zipper_specification)  is
-        fix: String(1..12):= (others => ' ');
+        fix: String(1..8):= (others => ' ');
       begin
         Insert(fix,fix'First, S(p.title));
-        Put("   " & fix);
+        Put("  " & fix);
         fix:= (others => ' ');
         Insert(fix,fix'First, S(p.name));
-        Put_Line(" exe: " & fix & "  URL: " & S(p.URL));
+        Put_Line(" Executable:  " & fix & " URL: " & S(p.URL));
       end Display;
     begin
       for e in External loop
