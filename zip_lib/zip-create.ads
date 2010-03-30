@@ -3,6 +3,7 @@
 --
 -- Change log:
 -- ==========
+-- 30-Mar-2010: GdM: Added Name function
 -- 25-Feb-2010: GdM: Fixed major bottlenecks around Dir_entries
 --                     -> 5x faster overall for 1000 files, 356x for 100'000 !
 -- 17-Feb-2009: GdM: Added procedure Add_String
@@ -27,6 +28,8 @@ package Zip.Create is
                     Name        : String;
                     Compress    : Zip.Compress.Compression_Method:= Zip.Compress.Shrink);
 
+
+   function Name(Info: Zip_Create_info) return String;
 
    -- Add new entries to a Zip archive, from a general stream
 

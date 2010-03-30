@@ -706,7 +706,9 @@ package body Zip is
     return True;
   exception
     when Name_Error =>
-      return False;
+      return False; -- The file cannot exist !
+    when Use_Error =>
+      return True;  -- The file exist and is already opened !
   end Exists;
 
   procedure Put_Multi_Line(

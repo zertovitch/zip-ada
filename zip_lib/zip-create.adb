@@ -23,6 +23,11 @@ package body Zip.Create is
       end if;
    end Create;
 
+   function Name(Info: Zip_Create_info) return String is
+   begin
+     return GetName(Info.Stream);
+   end Name;
+
    procedure Dispose is new
      Ada.Unchecked_Deallocation (Dir_entries, Pdir_entries);
    procedure Dispose is new

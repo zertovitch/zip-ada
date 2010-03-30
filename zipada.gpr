@@ -1,3 +1,7 @@
+-- This is a GNAT, GCC or GNAT Programming Studio (GPS) project file
+-- for the Zip-Ada project ( http://unzip-ada.sf.net/ )
+-- Build me with "gnatmake -P zipada.gpr", or open me with GPS
+--
 project ZipAda is
 
    type Build_Mode_Type is
@@ -70,6 +74,7 @@ project ZipAda is
 
    package Ide is
       for Default_Switches ("adacontrol") use ("-f", "verif.aru");
+      for Vcs_Kind use "Subversion";
    end Ide;
    
 end ZipAda;

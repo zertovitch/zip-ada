@@ -146,8 +146,12 @@ begin
         Put_Line("Creating archive " & arg_zip);
         T0:= Clock;
         Zip.Create.Create(Info, ZipFileStream, arg_zip, method);
-      else -- First real argument already used for archive's name
-        if Zip.Exists(arg) then
+      else -- First real argument has already been used for archive's name
+        if To_Upper(arg) = To_Upper(Zip.Create.Name(Info)) then
+          Put_Line("  ** Warning: skipping archive's name as entry: " & arg);
+          -- avoid zipping the archive itself!
+          -- NB: case insensitive
+        elsif Zip.Exists(arg) then
           declare
             InStream   : aliased ZipFile_Stream;
             StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
@@ -157,6 +161,9 @@ begin
             Open (InStream, In_File);
             Add_1_Stream (StreamFile);
             Close (InStream);
+          exception
+            when Ada.Text_IO.Use_Error =>
+              Put_Line("  ** Warning: skipping invalid entry: " & arg);
           end;
         else
           Put_Line("  ** Warning: name not matched: " & arg);
