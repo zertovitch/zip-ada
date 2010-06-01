@@ -13,12 +13,13 @@ begin
   My_main_procedure;
 exception
   when E: others =>
-    New_Line;
-    Put_Line("--------------------[ Unhandled exception ]-----------------");
-    Put_Line(" > Name of exception . . . . .: " &
+    New_Line(Standard_Error);
+    Put_Line(Standard_Error,
+             "--------------------[ Unhandled exception ]-----------------");
+    Put_Line(Standard_Error, " > Name of exception . . . . .: " &
              Ada.Exceptions.Exception_Name(E) );
-    Put_Line(" > Message for exception . . .: " &
+    Put_Line(Standard_Error, " > Message for exception . . .: " &
              Ada.Exceptions.Exception_Message(E) );
-    Put_Line(" > Trace-back of call stack: " );
-    Put_Line( GNAT.Traceback.Symbolic.Symbolic_Traceback(E) );
+    Put_Line(Standard_Error, " > Trace-back of call stack: " );
+    Put_Line(Standard_Error, GNAT.Traceback.Symbolic.Symbolic_Traceback(E) );
 end TB_Wrap;
