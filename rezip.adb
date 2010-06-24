@@ -363,6 +363,7 @@ procedure ReZip is
     cur_dir: constant String:= Current_Directory;
     size_memory: array(1..rand_stable) of Zip.File_size_type:= (others => 0);
     size: Zip.File_size_type:= 0;
+    zfm: Unsigned_16;
     attempt: Positive:= 1;
   begin
     -- We jump into the TEMP directory, to avoid putting pathes into the
@@ -411,6 +412,7 @@ procedure ReZip is
         header.dd.compressed_size < size -- better size
       then
         size:= header.dd.compressed_size;
+        zfm := header.zip_type;
         if Exists(rand_win) then
           Delete_file(rand_win);
         end if;
@@ -447,7 +449,7 @@ procedure ReZip is
     info.size       := size;
     info.uncomp_size:= Unsigned_64(header.dd.uncompressed_size);
     -- uncomp_size should not matter (always the same).
-    info.zfm        := header.zip_type;
+    info.zfm        := zfm;
     -- We jump back to the startup directory.
     Set_Directory(cur_dir);
   end Process_external;
