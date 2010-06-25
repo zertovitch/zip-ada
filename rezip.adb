@@ -400,6 +400,7 @@ procedure ReZip is
       --
       if rand_stable = 1 or not is_rand then -- normal behaviour (1 attempts)
         size:= header.dd.compressed_size;
+        zfm := header.zip_type;
         info.iter:= 1;
         exit;
       end if;
