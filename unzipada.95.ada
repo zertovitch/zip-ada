@@ -1,4 +1,5 @@
 -- *** Version of ZipAda downgraded to Ada 95 for testing with ObjectAda 7.2.2
+-- *** or other Ada 95-only compilers.
 -- *** Just need to comment out / null-ify the references to Ada.Directories
 
 ------------------------------------------------------------------------------
@@ -28,6 +29,12 @@ with Summary;
 
 procedure UnZipAda is
 
+  ------------------------------------------------------
+  -- Potential Ada 201X items                         --
+  ------------------------------------------------------
+  Set_Time_Stamp: constant UnZip.Set_Time_Stamp_proc:= null;
+  -------------------------------------------
+
   use UnZip;
 
   z_options : UnZip.option_set:= UnZip.no_option;
@@ -46,9 +53,8 @@ procedure UnZipAda is
   password, exdir: String( 1..1024 );
   pass_len, exdir_len: Natural:= 0;
 
-  Directory_Separator: constant Character:= '\';
-  -- For GNAT: GNAT.Os_Lib.Directory_Separator.
-  -- That should be part of the Ada standard, one day...
+  Directory_Separator: constant Character:= '/'; 
+  -- '/' is also accepted by Windows
 
   function Add_extract_directory(File_Name : String) return String is
     -- OK for UNIX & Windows, but VMS has "[x.y.z]filename.ext"
@@ -73,7 +79,7 @@ procedure UnZipAda is
 
   My_FS_routines: constant FS_routines_type:=
    ( Create_Path         => null, -- Ada.Directories.Create_Path'Access, -- Ada 2005
-     Set_Time_Stamp      => null,
+     Set_Time_Stamp      => Set_Time_Stamp,
      Directory_Separator => Directory_Separator,
      Compose_File_Name   => null, -- Compose_File_Name'Unrestricted_Access
      others              => null

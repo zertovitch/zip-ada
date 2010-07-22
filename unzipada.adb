@@ -15,7 +15,7 @@ with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Interfaces;                        use Interfaces;
 
 with Ada.Directories; -- Ada 2005
-with Ada_Directories_Extensions; -- Ada 201X items forgotten in Ada 2005...
+with Ada_Directories_Extensions; -- Ada 201X items absent in Ada 2005...
 
 with Zip, UnZip;
 
@@ -27,13 +27,10 @@ with Summary;
 
 procedure UnZipAda is
 
-  -------------------------------------------
-  -- Ada 201X items, need the non-standard --
-  -- Ada_Directories_Extensions            --
-  -------------------------------------------
-  Directory_Separator: constant Character:=
-    Ada_Directories_Extensions.Directory_Separator;
-    -- alt.: '\' or GNAT.OS_Lib.Directory_Separator;
+  ------------------------------------------------------
+  -- Potential Ada 201X items, needs the non-standard --
+  -- Ada_Directories_Extensions                       --
+  ------------------------------------------------------
   Set_Time_Stamp: constant UnZip.Set_Time_Stamp_proc:=
     Ada_Directories_Extensions.Set_Modification_Time'Access;
     -- alt.: null;
@@ -56,6 +53,9 @@ procedure UnZipAda is
 
   password, exdir: String( 1..1024 );
   pass_len, exdir_len: Natural:= 0;
+
+  Directory_Separator: constant Character:= '/'; 
+  -- '/' is also accepted by Windows
 
   function Add_extract_directory(File_Name : String) return String is
     -- OK for UNIX & Windows, but VMS has "[x.y.z]filename.ext"

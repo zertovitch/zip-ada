@@ -3,8 +3,7 @@
 --  This is a non-standard extension to the approved package. It is
 --  currently implemented for Win32 only.
 --
---  GdM 2009:
---  - Added Directory_Separator (cf GNAT.OS_Lib.Directory_Separator)
+--  GdM 2009-2010:
 --  - Moved Validate, which is not in Ada 2005's Ada.Directories
 --  - Renamed with '_' to compile with the "true" GNAT Ada.Directories.
 
@@ -15,8 +14,6 @@ with Ada.Directories; use Ada.Directories; -- ...
 with Ada.Calendar;
 
 package Ada_Directories_Extensions is
-
-   Directory_Separator: constant Character:= '\';
 
    Not_Supported : exception;
    --  Can be because the underlying OS does not support this feature
