@@ -30,6 +30,9 @@ with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
+with Dual_IO;                           use Dual_IO;
+-- NB about 'use': no worry, Ada detects all conflicts
+-- between Dual_IO and Text_IO
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
@@ -45,14 +48,35 @@ with GNAT.OS_Lib;
 
 procedure ReZip is
 
+  package DFIO is new Dual_IO.Float_IO(Float);
+
   procedure Blurb is
   begin
-    Put_Line("ReZip * Zip file recompression tool.");
-    Put_Line("Author: Gautier de Montmollin");
-    Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
-    Put_Line("URL: " & Zip.web);
-    New_Line;
+    Ada.Text_IO.Put_Line("ReZip * Zip file recompression tool.");
+    Ada.Text_IO.Put_Line("Author: Gautier de Montmollin");
+    Ada.Text_IO.Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
+    Ada.Text_IO.Put_Line("URL: " & Zip.web);
+    Ada.Text_IO.New_Line;
   end Blurb;
+
+  procedure Usage is
+  begin
+    Ada.Text_IO.Put_Line("Usage: rezip [options] archive(s)[.zip]");
+    Ada.Text_IO.New_Line;
+    Ada.Text_IO.Put_Line("options:  -defl:     repack archive only with Deflate method (most compatible)");
+    Ada.Text_IO.Put_Line("          -fast_dec: repack archive only with fast decompressing methods");
+    Ada.Text_IO.Put_Line("          -touch:    set time stamps to now");
+    Ada.Text_IO.Put_Line("          -lower:    set full file names to lower case");
+    Ada.Text_IO.Put_Line("          -del_comm: delete comment");
+    Ada.Text_IO.Put_Line("          -comp:     compare original and repacked archives (paranoid mode)");
+    Ada.Text_IO.New_Line;
+    Ada.Text_IO.Put_Line("          -rand_stable=n: loop many times over a single compression approach");
+    Ada.Text_IO.Put_Line("                          having randomization, and stop when size is stable");
+    Ada.Text_IO.Put_Line("                          after n attempts");
+    Ada.Text_IO.New_Line;
+    Ada.Text_IO.Put_Line("external packers (available for Windows and Linux):");
+    Ada.Text_IO.New_Line;
+  end Usage;
 
   -- Copy a chunk from a stream into another one:
   procedure Copy_chunk(from : Zipstream_Class;
@@ -276,7 +300,7 @@ procedure ReZip is
     list: Argument_List_Access;
     ok: Boolean;
   begin
-    Put_Line(packer & " [" & args & ']');
+    Dual_IO.Put_Line(packer & " [" & args & ']');
     list:= Argument_String_To_List(args);
     GNAT.OS_Lib.Spawn(packer, list.all, ok);
     Dispose(list);
@@ -519,16 +543,16 @@ procedure ReZip is
         return; -- directories are useless entries!
       end if;
       total_choice.count:= total_choice.count + 1;
-      Put_Line(deco);
-      Put_Line(
+      Dual_IO.Put_Line(deco);
+      Dual_IO.Put_Line(
         "  Processing " &
         unique_name & ',' &
         Integer'Image(total_choice.count) &
         " of" &
         Integer'Image(Zip.Entries(zi))
       );
-      Put_Line(deco);
-      New_Line;
+      Dual_IO.Put_Line(deco);
+      Dual_IO.New_Line;
       --
       e:= new Dir_entry;
       if curr = null then
@@ -545,7 +569,7 @@ procedure ReZip is
       e.head.internal_attributes := 0; -- 0: seems binary; 1, text
       e.head.external_attributes := 0;
       --
-      Put("    Phase 1:  dump & unzip -");
+      Dual_IO.Put("    Phase 1:  dump & unzip -");
       Rip_data(
         archive      => zi,
         InputStream  => StreamFile,
@@ -570,7 +594,7 @@ procedure ReZip is
         comp_size      => comp_size,
         uncomp_size    => uncomp_size
       );
-      Put_Line(" done");
+      Dual_IO.Put_Line(" done");
       for a in Approach loop
         if consider(a) then
           --
@@ -587,13 +611,13 @@ procedure ReZip is
           end if;
         end if;
       end loop;
-      Put_Line("    Phase 2:  try different tactics...");
+      Dual_IO.Put_Line("    Phase 2:  try different tactics...");
       --
       Try_all_approaches:
       --
       for a in Approach loop
         if consider(a) then
-          Put("              -o-> " & Img(a));
+          Dual_IO.Put("              -o-> " & Img(a));
           e.info(a).iter:= 1;
           case a is
             --
@@ -626,7 +650,7 @@ procedure ReZip is
               Close(File_out);
               --
             when External =>
-              New_Line;
+              Dual_IO.New_Line;
               Process_External(
                 S(ext(a).name),
                 S(ext(a).options),
@@ -654,7 +678,7 @@ procedure ReZip is
             -- method is not "compatible", even with a worse size
             choice:= a;
           end if;
-          New_Line;
+          Dual_IO.New_Line;
         end if;
       end loop Try_all_approaches;
       --
@@ -667,8 +691,8 @@ procedure ReZip is
       total_choice.saved:=
         total_choice.saved + Integer_64(e.info(original).size) - Integer_64(e.info(choice).size);
       --
-      New_Line;
-      Put(
+      Dual_IO.New_Line;
+      Dual_IO.Put(
         "    Phase 3:  Winner is " & Img(choice) &
         "; writing data -"
       );
@@ -743,8 +767,8 @@ procedure ReZip is
       String'Write(Streamrepacked_zip_file, S(e.name));
       -- Copy the compressed data
       Copy( Temp_name(True,choice), Streamrepacked_zip_file );
-      Put_Line(" done");
-      New_Line;
+      Dual_IO.Put_Line(" done");
+      Dual_IO.New_Line;
     end Process_one;
 
     procedure Process_all is new Zip.Traverse(Process_one);
@@ -982,10 +1006,10 @@ procedure ReZip is
     Put(summary,  Float( seconds ), 4, 2, 0 );
     Put_Line(summary,  " sec</body></html>");
     Close(summary);
-    Put("Time elapsed : ");
-    Put( Float( seconds ), 4, 2, 0 );
-    Put_Line( " sec");
-    Put_Line("All details for " & orig_name & " in " & log_name);
+    Dual_IO.Put("Time elapsed : ");
+    DFIO.Put( Float( seconds ), 4, 2, 0 );
+    Dual_IO.Put_Line( " sec");
+    Dual_IO.Put_Line("All details for " & orig_name & " in " & log_name);
   end Repack_contents;
 
   function Add_zip_ext(s: String) return String is
@@ -1033,30 +1057,16 @@ procedure ReZip is
 begin
   Blurb;
   if Argument_Count = 0 then
-    Put_Line("Usage: rezip [options] archive(s)[.zip]");
-    New_Line;
-    Put_Line("options:  -defl:     repack archive only with Deflate method (most compatible)");
-    Put_Line("          -fast_dec: repack archive only with fast decompressing methods");
-    Put_Line("          -touch:    set time stamps to now");
-    Put_Line("          -lower:    set full file names to lower case");
-    Put_Line("          -del_comm: delete comment");
-    Put_Line("          -comp:     compare original and repacked archives (paranoid mode)");
-    New_Line;
-    Put_Line("          -rand_stable=n: loop many times over a single compression approach");
-    Put_Line("                          having randomization, and stop when size is stable");
-    Put_Line("                          after n attempts");
-    New_Line;
-    Put_Line("external packers (available for Windows and Linux):");
-    New_Line;
+    Usage;
     declare
       procedure Display(p: Zipper_specification)  is
         fix: String(1..8):= (others => ' ');
       begin
         Insert(fix,fix'First, S(p.title));
-        Put("  " & fix);
+        Ada.Text_IO.Put("  " & fix);
         fix:= (others => ' ');
         Insert(fix,fix'First, S(p.name));
-        Put_Line(" Executable:  " & fix & " URL: " & S(p.URL));
+        Ada.Text_IO.Put_Line(" Executable:  " & fix & " URL: " & S(p.URL));
       end Display;
     begin
       for e in External loop
@@ -1066,7 +1076,7 @@ begin
       end loop;
       Display(defl_opt);
     end;
-    New_Line;
+    Ada.Text_IO.New_Line;
     return;
   end if;
   Flexible_temp_files.Initialize;
@@ -1077,7 +1087,8 @@ begin
       ext      : constant String:= Get_ext(arg_zip);
       arg_nozip: constant String:= Remove_ext(arg_zip);
       arg_rezip: constant String:= arg_nozip & ".repacked." & ext;
-      arg_log  : constant String:= arg_nozip & ".ReZip.html";
+      arg_rpt  : constant String:= arg_nozip & ".ReZip.html";
+      arg_log  : constant String:= arg_nozip & ".ReZip.log";
       info_zip,
       info_rezip : Zip.Zip_info;
     begin
@@ -1105,14 +1116,16 @@ begin
           end if;
         end;
       elsif Zip.Exists(arg_zip) then
-        Repack_contents(arg_zip, arg_rezip, arg_log);
+        Dual_IO.Create_Log(arg_log);
+        Repack_contents(arg_zip, arg_rezip, arg_rpt);
+        Dual_IO.Close_Log;
         if compare then
           Zip.Load( info_zip, arg_zip );
           Zip.Load( info_rezip, arg_rezip );
           Comp_Zip_Prc(info_zip, info_rezip);
         end if;
       else
-        Put_Line("  ** Error: archive not found: " & arg_zip);
+        Ada.Text_IO.Put_Line("  ** Error: archive not found: " & arg_zip);
       end if;
     end;
   end loop;
