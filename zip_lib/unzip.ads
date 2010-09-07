@@ -87,12 +87,11 @@ package UnZip is
   type FS_routines_type is record
     Create_Path            : Create_Path_proc;
     Set_Time_Stamp         : Set_Time_Stamp_proc;
-    Directory_Separator    : Character;
     Compose_File_Name      : Compose_func;
     Set_ZTime_Stamp        : Set_ZTime_Stamp_proc; -- alt. to Set_Time_Stamp
   end record;
 
-  null_routines: constant FS_routines_type:= (null,null,'\',null,null);
+  null_routines: constant FS_routines_type:= (null,null,null,null);
 
 
   ----------------------------------

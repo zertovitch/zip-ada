@@ -54,7 +54,7 @@ procedure UnZipAda is
   password, exdir: String( 1..1024 );
   pass_len, exdir_len: Natural:= 0;
 
-  Directory_Separator: constant Character:= '/'; 
+  Directory_Separator: constant Character:= '/';
   -- '/' is also accepted by Windows
 
   function Add_extract_directory(File_Name : String) return String is
@@ -81,7 +81,6 @@ procedure UnZipAda is
   My_FS_routines: constant FS_routines_type:=
    ( Create_Path         => Ada.Directories.Create_Path'Access, -- Ada 2005
      Set_Time_Stamp      => Set_Time_Stamp,
-     Directory_Separator => Directory_Separator,
      Compose_File_Name   => Compose_File_Name'Unrestricted_Access,
      others              => null
    );

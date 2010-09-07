@@ -79,14 +79,17 @@ package body UnZip is
         -- Not only the name, also a path.
         -- In that case, we may need to create parts of the path.
         declare
-          c: constant Character:=
-            file_system_routines.Directory_Separator;
+          Directory_Separator: constant Character:= '/';
+          -- The '/' separator is also recognized by Windows' routines,
+          -- so we can just use it as a standard. See the discussion started
+          -- in July 2010 in the Ada Comment mailing list about it
+          -- for the 2012 standard.
           path: String:= composed_name(composed_name'First..idx-1);
         begin
           -- Set the file separator recognized by the O.S.
           for i in path'Range loop
             if path(i)='\' or path(i)='/' then
-              path(i):= c;
+              path(i):= Directory_Separator;
             end if;
           end loop;
           file_system_routines.Create_Path( path );

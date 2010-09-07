@@ -80,7 +80,6 @@ procedure UnZipAda is
   My_FS_routines: constant FS_routines_type:=
    ( Create_Path         => null, -- Ada.Directories.Create_Path'Access, -- Ada 2005
      Set_Time_Stamp      => Set_Time_Stamp,
-     Directory_Separator => Directory_Separator,
      Compose_File_Name   => null, -- Compose_File_Name'Unrestricted_Access
      others              => null
    );
