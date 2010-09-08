@@ -1,3 +1,8 @@
+--
+-- "Reduce" method - probabilistic reduction with a Markov chain.
+-- See package specification for details. 
+--
+
 -- Change log:
 --
 --  7-Feb-2009: GdM: added a cache for LZ77 output to make 2nd phase faster

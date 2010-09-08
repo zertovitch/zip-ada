@@ -1,15 +1,18 @@
--- Just for fun, playing with the old Zip Reduce format...
+-- Just for fun, playing with the old Zip "Reduce" format...
 --
--- Reduce combines LZ77 with a probabilistic using a Markov chain.
--- The format has a single block for the whole file :-(.
+-- "Reduce" combines the LZ77 method with a probabilistic
+-- predictor using a Markov chain.
 --
--- NB: this compressor works in two passes, the first one
---     serving to compute the exact Markov matrix for the whole
+-- The format has a single block, then a single matrix,
+-- for the whole data to be compressed :-(.
+--
+-- NB: this compressor works in two passes, the first pass
+--     serving to compute the exact optimal Markov matrix for the whole
 --     data to be compressed. Hence, it is slow. However,
 --     we cache the last n=LZ_cache_size bytes compressed by LZ77.
---     The result is optimal - within the constraints of that format:
---     one block, poor encoding of compressed data and of the
---     compression structure (the Markov matrix).
+--     The result is optimal within the constraints of that format
+--     (one block, poor encoding of compressed data and of the
+--     compression structure, the Markov matrix itself).
 --
 -- Author: G. de Montmollin, January 2009
 --
@@ -23,5 +26,5 @@ private procedure Zip.Compress.Reduce(
   reduction_factor: Positive;
   CRC             : in out Interfaces.Unsigned_32; -- only updated here
   output_size     : out File_size_type;
-  compression_ok  : out Boolean -- indicates compressed <= uncompressed
+  compression_ok  : out Boolean -- indicates when compressed <= uncompressed
 );
