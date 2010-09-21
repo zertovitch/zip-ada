@@ -4,6 +4,7 @@ with Ada.Characters.Handling;
 with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;
 with Ada.IO_Exceptions;
+with Ada.Strings.Fixed;
 
 package body Zip is
 
@@ -698,9 +699,12 @@ package body Zip is
   -- Just there as helper for Ada 95 only systems
   --
   function Exists(name:String) return Boolean is
-    use Ada.Text_IO;
+    use Ada.Text_IO, Ada.Strings.Fixed;
     f: File_Type;
   begin
+    if Index(name, "*") > 0 then
+      return False;
+    end if;
     Open(f,In_File,name, Form => Ada.Strings.Unbounded.To_String (Form_For_IO_Open_N_Create));
     Close(f);
     return True;
