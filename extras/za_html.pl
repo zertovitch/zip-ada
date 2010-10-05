@@ -280,9 +280,25 @@ sub create_footer
   local ($adafile) = shift;
   local ($string) = "";
   $string = "</PRE>" if ($adafile ne "");
-  return $string . "<br><font color=#fef0de>
+  return $string . "<br><font color=#fcf0dc>
   Zip-Ada: Ada library for zip archive files (.zip).
-  Ada programming.</font></BODY></HTML>\n";
+  Ada programming.</font>
+  </BODY></HTML>\n";
+}
+
+sub create_ada_frame_footer
+{
+  local ($adafile) = shift;
+  local ($string) = "";
+  $string = "</PRE>" if ($adafile ne "");
+  return $string . "<br><font color=#feebdd>
+  Zip-Ada: Ada library for zip archive files (.zip).
+  Ada programming.</font>
+  <hr>
+  <foNt face=\"Calibri, Arial\">Some news about Zip-Ada and other related Ada projects
+  <a target=_blank href=http://gautiersblog.blogspot.com/search/label/Ada%20programming>on this blog</a>.
+  </foNt>
+  </BODY></HTML>\n";
 }
 
 #########
@@ -841,7 +857,7 @@ sub output_file
       $lineno ++;
   }
   
-  print OUTPUT &create_footer ($filename);
+  print OUTPUT &create_ada_frame_footer ($filename);
   close (OUTPUT);
   return 1;
 }
