@@ -697,7 +697,13 @@ procedure ReZip is
         "; writing data -"
       );
       -- * Summary outputs
-      Put(summary,"<tr><td bgcolor=lightgrey><tt>" & unique_name & "</tt></td>");
+      Put(summary,
+        "<tr><td>" &
+        Trim(Integer'Image(total_choice.count),Left) &
+        -- '/' &
+        -- Trim(Integer'Image(Zip.Entries(zi)),Left) &
+        "</td>" &
+        "<td bgcolor=lightgrey><tt>" & unique_name & "</tt></td>");
       for a in Approach loop
         if always_consider(a) then
           if not consider(a) then
@@ -843,7 +849,10 @@ procedure ReZip is
       );
     end if;
     Put_Line(summary, "<table border=1 cellpadding=1 cellspacing=1>");
-    Put(summary, "<tr bgcolor=lightyellow><td align=right valign=top><b>Approach:</b></td>");
+    Put(summary,
+      "<tr bgcolor=lightyellow><td></td>"&
+      "<td align=right valign=top><b>Approach:</b></td>"
+    );
     for a in Approach loop
       if always_consider(a) then
         if a in External then
@@ -853,7 +862,10 @@ procedure ReZip is
       end if;
     end loop;
     Put_Line(summary, "</tr>");
-    Put(summary, "<tr bgcolor=lightyellow><td bgcolor=lightgrey valign=bottom><b>File name:</b></td>");
+    Put(summary,
+      "<tr bgcolor=lightyellow><td></td>"&
+      "<td bgcolor=lightgrey valign=bottom><b>File name:</b></td>"
+    );
     for a in Approach loop
       if always_consider(a) then
         case a is
@@ -924,7 +936,7 @@ procedure ReZip is
       end if;
     end loop;
     -- Report total bytes
-    Put(summary,"<tr><td><b>T<small>OTAL BYTES</small></b></td>");
+    Put(summary,"<tr><td></td><td><b>T<small>OTAL BYTES</small></b></td>");
     for a in Approach loop
       if always_consider(a) then
         Put(summary,
@@ -954,7 +966,7 @@ procedure ReZip is
     end if;
     Put_Line(summary, "</td></tr>");
     -- Report total files per approach
-    Put(summary,"<tr><td><b>T<small>OTAL FILES</small></b></td>");
+    Put(summary,"<tr><td></td><td><b>T<small>OTAL FILES</small></b></td>");
     for a in Approach loop
       if always_consider(a) then
         Put(summary,
@@ -970,7 +982,7 @@ procedure ReZip is
     );
     Put_Line(summary, "</td></tr>");
     -- Report total saved bytes per approach
-    Put(summary,"<tr><td><b>T<small>OTAL SAVED BYTES</small></b></td>");
+    Put(summary,"<tr><td></td><td><b>T<small>OTAL SAVED BYTES</small></b></td>");
     for a in Approach loop
       if always_consider(a) then
         Put(summary,

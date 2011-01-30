@@ -346,18 +346,18 @@ To do
 
 To do further
 =============
-  - Zip.Compress with a strong compression
   - Make a public access to UnZip.Decompress, as a zlib proxy
-  - support other recent formats incorporated into the .zip format
+  - Zip.Compress with a strong compression - see next item...
+  - Support other recent formats incorporated into the .zip format
       (see appnote.txt) 
-      - LZMA: 7-Zip sources, C/LzmaDec.c
+      - LZMA: 7z / 7-Zip sources and SDK: C/LzmaDec.c
+              Pascal version: http://www.birtles.org.uk/programming/
       - PPMd
 
 Note on portability
 ===================
 
 Portability is unconditional and unrestricted!
-
 If you still have doubts, here is a list of OS/CPU/Compiler
 combinations where Zip-Ada was reported to be in use:
 
