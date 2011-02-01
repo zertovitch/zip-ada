@@ -1,6 +1,6 @@
 
 package body Dual_IO is
-  
+
    Log_open : Boolean:= False;
 
    Log_text : Text_IO.File_type;
@@ -89,7 +89,7 @@ package body Dual_IO is
      Check_Log;
      Text_IO.Put( Log_text, Item );
    end Put;
-   
+
    --------------------------
    -- Strings Input-Output --
    --------------------------
@@ -119,7 +119,7 @@ package body Dual_IO is
      Text_IO.Get_Line( S, L );               -- *in*  Standard
      Check_Log;
      Text_IO.Put_Line( Log_text, S(1..L) );  -- *out* Log
-     Item(1..L):= S(1..L);
+     Item(Item'First..Item'First+L-1):= S(1..L);
      Last:= L;
    end Get_Line;
 
@@ -132,9 +132,9 @@ package body Dual_IO is
    end Put_Line;
 
    package body Integer_IO is
-   
+
       package TIIO is new Text_IO.Integer_IO( Num );
-    
+
       procedure Get(Item  : out Num;
                     Width : in  Field := 0) is
         I: Num;
@@ -159,7 +159,7 @@ package body Dual_IO is
    package body Float_IO is
 
       package TFIO is new Text_IO.Float_IO( Num );
-    
+
       procedure Get(Item  : out Num;
                     Width : in  Field := 0) is
         I: Num;
@@ -169,7 +169,7 @@ package body Dual_IO is
         TFIO.Put( Log_text, I );  -- *out* Log
         Item:= I;
       end Get;
-    
+
       procedure Put(Item : in Num;
                     Fore : in Field := Default_Fore;
                     Aft  : in Field := Default_Aft;
@@ -185,7 +185,7 @@ package body Dual_IO is
    package body Fixed_IO is
 
       package TXIO is new Text_IO.Fixed_IO( Num );
-    
+
       procedure Get(Item  : out Num;
                     Width : in  Field := 0) is
         I: Num;
@@ -195,7 +195,7 @@ package body Dual_IO is
         TXIO.Put( Log_text, I );  -- *out* Log
         Item:= I;
       end Get;
-    
+
       procedure Put(Item : in Num;
                     Fore : in Field := Default_Fore;
                     Aft  : in Field := Default_Aft;
@@ -205,13 +205,13 @@ package body Dual_IO is
         Check_Log;
         TXIO.Put( Log_text, Item, Fore, Aft, Exp );
       end Put;
-    
+
    end Fixed_IO;
 
    package body Decimal_IO is
 
       package TDIO is new Text_IO.Decimal_IO( Num );
-   
+
       procedure Get
         (Item  : out Num;
          Width : in Field := 0) is
@@ -222,7 +222,7 @@ package body Dual_IO is
         TDIO.Put( Log_text, I );  -- *out* Log
         Item:= I;
       end Get;
-   
+
       procedure Put
         (Item : in Num;
          Fore : in Field := Default_Fore;
@@ -233,11 +233,11 @@ package body Dual_IO is
         Check_Log;
         TDIO.Put( Log_text, Item, Fore, Aft, Exp );
       end Put;
- 
+
    end Decimal_IO;
 
    package body Modular_IO is
-   
+
       package TMIO is new Text_IO.Modular_IO( Num );
 
       procedure Get
@@ -250,7 +250,7 @@ package body Dual_IO is
         TMIO.Put( Log_text, I, Width );  -- *out* Log
         Item:= I;
       end Get;
-   
+
       procedure Put
         (Item  : in Num;
          Width : in Field := Default_Width;
@@ -260,11 +260,11 @@ package body Dual_IO is
         Check_Log;
         TMIO.Put( Log_text, Item, Width, Base );
       end Put;
-   
+
    end Modular_IO;
 
    package body Enumeration_IO is
-    
+
       package TEIO is new Text_IO.Enumeration_IO( Enum );
 
       procedure Get(Item : out Enum) is
@@ -275,7 +275,7 @@ package body Dual_IO is
         TEIO.Put( Log_text, I );  -- *out* Log
         Item:= I;
       end Get;
-    
+
       procedure Put(Item  : in Enum;
                     Width : in Field    := Default_Width;
                     Set   : in Type_Set := Default_Setting) is
