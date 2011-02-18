@@ -487,10 +487,11 @@ package body UnZip.Decompress is
       is
         source,part,remain: Integer;
       begin
-        if some_trace and then distance > 32768+3 then
+        if full_trace or (some_trace and then distance > 32768+3) then
           Ada.Text_IO.Put(
-            "(big distance=" & Integer'Image(distance) &
-            " length=" & Integer'Image(length) & ")" );
+            "DLE(distance=" & Integer'Image(distance) &
+            " length=" & Integer'Image(length) & ")"
+          );
         end if;
         source:= index - distance;
         remain:= length;
@@ -1456,9 +1457,9 @@ package body UnZip.Decompress is
               W:= W + 1;
               UnZ_IO.Flush_if_full(W);
 
-            when 15 =>     -- End of block (EOB)
+            when 15 =>     -- End of block (EOB, code 256)
               if full_trace then
-                Ada.Text_IO.Put_Line("Exit  Inflate_codes, e=15 EOB");
+                Ada.Text_IO.Put_Line("Exit  Inflate_codes, e=15 -> EOB");
               end if;
               exit main_loop;
 
@@ -1480,7 +1481,6 @@ package body UnZip.Decompress is
                 CTE := CTE.next_table( UnZ_IO.Bit_buffer.Read(E) )'Access;
               end loop;
               UnZ_IO.Bit_buffer.Dump( CTE.bits );
-
               UnZ_IO.Copy(
                 distance => CTE.n + UnZ_IO.Bit_buffer.Read_and_dump(E),
                 length   => length,

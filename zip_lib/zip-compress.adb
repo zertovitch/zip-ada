@@ -21,7 +21,8 @@
 
 with Zip.CRC,
      Zip.Compress.Shrink,
-     Zip.Compress.Reduce;
+     Zip.Compress.Reduce,
+     Zip.Compress.Deflate;
 
 package body Zip.Compress is
 
@@ -48,7 +49,6 @@ package body Zip.Compress is
     user_aborting: Boolean;
     idx_in:  constant Positive:= Index(input);
     idx_out: constant Positive:= Index(output);
-    reduction_factor: Positive;
     compression_ok: Boolean;
     first_feedback: Boolean:= True;
   begin
@@ -111,17 +111,27 @@ package body Zip.Compress is
         );
         zip_type:= 1; -- "Shrink" method
       --
-      when Reduce_1 .. Reduce_4 =>
-        reduction_factor:=
-          1 + Compression_Method'Pos(method) - Compression_Method'Pos(Reduce_1);
+      when Reduction_Method =>
         Zip.Compress.Reduce(
           input, output, input_size_known, input_size, feedback,
-          reduction_factor,
+          method,
           CRC,
           output_size,
           compression_ok
         );
-        zip_type:= 1 + Unsigned_16(reduction_factor);
+        zip_type:= 2 + Unsigned_16(
+          Compression_Method'Pos(method) -
+          Compression_Method'Pos(Reduce_1)
+        );
+      when Deflation_Method =>
+        Zip.Compress.Deflate(
+          input, output, input_size_known, input_size, feedback,
+          method,
+          CRC,
+          output_size,
+          compression_ok
+        );
+        zip_type:= 8;
     end case;
     CRC:= Zip.CRC.Final(CRC);
     --

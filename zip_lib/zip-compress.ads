@@ -32,8 +32,14 @@ package Zip.Compress is
   type Compression_Method is
     (Store,
      Shrink,
-     Reduce_1, Reduce_2, Reduce_3, Reduce_4
+     Reduce_1, Reduce_2, Reduce_3, Reduce_4,
+     Deflate_Fixed
     );
+
+  subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
+
+  subtype Deflation_Method is Compression_Method range
+    Deflate_Fixed .. Deflate_Fixed;
 
   User_abort: exception;
 

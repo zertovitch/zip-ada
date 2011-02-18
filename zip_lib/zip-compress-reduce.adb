@@ -1,6 +1,6 @@
 --
 -- "Reduce" method - probabilistic reduction with a Markov chain.
--- See package specification for details. 
+-- See package specification for details.
 --
 
 -- Change log:
@@ -19,12 +19,14 @@ procedure Zip.Compress.Reduce
   input_size_known: Boolean;
   input_size      : File_size_type;
   feedback        : Feedback_proc;
-  reduction_factor: Positive;
+  method          : Reduction_Method;
   CRC             : in out Interfaces.Unsigned_32; -- only updated here
   output_size     : out File_size_type;
   compression_ok  : out Boolean -- indicates compressed < uncompressed
 )
 is
+  reduction_factor: constant Positive:=
+    1 + Compression_Method'Pos(method) - Compression_Method'Pos(Reduce_1);
   use Zip_Streams;
 
   DLE_code: constant:= 144;
@@ -295,7 +297,7 @@ is
     exp_size, min_size: Float;
     bits_min: Bit_range;
 
-  begin
+  begin -- Build_Followers
     if not use_probas then
       Slen:= (others => 0);
       return;
@@ -370,13 +372,13 @@ is
   using_LZ77: Boolean;
   Derail_LZ77: exception;
 
-  -- Possible ranges for distance and length encoding
+  -- Possible ranges for LZ distance and length encoding
   -- in the Zip-Reduce format:
 
-  subtype length_range is
+  subtype Length_range is
     Integer range 4 .. 2**(8-reduction_factor)+257;
 
-  subtype distance_range is
+  subtype Distance_range is
     Integer range 1 .. (2**reduction_factor)*256;
 
   --        max length  max dist
@@ -450,7 +452,8 @@ is
     Threshold          : constant := 3;
 
     -- if the DLE coding doesn't fit the format constraints, we
-    -- need to decode before the probabilistic reduction
+    -- need to decode it as a simple sequence of litterals
+    -- before the probabilistic reduction
 
     type Text_Buffer is array ( 0..String_buffer_size+Look_Ahead-1 ) of Byte;
     Text_Buf: Text_Buffer;
@@ -508,13 +511,13 @@ is
       R:= (R+1) mod String_buffer_size;
     end Write_normal_byte;
 
-    procedure Write_code( distance, length: Integer ) is
+    procedure Write_DL_code( distance, length: Integer ) is
       Copy_start: constant Natural:= (R - distance) mod String_buffer_size;
       len: constant Integer:= length - 3;
       dis: constant Integer:= distance - 1;
       dis_upper: Byte;
     begin
-      if distance in distance_range and length in length_range then
+      if distance in Distance_range and length in Length_range then
         Write_raw_byte(DLE_code);
         dis_upper:= Byte((dis / 256) * upper_shift);
         -- Encode length and upper part of distance
@@ -538,13 +541,13 @@ is
           Write_normal_byte( Text_Buf((Copy_start+K) mod String_buffer_size) );
         end loop;
       end if;
-    end Write_code;
+    end Write_DL_code;
 
     procedure My_LZ77 is
       new LZ77(
         String_buffer_size, Look_Ahead, Threshold,
         Read_byte, More_bytes,
-        Write_normal_byte, Write_code
+        Write_normal_byte, Write_DL_code
       );
 
     procedure Finish_Cache is

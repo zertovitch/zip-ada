@@ -296,7 +296,7 @@ sub create_ada_frame_footer
   Ada programming.</font>
   <hr>
   <foNt face=\"Calibri, Arial\">Some news about Zip-Ada and other related Ada projects
-  <a target=_blank href=http://gautiersblog.blogspot.com/search/label/Ada%20programming>on this blog</a>.
+  <a target=_blank href=http://gautiersblog.blogspot.com/search/label/Ada>on Gautier's blog</a>.
   </foNt>
   </BODY></HTML>\n";
 }
