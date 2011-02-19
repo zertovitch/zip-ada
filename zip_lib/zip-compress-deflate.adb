@@ -3,10 +3,16 @@
 --
 -- See package specification for details.
 --
-
+-- To do:
+--  - dynamic compression structures
+--  - compute cost/benefit of each DLE encoding (versus string of litterals)
+--
 -- Change log:
 --
--- 17-Feb-2011: Created
+-- 19-Feb-2011: All distance and length codes implemented.
+-- 18-Feb-2011: First version working with Deflate fixed and restricted
+--                distance & length codes.
+-- 17-Feb-2011: Created.
 
 with Interfaces; use Interfaces;
 with Zip.LZ77, Zip.CRC;
@@ -180,8 +186,8 @@ is
     end More_bytes;
 
     -- LZ77 params
-    Look_Ahead         : constant Integer:= 31; -- !! find adequate value
-    String_buffer_size : constant := 2**12; -- 2**n optimizes "mod" to "and"
+    Look_Ahead         : constant Integer:= 258;
+    String_buffer_size : constant := 2**15; -- 2**n optimizes "mod" to "and"
     Threshold          : constant := 3;
 
     -- if the DLE coding doesn't fit the format constraints, we
@@ -273,8 +279,8 @@ is
       Copy_start: constant Natural:= (R - distance) mod String_buffer_size;
       -- Possible ranges for distance and length encoding
       -- in the Zip-Deflate format:
-      subtype Length_range is Integer range 3 .. 18; -- 258 !!
-      subtype Distance_range is Integer range 1 .. 16; -- 32768 !!
+      subtype Length_range is Integer range 3 .. 258;
+      subtype Distance_range is Integer range 1 .. 32768;
     begin
       if distance in Distance_range and length in Length_range then
         -- put('('&distance'img & ',' & length'img&')');
@@ -292,14 +298,27 @@ is
         --  262   0     8     270   2   23-26    278   4   83-98
         --  263   0     9     271   2   27-30    279   4   99-114
         --  264   0    10     272   2   31-34    280   4  115-130
+        --
         case Length_range(length) is
-          when 3..10 =>
-            Put_code( descr_lit_len(254+length) );
-            -- Code 257..264, with no extra bit
-          when 11..18 =>
-            Put_code( descr_lit_len( 265 + (length-11) / 2 ));
-            -- Code 265..268 with 1 extra bit
-            Put_code( U32((length-11) mod 2), 1);
+          when 3..10 => -- Codes 257..264, with no extra bit
+            Put_code( descr_lit_len( 257 + length-3 ) );
+          when 11..18 => -- Codes 265..268, with 1 extra bit
+            Put_code( descr_lit_len( 265 + (length-11) / 2 ) );
+            Put_code( U32((length-11) mod 2), 1 );
+          when 19..34 => -- Codes 269..272, with 2 extra bits
+            Put_code( descr_lit_len( 269 + (length-19) / 4 ) );
+            Put_code( U32((length-19) mod 4), 2 );
+          when 35..66 => -- Codes 273..276, with 3 extra bits
+            Put_code( descr_lit_len( 273 + (length-35) / 8 ) );
+            Put_code( U32((length-35) mod 8), 3 );
+          when 67..130 => -- Codes 277..280, with 4 extra bits
+            Put_code( descr_lit_len( 277 + (length-67) / 16 ) );
+            Put_code( U32((length-67) mod 16), 4 );
+          when 131..257 => -- Codes 281..284, with 5 extra bits
+            Put_code( descr_lit_len( 281 + (length-131) / 32 ) );
+            Put_code( U32((length-131) mod 32), 5 );
+          when 258 => -- Code 285, with no extra bit
+            Put_code( descr_lit_len( 285 ) );
         end case;
         --                            Distance Codes
         --                            --------------
@@ -314,18 +333,49 @@ is
         --   5   1   7,8    13   5   97-128   21    9 1537-2048   29   13 24577-32768
         --   6   2   9-12   14   6  129-192   22   10 2049-3072
         --   7   2  13-16   15   6  193-256   23   10 3073-4096
+        --
         case Distance_range(distance) is
-          when 1..4 =>
+          when 1..4 => -- Codes 0..3, with no extra bit
             Put_code( descr_dis(distance-1) );
-            -- Code with no extra bit
-          when 5..8 =>
-            Put_code( descr_dis( 4 + (distance-5) / 2 ));
-            -- Code with 1 extra bit
-            Put_code( U32((distance-5) mod 2), 1);
-          when 9..16 =>
-            Put_code( descr_dis( 6 + (distance-9) / 4 ));
-            -- Code with 2 extra bits
-            Put_code( U32((distance-9) mod 4), 2);
+          when 5..8 => -- Codes 4..5, with 1 extra bit
+            Put_code( descr_dis( 4 + (distance-5) / 2 ) );
+            Put_code( U32((distance-5) mod 2), 1 );
+          when 9..16 => -- Codes 6..7, with 2 extra bits
+            Put_code( descr_dis( 6 + (distance-9) / 4 ) );
+            Put_code( U32((distance-9) mod 4), 2 );
+          when 17..32 => -- Codes 8..9, with 3 extra bits
+            Put_code( descr_dis( 8 + (distance-17) / 8 ) );
+            Put_code( U32((distance-17) mod 8), 3 );
+          when 33..64 => -- Codes 10..11, with 4 extra bits
+            Put_code( descr_dis( 10 + (distance-33) / 16 ) );
+            Put_code( U32((distance-33) mod 16), 4 );
+          when 65..128 => -- Codes 12..13, with 5 extra bits
+            Put_code( descr_dis( 12 + (distance-65) / 32 ) );
+            Put_code( U32((distance-65) mod 32), 5 );
+          when 129..256 => -- Codes 14..15, with 6 extra bits
+            Put_code( descr_dis( 14 + (distance-129) / 64 ) );
+            Put_code( U32((distance-129) mod 64), 6 );
+          when 257..512 => -- Codes 16..17, with 7 extra bits
+            Put_code( descr_dis( 16 + (distance-257) / 128 ) );
+            Put_code( U32((distance-257) mod 128), 7 );
+          when 513..1024 => -- Codes 18..19, with 8 extra bits
+            Put_code( descr_dis( 18 + (distance-513) / 256 ) );
+            Put_code( U32((distance-513) mod 256), 8 );
+          when 1025..2048 => -- Codes 20..21, with 9 extra bits
+            Put_code( descr_dis( 20 + (distance-1025) / 512 ) );
+            Put_code( U32((distance-1025) mod 512), 9 );
+          when 2049..4096 => -- Codes 22..23, with 10 extra bits
+            Put_code( descr_dis( 22 + (distance-2049) / 1024 ) );
+            Put_code( U32((distance-2049) mod 1024), 10 );
+          when 4097..8192 => -- Codes 24..25, with 11 extra bits
+            Put_code( descr_dis( 24 + (distance-4097) / 2048 ) );
+            Put_code( U32((distance-4097) mod 2048), 11 );
+          when 8193..16384 => -- Codes 26..27, with 12 extra bits
+            Put_code( descr_dis( 26 + (distance-8193) / 4096 ) );
+            Put_code( U32((distance-8193) mod 4096), 12 );
+          when 16385..32768 => -- Codes 28..29, with 13 extra bits
+            Put_code( descr_dis( 28 + (distance-16385) / 8192 ) );
+            Put_code( U32((distance-16385) mod 8192), 13 );
         end case;
         -- Expand in the circular text buffer to have it up to date
         for K in 0..length-1 loop

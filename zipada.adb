@@ -182,6 +182,6 @@ begin
     Put_Line("Usage: zipada [options] archive[.zip] file(s)");
     New_Line;
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
-    -- Put_Line("          -df    : deflate with fixed block (weak)");
+    Put_Line("          -df    : deflate, with one fixed block");
   end if;
 end ZipAda;

@@ -1,5 +1,3 @@
--- *** Bogus Deflate package (so far...) ***
-
 -- The "Deflate" method combines the LZ77 compression method with some Hufman
 -- encoding gymnastics.
 --

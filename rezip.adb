@@ -171,6 +171,7 @@ procedure ReZip is
     original,
     shrink,
     reduce_1, reduce_2, reduce_3, reduce_4,
+    deflate_f,
     external_1, external_2, external_3, external_4,
     external_5, external_6, external_7
   );
@@ -181,11 +182,12 @@ procedure ReZip is
     range external_1 .. Approach'Last;
 
   Approach_to_Method: constant array(Internal) of Zip.Compress.Compression_Method:=
-    (shrink   => Zip.Compress.shrink,
-     reduce_1 => Zip.Compress.reduce_1,
-     reduce_2 => Zip.Compress.reduce_2,
-     reduce_3 => Zip.Compress.reduce_3,
-     reduce_4 => Zip.Compress.reduce_4
+    (shrink    => Zip.Compress.shrink,
+     reduce_1  => Zip.Compress.reduce_1,
+     reduce_2  => Zip.Compress.reduce_2,
+     reduce_3  => Zip.Compress.reduce_3,
+     reduce_4  => Zip.Compress.reduce_4,
+     deflate_f => Zip.Compress.deflate_fixed
     );
 
   type Packer_info is record
@@ -543,6 +545,7 @@ procedure ReZip is
         return; -- directories are useless entries!
       end if;
       total_choice.count:= total_choice.count + 1;
+      Dual_IO.Close_and_Append_Log; -- have an up to date copy on file system
       Dual_IO.Put_Line(deco);
       Dual_IO.Put_Line(
         "  Processing " &
