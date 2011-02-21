@@ -118,16 +118,17 @@ begin
         -- Options
         declare
           opt: constant String:= arg(arg'First+1..arg'Last) & ' ';
-          op2: constant String:= opt(opt'First..opt'First+1);
         begin
-          if op2 = "er" then
+          if opt(opt'First..opt'First+1) = "er" then
             case opt(opt'First+2) is
               when '1'    => method:= reduce_1;
               when '2'    => method:= reduce_2;
               when '3'    => method:= reduce_3;
               when others => method:= reduce_4;
             end case;
-          elsif op2 = "df" then
+          elsif opt(opt'First..opt'First+2) = "esh" then
+            method:= shrink;
+          elsif opt(opt'First..opt'First+2) = "edf" then
             method:= deflate_fixed;
           end if;
         end;
@@ -182,6 +183,7 @@ begin
     Put_Line("Usage: zipada [options] archive[.zip] file(s)");
     New_Line;
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
-    Put_Line("          -df    : deflate, with one fixed block");
+    Put_Line("          -esh   : ""shrink"" (LZW algorithm)");
+    Put_Line("          -edf   : ""deflate"", with one fixed block");
   end if;
 end ZipAda;

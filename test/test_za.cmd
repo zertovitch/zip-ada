@@ -12,12 +12,12 @@ copy /b ..\z*.exe .
 
 set files=*.ad* *.txt *.exe *.cmd *.bmp $random$.zip
 
-zipada      test_zash %files%
+zipada -esh test_zash %files%
 zipada -er1 test_zar1 %files%
 zipada -er2 test_zar2 %files%
 zipada -er3 test_zar3 %files%
 zipada -er4 test_zar4 %files%
-zipada -df  test_zadf %files%
+zipada -edf test_zadf %files%
 zip         test_zzip %files%
 
 echo.
