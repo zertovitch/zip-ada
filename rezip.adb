@@ -178,6 +178,7 @@ procedure ReZip is
 
   subtype Internal is Approach
     range Approach'Succ(Approach'First) .. Approach'Pred(external_1);
+  subtype Internal_deflate is Approach range deflate_f .. deflate_f;
   subtype External is Approach
     range external_1 .. Approach'Last;
 
@@ -816,7 +817,8 @@ procedure ReZip is
         always_consider(a):= True;
       elsif deflate_only then
         always_consider(a):=
-          a in External and then ext(a).pkzm = Zip.deflate;
+          a in Internal_deflate or
+          (a in External and then ext(a).pkzm = Zip.deflate);
       elsif fast_decomp then
         always_consider(a):=
           a = shrink or

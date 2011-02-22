@@ -129,6 +129,10 @@ begin
               when '3'    => method:= reduce_3;
               when others => method:= reduce_4;
             end case;
+          elsif opt(opt'First..opt'First+2) = "esh" then
+            method:= shrink;
+          elsif opt(opt'First..opt'First+2) = "edf" then
+            method:= deflate_fixed;
           end if;
         end;
       elsif not zip_name_set then
@@ -182,5 +186,7 @@ begin
     Put_Line("Usage: zipada [options] archive[.zip] file(s)");
     New_Line;
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
+    Put_Line("          -esh   : ""shrink"" (LZW algorithm)");
+    Put_Line("          -edf   : ""deflate"", with one fixed block");
   end if;
 end ZipAda;
