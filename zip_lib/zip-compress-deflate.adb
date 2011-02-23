@@ -18,7 +18,7 @@ with Interfaces; use Interfaces;
 with Zip.LZ77, Zip.CRC;
 with Zip_Streams;
 
-with Ada.Text_IO;                       use Ada.Text_IO;
+-- with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure Zip.Compress.Deflate
  (input,
@@ -231,8 +231,9 @@ is
       Put_code(U32(lc.code), lc.length);
     end Put_code;
 
+    -- Current tree descriptor for Litteral, EOB or Length encoding
     descr_lit_len: Huff_descriptor(0..287);
-    -- current tree descriptor for litteral or length encoding
+    -- Current tree descriptor for Distances
     descr_dis: Huff_descriptor(0..29);
 
     -------------------------------------------------------
@@ -241,19 +242,23 @@ is
 
     procedure Prepare_Huffman_codes is
     begin
-      if method = deflate_fixed then
+      if method = Deflate_Fixed then
+        -- > Litteral, EOB and Length codes tree:
+        --  * Litterals for bytes:
         for i in 0 .. 143 loop
           descr_lit_len(i):= (length => 8, code => 16#30#+i);
         end loop;
-        for i in 144 .. 255 loop
+        for i in 144 .. 255 loop -- 144 = 16#90#
           descr_lit_len(i):= (length => 9, code => 16#190#+(i-144));
         end loop;
+        --  * Special codes: End-Of-Block (256), and length codes
         for i in 256 .. 279 loop
           descr_lit_len(i):= (length => 7, code => i-256);
         end loop;
         for i in 280 .. 287 loop
           descr_lit_len(i):= (length => 8, code => 16#C0#+(i-280));
         end loop;
+        -- > Distance codes tree:
         for i in 0 .. 29 loop
           descr_dis(i):= (length => 5, code => i);
         end loop;
@@ -266,7 +271,7 @@ is
       Invert(descr_dis);
     end Prepare_Huffman_codes;
 
-    -- Write a normal, "clear-text", character (litteral)
+    -- Write a normal, "clear-text", 8-bit character (litteral)
     procedure Write_normal_byte( b: Byte ) is
     begin
       Put_code( descr_lit_len(Integer(b)) );
@@ -408,11 +413,17 @@ is
     else
       X_Percent := 0;
     end if;
-    -- !! only for 1 fixed block
-    Put_code(code => 1, code_size => 1); -- signals last block
-    Put_code(code => 1, code_size => 2); -- signals a fixed block
+    if method = Deflate_Fixed then
+      -- We have only one compressed data block,
+      -- then it is already the last one.
+      Put_code(code => 1, code_size => 1); -- signals last block
+      -- Fixed (predefined) compression structure
+      Put_code(code => 1, code_size => 2); -- signals a fixed block
+    end if;
     My_LZ77;
-    Put_code(descr_lit_len(256)); -- signals end of block (EOB)
+    if method = Deflate_Fixed then
+      Put_code(descr_lit_len(256)); -- signals end of block (EOB)
+    end if;
   end Encode;
 
 begin

@@ -8,11 +8,14 @@
 --------------
 -- Library for manipulating archive files in the Zip format
 --
--- Pure Ada 95 code, 100% portable: OS-, CPU- and compiler- independent.
+-- Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
+--
+-- Version / date / download info: see the version, reference, web strings
+--   defined at the end of the public part of this package.
 
 -- Legal licensing note:
 
---  Copyright (c) 1999..2010 Gautier de Montmollin
+--  Copyright (c) 1999..2011 Gautier de Montmollin
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal
@@ -290,8 +293,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "39.3";
-  reference : constant String:= "2011";
+  version   : constant String:= "40";
+  reference : constant String:= "1-Mar-2011";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

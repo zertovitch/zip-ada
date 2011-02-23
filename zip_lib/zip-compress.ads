@@ -33,7 +33,8 @@ package Zip.Compress is
     (Store,
      Shrink,
      Reduce_1, Reduce_2, Reduce_3, Reduce_4,
-     Deflate_Fixed
+     Deflate_Fixed  -- compress the data in one block with
+                    -- predefined compression structures.
     );
 
   subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
