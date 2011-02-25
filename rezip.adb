@@ -13,7 +13,8 @@
 --
 -- To do:
 --  * In order to facilitate customization, ReZip could have a config file (
---    http://sf.net/projects/ini-files/ ) to store external packer program names.
+--    http://sf.net/projects/ini-files/ ) to store external packer program
+--    names. See ZipMax as an example...
 --
 -- External programs used (feel free to customize/add/remove):
 --   7-Zip, KZip, Zip (info-zip), DeflOpt
@@ -261,18 +262,18 @@ procedure ReZip is
        -- Zip 3.0 or later
       (U("7z"),                                      -- 7-Zip 4.64 or later
          U("7-Zip"), U("http://7-zip.org/"),
-         U("a -tzip -mx9 -mm=deflate -mfb=258 -mpass=15 -mmc=10000"),
-         NN, 20, Zip.deflate, 0, False),
+         U("a -tzip -mm=deflate -mfb=258 -mpass=#RAND#(7,15) -mmc=10000"),
+         NN, 20, Zip.deflate, 0, True),
       (U("7z"),
          U("7-Zip"), NN,
-         U("a -tzip -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
+         U("a -tzip -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
          NN, 21, Zip.deflate_e, 0, False),
       (U("kzip"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
          U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit, True),
       (U("kzip"),U("KZIP"),NN,
          U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_limit, True),
       (U("kzip"),U("KZIP"),NN,
-         U("/rn /b#RAND#(128,1024)"), NN, 20, Zip.deflate, kzip_limit, True)
+         U("/rn /b#RAND#(128,2048)"), NN, 20, Zip.deflate, kzip_limit, True)
     );
 
   defl_opt: constant Zipper_specification:=
@@ -312,6 +313,8 @@ procedure ReZip is
     end if;
   end Call_external;
 
+  seed_iterator: Natural;
+
   procedure Call_external_expanded(
     packer    :        String;
     options   :        String;
@@ -347,7 +350,11 @@ procedure ReZip is
                   package Rnd is new Ada.Numerics.Discrete_Random(rng);
                   gen: Rnd.Generator;
                 begin
-                  Rnd.Reset(gen);
+                  Rnd.Reset(gen, seed_iterator);
+                  -- On GNAT the clock-based Reset is too coarse
+                  -- (gives many times the same seed when called with small
+                  -- time intervals).
+                  seed_iterator:= seed_iterator + 1;
                   n:= Rnd.Random(gen);
                 end;
                 replace:= U(Trim(Integer'Image(n),Left));
@@ -522,6 +529,7 @@ procedure ReZip is
       deco: constant String:= "-->-->-->----" & unique_name'Length * '-';
       mth: Zip.PKZip_method;
       consider: Approach_Filtering;
+      gain: Integer_64;
       --
       procedure Winner_color is
       begin
@@ -690,14 +698,14 @@ procedure ReZip is
       total(choice).count:= total(choice).count + 1;
       total_choice.uncomp_size:=
         total_choice.uncomp_size + Unsigned_64(uncomp_size);
-      total(choice).saved:=
-        total(choice).saved + Integer_64(e.info(original).size) - Integer_64(e.info(choice).size);
-      total_choice.saved:=
-        total_choice.saved + Integer_64(e.info(original).size) - Integer_64(e.info(choice).size);
+      gain:= Integer_64(e.info(original).size) - Integer_64(e.info(choice).size);
+      total(choice).saved:= total(choice).saved + gain;
+      total_choice.saved:= total_choice.saved + gain;
       --
       Dual_IO.New_Line;
       Dual_IO.Put(
         "    Phase 3:  Winner is " & Img(choice) &
+        "; gain in bytes:" & Integer_64'Image(gain) &
         "; writing data -"
       );
       -- * Summary outputs
@@ -1071,6 +1079,11 @@ procedure ReZip is
     -- "xxx" returned in all cases: "xxx.ext", "xxx." or "xxx"
   end Remove_ext;
 
+  -- This is for randomizing the above seed_iterator.
+  subtype Seed_Range is Integer range 1..1_000_000;
+  package Rnd_seed is new Ada.Numerics.Discrete_Random(Seed_range);
+  gen_seed: Rnd_seed.Generator;
+
 begin
   Blurb;
   if Argument_Count = 0 then
@@ -1096,6 +1109,8 @@ begin
     Ada.Text_IO.New_Line;
     return;
   end if;
+  Rnd_seed.Reset(gen_seed); -- 1x clock-based randomization
+  seed_iterator:= Rnd_seed.Random(gen_seed);
   Flexible_temp_files.Initialize;
   for i in 1..Argument_Count loop
     declare

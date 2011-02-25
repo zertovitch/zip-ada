@@ -247,16 +247,20 @@ is
         --  * Litterals for bytes:
         for i in 0 .. 143 loop
           descr_lit_len(i):= (length => 8, code => 16#30#+i);
+          -- Defines codes from 16#030# to 16#0BF#
         end loop;
         for i in 144 .. 255 loop -- 144 = 16#90#
           descr_lit_len(i):= (length => 9, code => 16#190#+(i-144));
+          -- Defines codes from 16#190# to 16#1FF#
         end loop;
         --  * Special codes: End-Of-Block (256), and length codes
         for i in 256 .. 279 loop
           descr_lit_len(i):= (length => 7, code => i-256);
+          -- Defines codes from 16#000# to 16#017#
         end loop;
         for i in 280 .. 287 loop
           descr_lit_len(i):= (length => 8, code => 16#C0#+(i-280));
+          -- Defines codes from 16#0C0# to 16#0C7#
         end loop;
         -- > Distance codes tree:
         for i in 0 .. 29 loop

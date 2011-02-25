@@ -310,9 +310,17 @@ begin
 
     if z_options( test_only ) then
       Put_Line("Test: no error found");
+      Put_Line("Zip format(s) used:");
+      for f in Summary.format_used'Range loop
+        if Summary.format_used(f) > 0 then
+          Put_Line(
+            "  " & Summary.Nice_image(f) & "..." &
+            Integer'Image(Summary.format_used(f))
+          );
+        end if;
+      end loop;
       New_Line;
     end if;
-
 
     Put("Time elapsed : ");
     Put( Float( seconds ), 4, 2, 0 );

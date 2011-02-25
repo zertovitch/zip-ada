@@ -1,11 +1,10 @@
 ------------------------------------------------------------------------------
 --  File:            Myteldat.adb or My_tell_data.adb
---  Description:     part of Unzipada demo
+--  Description:     Part of UnZipAda demo
 ------------------------------------------------------------------------------
 
 with UnZip, My_dots, Summary;
 
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Text_IO;                       use Ada.Text_IO;
 
 with Interfaces;                        use Interfaces;
@@ -45,15 +44,7 @@ begin
       Put(' ');
     end loop;
   end;
-  Put(' ');
-  declare
-    meth: constant String:= To_Lower(UnZip.pkzip_method'Image(method));
-  begin
-    Put( meth );
-    for l in meth'Length .. UnZip.pkzip_method'Width loop
-      Put(' ');
-    end loop;
-  end;
+  Put(' ' & Summary.Nice_image(method));
   MIO.Put(compressed_bytes  , 10);
   if uncompressed_bytes = 0 then
     Put(" :         ");
@@ -72,6 +63,6 @@ begin
     Summary.total_uncompressed + uncompressed_bytes;
   Summary.total_compressed:=
     Summary.total_compressed   + compressed_bytes;
-  Summary.Total_Entries:=
-    Summary.Total_Entries + 1;
+  Summary.total_entries:= Summary.total_entries + 1;
+  Summary.format_used(method):= Summary.format_used(method) + 1;
 end My_tell_data;
