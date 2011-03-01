@@ -247,20 +247,26 @@ is
         --  * Litterals for bytes:
         for i in 0 .. 143 loop
           descr_lit_len(i):= (length => 8, code => 16#30#+i);
-          -- Defines codes from 16#030# to 16#0BF#
+          -- Defines codes from 2#00_110000# to 2#10_111111#
+          -- i.e. codes beginning with "00", "01" or "10"; from the codes
+          -- beginning with "00" we take only those followed by "11".
+          -- "00_00", "00_01", "00_10" are covered by the 3rd group below.
         end loop;
         for i in 144 .. 255 loop -- 144 = 16#90#
           descr_lit_len(i):= (length => 9, code => 16#190#+(i-144));
-          -- Defines codes from 16#190# to 16#1FF#
+          -- Defines codes from 2#11_001_0000# to 2#11_111_1111#
+          -- i.e. codes beginning with "11" except those followed
+          -- by "000", which are defined in the 4th group below.
         end loop;
         --  * Special codes: End-Of-Block (256), and length codes
         for i in 256 .. 279 loop
           descr_lit_len(i):= (length => 7, code => i-256);
-          -- Defines codes from 16#000# to 16#017#
+          -- Defines codes from 2#00_00_000# to 2#00_10_111#
         end loop;
         for i in 280 .. 287 loop
           descr_lit_len(i):= (length => 8, code => 16#C0#+(i-280));
-          -- Defines codes from 16#0C0# to 16#0C7#
+          -- Defines codes from 2#11_000_000# to 2#11_000_111#
+          -- i.e. all codes beginning with "11_000"
         end loop;
         -- > Distance codes tree:
         for i in 0 .. 29 loop
