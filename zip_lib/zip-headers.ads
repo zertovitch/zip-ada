@@ -59,6 +59,8 @@ package Zip.Headers is
   -- PKZIP local file header, in front of every file in archive - PK34 --
   -----------------------------------------------------------------------
 
+  Language_Encoding_Flag_Bit : constant := 2**11;
+
   type Local_File_Header is record
     -- PK34                                --  1.. 4
     needed_extract_version : Unsigned_16;  --  5.. 6

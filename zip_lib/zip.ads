@@ -155,7 +155,8 @@ package Zip is
       uncomp_size    : File_size_type;
       crc_32         : Interfaces.Unsigned_32;
       date_time      : Time;
-      method         : PKZip_method
+      method         : PKZip_method;
+      bit_flag       : Interfaces.Unsigned_16;
     );
   procedure Traverse_verbose( z: Zip_info );
 
@@ -323,6 +324,7 @@ private
     crc_32      : Interfaces.Unsigned_32;
     date_time   : Time;
     method      : PKZip_method;
+    bit_flag    : Interfaces.Unsigned_16;
   end record;
 
   type p_String is access String;

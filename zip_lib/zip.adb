@@ -155,6 +155,7 @@ package body Zip is
       crc_32     : Unsigned_32;
       date_time  : Time;
       method     : PKZip_method;
+      bit_flag   : Unsigned_16;
       node       : in out p_Dir_node
       )
     is
@@ -170,13 +171,14 @@ package body Zip is
              uncomp_size => uncomp_size,
              crc_32      => crc_32,
              date_time   => date_time,
-             method      => method
+             method      => method,
+             bit_flag    => bit_flag
              )
           );
       elsif name > node.name then
-        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, node.right );
+        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, bit_flag, node.right );
       elsif name < node.name then
-        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, node.left );
+        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, bit_flag, node.left );
       else
         raise Duplicate_name;
       end if;
@@ -225,6 +227,7 @@ package body Zip is
                 crc_32      => header.short_info.dd.crc_32,
                 date_time   => header.short_info.file_timedate,
                 method      => Method_from_code(header.short_info.zip_type),
+                bit_flag    => header.short_info.bit_flag,
                 node        => p );
         -- Since the files are usually well ordered, the tree as inserted
         -- is very unbalanced; we need to rebalance it from time to time
@@ -370,7 +373,8 @@ package body Zip is
           p.uncomp_size,
           p.crc_32,
           p.date_time,
-          p.method
+          p.method,
+          p.bit_Flag
         );
         Traverse(p.right);
       end if;
