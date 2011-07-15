@@ -35,6 +35,13 @@ package body Dual_IO is
      Log_open:= False;
    end Close_Log;
 
+   procedure Close_and_Append_Log is
+     log_name: constant String:= Text_IO.Name( Log_text );
+   begin
+     Close_Log;
+     Append_Log( log_name);
+   end Close_and_Append_Log;
+
    procedure Flush is
    begin
      Text_IO.Flush;

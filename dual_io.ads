@@ -9,8 +9,9 @@
 --          genuine Text_IO for Files and String I/O.
 --
 --
---  Date/version:    7-Jul-2001; 4-Jul-2001
---  Author:          G. de Montmollin. Try gdm@mydiax.ch, gdemont@hotmail.com
+--  Date/version:    2-Feb-2011; 7-Jul-2001; 4-Jul-2001
+--  Author:          G. de Montmollin
+--                   http://gautiersblog.blogspot.com/
 ------------------------------------------------------------------------------
 
 
@@ -38,6 +39,9 @@ package Dual_IO is
    procedure Create_Log (Name : in String);
    procedure Append_Log (Name : in String);
    procedure Close_Log;
+
+   -- Close and reopen: have an up to date copy on file system
+   procedure Close_and_Append_Log;
 
    -- Buffer control
    procedure Flush;
@@ -103,21 +107,21 @@ package Dual_IO is
      (Item : in String);
 
    -- Generic package for Input-Output of Integer Types
-    
+
    generic
       type Num is range <>;
    package Integer_IO is
-    
+
       Default_Width : Field := Num'Width;
       Default_Base  : Number_Base := 10;
-    
+
       procedure Get(Item  : out Num;
                     Width : in  Field := 0);
-    
+
       procedure Put(Item  : in Num;
                     Width : in Field := Default_Width;
                     Base  : in Number_Base := Default_Base);
-    
+
    end Integer_IO;
 
    -- Generic package for Input-Output of Real Types
@@ -125,14 +129,14 @@ package Dual_IO is
    generic
       type Num is digits <>;
    package Float_IO is
-    
+
       Default_Fore : Field := 2;
       Default_Aft  : Field := Num'Digits-1;
       Default_Exp  : Field := 3;
-    
+
       procedure Get(Item  : out Num;
                     Width : in  Field := 0);
-    
+
       procedure Put(Item : in Num;
                     Fore : in Field := Default_Fore;
                     Aft  : in Field := Default_Aft;
@@ -142,14 +146,14 @@ package Dual_IO is
    generic
       type Num is delta <>;
    package Fixed_IO is
-    
+
       Default_Fore : Field := Num'Fore;
       Default_Aft  : Field := Num'Aft;
       Default_Exp  : Field := 0;
-    
+
       procedure Get(Item  : out Num;
                     Width : in  Field := 0);
-    
+
       procedure Put(Item : in Num;
                     Fore : in Field := Default_Fore;
                     Aft  : in Field := Default_Aft;
@@ -163,54 +167,54 @@ package Dual_IO is
       type Num is delta <> digits <>;
 
    package Decimal_IO is
-   
+
       Default_Fore : Field := Num'Fore;
       Default_Aft  : Field := Num'Aft;
       Default_Exp  : Field := 0;
-   
+
       procedure Get
         (Item  : out Num;
          Width : in Field := 0);
-   
+
       procedure Put
         (Item : in Num;
          Fore : in Field := Default_Fore;
          Aft  : in Field := Default_Aft;
          Exp  : in Field := Default_Exp);
- 
+
    end Decimal_IO;
-   
+
    -- Generic package for Input-Output of Modular Types
 
    generic
       type Num is mod <>;
-   
+
    package Modular_IO is
-   
+
       Default_Width : Field := Num'Width;
       Default_Base  : Number_Base := 10;
-   
+
       procedure Get
         (Item  : out Num;
          Width : in Field := 0);
-   
+
       procedure Put
         (Item  : in Num;
          Width : in Field := Default_Width;
          Base  : in Number_Base := Default_Base);
-   
+
    end Modular_IO;
    -- Generic package for Input-Output of Enumeration Types
-    
+
    generic
       type Enum is (<>);
    package Enumeration_IO is
-    
+
       Default_Width   : Field := 0;
       Default_Setting : Type_Set := Text_IO.Upper_Case;
-    
+
       procedure Get(Item : out Enum);
-    
+
       procedure Put(Item  : in Enum;
                     Width : in Field    := Default_Width;
                     Set   : in Type_Set := Default_Setting);

@@ -156,7 +156,7 @@ package Zip is
       crc_32         : Interfaces.Unsigned_32;
       date_time      : Time;
       method         : PKZip_method;
-      bit_flag       : Interfaces.Unsigned_16;
+      bit_flag       : Interfaces.Unsigned_16
     );
   procedure Traverse_verbose( z: Zip_info );
 
