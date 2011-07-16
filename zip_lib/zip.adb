@@ -148,37 +148,37 @@ package body Zip is
     case_sensitive : in  Boolean:= False)
   is
     procedure Insert(
-      name: String;
-      file_index : Ada.Streams.Stream_IO.Positive_Count;
+      name             : String;
+      file_index       : Ada.Streams.Stream_IO.Positive_Count;
       comp_size,
-      uncomp_size: File_size_type;
-      crc_32     : Unsigned_32;
-      date_time  : Time;
-      method     : PKZip_method;
-      bit_flag   : Unsigned_16;
-      node       : in out p_Dir_node
+      uncomp_size      : File_size_type;
+      crc_32           : Unsigned_32;
+      date_time        : Time;
+      method           : PKZip_method;
+      unicode_file_name: Boolean;
+      node             : in out p_Dir_node
       )
     is
     begin
       if node = null then
         node:= new Dir_node'
-          ( (name_len    => name'Length,
-             left        => null,
-             right       => null,
-             name        => name,
-             file_index  => file_index,
-             comp_size   => comp_size,
-             uncomp_size => uncomp_size,
-             crc_32      => crc_32,
-             date_time   => date_time,
-             method      => method,
-             bit_flag    => bit_flag
+          ( (name_len          => name'Length,
+             left              => null,
+             right             => null,
+             name              => name,
+             file_index        => file_index,
+             comp_size         => comp_size,
+             uncomp_size       => uncomp_size,
+             crc_32            => crc_32,
+             date_time         => date_time,
+             method            => method,
+             unicode_file_name => unicode_file_name
              )
           );
       elsif name > node.name then
-        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, bit_flag, node.right );
+        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.right );
       elsif name < node.name then
-        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, bit_flag, node.left );
+        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.left );
       else
         raise Duplicate_name;
       end if;
@@ -227,7 +227,9 @@ package body Zip is
                 crc_32      => header.short_info.dd.crc_32,
                 date_time   => header.short_info.file_timedate,
                 method      => Method_from_code(header.short_info.zip_type),
-                bit_flag    => header.short_info.bit_flag,
+                unicode_file_name =>
+                  (header.short_info.bit_flag and
+                   Zip.Headers.Language_Encoding_Flag_Bit) /= 0,
                 node        => p );
         -- Since the files are usually well ordered, the tree as inserted
         -- is very unbalanced; we need to rebalance it from time to time
@@ -374,7 +376,7 @@ package body Zip is
           p.crc_32,
           p.date_time,
           p.method,
-          p.bit_Flag
+          p.unicode_file_name
         );
         Traverse(p.right);
       end if;

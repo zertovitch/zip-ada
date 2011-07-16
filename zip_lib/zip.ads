@@ -149,14 +149,14 @@ package Zip is
   -- compressed entry.
   generic
     with procedure Action(
-      name           : String; -- 'name' is compressed entry's name
-      file_index     : Positive;
-      comp_size      : File_size_type;
-      uncomp_size    : File_size_type;
-      crc_32         : Interfaces.Unsigned_32;
-      date_time      : Time;
-      method         : PKZip_method;
-      bit_flag       : Interfaces.Unsigned_16
+      name             : String; -- 'name' is compressed entry's name
+      file_index       : Positive;
+      comp_size        : File_size_type;
+      uncomp_size      : File_size_type;
+      crc_32           : Interfaces.Unsigned_32;
+      date_time        : Time;
+      method           : PKZip_method;
+      unicode_file_name: Boolean
     );
   procedure Traverse_verbose( z: Zip_info );
 
@@ -316,15 +316,15 @@ private
   type p_Dir_node is access Dir_node;
 
   type Dir_node(name_len: Natural) is record
-    left, right : p_Dir_node;
-    name        : String(1..name_len);
-    file_index  : Ada.Streams.Stream_IO.Positive_Count;
-    comp_size   : File_size_type;
-    uncomp_size : File_size_type;
-    crc_32      : Interfaces.Unsigned_32;
-    date_time   : Time;
-    method      : PKZip_method;
-    bit_flag    : Interfaces.Unsigned_16;
+    left, right      : p_Dir_node;
+    name             : String(1..name_len);
+    file_index       : Ada.Streams.Stream_IO.Positive_Count;
+    comp_size        : File_size_type;
+    uncomp_size      : File_size_type;
+    crc_32           : Interfaces.Unsigned_32;
+    date_time        : Time;
+    method           : PKZip_method;
+    unicode_file_name: Boolean;
   end record;
 
   type p_String is access String;
