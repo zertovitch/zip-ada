@@ -12,6 +12,7 @@
 -- Change log:
 -- ==========
 --
+-- 17-Jul-2011: JH : Added Set_Unicode_Name_Flag, Is_Unicode_Name
 -- 25-Nov-2009: GdM: Added an own time type -> it is possible to bypass Ada.Calendar
 -- 18-Jan-2009: GdM: Fixed Zip_Streams.Read which did read
 --                     only Item's first element
