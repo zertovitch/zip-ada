@@ -33,7 +33,7 @@ package Zip_Streams is
    -- Root_Zipstream_Type: root abstract stream type --
    ----------------------------------------------------
 
-   type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with null record;
+   type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with private;
    type Zipstream_Class is access all Root_Zipstream_Type'Class;
 
    -- Set the index on the stream
@@ -53,6 +53,11 @@ package Zip_Streams is
    -- this procedure returns the name of the stream
    function GetName(S : access Root_Zipstream_Type)
                     return String is abstract;
+
+   procedure Set_Unicode_Name_Flag (S     : access Root_Zipstream_Type;
+                                    Value : in Boolean);
+   function Is_Unicode_Name(S : access Root_Zipstream_Type)
+                            return Boolean;
 
    -- this procedure sets the ModificationTime of the stream
    procedure SetTime(S : access Root_Zipstream_Type;
@@ -137,6 +142,11 @@ private
    -- in zip archives. Subject to change, this is why this type is private.
 
    some_time: constant Time:= 16789 * 65536;
+
+   type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with
+      record
+         Is_Unicode_Name : Boolean := False;
+      end record;
 
    -- Unbounded Stream spec
    type Unbounded_Stream is new Root_Zipstream_Type with

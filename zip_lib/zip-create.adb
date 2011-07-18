@@ -96,8 +96,14 @@ package body Zip.Create is
       Info.Contains (Last).head.external_attributes               := 0;
       Info.Contains (Last).head.short_info.needed_extract_version :=
         10; -- Value put by Zip/PKZip
-      Info.Contains (Last).head.short_info.bit_flag               := 0;
-      Info.Contains (Last).head.short_info.file_timedate          :=
+      Info.Contains (Last).Head.Short_Info.Bit_Flag               := 0;
+      --\\
+      if Zip_Streams.Is_Unicode_Name (Stream) then
+         Info.Contains (Last).Head.Short_Info.Bit_Flag
+           := Info.Contains (Last).Head.Short_Info.Bit_Flag or Zip.Headers.Language_Encoding_Flag_Bit;
+      end if;
+      --//
+      Info.Contains (Last).Head.Short_Info.File_Timedate          :=
         GetTime (Stream);
       Info.Contains (Last).head.short_info.dd.uncompressed_size   :=
         Unsigned_32 (Size (Stream));

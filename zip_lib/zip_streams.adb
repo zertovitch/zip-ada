@@ -21,6 +21,21 @@ package body Zip_Streams is
      return Calendar.Convert(GetTime(S));
    end GetTime;
 
+   procedure Set_Unicode_Name_Flag (S     : access Root_Zipstream_Type;
+                                    Value : in Boolean)
+   is
+   begin
+      S.all.Is_Unicode_Name := Value;
+   end;
+
+   function Is_Unicode_Name(S : access Root_Zipstream_Type)
+                            return Boolean
+   is
+   begin
+      return S.all.Is_Unicode_Name;
+   end;
+
+
    ---------------------------------------------------------------------
    -- Unbounded_Stream: stream based on an in-memory Unbounded_String --
    ---------------------------------------------------------------------
