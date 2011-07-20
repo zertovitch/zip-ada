@@ -53,7 +53,7 @@ procedure ZipAda is
   end CutName;
 
   --  Final zipfile stream
-  MyStream : aliased ZipFile_Stream;
+  MyStream : aliased File_Zipstream;
   ZipFileStream : constant Zipstream_Class := MyStream'Unchecked_Access;
   Info: Zip.Create.Zip_Create_info;
 
@@ -157,7 +157,7 @@ begin
           -- NB: case insensitive
         elsif Zip.Exists(arg) then
           declare
-            InStream   : aliased ZipFile_Stream;
+            InStream   : aliased File_Zipstream;
             StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
           begin
             Set_Name (StreamFile, arg);

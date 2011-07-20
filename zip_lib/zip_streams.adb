@@ -59,12 +59,12 @@ package body Zip_Streams is
    ---------------------------------------------------------------------
    -- Unbounded_Stream: stream based on an in-memory Unbounded_String --
    ---------------------------------------------------------------------
-   procedure Get (Str : Unbounded_Stream; Unb : out Unbounded_String) is
+   procedure Get (Str : Memory_Zipstream; Unb : out Unbounded_String) is
    begin
       Unb := Str.Unb;
    end Get;
 
-   procedure Set (Str : in out Unbounded_Stream; Unb : Unbounded_String) is
+   procedure Set (Str : in out Memory_Zipstream; Unb : Unbounded_String) is
    begin
       Str.Unb := Null_Unbounded_String; -- clear the content of the stream
       Str.Unb := Unb;
@@ -72,7 +72,7 @@ package body Zip_Streams is
    end Set;
 
    procedure Read
-     (Stream : in out Unbounded_Stream;
+     (Stream : in out Memory_Zipstream;
       Item   : out Stream_Element_Array;
       Last   : out Stream_Element_Offset) is
    begin
@@ -99,7 +99,7 @@ package body Zip_Streams is
    max_chunk_size: constant:= 16 * 1024;
 
    procedure Write
-     (Stream : in out Unbounded_Stream;
+     (Stream : in out Memory_Zipstream;
       Item   : Stream_Element_Array)
    is
      I: Stream_Element_Offset:= Item'First;
@@ -134,7 +134,7 @@ package body Zip_Streams is
      end loop;
    end Write;
 
-   procedure Set_Index (S : access Unbounded_Stream; To : Positive) is
+   procedure Set_Index (S : access Memory_Zipstream; To : Positive) is
      I, chunk_size: Integer;
    begin
      if To > Length(S.Unb) then
@@ -149,17 +149,17 @@ package body Zip_Streams is
      S.Loc := To;
    end Set_Index;
 
-   function Size (S : access Unbounded_Stream) return Integer is
+   function Size (S : access Memory_Zipstream) return Integer is
    begin
       return Length(S.Unb);
    end Size;
 
-   function Index (S : access Unbounded_Stream) return Integer is
+   function Index (S : access Memory_Zipstream) return Integer is
    begin
       return S.Loc;
    end Index;
 
-   function End_Of_Stream (S : access Unbounded_Stream) return Boolean is
+   function End_Of_Stream (S : access Memory_Zipstream) return Boolean is
    begin
       if Size(S) < Index(S) then
          return True;
@@ -170,27 +170,27 @@ package body Zip_Streams is
 
 
    --------------------------------------------
-   -- ZipFile_Stream: stream based on a file --
+   -- File_Zipstream: stream based on a file --
    --------------------------------------------
-   procedure Open (Str : in out ZipFile_Stream; Mode : File_Mode) is
+   procedure Open (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
       Ada.Streams.Stream_IO.Open(Str.File, Mode, To_String(Str.Name),
                                  Form => To_String (Zip.Form_For_IO_Open_N_Create));
    end Open;
 
-   procedure Create (Str : in out ZipFile_Stream; Mode : File_Mode) is
+   procedure Create (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
       Ada.Streams.Stream_IO.Create(Str.File, Mode, To_String (Str.Name),
                                  Form => To_String (Zip.Form_For_IO_Open_N_Create));
    end Create;
 
-   procedure Close (Str : in out ZipFile_Stream) is
+   procedure Close (Str : in out File_Zipstream) is
    begin
       Ada.Streams.Stream_IO.Close(Str.File);
    end Close;
 
    procedure Read
-     (Stream : in out ZipFile_Stream;
+     (Stream : in out File_Zipstream;
       Item   : out Stream_Element_Array;
       Last   : out Stream_Element_Offset)
    is
@@ -199,28 +199,28 @@ package body Zip_Streams is
    end Read;
 
    procedure Write
-     (Stream : in out ZipFile_Stream;
+     (Stream : in out File_Zipstream;
       Item   : Stream_Element_Array) is
    begin
       Ada.Streams.Stream_IO.Write( Stream.File, Item);
    end Write;
 
-   procedure Set_Index (S : access ZipFile_Stream; To : Positive) is
+   procedure Set_Index (S : access File_Zipstream; To : Positive) is
    begin
       Ada.Streams.Stream_IO.Set_Index ( S.File, Positive_Count(To));
    end Set_Index;
 
-   function Size (S : access ZipFile_Stream) return Integer is
+   function Size (S : access File_Zipstream) return Integer is
    begin
       return Integer (Ada.Streams.Stream_IO.Size(S.File));
    end Size;
 
-   function Index (S : access ZipFile_Stream) return Integer is
+   function Index (S : access File_Zipstream) return Integer is
    begin
       return Integer (Ada.Streams.Stream_IO.Index(S.File));
    end Index;
 
-   function End_Of_Stream (S : access ZipFile_Stream) return Boolean is
+   function End_Of_Stream (S : access File_Zipstream) return Boolean is
    begin
       return Ada.Streams.Stream_IO.End_Of_File(S.File);
    end End_Of_Stream;

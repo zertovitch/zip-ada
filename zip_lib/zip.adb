@@ -257,11 +257,11 @@ package body Zip is
 
   procedure Load
    (info           : out Zip_info;
-    from           : in  String;
+    from           : in  String; -- Zip file name
     case_sensitive : in  Boolean:= False)
   is
     use Zip_Streams;
-    MyStream   : aliased ZipFile_Stream;
+    MyStream   : aliased File_Zipstream;
     StreamFile : constant Zipstream_Class:= MyStream'Unchecked_Access;
   begin
     Set_Name (StreamFile, from);

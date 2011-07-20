@@ -57,15 +57,15 @@ package Zip is
   -- fast searching                                                    --
   -----------------------------------------------------------------------
 
-  -- from file version
+  -- Load from a file
 
   procedure Load(
     info           : out Zip_info;
-    from           : in  String;
+    from           : in  String; -- Zip file name
     case_sensitive : in  Boolean:= False
   );
 
-  -- from stream version
+  -- Load from a stream
 
   procedure Load(
     info           : out Zip_info;

@@ -1,20 +1,22 @@
 -- Contributed by ITEC - NXP Semiconductors
 -- June 2008
 --
--- The Zip_Streams package defines an abstract stream type with name, time and
--- an index for random access.
+-- The Zip_Streams package defines an abstract stream
+-- type, Root_Zipstream_Type, with name, time and an index for random access.
 -- In addition, this package provides two ready-to-use derivations:
 --
---   - Unbounded_Stream, for using in-memory streaming
+--   - Memory_Zipstream, for using in-memory streaming
 --
---   - ZipFile_Stream, for accessing files
+--   - File_Zipstream, for accessing files
 --
 -- Change log:
 -- ==========
 --
--- 20-Jul-2011: GdM: - Underscore in Get_Name, Set_Name, Get_Time, Set_Time
---                   - The 4 methods above are not anymore abstract
---                   - Name and Modification_Time fields moved to Root_Zipstream_Type
+-- 20-Jul-2011: GdM/JH: - Underscore in Get_Name, Set_Name, Get_Time, Set_Time
+--                      - The 4 methods above are not anymore abstract
+--                      - Name and Modification_Time fields moved to Root_Zipstream_Type
+--                      - Unbounded_Stream becomes Memory_Zipstream
+--                      - ZipFile_Stream becomes File_Zipstream
 -- 17-Jul-2011: JH : Added Set_Unicode_Name_Flag, Is_Unicode_Name
 -- 25-Nov-2009: GdM: Added an own time type -> it is possible to bypass Ada.Calendar
 -- 18-Jan-2009: GdM: Fixed Zip_Streams.Read which did read
@@ -106,30 +108,34 @@ package Zip_Streams is
    ---------------------------------------------------------------------
    -- Unbounded_Stream: stream based on an in-memory Unbounded_String --
    ---------------------------------------------------------------------
-   type Unbounded_Stream is new Root_Zipstream_Type with private;
+   type Memory_Zipstream is new Root_Zipstream_Type with private;
+   subtype Unbounded_Stream is Memory_Zipstream;
+   pragma Obsolescent (Unbounded_Stream);
 
    -- Get the complete value of the stream
-   procedure Get (Str : Unbounded_Stream; Unb : out Unbounded_String);
+   procedure Get (Str : Memory_Zipstream; Unb : out Unbounded_String);
 
    -- Set a value in the stream, the index will be set
    -- to null and old data in the stream will be lost.
-   procedure Set (Str : in out Unbounded_Stream; Unb : Unbounded_String);
+   procedure Set (Str : in out Memory_Zipstream; Unb : Unbounded_String);
 
    --------------------------------------------
-   -- ZipFile_Stream: stream based on a file --
+   -- File_Zipstream: stream based on a file --
    --------------------------------------------
-   type ZipFile_Stream is new Root_Zipstream_Type with private;
+   type File_Zipstream is new Root_Zipstream_Type with private;
+   subtype ZipFile_Stream is File_Zipstream;
+   pragma Obsolescent (ZipFile_Stream);
 
-   -- Open the ZipFile_Stream
+   -- Open the File_Zipstream
    -- PRE: Str.Name must be set
-   procedure Open (Str : in out ZipFile_Stream; Mode : File_Mode);
+   procedure Open (Str : in out File_Zipstream; Mode : File_Mode);
 
    -- Creates a file on the disk
    -- PRE: Str.Name must be set
-   procedure Create (Str : in out ZipFile_Stream; Mode : File_Mode);
+   procedure Create (Str : in out File_Zipstream; Mode : File_Mode);
 
-   -- Close the ZipFile_Stream
-   procedure Close (Str : in out ZipFile_Stream);
+   -- Close the File_Zipstream
+   procedure Close (Str : in out File_Zipstream);
 
    --------------------------
    -- Routines around Time --
@@ -176,64 +182,64 @@ private
          Is_Unicode_Name   : Boolean := False;
       end record;
 
-   -- Unbounded Stream spec
-   type Unbounded_Stream is new Root_Zipstream_Type with
+   -- Memory_Zipstream spec
+   type Memory_Zipstream is new Root_Zipstream_Type with
       record
          Unb : Unbounded_String;
          Loc : Integer := 1;
       end record;
    -- Read data from the stream.
    procedure Read
-     (Stream : in out Unbounded_Stream;
+     (Stream : in out Memory_Zipstream;
       Item   : out Stream_Element_Array;
       Last   : out Stream_Element_Offset);
 
    -- write data to the stream, starting from the current index.
    -- Data will be overwritten from index is already available.
    procedure Write
-     (Stream : in out Unbounded_Stream;
+     (Stream : in out Memory_Zipstream;
       Item   : Stream_Element_Array);
 
    -- Set the index on the stream
-   procedure Set_Index (S : access Unbounded_Stream; To : Positive);
+   procedure Set_Index (S : access Memory_Zipstream; To : Positive);
 
    -- returns the index of the stream
-   function Index (S : access Unbounded_Stream) return Integer;
+   function Index (S : access Memory_Zipstream) return Integer;
 
    -- returns the Size of the stream
-   function Size (S : access Unbounded_Stream) return Integer;
+   function Size (S : access Memory_Zipstream) return Integer;
 
    -- returns true if the index is at the end of the stream
-   function End_Of_Stream (S : access Unbounded_Stream) return Boolean;
+   function End_Of_Stream (S : access Memory_Zipstream) return Boolean;
 
 
-   -- ZipFile_Stream spec
-   type ZipFile_Stream is new Root_Zipstream_Type with
+   -- File_Zipstream spec
+   type File_Zipstream is new Root_Zipstream_Type with
       record
          File : File_Type;
       end record;
    -- Read data from the stream.
    procedure Read
-     (Stream : in out ZipFile_Stream;
+     (Stream : in out File_Zipstream;
       Item   : out Stream_Element_Array;
       Last   : out Stream_Element_Offset);
 
    -- write data to the stream, starting from the current index.
    -- Data will be overwritten from index is already available.
    procedure Write
-     (Stream : in out ZipFile_Stream;
+     (Stream : in out File_Zipstream;
       Item   : Stream_Element_Array);
 
    -- Set the index on the stream
-   procedure Set_Index (S : access ZipFile_Stream; To : Positive);
+   procedure Set_Index (S : access File_Zipstream; To : Positive);
 
    -- returns the index of the stream
-   function Index (S : access ZipFile_Stream) return Integer;
+   function Index (S : access File_Zipstream) return Integer;
 
    -- returns the Size of the stream
-   function Size (S : access ZipFile_Stream) return Integer;
+   function Size (S : access File_Zipstream) return Integer;
 
    -- returns true if the index is at the end of the stream
-   function End_Of_Stream (S : access ZipFile_Stream) return Boolean;
+   function End_Of_Stream (S : access File_Zipstream) return Boolean;
 
 end Zip_Streams;

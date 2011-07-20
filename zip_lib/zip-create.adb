@@ -16,10 +16,10 @@ package body Zip.Create is
          Set_Name (Info.Stream, Name);
       end if;
       --
-      -- If we have a real file (ZipFile_Stream or descendent), create the file too:
+      -- If we have a real file (File_Zipstream or descendent), create the file too:
       --
-      if Z_Stream.all in ZipFile_Stream'Class then
-        Zip_Streams.Create (ZipFile_Stream(Z_Stream.all), Ada.Streams.Stream_IO.Out_File);
+      if Z_Stream.all in File_Zipstream'Class then
+        Zip_Streams.Create (File_Zipstream(Z_Stream.all), Ada.Streams.Stream_IO.Out_File);
       end if;
    end Create;
 
@@ -152,7 +152,7 @@ package body Zip.Create is
                        -- adding
    )
    is
-      temp_zip_stream     : aliased ZipFile_Stream;
+      temp_zip_stream     : aliased File_Zipstream;
       acc_temp_zip_stream : constant Zipstream_Class := temp_zip_stream'Unchecked_Access;
       use Ada.Text_IO;
       fd: File_Type;
@@ -187,7 +187,7 @@ package body Zip.Create is
                          Name_in_archive : String
    )
    is
-     temp_zip_stream     : aliased Unbounded_Stream;
+     temp_zip_stream     : aliased Memory_Zipstream;
      acc_temp_zip_stream : constant Zipstream_Class := temp_zip_stream'Unchecked_Access;
    begin
      Set(temp_zip_stream, Contents);
@@ -228,10 +228,10 @@ package body Zip.Create is
       ed.disk_total_entries := ed.total_entries;
       Zip.Headers.Write (Info.Stream, ed);
       --
-      -- If we have a real file (ZipFile_Stream or descendent), close the file too:
+      -- If we have a real file (File_Zipstream or descendent), close the file too:
       --
-      if Info.Stream.all in ZipFile_Stream'Class then
-        Zip_Streams.Close (ZipFile_Stream(Info.Stream.all));
+      if Info.Stream.all in File_Zipstream'Class then
+        Zip_Streams.Close (File_Zipstream(Info.Stream.all));
       end if;
    end Finish;
 

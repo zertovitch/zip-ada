@@ -393,7 +393,7 @@ procedure ReZip is
     data_name: constant String:= Simple_Name(Temp_name(False,original));
     zi_ext: Zip.Zip_info;
     header: Zip.Headers.Local_File_Header;
-    MyStream   : aliased ZipFile_Stream;
+    MyStream   : aliased File_Zipstream;
     StreamFile : constant Zipstream_Class := MyStream'Unchecked_Access;
     cur_dir: constant String:= Current_Directory;
     size_memory: array(1..rand_stable) of Zip.File_size_type:= (others => 0);
@@ -496,11 +496,11 @@ procedure ReZip is
   is
     use type Zip.PKZip_method;
     zi: Zip.Zip_info;
-    MyStream   : aliased ZipFile_Stream;
+    MyStream   : aliased File_Zipstream;
     StreamFile : constant Zipstream_Class := MyStream'Unchecked_Access;
 
     list, e, curr: p_Dir_entry:= null;
-    repacked_zip_file   : aliased ZipFile_Stream;
+    repacked_zip_file   : aliased File_Zipstream;
     Streamrepacked_zip_file : constant Zipstream_Class := repacked_zip_file'Unchecked_Access;
     total: Packer_info_array:= (others => (0,0,0,0,0,NN,1));
     -- total(a).count counts the files where approach 'a' was optimal
@@ -522,9 +522,9 @@ procedure ReZip is
     procedure Process_one(unique_name: String) is
       comp_size  :  Zip.File_size_type;
       uncomp_size:  Zip.File_size_type;
-      File_in       : aliased ZipFile_Stream;
+      File_in       : aliased File_Zipstream;
       StreamFile_in : constant Zipstream_Class := File_in'Unchecked_Access;
-      File_out      : aliased ZipFile_Stream;
+      File_out      : aliased File_Zipstream;
       StreamFile_out: constant Zipstream_Class := File_out'Unchecked_Access;
       choice: Approach:= original;
       deco: constant String:= "-->-->-->----" & unique_name'Length * '-';
