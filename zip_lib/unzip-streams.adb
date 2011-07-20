@@ -202,7 +202,7 @@ package body UnZip.Streams is
     end if;
     if use_a_file then
       input_stream:= MyStream'Unchecked_Access;
-      SetName (input_stream , Zip.Zip_name(Archive_Info));
+      Set_Name (input_stream , Zip.Zip_name(Archive_Info));
       Open (MyStream, Ada.Streams.Stream_IO.In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_Stream(Archive_Info);

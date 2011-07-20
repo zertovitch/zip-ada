@@ -13,7 +13,7 @@ package body Zip.Create is
       Info.Stream := Z_Stream;
       Info.Compress := Compress;
       if Name /= "" then
-         SetName (Info.Stream, Name);
+         Set_Name (Info.Stream, Name);
       end if;
       --
       -- If we have a real file (ZipFile_Stream or descendent), create the file too:
@@ -25,7 +25,7 @@ package body Zip.Create is
 
    function Name(Info: Zip_Create_info) return String is
    begin
-     return GetName(Info.Stream);
+     return Get_Name(Info.Stream);
    end Name;
 
    procedure Dispose is new
@@ -63,7 +63,7 @@ package body Zip.Create is
                          Final_Method   :    out Natural)
    is
       mem1, mem2 : Integer := 1;
-      entry_name : String:= GetName (Stream);
+      entry_name : String:= Get_Name (Stream);
       Last: Positive;
    begin
       -- Appnote.txt, V. J. :
@@ -102,7 +102,7 @@ package body Zip.Create is
            := Info.Contains (Last).head.short_info.bit_flag or Zip.Headers.Language_Encoding_Flag_Bit;
       end if;
       Info.Contains (Last).head.short_info.file_timedate          :=
-        GetTime (Stream);
+        Get_Time (Stream);
       Info.Contains (Last).head.short_info.dd.uncompressed_size   :=
         Unsigned_32 (Size (Stream));
       Info.Contains (Last).head.short_info.filename_length        :=
@@ -158,11 +158,11 @@ package body Zip.Create is
       fd: File_Type;
    begin
      -- Read the file
-     SetName(acc_temp_zip_stream, Name);
+     Set_Name(acc_temp_zip_stream, Name);
      Open(temp_zip_stream, Ada.Streams.Stream_IO.In_File);
      -- Eventually we set a new name for archiving:
      if Name_in_archive /= "" then
-        SetName(acc_temp_zip_stream, Name_in_archive);
+        Set_Name(acc_temp_zip_stream, Name_in_archive);
      end if;
      -- Stuff into the .zip archive:
      Add_Stream (Info, acc_temp_zip_stream);
@@ -191,7 +191,7 @@ package body Zip.Create is
      acc_temp_zip_stream : constant Zipstream_Class := temp_zip_stream'Unchecked_Access;
    begin
      Set(temp_zip_stream, Contents);
-     SetName(acc_temp_zip_stream, Name_in_archive);
+     Set_Name(acc_temp_zip_stream, Name_in_archive);
      Add_Stream (Info, acc_temp_zip_stream);
    end Add_String;
 

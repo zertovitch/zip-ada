@@ -416,7 +416,7 @@ procedure ReZip is
       -- Post processing of "deflated" entries with DeflOpt:
       Call_external(S(defl_opt.name), temp_zip);
       -- Now, rip
-      SetName (StreamFile, temp_zip);
+      Set_Name (StreamFile, temp_zip);
       Open (MyStream, In_File);
       Zip.Load( zi_ext, StreamFile, False );
       Rip_data(
@@ -640,9 +640,9 @@ procedure ReZip is
               mth:= Zip.Method_from_code(e.info(a).zfm);
               --
             when Internal =>
-              SetName (StreamFile_in, Temp_name(False,original));
+              Set_Name (StreamFile_in, Temp_name(False,original));
               Open (File_in, In_File);
-              SetName (StreamFile_out, Temp_name(True,a));
+              Set_Name (StreamFile_out, Temp_name(True,a));
               Create (File_out, Out_File);
               Zip.Compress.Compress_data
               (
@@ -835,11 +835,11 @@ procedure ReZip is
         always_consider(a):= a not in reduce_1..reduce_4;
       end if;
     end loop;
-    SetName (StreamFile, orig_name);
+    Set_Name (StreamFile, orig_name);
     Open (MyStream, In_File);
     Zip.Load( zi, StreamFile, True );
 
-    SetName (Streamrepacked_zip_file, repacked_name);
+    Set_Name (Streamrepacked_zip_file, repacked_name);
     Create(repacked_zip_file, Out_File);
     Create(summary, Out_File, log_name);
     Put_Line(summary,

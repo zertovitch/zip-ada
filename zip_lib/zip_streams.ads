@@ -48,11 +48,11 @@ package Zip_Streams is
    function Size (S : access Root_Zipstream_Type) return Integer is abstract;
 
    -- this procedure sets the name of the stream
-   procedure SetName(S : access Root_Zipstream_Type;
-                     Name : String) is abstract;
+   procedure Set_Name(S : access Root_Zipstream_Type;
+                      Name : String) is abstract;
 
    -- this procedure returns the name of the stream
-   function GetName(S : access Root_Zipstream_Type)
+   function Get_Name(S : access Root_Zipstream_Type)
                     return String is abstract;
 
    procedure Set_Unicode_Name_Flag (S     : access Root_Zipstream_Type;
@@ -61,18 +61,18 @@ package Zip_Streams is
                             return Boolean;
 
    -- this procedure sets the ModificationTime of the stream
-   procedure SetTime(S : access Root_Zipstream_Type;
-                     ModificationTime : Time) is abstract;
+   procedure Set_Time(S : access Root_Zipstream_Type;
+                      ModificationTime : Time) is abstract;
    -- same, with the standard Time type
-   procedure SetTime(S : Zipstream_Class;
-                     ModificationTime : Ada.Calendar.Time);
+   procedure Set_Time(S : Zipstream_Class;
+                      ModificationTime : Ada.Calendar.Time);
 
    -- this procedure returns the ModificationTime of the stream
-   function GetTime(S : access Root_Zipstream_Type)
-                    return Time is abstract;
+   function Get_Time(S : access Root_Zipstream_Type)
+                     return Time is abstract;
    -- same, with the standard Time type
-   function GetTime(S : Zipstream_Class)
-                    return Ada.Calendar.Time;
+   function Get_Time(S : Zipstream_Class)
+                     return Ada.Calendar.Time;
 
    -- returns true if the index is at the end of the stream, else false
    function End_Of_Stream (S : access Root_Zipstream_Type)
@@ -179,17 +179,17 @@ private
    function Size (S : access Unbounded_Stream) return Integer;
 
    -- sets the name of the stream
-   procedure SetName (S : access Unbounded_Stream; Name : String);
+   procedure Set_Name (S : access Unbounded_Stream; Name : String);
 
    -- returns the name of the stream
-   function GetName(S : access Unbounded_Stream) return String;
+   function Get_Name(S : access Unbounded_Stream) return String;
 
       -- this procedure sets the ModificationTime of the stream
-   procedure SetTime(S : access Unbounded_Stream;
-                     ModificationTime : Time);
+   procedure Set_Time(S : access Unbounded_Stream;
+                      ModificationTime : Time);
 
    -- this procedure returns the ModificationTime of the stream
-   function GetTime(S : access Unbounded_Stream) return Time;
+   function Get_Time(S : access Unbounded_Stream) return Time;
 
    -- returns true if the index is at the end of the stream
    function End_Of_Stream (S : access Unbounded_Stream) return Boolean;
@@ -224,17 +224,17 @@ private
    function Size (S : access ZipFile_Stream) return Integer;
 
    -- sets the name of the stream
-   procedure SetName (S : access ZipFile_Stream; Name : String);
+   procedure Set_Name (S : access ZipFile_Stream; Name : String);
 
    -- returns the name of the stream
-   function GetName(S : access ZipFile_Stream) return String;
+   function Get_Name(S : access ZipFile_Stream) return String;
 
       -- this procedure sets the ModificationTime of the stream
-   procedure SetTime(S : access ZipFile_Stream;
-                     ModificationTime : Time);
+   procedure Set_Time(S : access ZipFile_Stream;
+                      ModificationTime : Time);
 
    -- this procedure returns the ModificationTime of the stream
-   function GetTime(S : access ZipFile_Stream) return Time;
+   function Get_Time(S : access ZipFile_Stream) return Time;
 
    -- returns true if the index is at the end of the stream
    function End_Of_Stream (S : access ZipFile_Stream) return Boolean;

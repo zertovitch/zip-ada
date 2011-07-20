@@ -264,7 +264,7 @@ package body Zip is
     MyStream   : aliased ZipFile_Stream;
     StreamFile : constant Zipstream_Class:= MyStream'Unchecked_Access;
   begin
-    SetName (StreamFile, from);
+    Set_Name (StreamFile, from);
     begin
       Open (MyStream, Ada.Streams.Stream_IO.In_File);
     exception

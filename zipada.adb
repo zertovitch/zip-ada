@@ -61,7 +61,7 @@ procedure ZipAda is
     Put("  Adding ");
     declare
       maxlen: constant:= 24;
-      cut: constant String:= CutName( GetName(Stream), maxlen );
+      cut: constant String:= CutName( Get_Name(Stream), maxlen );
     begin
       Put( cut & (1 + maxlen - cut'Length) * ' ');
     end;
@@ -157,8 +157,8 @@ begin
             InStream   : aliased ZipFile_Stream;
             StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
           begin
-            SetName (StreamFile, arg);
-            SetTime (StreamFile, Ada.Directories.Modification_Time(arg));
+            Set_Name (StreamFile, arg);
+            Set_Time (StreamFile, Ada.Directories.Modification_Time(arg));
             Open (InStream, In_File);
             Add_1_Stream (StreamFile);
             Close (InStream);

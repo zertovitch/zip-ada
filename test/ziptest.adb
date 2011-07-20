@@ -46,13 +46,13 @@ begin
    RW_File.Read_File ("file1.txt", UnbFile1);
    -- Set a stream to the unbounded string
    Set (MyStream1, UnbFile1);
-   SetName(StreamFile1, "my_dir/file1_z.txt"); -- any name we like to store it with
+   Set_Name(StreamFile1, "my_dir/file1_z.txt"); -- any name we like to store it with
 
    -- Read the file2.txt directly (see also the specific Zip.Create.Add_File)
-   SetName(StreamFile2, "file2.txt");
+   Set_Name(StreamFile2, "file2.txt");
    Open (MyStream2, In_File);
    -- The following can be ommited if we want to keep 'file2.txt'
-   SetName(StreamFile2, "my_dir/file2_z.txt"); -- any name we like to store it with
+   Set_Name(StreamFile2, "my_dir/file2_z.txt"); -- any name we like to store it with
 
    --  Add stream to the list
    Add_Stream (Info2, StreamFile1);
@@ -68,7 +68,7 @@ begin
    Finish (Info2);
 
    Get (MyStream_memory, UnbZipFile);
-   RW_File.Write_File (GetName(acc_MyStream_memory), UnbZipFile);
+   RW_File.Write_File (Get_Name(acc_MyStream_memory), UnbZipFile);
 
 exception
    when Ada.IO_Exceptions.Name_Error =>

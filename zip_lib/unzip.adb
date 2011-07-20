@@ -455,7 +455,7 @@ package body UnZip is
     if feedback = null then
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
-    SetName (zip_file, from);
+    Set_Name (zip_file, from);
     Open (MyStream, In_File);
     Zip.Find_offset(
       zip_file,
@@ -503,7 +503,7 @@ package body UnZip is
     if feedback = null then
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
-    SetName (zip_file, from);
+    Set_Name (zip_file, from);
     Open (MyStream, In_File);
     Zip.Find_offset(
       zip_file,
@@ -547,7 +547,7 @@ package body UnZip is
     if feedback = null then
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
-    SetName (zip_file, from);
+    Set_Name (zip_file, from);
     Open (MyStream, In_File);
     Zip.Find_first_offset(zip_file, header_index); -- >= 13-May-2001
     -- We simply unzip everything sequentially, until the end:
@@ -632,7 +632,7 @@ package body UnZip is
   begin
     if use_a_file then
       input_stream:= MyStream'Unchecked_Access;
-      SetName (input_stream , Zip.Zip_name(from));
+      Set_Name (input_stream , Zip.Zip_name(from));
       Open (MyStream, Ada.Streams.Stream_IO.In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_stream(from);
@@ -687,7 +687,7 @@ package body UnZip is
   begin
     if use_a_file then
       input_stream:= MyStream'Unchecked_Access;
-      SetName (input_stream , Zip.Zip_name(from));
+      Set_Name (input_stream , Zip.Zip_name(from));
       Open (MyStream, Ada.Streams.Stream_IO.In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_stream(from);

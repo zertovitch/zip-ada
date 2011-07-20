@@ -9,30 +9,30 @@
 with Zip;
 package body Zip_Streams is
 
-   procedure SetTime(S : Zipstream_Class;
-                     ModificationTime : Ada.Calendar.Time) is
+   procedure Set_Time(S : Zipstream_Class;
+                      ModificationTime : Ada.Calendar.Time) is
    begin
-     SetTime(S, Calendar.Convert(ModificationTime));
-   end SetTime;
+     Set_Time(S, Calendar.Convert(ModificationTime));
+   end Set_Time;
 
-   function GetTime(S : Zipstream_Class)
-                    return Ada.Calendar.Time is
+   function Get_Time(S : Zipstream_Class)
+                     return Ada.Calendar.Time is
    begin
-     return Calendar.Convert(GetTime(S));
-   end GetTime;
+     return Calendar.Convert(Get_Time(S));
+   end Get_Time;
 
    procedure Set_Unicode_Name_Flag (S     : access Root_Zipstream_Type;
                                     Value : in Boolean)
    is
    begin
-      S.all.Is_Unicode_Name := Value;
+     S.all.Is_Unicode_Name := Value;
    end;
 
    function Is_Unicode_Name(S : access Root_Zipstream_Type)
                             return Boolean
    is
    begin
-      return S.all.Is_Unicode_Name;
+     return S.all.Is_Unicode_Name;
    end;
 
 
@@ -139,25 +139,25 @@ package body Zip_Streams is
       return S.Loc;
    end Index;
 
-   procedure SetName (S: access Unbounded_Stream; Name: String) is
+   procedure Set_Name (S: access Unbounded_Stream; Name: String) is
    begin
       S.Name := To_Unbounded_String(Name);
-   end SetName;
+   end Set_Name;
 
-   function GetName (S: access Unbounded_Stream) return String is
+   function Get_Name (S: access Unbounded_Stream) return String is
    begin
       return To_String(S.Name);
-   end GetName;
+   end Get_Name;
 
-   procedure SetTime (S: access Unbounded_Stream; ModificationTime: Time) is
+   procedure Set_Time (S: access Unbounded_Stream; ModificationTime: Time) is
    begin
       S.ModificationTime := ModificationTime;
-   end SetTime;
+   end Set_Time;
 
-   function GetTime (S: access Unbounded_Stream) return Time is
+   function Get_Time (S: access Unbounded_Stream) return Time is
    begin
       return S.ModificationTime;
-   end GetTime;
+   end Get_Time;
 
    function End_Of_Stream (S : access Unbounded_Stream) return Boolean is
    begin
@@ -220,25 +220,25 @@ package body Zip_Streams is
       return Integer (Ada.Streams.Stream_IO.Index(S.File));
    end Index;
 
-   procedure SetName (S: access ZipFile_Stream; Name: String) is
+   procedure Set_Name (S: access ZipFile_Stream; Name: String) is
    begin
       S.Name := To_Unbounded_String(Name);
-   end SetName;
+   end Set_Name;
 
-   function GetName (S: access ZipFile_Stream) return String is
+   function Get_Name (S: access ZipFile_Stream) return String is
    begin
       return To_String(S.Name);
-   end GetName;
+   end Get_Name;
 
-   procedure SetTime (S: access ZipFile_Stream; ModificationTime: Time) is
+   procedure Set_Time (S: access ZipFile_Stream; ModificationTime: Time) is
    begin
       S.ModificationTime := ModificationTime;
-   end SetTime;
+   end Set_Time;
 
-   function GetTime (S: access ZipFile_Stream) return Time is
+   function Get_Time (S: access ZipFile_Stream) return Time is
    begin
       return S.ModificationTime;
-   end GetTime;
+   end Get_Time;
 
    function End_Of_Stream (S : access ZipFile_Stream) return Boolean is
    begin
