@@ -9,10 +9,30 @@
 with Zip;
 package body Zip_Streams is
 
-   procedure Set_Time(S : Zipstream_Class;
-                      ModificationTime : Ada.Calendar.Time) is
+   procedure Set_Name (S: access Root_Zipstream_Type; Name: String) is
    begin
-     Set_Time(S, Calendar.Convert(ModificationTime));
+      S.Name := To_Unbounded_String(Name);
+   end Set_Name;
+
+   function Get_Name (S: access Root_Zipstream_Type) return String is
+   begin
+      return To_String(S.Name);
+   end Get_Name;
+
+   procedure Set_Time (S: access Root_Zipstream_Type; Modification_Time: Time) is
+   begin
+      S.Modification_Time := Modification_Time;
+   end Set_Time;
+
+   function Get_Time (S: access Root_Zipstream_Type) return Time is
+   begin
+      return S.Modification_Time;
+   end Get_Time;
+
+   procedure Set_Time(S : Zipstream_Class;
+                      Modification_Time : Ada.Calendar.Time) is
+   begin
+     Set_Time(S, Calendar.Convert(Modification_Time));
    end Set_Time;
 
    function Get_Time(S : Zipstream_Class)
@@ -139,26 +159,6 @@ package body Zip_Streams is
       return S.Loc;
    end Index;
 
-   procedure Set_Name (S: access Unbounded_Stream; Name: String) is
-   begin
-      S.Name := To_Unbounded_String(Name);
-   end Set_Name;
-
-   function Get_Name (S: access Unbounded_Stream) return String is
-   begin
-      return To_String(S.Name);
-   end Get_Name;
-
-   procedure Set_Time (S: access Unbounded_Stream; ModificationTime: Time) is
-   begin
-      S.ModificationTime := ModificationTime;
-   end Set_Time;
-
-   function Get_Time (S: access Unbounded_Stream) return Time is
-   begin
-      return S.ModificationTime;
-   end Get_Time;
-
    function End_Of_Stream (S : access Unbounded_Stream) return Boolean is
    begin
       if Size(S) < Index(S) then
@@ -219,26 +219,6 @@ package body Zip_Streams is
    begin
       return Integer (Ada.Streams.Stream_IO.Index(S.File));
    end Index;
-
-   procedure Set_Name (S: access ZipFile_Stream; Name: String) is
-   begin
-      S.Name := To_Unbounded_String(Name);
-   end Set_Name;
-
-   function Get_Name (S: access ZipFile_Stream) return String is
-   begin
-      return To_String(S.Name);
-   end Get_Name;
-
-   procedure Set_Time (S: access ZipFile_Stream; ModificationTime: Time) is
-   begin
-      S.ModificationTime := ModificationTime;
-   end Set_Time;
-
-   function Get_Time (S: access ZipFile_Stream) return Time is
-   begin
-      return S.ModificationTime;
-   end Get_Time;
 
    function End_Of_Stream (S : access ZipFile_Stream) return Boolean is
    begin

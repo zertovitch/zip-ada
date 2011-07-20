@@ -12,6 +12,9 @@
 -- Change log:
 -- ==========
 --
+-- 20-Jul-2011: GdM: - Underscore in Get_Name, Set_Name, Get_Time, Set_Time
+--                   - The 4 methods above are not anymore abstract
+--                   - Name and Modification_Time fields moved to Root_Zipstream_Type
 -- 17-Jul-2011: JH : Added Set_Unicode_Name_Flag, Is_Unicode_Name
 -- 25-Nov-2009: GdM: Added an own time type -> it is possible to bypass Ada.Calendar
 -- 18-Jan-2009: GdM: Fixed Zip_Streams.Read which did read
@@ -48,28 +51,26 @@ package Zip_Streams is
    function Size (S : access Root_Zipstream_Type) return Integer is abstract;
 
    -- this procedure sets the name of the stream
-   procedure Set_Name(S : access Root_Zipstream_Type;
-                      Name : String) is abstract;
+   procedure Set_Name(S : access Root_Zipstream_Type; Name : String);
 
    -- this procedure returns the name of the stream
-   function Get_Name(S : access Root_Zipstream_Type)
-                    return String is abstract;
+   function Get_Name(S : access Root_Zipstream_Type) return String;
 
    procedure Set_Unicode_Name_Flag (S     : access Root_Zipstream_Type;
                                     Value : in Boolean);
    function Is_Unicode_Name(S : access Root_Zipstream_Type)
                             return Boolean;
 
-   -- this procedure sets the ModificationTime of the stream
+   -- this procedure sets the Modification_Time of the stream
    procedure Set_Time(S : access Root_Zipstream_Type;
-                      ModificationTime : Time) is abstract;
+                      Modification_Time : Time);
    -- same, with the standard Time type
    procedure Set_Time(S : Zipstream_Class;
-                      ModificationTime : Ada.Calendar.Time);
+                      Modification_Time : Ada.Calendar.Time);
 
    -- this procedure returns the ModificationTime of the stream
    function Get_Time(S : access Root_Zipstream_Type)
-                     return Time is abstract;
+                     return Time;
    -- same, with the standard Time type
    function Get_Time(S : Zipstream_Class)
                      return Ada.Calendar.Time;
@@ -146,7 +147,9 @@ private
 
    type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with
       record
-         Is_Unicode_Name : Boolean := False;
+         Name              : Unbounded_String;
+         Modification_Time : Time := some_time;
+         Is_Unicode_Name   : Boolean := False;
       end record;
 
    -- Unbounded Stream spec
@@ -154,8 +157,6 @@ private
       record
          Unb : Unbounded_String;
          Loc : Integer := 1;
-         Name : Unbounded_String;
-         ModificationTime : Time := some_time;
       end record;
    -- Read data from the stream.
    procedure Read
@@ -178,19 +179,6 @@ private
    -- returns the Size of the stream
    function Size (S : access Unbounded_Stream) return Integer;
 
-   -- sets the name of the stream
-   procedure Set_Name (S : access Unbounded_Stream; Name : String);
-
-   -- returns the name of the stream
-   function Get_Name(S : access Unbounded_Stream) return String;
-
-      -- this procedure sets the ModificationTime of the stream
-   procedure Set_Time(S : access Unbounded_Stream;
-                      ModificationTime : Time);
-
-   -- this procedure returns the ModificationTime of the stream
-   function Get_Time(S : access Unbounded_Stream) return Time;
-
    -- returns true if the index is at the end of the stream
    function End_Of_Stream (S : access Unbounded_Stream) return Boolean;
 
@@ -199,8 +187,6 @@ private
    type ZipFile_Stream is new Root_Zipstream_Type with
       record
          File : File_Type;
-         Name : Unbounded_String;
-         ModificationTime : Time := some_time;
       end record;
    -- Read data from the stream.
    procedure Read
@@ -222,19 +208,6 @@ private
 
    -- returns the Size of the stream
    function Size (S : access ZipFile_Stream) return Integer;
-
-   -- sets the name of the stream
-   procedure Set_Name (S : access ZipFile_Stream; Name : String);
-
-   -- returns the name of the stream
-   function Get_Name(S : access ZipFile_Stream) return String;
-
-      -- this procedure sets the ModificationTime of the stream
-   procedure Set_Time(S : access ZipFile_Stream;
-                      ModificationTime : Time);
-
-   -- this procedure returns the ModificationTime of the stream
-   function Get_Time(S : access ZipFile_Stream) return Time;
 
    -- returns true if the index is at the end of the stream
    function End_Of_Stream (S : access ZipFile_Stream) return Boolean;
