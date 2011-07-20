@@ -53,8 +53,14 @@ package Zip_Streams is
    -- this procedure sets the name of the stream
    procedure Set_Name(S : access Root_Zipstream_Type; Name : String);
 
+   procedure SetName(S : access Root_Zipstream_Type; Name : String) renames Set_Name;
+   pragma Obsolescent (SetName);
+
    -- this procedure returns the name of the stream
    function Get_Name(S : access Root_Zipstream_Type) return String;
+
+   function GetName(S : access Root_Zipstream_Type) return String renames Get_Name;
+   pragma Obsolescent (GetName);
 
    procedure Set_Unicode_Name_Flag (S     : access Root_Zipstream_Type;
                                     Value : in Boolean);
@@ -64,16 +70,34 @@ package Zip_Streams is
    -- this procedure sets the Modification_Time of the stream
    procedure Set_Time(S : access Root_Zipstream_Type;
                       Modification_Time : Time);
+
+   procedure SetTime(S : access Root_Zipstream_Type;
+                      Modification_Time : Time) renames Set_Time;
+   pragma Obsolescent (SetTime);
+
    -- same, with the standard Time type
    procedure Set_Time(S : Zipstream_Class;
                       Modification_Time : Ada.Calendar.Time);
 
+   procedure SetTime(S : Zipstream_Class;
+                      Modification_Time : Ada.Calendar.Time) renames Set_Time;
+   pragma Obsolescent (SetTime);
+
    -- this procedure returns the ModificationTime of the stream
    function Get_Time(S : access Root_Zipstream_Type)
                      return Time;
+
+   function GetTime(S : access Root_Zipstream_Type)
+                    return Time renames Get_Time;
+   pragma Obsolescent (GetTime);
+
    -- same, with the standard Time type
    function Get_Time(S : Zipstream_Class)
                      return Ada.Calendar.Time;
+
+   function GetTime(S : Zipstream_Class)
+                    return Ada.Calendar.Time renames Get_Time;
+   pragma Obsolescent (GetTime);
 
    -- returns true if the index is at the end of the stream, else false
    function End_Of_Stream (S : access Root_Zipstream_Type)
