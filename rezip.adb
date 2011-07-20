@@ -303,13 +303,14 @@ procedure ReZip is
       new Ada.Unchecked_Deallocation(Argument_List, Argument_List_Access);
     list: Argument_List_Access;
     ok: Boolean;
+    Cannot_call_external: exception;
   begin
     Dual_IO.Put_Line(packer & " [" & args & ']');
     list:= Argument_String_To_List(args);
     GNAT.OS_Lib.Spawn(packer, list.all, ok);
     Dispose(list);
     if not ok then
-      raise Program_Error;
+      raise Cannot_call_external;
     end if;
   end Call_external;
 
