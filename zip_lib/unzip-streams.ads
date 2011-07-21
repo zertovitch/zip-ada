@@ -78,7 +78,7 @@ private
 
    type p_String is access String;
 
-   type Unzip_Stream_Type is new Ada.Streams.Root_Stream_Type with record
+   type UnZip_Stream_Type is new Ada.Streams.Root_Stream_Type with record
       state        : UZS_state:= uninitialized;
       archive_info : Zip.Zip_info; -- archive info (.zip file, directory)
       delete_info_on_closing : Boolean;
@@ -89,14 +89,14 @@ private
 
 
    procedure Read
-     (Stream : in out Unzip_Stream_Type;
+     (Stream : in out UnZip_Stream_Type;
       Item   :    out Ada.Streams.Stream_Element_Array;
       Last   :    out Ada.Streams.Stream_Element_Offset);
 
    procedure Write
-     (Stream : in out Unzip_Stream_Type;
+     (Stream : in out UnZip_Stream_Type;
       Item   : in     Ada.Streams.Stream_Element_Array);
 
-   type Zipped_File_Type is access Unzip_Stream_Type;
+   type Zipped_File_Type is access UnZip_Stream_Type;
 
 end UnZip.Streams;

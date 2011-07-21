@@ -9,7 +9,7 @@ with Zip_Streams;                       use Zip_Streams;
 with Zip.Create;                        use Zip.Create;
 
 procedure Zip_with_many_files is
-  stream  : aliased ZipFile_Stream;
+  stream  : aliased File_Zipstream;
   archive : Zip_Create_info;
 
   procedure Add_one_entry(to_file: String) is

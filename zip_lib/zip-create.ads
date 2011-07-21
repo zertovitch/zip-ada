@@ -31,7 +31,7 @@ package Zip.Create is
 
    function Name(Info: Zip_Create_info) return String;
 
-   -- Add new entries to a Zip archive, from a general stream
+   -- Add a new entry to a Zip archive, from a general Zipstream
 
    procedure Add_Stream (Info   : in out Zip_Create_info;
                          Stream : Zipstream_Class);
@@ -42,28 +42,35 @@ package Zip.Create is
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural);
 
-   -- Add new entries to a Zip archive, from a file
+   -- Add a new entry to a Zip archive, from a file
 
    procedure Add_File (Info              : in out Zip_Create_info;
                        Name              : String;
                        Name_in_archive   : String:= "";
                        -- default: add the file in the archive
                        -- under the same name
-                       Delete_file_after : Boolean:= False
+                       Delete_file_after : Boolean:= False;
                        -- practical to delete temporary file after
                        -- adding
+                       Name_UTF_8_encoded: Boolean:= False
+                       -- True if Name[_in_archive] is actually
+                       -- UTF-8 encoded (Unicode)
    );
 
    -- Add new entries to a Zip archive, from a buffer stored in a string
 
-   procedure Add_String (Info            : in out Zip_Create_info;
-                         Contents        : String;
-                         Name_in_archive : String
+   procedure Add_String (Info              : in out Zip_Create_info;
+                         Contents          : String;
+                         Name_in_archive   : String;
+                         Name_UTF_8_encoded: Boolean:= False
+                         -- True if Name is actually UTF-8 encoded (Unicode)
    );
 
-   procedure Add_String (Info            : in out Zip_Create_info;
-                         Contents        : Unbounded_String;
-                         Name_in_archive : String
+   procedure Add_String (Info              : in out Zip_Create_info;
+                         Contents          : Unbounded_String;
+                         Name_in_archive   : String;
+                         Name_UTF_8_encoded: Boolean:= False
+                         -- True if Name is actually UTF-8 encoded (Unicode)
    );
 
    -- Complete the Zip archive; close the file if the stream is a file

@@ -191,7 +191,7 @@ package body UnZip.Streams is
       Case_sensitive : in Boolean:= False
      ) is
     use Zip_Streams, Ada.Streams;
-    MyStream     : aliased ZipFile_Stream;
+    MyStream     : aliased File_Zipstream;
     input_stream : Zipstream_Class;
     use_a_file   : constant Boolean:= Zip.Zip_Stream(Archive_Info) = null;
   begin

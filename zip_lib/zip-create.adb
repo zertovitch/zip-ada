@@ -147,9 +147,11 @@ package body Zip.Create is
                        Name_in_archive   : String:= "";
                        -- default: add the file in the archive
                        -- under the same name
-                       Delete_file_after : Boolean:= False
+                       Delete_file_after : Boolean:= False;
                        -- practical to delete temporary file after
                        -- adding
+                       Name_UTF_8_encoded: Boolean:= False
+                       -- True if Name[_in_archive] is actually UTF-8 encoded
    )
    is
       temp_zip_stream     : aliased File_Zipstream;
@@ -164,6 +166,7 @@ package body Zip.Create is
      if Name_in_archive /= "" then
         Set_Name(acc_temp_zip_stream, Name_in_archive);
      end if;
+     Set_Unicode_Name_Flag(acc_temp_zip_stream, Name_UTF_8_encoded);
      -- Stuff into the .zip archive:
      Add_Stream (Info, acc_temp_zip_stream);
      Close(temp_zip_stream);
@@ -173,18 +176,22 @@ package body Zip.Create is
      end if;
    end Add_File;
 
-   procedure Add_String (Info            : in out Zip_Create_info;
-                         Contents        : String;
-                         Name_in_archive : String
+   procedure Add_String (Info              : in out Zip_Create_info;
+                         Contents          : String;
+                         Name_in_archive   : String;
+                         Name_UTF_8_encoded: Boolean:= False
+                         -- True if Name is actually UTF-8 encoded
    )
    is
    begin
-     Add_String(Info, To_Unbounded_String(Contents), Name_in_archive);
+     Add_String(Info, To_Unbounded_String(Contents), Name_in_archive, Name_UTF_8_encoded);
    end Add_String;
 
-   procedure Add_String (Info            : in out Zip_Create_info;
-                         Contents        : Unbounded_String;
-                         Name_in_archive : String
+   procedure Add_String (Info              : in out Zip_Create_info;
+                         Contents          : Unbounded_String;
+                         Name_in_archive   : String;
+                         Name_UTF_8_encoded: Boolean:= False
+                         -- True if Name is actually UTF-8 encoded
    )
    is
      temp_zip_stream     : aliased Memory_Zipstream;
@@ -192,6 +199,7 @@ package body Zip.Create is
    begin
      Set(temp_zip_stream, Contents);
      Set_Name(acc_temp_zip_stream, Name_in_archive);
+     Set_Unicode_Name_Flag(acc_temp_zip_stream, Name_UTF_8_encoded);
      Add_Stream (Info, acc_temp_zip_stream);
    end Add_String;
 

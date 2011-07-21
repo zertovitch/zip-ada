@@ -444,7 +444,7 @@ package body UnZip is
                 )
    is
     use Zip, Zip_Streams;
-    MyStream     : aliased ZipFile_Stream;
+    MyStream     : aliased File_Zipstream;
                    -- was Unbounded_Stream & file->buffer copy in v.26
     zip_file     : constant Zipstream_Class := MyStream'Unchecked_Access;
     header_index : Positive;
@@ -492,7 +492,7 @@ package body UnZip is
                 )
   is
     use Zip, Zip_Streams;
-    MyStream     : aliased ZipFile_Stream;
+    MyStream     : aliased File_Zipstream;
                    -- was Unbounded_Stream & file->buffer copy in v.26
     zip_file     : constant Zipstream_Class := MyStream'Unchecked_Access;
     header_index : Positive;
@@ -538,7 +538,7 @@ package body UnZip is
                 )
   is
     use Zip, Zip_Streams;
-    MyStream     : aliased ZipFile_Stream;
+    MyStream     : aliased File_Zipstream;
                    -- was Unbounded_Stream & file->buffer copy in v.26
     zip_file     : constant Zipstream_Class := MyStream'Unchecked_Access;
     header_index : Positive;
@@ -626,7 +626,7 @@ package body UnZip is
     uncomp_size  : File_size_type;
     work_password: Unbounded_String:= To_Unbounded_String(password);
     use Zip, Zip_Streams;
-    MyStream     : aliased ZipFile_Stream;
+    MyStream     : aliased File_Zipstream;
     input_stream : Zipstream_Class;
     use_a_file   : constant Boolean:= Zip.Zip_stream(from) = null;
   begin
@@ -681,7 +681,7 @@ package body UnZip is
     uncomp_size  : File_size_type;
     work_password: Unbounded_String:= To_Unbounded_String(password);
     use Zip, Zip_Streams;
-    MyStream     : aliased ZipFile_Stream;
+    MyStream     : aliased File_Zipstream;
     input_stream : Zipstream_Class;
     use_a_file   : constant Boolean:= Zip.Zip_stream(from) = null;
   begin

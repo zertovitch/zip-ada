@@ -133,7 +133,7 @@ procedure Demo_csv_into_zip is
   end Output_results;
 
   procedure Output_all_results is
-    MyStream_file : aliased ZipFile_Stream; -- Zip archive as a file
+    MyStream_file : aliased File_Zipstream; -- Zip archive as a file
     archive : Zip_Create_info;
   begin
     Create (archive,
