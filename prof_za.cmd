@@ -5,6 +5,7 @@ echo ** Profiling Zip-Ada.
 
 if exist obj_pro\create_dir.txt goto skip_md
 md obj_pro
+copy /b extras\lib*.a obj_pro
 
 :skip_md
 

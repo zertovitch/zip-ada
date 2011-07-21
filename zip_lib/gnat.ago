@@ -5,16 +5,16 @@
 WINDOWS_TARGET
 
 
-read_rle
-Read_and_dump_U32
-need
-inflate_co
-read
-need_b
+match_l
+39
+_fixe
+de_S
+x_per
 put_code
-_Atom
-**
-Free_list
+!!
+Compression_unefficient
+Length_range
+Distance_range
 -- Begin compiler switches
 DEBUG <- active (current) build mode
 FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?

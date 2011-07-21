@@ -25,7 +25,7 @@ copy /b %arch345239874621% %name345239874621%.old.zip
 del *.tmp
 del $temp$.zip
 
-rezip -comp -defl -rand_stable=9 %1
+rezip -comp -defl -rand_stable=23 %1
 
 del %arch345239874621%
 move %name345239874621%.repacked.zip %arch345239874621%

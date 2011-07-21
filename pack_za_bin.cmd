@@ -13,14 +13,13 @@ upx --ultra-brute zipada.exe
 upx --ultra-brute bunzip.exe
 :skip_upx
 
-set version=37
+set version=39
 
-zip zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe
+zip -9 zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe
 
-rezip -defl -comp zipada%version%-bin-win32.zip
-
-del zipada%version%-bin-win32.zip
-ren zipada%version%-bin-win32.repacked.zip zipada%version%-bin-win32.zip
+rem rezip -defl -comp zipada%version%-bin-win32.zip
+rem del zipada%version%-bin-win32.zip
+rem ren zipada%version%-bin-win32.repacked.zip zipada%version%-bin-win32.zip
 
 echo This archive contains tools from Zip-Ada built as Windows 32-bit command line executables | zip -z zipada%version%-bin-win32.zip
 

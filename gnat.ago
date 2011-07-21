@@ -1,20 +1,20 @@
--gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -Iextras -aOobj_dbg
+-gnat05 -gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -Iextras -aOobj_dbg
 -C -aOobj_dbg
 
 
 WINDOWS_TARGET
 
 
-warning
-Set_Time_Stamp
-Ada_Directories_Extensions
-Directories
-set_
-set_m
-fafaa7
-deflate_only
-'writ
-Copy
+seed_iterator
+random
+always_consider
+alwa
+consider
+File_in
+" / "
+processing
+count
+Directory_Separator
 -- Begin compiler switches
 DEBUG <- active (current) build mode
 FALSE <- are gcc/gnatmake/main/target-dir of Release := these from Debug mode ?

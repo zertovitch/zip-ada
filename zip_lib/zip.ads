@@ -294,8 +294,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "41-preview";
-  reference : constant String:= ">= 21-Jul-2011";
+  version   : constant String:= "41";
+  reference : constant String:= "22-Jul-2011";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

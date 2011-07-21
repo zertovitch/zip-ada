@@ -9,8 +9,8 @@ zipada test_rz *.ad* *.txt *.cmd
 
 rezip test_rz
 
-start test_rz.zip.ReZip.html
+start test_rz.ReZip.html
 
-comp_zip test_rz test_rz.zip.repacked
+comp_zip test_rz test_rz.repacked
 
 pause
