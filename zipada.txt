@@ -100,9 +100,11 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '41', xx-yyy-2011:
-  - Support for Unicode (UTF-8) names within archives
-  -!- Zip_Streams: Underscore in Get_Name, Set_Name, Get_Time, Set_Time
+* Changes in '41', 22-Jul-2011:
+  - Support for Unicode (UTF-8) names within archives, see Zip,
+        Zip.Create, Zip_Streams
+  -!- Zip_Streams: Made names more consistent, previous names
+        preserved with pragma Obscolescent
 
 * Changes in '40', 1-Mar-2011:
   - New package Zip.Compress.Deflate, with a first (weak but straightforward)
@@ -315,7 +317,8 @@ Nicolas Brunot, Stratégies, for constructive discussions and
 
 Jérôme Haguet, Stratégies, for nice discussions and contributions:
    the major performance boost in v. 35 and later,
-   UnZip.File_System_Routines.Compose_File_Name and other things
+   UnZip.File_System_Routines.Compose_File_Name,
+   Unicode (UTF-8) support and other things
 
 Arnaud Lefebvre, Stratégies
 
