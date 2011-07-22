@@ -12,7 +12,7 @@ file format. It supplies:
  - output (archive to build or data to extract) can be any data stream
  - Zip_info and Zip_Create_info to handle quickly and easily archives
  - cross format compatibility with the most various tools and file formats
-     based on the Zip format: PKZip, WinZip, Info-Zip's Zip, Java's JARs,
+     based on the Zip format: 7-zip, Info-Zip's Zip, WinZip, PKZip, Java's JARs,
      OpenDocument files, MS Office 2007+, and many others (see Open bugs
      list for the rare exceptions)
  - task safety: this library can be used ad libitum in parallel processing
@@ -101,7 +101,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '41', 22-Jul-2011:
-  - Support for Unicode (UTF-8) names within archives, see Zip,
+  - Support for Unicode (UTF-8) entry names within archives; see: Zip,
         Zip.Create, Zip_Streams
   -!- Zip_Streams: Made names more consistent, previous names
         preserved with pragma Obscolescent

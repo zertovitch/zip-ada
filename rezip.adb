@@ -1034,7 +1034,7 @@ procedure ReZip is
     Put(summary,  Float( seconds ) / 60.0, 4, 2, 0 );
     Put(summary,  " minutes, or");
     Put(summary,  Float( seconds ) / 3600.0, 4, 2, 0 );
-    Put_Line(summary,  "hours.</body></html>");
+    Put_Line(summary,  " hours.</body></html>");
     Close(summary);
     Dual_IO.Put("Time elapsed : ");
     DFIO.Put( Float( seconds ), 4, 2, 0 );

@@ -1,4 +1,4 @@
-rem ************* Pack Zip-Ada Win32 binaries - tools only.
+rem ************* Pack Zip-Ada Win32 binary executables. Tools only, no demos.
 
 rem del *.exe
 
@@ -13,7 +13,7 @@ upx --ultra-brute zipada.exe
 upx --ultra-brute bunzip.exe
 :skip_upx
 
-set version=39
+set version=41
 
 zip -9 zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe
 
