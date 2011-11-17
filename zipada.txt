@@ -104,7 +104,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
   - Support for Unicode (UTF-8) entry names within archives; see: Zip,
         Zip.Create, Zip_Streams
   -!- Zip_Streams: Made names more consistent, previous names
-        preserved with pragma Obscolescent
+        preserved with pragma Obsolescent
 
 * Changes in '40', 1-Mar-2011:
   - New package Zip.Compress.Deflate, with a first (weak but straightforward)

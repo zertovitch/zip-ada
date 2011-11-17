@@ -2,7 +2,7 @@
 --  File:            ZipAda.adb
 --  Description:     A minimal standalone command-line zip archiving utility
 --                     using the Zip-Ada library.
---  Date/version:    19-Oct-2009; ... ; Dec-2007
+--  Date/version:    17-Nov-2011; 19-Oct-2009; ... ; Dec-2007
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 -- Important changes:
@@ -12,7 +12,7 @@
 
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Directories;
+with Ada.Directories;                   use Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Streams;                       use Ada.Streams;
@@ -106,6 +106,64 @@ procedure ZipAda is
   method: Compression_Method:= shrink;
   zip_name_set: Boolean:= False;
 
+  procedure Zip_a_file(arg: String) is
+    InStream   : aliased File_Zipstream;
+    StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
+  begin
+    Set_Name (StreamFile, arg);
+    Set_Time (StreamFile, Ada.Directories.Modification_Time(arg));
+    Open (InStream, In_File);
+    Add_1_Stream (StreamFile);
+    Close (InStream);
+  exception
+    when Ada.Text_IO.Use_Error =>
+      Put_Line("  ** Warning: skipping invalid entry: " & arg);
+  end Zip_a_file;
+
+  len: Natural:= 0;
+
+  -- Recursive directory scan expanded from this example:
+  --
+  -- http://rosettacode.org/wiki/Walk_a_directory/Recursively#Ada
+
+  procedure Walk (Name : String; Pattern : String; Level: Natural; Recursive: Boolean) is
+    procedure Process (Item : Directory_Entry_Type) is
+    begin
+      if Simple_Name (Item) = "." then
+        if Level = 0 then
+          len:= Full_Name (Item)'Length - 2 - Name'Length;
+          if Name = "." then
+            len:= len + 2;
+          end if;
+        end if;
+      elsif Simple_Name (Item) = ".." then
+        null;
+      else
+        declare
+          fn: constant String:= Full_Name (Item);
+        begin
+          Zip_a_file (fn(fn'First+len..fn'Last));
+        end;
+      end if;
+    end Process;
+    procedure Walk (Item : Directory_Entry_Type) is
+    begin
+      if Simple_Name (Item) /= "." and then Simple_Name (Item) /= ".." then
+        if Recursive then
+          Walk (Full_Name (Item), Pattern, Level+1, True);
+        end if;
+      end if;
+    exception
+      when Ada.Directories.Name_Error => null;
+    end Walk;
+  begin
+    Search (Name, Pattern, (others => True), Process'Access);
+    Search (Name, "", (Directory => True, others => False), Walk'Access);
+  end Walk;
+
+  type Scan_mode is (files_only, files_and_dirs, files_and_dirs_recursive);
+  scan: Scan_mode:= files_only;
+
 begin
   Blurb;
   for I in 1..Argument_Count loop
@@ -114,10 +172,10 @@ begin
       arg_zip: constant String:= Add_zip_ext(arg);
       answer : Character;
     begin
-      if arg(1) = '-' or arg(1) = '/' then
+      if arg(arg'First) = '-' or arg(arg'First) = '/' then
         -- Options
         declare
-          opt: constant String:= arg(arg'First+1..arg'Last) & ' ';
+          opt: constant String:= arg(arg'First+1..arg'Last) & "    ";
         begin
           if opt(opt'First..opt'First+1) = "er" then
             case opt(opt'First+2) is
@@ -128,8 +186,12 @@ begin
             end case;
           elsif opt(opt'First..opt'First+1) = "es" then
             method:= shrink;
-          elsif opt(opt'First..opt'First+2) = "edf" then
+          elsif opt(opt'First..opt'First+3) = "edf " then
             method:= deflate_fixed;
+          elsif opt(opt'First..opt'First+3) = "dir " then
+            scan:= Scan_mode'Max(scan, files_and_dirs);
+          elsif opt(opt'First..opt'First+1) = "r " then
+            scan:= files_and_dirs_recursive;
           end if;
         end;
       elsif not zip_name_set then
@@ -153,19 +215,14 @@ begin
           -- avoid zipping the archive itself!
           -- NB: case insensitive
         elsif Zip.Exists(arg) then
-          declare
-            InStream   : aliased File_Zipstream;
-            StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
-          begin
-            Set_Name (StreamFile, arg);
-            Set_Time (StreamFile, Ada.Directories.Modification_Time(arg));
-            Open (InStream, In_File);
-            Add_1_Stream (StreamFile);
-            Close (InStream);
-          exception
-            when Ada.Text_IO.Use_Error =>
-              Put_Line("  ** Warning: skipping invalid entry: " & arg);
-          end;
+          case scan is
+            when files_only =>
+              Zip_a_file(arg);
+            when files_and_dirs =>
+              Walk (arg, "*", 0, False);
+            when files_and_dirs_recursive =>
+              Walk (arg, "*", 0, True);
+          end case;
         else
           Put_Line("  ** Warning: name not matched: " & arg);
         end if;
@@ -180,10 +237,12 @@ begin
     Put( Float( seconds ), 4, 2, 0 );
     Put_Line( " sec");
   else
-    Put_Line("Usage: zipada [options] archive[.zip] file(s)");
+    Put_Line("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
     Put_Line("          -es    : ""shrink"" (LZW algorithm)");
     Put_Line("          -edf   : ""deflate"", with one fixed block");
+    Put_Line("          -dir   : name(s) may be also directories, contents are archived");
+    Put_Line("          -r     : same as ""-dir"", but recursive");
   end if;
 end ZipAda;
