@@ -149,16 +149,23 @@ procedure ZipAda is
     procedure Walk (Item : Directory_Entry_Type) is
     begin
       if Simple_Name (Item) /= "." and then Simple_Name (Item) /= ".." then
-        if Recursive then
-          Walk (Full_Name (Item), Pattern, Level+1, True);
-        end if;
+        Walk (Full_Name (Item), Pattern, Level+1, True);
       end if;
     exception
       when Ada.Directories.Name_Error => null;
     end Walk;
   begin
+    -- Process files
     Search (Name, Pattern, (others => True), Process'Access);
-    Search (Name, "", (Directory => True, others => False), Walk'Access);
+    -- Process subdirectories
+    if Recursive then
+      Search (Name, "", (Directory => True, others => False), Walk'Access);
+    end if;
+  exception
+    when Ada.Directories.Name_Error => -- "unknown directory" -> probably a file.
+      if level = 0 then
+        Zip_a_file(Name);
+      end if;
   end Walk;
 
   type Scan_mode is (files_only, files_and_dirs, files_and_dirs_recursive);
@@ -242,7 +249,8 @@ begin
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
     Put_Line("          -es    : ""shrink"" (LZW algorithm)");
     Put_Line("          -edf   : ""deflate"", with one fixed block");
-    Put_Line("          -dir   : name(s) may be also directories, contents are archived");
+    Put_Line("          -dir   : name(s) may be also directories,");
+    Put_Line("                      whose contents will be archived");
     Put_Line("          -r     : same as ""-dir"", but recursive");
   end if;
 end ZipAda;
