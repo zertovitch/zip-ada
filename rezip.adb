@@ -527,7 +527,7 @@ procedure ReZip is
       File_out      : aliased File_Zipstream;
       StreamFile_out: constant Zipstream_Class := File_out'Unchecked_Access;
       choice: Approach:= original;
-      deco: constant String:= "-->-->-->----" & unique_name'Length * '-';
+      deco: constant String:= "-->-->-->" & (20+unique_name'Length) * '-';
       mth: Zip.PKZip_method;
       consider: Approach_Filtering;
       gain: Integer_64;
@@ -558,7 +558,9 @@ procedure ReZip is
       Dual_IO.Close_and_Append_Log; -- have an up to date copy on file system
       Dual_IO.Put_Line(deco);
       Dual_IO.Put_Line(
-        "  Processing " &
+        ' ' &
+        Integer'Image((100 * total_choice.count) / Zip.Entries(zi)) &
+        "% - Processing " &
         unique_name & ',' &
         Integer'Image(total_choice.count) &
         " of" &
