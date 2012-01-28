@@ -138,6 +138,15 @@ package Zip.Headers is
     central_dir_size   : Unsigned_32;
     central_dir_offset : Unsigned_32;
     main_comment_length: Unsigned_16;
+    -- The Zip archive may be appended to another file (for instance an
+    -- executable for self-extracting purposes) of size N.
+    -- Then, all offsets need to be shifted by N.
+    -- N=0 if the Zip archive is on its own.
+    -- The real offset of the end-of-central-dir
+    -- will be N + central_dir_size + central_dir_offset.
+    -- This way, we have an unique chance to determine N when reading the
+    -- end-of-central-dir. N is stored in the field hereafter.
+    offset_shifting    : Unsigned_32;
   end record;
 
   end_of_central_dir_length : constant:= 22;

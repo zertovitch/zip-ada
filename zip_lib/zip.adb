@@ -190,19 +190,23 @@ package body Zip is
     zip_info_already_loaded: exception;
     main_comment: p_String;
     use Ada.Streams, Ada.Streams.Stream_IO;
-
   begin -- Load Zip_info
     if info.loaded then
       raise zip_info_already_loaded;
     end if; -- 15-Apr-2002
     Zip.Headers.Load(from, the_end);
-    -- We take the opportunity to read the comment
+    -- We take the opportunity to read the main comment, which is right
+    -- after the end-of-central-directory block.
     main_comment:= new String(1..Integer(the_end.main_comment_length));
     String'Read(from, main_comment.all);
     -- Process central directory:
     Zip_Streams.Set_Index(
-        from, Positive(1 +
-            Ada.Streams.Stream_IO.Count(the_end.central_dir_offset)));
+      from,
+      Positive(
+        1 +
+        the_end.offset_shifting + the_end.central_dir_offset
+      )
+    );
 
     for i in 1..the_end.total_entries loop
       Zip.Headers.Read_and_check(from, header );
@@ -210,6 +214,7 @@ package body Zip is
         this_name: String(1..Natural(header.short_info.filename_length));
       begin
         String'Read(from, this_name);
+        -- Skip extra field and entry comment.
         Zip_Streams.Set_Index(
           from, Positive (
           Ada.Streams.Stream_IO.Count(Zip_Streams.Index( from )) +
@@ -220,8 +225,8 @@ package body Zip is
         );
         -- Now the whole i_th central directory entry is behind
         Insert( name        => Normalize(this_name,case_sensitive),
-               file_index  => Ada.Streams.Stream_IO.Count
-                 (1 + header.local_header_offset),
+               file_index   => Ada.Streams.Stream_IO.Count
+                 (1 + header.local_header_offset + the_end.offset_shifting),
                 comp_size   => header.short_info.dd.compressed_size,
                 uncomp_size => header.short_info.dd.uncompressed_size,
                 crc_32      => header.short_info.dd.crc_32,
@@ -442,8 +447,7 @@ package body Zip is
   begin
     Zip.Headers.Load(file, the_end);
     Set_Index(
-        file, Positive (1 + Ada.Streams.Stream_IO.Count
-          (the_end.central_dir_offset))
+      file, Positive (1 + the_end.offset_shifting + the_end.central_dir_offset)
     );
 
     min_offset:= the_end.central_dir_offset; -- will be lowered
@@ -456,10 +460,10 @@ package body Zip is
          end;
 
       Set_Index( file, Index( file ) +
-             Positive (Ada.Streams.Stream_IO.Count
+             Positive
                ( header.short_info.filename_length +
                header.short_info.extra_field_length +
-               header.comment_length ))      );
+               header.comment_length )      );
       -- Now the whole i_th central directory entry is behind
 
       if header.local_header_offset < min_offset then
@@ -467,7 +471,7 @@ package body Zip is
       end if;
     end loop;
 
-    file_index:= Positive (Ada.Streams.Stream_IO.Count(1 + min_offset));
+    file_index:= Positive (1 + min_offset + the_end.offset_shifting);
 
   end Find_first_offset;
 
@@ -488,8 +492,7 @@ package body Zip is
     use Ada.Streams, Ada.Streams.Stream_IO, Zip_Streams;
   begin
     Zip.Headers.Load(file, the_end);
-    Set_Index(file, Positive(1 + Ada.Streams.Stream_IO.Count
-      (the_end.central_dir_offset)));
+    Set_Index(file, Positive(1 + the_end.central_dir_offset + the_end.offset_shifting));
     for i in 1..the_end.total_entries loop
       declare
          TempStream : constant Zipstream_Class := file;
@@ -508,8 +511,7 @@ package body Zip is
         if Normalize(this_name,case_sensitive) =
            Normalize(name,case_sensitive) then
           -- Name found in central directory !
-               file_index := Positive (Ada.Streams.Stream_IO.Count
-                                       (1 + header.local_header_offset));
+          file_index := Positive (1 + header.local_header_offset + the_end.offset_shifting);
           comp_size  := File_size_type(header.short_info.dd.compressed_size);
           uncomp_size:= File_size_type(header.short_info.dd.uncompressed_size);
           return;

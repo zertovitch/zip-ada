@@ -253,6 +253,20 @@ package body Zip.Headers is
           end if;
         end loop;
         Copy_and_check( end_buffer, the_end );
+        -- at this point, the buffer was successfully read
+        -- (no exception raised).
+        the_end.offset_shifting:=
+        -- This is the real position of the end-of-central-directory block.
+        Unsigned_32(Zip_Streams.Index(stream)-22)
+        -
+        -- This is the theoretical position of the end-of-central-directory,
+        -- block. Should coincide with the real position if the zip file
+        -- is not appended.
+        (
+          1 +
+          the_end.central_dir_offset +
+          the_end.central_dir_size
+        );
         return; -- the_end found and filled -> exit
       exception
         when bad_end =>
