@@ -295,7 +295,7 @@ package Zip is
   --------------------------------------------------------------
 
   version   : constant String:= "42";
-  reference : constant String:= "28-Jan-2012";
+  reference : constant String:= "29-Jan-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
@@ -317,7 +317,8 @@ private
 
   type Dir_node(name_len: Natural) is record
     left, right      : p_Dir_node;
-    name             : String(1..name_len);
+    dico_name        : String(1..name_len); -- UPPER if case-insensitive search
+    file_name        : String(1..name_len);
     file_index       : Ada.Streams.Stream_IO.Positive_Count;
     comp_size        : File_size_type;
     uncomp_size      : File_size_type;

@@ -148,7 +148,8 @@ package body Zip is
     case_sensitive : in  Boolean:= False)
   is
     procedure Insert(
-      name             : String;
+      dico_name        : String; -- UPPER if case-insensitive search
+      file_name        : String;
       file_index       : Ada.Streams.Stream_IO.Positive_Count;
       comp_size,
       uncomp_size      : File_size_type;
@@ -162,10 +163,11 @@ package body Zip is
     begin
       if node = null then
         node:= new Dir_node'
-          ( (name_len          => name'Length,
+          ( (name_len          => file_name'Length,
              left              => null,
              right             => null,
-             name              => name,
+             dico_name         => dico_name,
+             file_name         => file_name,
              file_index        => file_index,
              comp_size         => comp_size,
              uncomp_size       => uncomp_size,
@@ -175,10 +177,10 @@ package body Zip is
              unicode_file_name => unicode_file_name
              )
           );
-      elsif name > node.name then
-        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.right );
-      elsif name < node.name then
-        Insert( name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.left );
+      elsif dico_name > node.dico_name then
+        Insert( dico_name, file_name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.right );
+      elsif dico_name < node.dico_name then
+        Insert( dico_name, file_name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.left );
       else
         raise Duplicate_name;
       end if;
@@ -224,8 +226,9 @@ package body Zip is
           ))
         );
         -- Now the whole i_th central directory entry is behind
-        Insert( name        => Normalize(this_name,case_sensitive),
-               file_index   => Ada.Streams.Stream_IO.Count
+        Insert( dico_name   => Normalize(this_name, case_sensitive),
+                file_name   => Normalize(this_name, True),
+                file_index  => Ada.Streams.Stream_IO.Count
                  (1 + header.local_header_offset + the_end.offset_shifting),
                 comp_size   => header.short_info.dd.compressed_size,
                 uncomp_size => header.short_info.dd.uncompressed_size,
@@ -358,7 +361,7 @@ package body Zip is
     begin
       if p /= null then
         Traverse(p.left);
-        Action(p.name);
+        Action(p.file_name);
         Traverse(p.right);
       end if;
     end Traverse;
@@ -374,7 +377,7 @@ package body Zip is
       if p /= null then
         Traverse(p.left);
         Action(
-          p.name,
+          p.file_name,
           Positive(p.file_index),
           p.comp_size,
           p.uncomp_size,
@@ -533,15 +536,15 @@ package body Zip is
   )
   is
     aux: p_Dir_node:= info.dir_binary_tree;
-    up_name: String:= Normalize(name,case_sensitive);
+    up_name: String:= Normalize(name, case_sensitive);
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
     while aux /= null loop
-      if up_name > aux.name then
+      if up_name > aux.dico_name then
         aux:= aux.right;
-      elsif up_name < aux.name then
+      elsif up_name < aux.dico_name then
         aux:= aux.left;
       else  -- file found !
         file_index := aux.file_index;
