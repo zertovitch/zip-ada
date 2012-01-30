@@ -238,7 +238,7 @@ package body UnZip is
       true_packed_size:= true_packed_size - 12;
     end if;
 
-    if name_from_header then
+    if name_from_header then -- Name from local header is used as output name
       the_name_len:= Natural(local_header.filename_length);
       String'Read(zip_file, the_name(1..the_name_len));
       if not data_descriptor_after_data then
@@ -248,7 +248,10 @@ package body UnZip is
           File_size_type(local_header.dd.uncompressed_size)
         );
       end if;
-      if the_name_len = 0 or else the_name( the_name_len ) = '/' then
+      if the_name_len = 0 or else
+        (the_name( the_name_len ) = '/' or
+         the_name( the_name_len ) = '\' )
+      then
         -- This is a directory name (12-feb-2000)
         skip_this_file:= True;
       elsif actual_mode in Write_to_file then
@@ -256,7 +259,7 @@ package body UnZip is
       else -- only informational, no need for interaction
         Set_outfile(the_name(1..the_name_len));
       end if;
-    else
+    else -- Output name is given: out_name
       if not data_descriptor_after_data then
         Inform_User(
           out_name,
@@ -264,7 +267,13 @@ package body UnZip is
           File_size_type(local_header.dd.uncompressed_size)
         );
       end if;
-      if actual_mode in Write_to_file then
+      if out_name'Length = 0 or else
+        (out_name( out_name'Last ) = '/' or
+         out_name( out_name'Last ) = '\' )
+      then
+        -- This is a directory name, so do not write anything (30-Jan-2012).
+        skip_this_file:= True;
+      elsif actual_mode in Write_to_file then
         Set_outfile_interactive(out_name);
       else -- only informational, no need for interaction
         Set_outfile(out_name);
