@@ -100,6 +100,14 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '42', 30-Jan-2012:
+  - Support for Zip archives appended to other files,
+        like a self-extracting archive with Zip-Ada in the executable
+  - Zip.Traverse (and then Extract all from Zip_Info) uses real file names
+        in the case-insensitive mode, instead of UPPER-cased names that are
+        there only for dictionary search
+  - Some improvements in the ReZip and ZipAda tools
+
 * Changes in '41', 22-Jul-2011:
   - Support for Unicode (UTF-8) entry names within archives; see: Zip,
         Zip.Create, Zip_Streams
