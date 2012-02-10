@@ -379,7 +379,7 @@ package body BZip2 is
             next_sym:= get_mtf_value;
             exit when next_sym > run_b;
           end loop;
-          n:= seq_to_unseq( Natural(mtfa(mtfbase(0))) );
+          n:= seq_to_unseq( mtfa(mtfbase(0)) );
           cftab(n):= cftab(n) + es;
           if t+es > sub_block_size * block_size then
             raise data_error;

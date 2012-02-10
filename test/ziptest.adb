@@ -21,10 +21,10 @@ with Ada.IO_Exceptions, Ada.Text_IO;
 
 procedure ZipTest is
 
-   MyStream_memory : aliased Unbounded_Stream;
+   MyStream_memory : aliased Memory_Zipstream;
    acc_MyStream_memory : constant Zipstream_Class := MyStream_memory'Unchecked_Access;
 
-   MyStream_file : aliased ZipFile_Stream;
+   MyStream_file : aliased File_Zipstream;
    acc_MyStream_file : constant Zipstream_Class := MyStream_file'Unchecked_Access;
 
    Info1 : Zip_Create_info;
@@ -33,10 +33,10 @@ procedure ZipTest is
    UnbZipFile : Unbounded_String;
 
    UnbFile1 : Unbounded_String;
-   MyStream1 : aliased Unbounded_Stream;
+   MyStream1 : aliased Memory_Zipstream;
    StreamFile1 : constant Zipstream_Class := MyStream1'Unchecked_Access;
 
-   MyStream2 : aliased ZipFile_Stream;
+   MyStream2 : aliased File_Zipstream;
    StreamFile2 : constant Zipstream_Class := MyStream2'Unchecked_Access;
 begin
    Create (Info2, acc_MyStream_file,   "to_file.zip", Zip.Compress.Shrink);

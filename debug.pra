@@ -1,3 +1,9 @@
 pragma Initialize_Scalars;
 -- pragma Normalize_Scalars; -- For all units!
 
+-- Ensure absence of any compiler-specific attributes and pragamata
+-- Idea: Yannick Duchene
+-- Issue: good for the library itsef, not for some tools...
+--
+-- pragma Restrictions (No_Implementation_Attributes); 
+-- pragma Restrictions (No_Implementation_Pragmas); 

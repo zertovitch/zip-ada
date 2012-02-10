@@ -296,7 +296,7 @@ package body UnZip.Streams is
         raise Constraint_Error; -- RM 13.13.1(11) requires this.
       end if;
     end if;
-    if Item'Length <= 0 then
+    if Item'Length = 0 then
       -- Nothing to be read actually.
       Last:= Item'Last; -- this is < Item'First
       return;
