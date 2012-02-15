@@ -1,12 +1,12 @@
--- *** Version of ZipAda downgraded to Ada 95 for testing with ObjectAda 7.2.2
--- *** or other Ada 95-only compilers.
--- *** Just need to comment out / null-ify the references to Ada.Directories
+-- *** Version of the UnZipAda tool downgraded to Ada 95 for testing with 
+-- *** ObjectAda 7.2.2 or other Ada 95-only compilers.
+-- *** Just needed to comment out / null-ify the references to Ada.Directories
 
 ------------------------------------------------------------------------------
 --  File:            UnZipAda.adb
 --  Description:     A minimal standalone command-line unzipping tool
 --                     using the Zip-Ada library.
---  Date/version:    18-Jun-2009; ... ; 1-Dec-1999
+--  Date/version:    15-Feb-2012; 18-Jun-2009; ... ; 1-Dec-1999
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -298,9 +298,9 @@ begin
       Put(" :         ");
     else
       Put(" :");
-      MIO.Put(
-        UnZip.File_size_type(
-          (100.0*Long_Float(Summary.total_compressed)) /
+      IIO.Put(
+        Natural(
+          (100.0 * Long_Float(Summary.total_compressed)) /
           Long_Float(Summary.total_uncompressed)
         ), 4);
       Put("% of ");
@@ -310,13 +310,31 @@ begin
 
     if z_options( test_only ) then
       Put_Line("Test: no error found");
-      Put_Line("Zip format(s) used:");
-      for f in Summary.format_used'Range loop
-        if Summary.format_used(f) > 0 then
-          Put_Line(
-            "  " & Summary.Nice_image(f) & "..." &
-            Integer'Image(Summary.format_used(f))
-          );
+      New_Line;
+      Put_Line("Statistics per Zip sub-format (""method""):");
+      for m in Summary.files_per_method'Range loop
+        if Summary.files_per_method(m) > 0 then
+          Put("  " & Summary.Nice_image(m) & "... ");
+          IIO.Put(Summary.files_per_method(m),5);
+          Put(" files");
+          if Summary.uncompressed_per_method(m) > 0 then
+            Put(",");
+            IIO.Put(
+              Natural(
+                (100.0 * Long_Float(Summary.uncompressed_per_method(m))) /
+                Long_Float(Summary.total_uncompressed)
+              ), 4
+            );
+            Put("% of all data; compression ratio: ");
+            IIO.Put(
+              Natural(
+                (100.0 * Long_Float(Summary.compressed_per_method(m))) /
+                Long_Float(Summary.uncompressed_per_method(m))
+              ), 4
+            );
+            Put('%');
+          end if;
+          New_Line;
         end if;
       end loop;
       New_Line;

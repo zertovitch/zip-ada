@@ -9,8 +9,14 @@ project ZipAda is
    Build_Mode : Build_Mode_Type := external ("Build_Mode", "Debug");
    for Source_Dirs use (".", "zip_lib", "test", "extras");
    for Exec_Dir use ".";
-   for Main use ("zipada.adb", "unzipada.adb", "comp_zip.adb", "find_zip.adb", "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb", "demo_unzip.adb", "bunzip", "lz", "test_unz_streams.adb", "test_chunk.adb", "ziptest.adb", "zip_with_many_files.adb", "test_extract.adb", 
-"test_extract_tb.ads", "uza_gnat.ads", "za_gnat.ads");
+   for Main use (
+     "zipada.adb", "unzipada.adb", "comp_zip.adb", "find_zip.adb",
+     "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb",
+     "demo_unzip.adb", "bunzip", "lz", "test_unz_streams.adb",
+     "test_chunk.adb", "ziptest.adb", "zip_with_many_files.adb",
+     "test_extract.adb", "test_extract_tb.ads",
+     "uza_gnat.ads", "za_gnat.ads"
+   );
 
    case Build_Mode is
 

@@ -1,5 +1,6 @@
--- *** Version of ZipAda downgraded to Ada 95 for testing with ObjectAda 7.2.2
--- *** Just need to comment out / null-ify the references to Ada.Directories
+-- *** Version of the ZipAda tool downgraded to Ada 95 for testing with 
+-- *** ObjectAda 7.2.2 or other Ada 95-only compilers.
+-- *** Just needed to comment out / null-ify the references to Ada.Directories
 
 ------------------------------------------------------------------------------
 --  File:            ZipAda.adb

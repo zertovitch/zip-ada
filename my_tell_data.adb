@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --  File:            Myteldat.adb or My_tell_data.adb
---  Description:     Part of UnZipAda demo
+--  Description:     Part of the UnZipAda demo
 ------------------------------------------------------------------------------
 
 with UnZip, My_dots, Summary;
@@ -64,5 +64,8 @@ begin
   Summary.total_compressed:=
     Summary.total_compressed   + compressed_bytes;
   Summary.total_entries:= Summary.total_entries + 1;
-  Summary.format_used(method):= Summary.format_used(method) + 1;
+  -- Per-method statistics:
+  Summary.files_per_method(method):= Summary.files_per_method(method) + 1;
+  Summary.uncompressed_per_method(method):= Summary.uncompressed_per_method(method) + uncompressed_bytes;
+  Summary.compressed_per_method(method):= Summary.compressed_per_method(method) + compressed_bytes;
 end My_tell_data;
