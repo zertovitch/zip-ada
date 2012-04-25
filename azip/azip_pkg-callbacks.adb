@@ -12,49 +12,49 @@ package body Azip_Pkg.Callbacks is
 
    use Gtk.Arguments;
 
-   ----------------------
-   -- On_New1_Activate --
-   ----------------------
+   -----------------------------
+   -- On_New_Archive_Activate --
+   -----------------------------
 
-   procedure On_New1_Activate
+   procedure On_New_Archive_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_New1_Activate;
+   end On_New_Archive_Activate;
 
-   -----------------------
-   -- On_Open1_Activate --
-   -----------------------
+   ------------------------------
+   -- On_Open_Archive_Activate --
+   ------------------------------
 
-   procedure On_Open1_Activate
+   procedure On_Open_Archive_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_Open1_Activate;
+   end On_Open_Archive_Activate;
 
-   -----------------------
-   -- On_Save1_Activate --
-   -----------------------
+   ---------------------------------
+   -- On_Save_Archive_As_Activate --
+   ---------------------------------
 
-   procedure On_Save1_Activate
+   procedure On_Save_Archive_As_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_Save1_Activate;
+   end On_Save_Archive_As_Activate;
 
-   --------------------------
-   -- On_Save_As1_Activate --
-   --------------------------
+   ------------------------
+   -- On_Recent_Activate --
+   ------------------------
 
-   procedure On_Save_As1_Activate
-     (Object : access Gtk_Image_Menu_Item_Record'Class)
+   procedure On_Recent_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_Save_As1_Activate;
+   end On_Recent_Activate;
 
    -----------------------
    -- On_Quit1_Activate --
@@ -111,15 +111,37 @@ package body Azip_Pkg.Callbacks is
       null;
    end On_Delete1_Activate;
 
-   ------------------------
-   -- On_About1_Activate --
-   ------------------------
+   -----------------------
+   -- On_Item1_Activate --
+   -----------------------
 
-   procedure On_About1_Activate
+   procedure On_Item1_Activate
      (Object : access Gtk_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_About1_Activate;
+   end On_Item1_Activate;
+
+   -------------------------------
+   -- On_Test_Archive1_Activate --
+   -------------------------------
+
+   procedure On_Test_Archive1_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Test_Archive1_Activate;
+
+   -----------------------
+   -- On_About_Activate --
+   -----------------------
+
+   procedure On_About_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_About_Activate;
 
 end Azip_Pkg.Callbacks;
