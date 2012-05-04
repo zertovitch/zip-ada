@@ -56,60 +56,60 @@ package body Azip_Pkg.Callbacks is
       null;
    end On_Recent_Activate;
 
-   -----------------------
-   -- On_Quit1_Activate --
-   -----------------------
-
-   procedure On_Quit1_Activate
-     (Object : access Gtk_Image_Menu_Item_Record'Class)
-   is
-   begin
-      null;
-   end On_Quit1_Activate;
-
    ----------------------
-   -- On_Cut1_Activate --
+   -- On_Quit_Activate --
    ----------------------
 
-   procedure On_Cut1_Activate
+   procedure On_Quit_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_Cut1_Activate;
+   end On_Quit_Activate;
+
+   ---------------------
+   -- On_Cut_Activate --
+   ---------------------
+
+   procedure On_Cut_Activate
+     (Object : access Gtk_Image_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Cut_Activate;
+
+   ----------------------
+   -- On_Copy_Activate --
+   ----------------------
+
+   procedure On_Copy_Activate
+     (Object : access Gtk_Image_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Copy_Activate;
 
    -----------------------
-   -- On_Copy1_Activate --
+   -- On_Paste_Activate --
    -----------------------
 
-   procedure On_Copy1_Activate
+   procedure On_Paste_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_Copy1_Activate;
+   end On_Paste_Activate;
 
    ------------------------
-   -- On_Paste1_Activate --
+   -- On_Delete_Activate --
    ------------------------
 
-   procedure On_Paste1_Activate
+   procedure On_Delete_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_Paste1_Activate;
-
-   -------------------------
-   -- On_Delete1_Activate --
-   -------------------------
-
-   procedure On_Delete1_Activate
-     (Object : access Gtk_Image_Menu_Item_Record'Class)
-   is
-   begin
-      null;
-   end On_Delete1_Activate;
+   end On_Delete_Activate;
 
    -----------------------
    -- On_Item1_Activate --
@@ -122,16 +122,82 @@ package body Azip_Pkg.Callbacks is
       null;
    end On_Item1_Activate;
 
-   -------------------------------
-   -- On_Test_Archive1_Activate --
-   -------------------------------
+   ------------------------------
+   -- On_Test_Archive_Activate --
+   ------------------------------
 
-   procedure On_Test_Archive1_Activate
+   procedure On_Test_Archive_Activate
      (Object : access Gtk_Menu_Item_Record'Class)
    is
    begin
       null;
-   end On_Test_Archive1_Activate;
+   end On_Test_Archive_Activate;
+
+   ------------------------------------
+   -- On_Recompress_Archive_Activate --
+   ------------------------------------
+
+   procedure On_Recompress_Archive_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Recompress_Archive_Activate;
+
+   --------------------------------------
+   -- On_Find_File_In_Archive_Activate --
+   --------------------------------------
+
+   procedure On_Find_File_In_Archive_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Find_File_In_Archive_Activate;
+
+   ------------------------------------------
+   -- On_Find_Contents_In_Archive_Activate --
+   ------------------------------------------
+
+   procedure On_Find_Contents_In_Archive_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Find_Contents_In_Archive_Activate;
+
+   --------------------------------------
+   -- On_Compare_Archive_With_Activate --
+   --------------------------------------
+
+   procedure On_Compare_Archive_With_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Compare_Archive_With_Activate;
+
+   ----------------------------
+   -- On_Flat_View1_Activate --
+   ----------------------------
+
+   procedure On_Flat_View1_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Flat_View1_Activate;
+
+   ----------------------------
+   -- On_Tree_View1_Activate --
+   ----------------------------
+
+   procedure On_Tree_View1_Activate
+     (Object : access Gtk_Menu_Item_Record'Class)
+   is
+   begin
+      null;
+   end On_Tree_View1_Activate;
 
    -----------------------
    -- On_About_Activate --

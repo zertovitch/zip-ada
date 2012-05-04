@@ -41,7 +41,7 @@
 		      <signal name="activate" handler="on_new_archive_activate" last_modification_time="Wed, 25 Apr 2012 07:15:26 GMT"/>
 
 		      <child internal-child="image">
-			<widget class="GtkImage" id="image7">
+			<widget class="GtkImage" id="image13">
 			  <property name="visible">True</property>
 			  <property name="stock">gtk-new</property>
 			  <property name="icon_size">1</property>
@@ -62,7 +62,7 @@
 		      <signal name="activate" handler="on_open_archive_activate" last_modification_time="Wed, 25 Apr 2012 07:15:26 GMT"/>
 
 		      <child internal-child="image">
-			<widget class="GtkImage" id="image8">
+			<widget class="GtkImage" id="image14">
 			  <property name="visible">True</property>
 			  <property name="stock">gtk-open</property>
 			  <property name="icon_size">1</property>
@@ -83,7 +83,7 @@
 		      <signal name="activate" handler="on_save_archive_as_activate" last_modification_time="Wed, 25 Apr 2012 07:15:26 GMT"/>
 
 		      <child internal-child="image">
-			<widget class="GtkImage" id="image9">
+			<widget class="GtkImage" id="image15">
 			  <property name="visible">True</property>
 			  <property name="stock">gtk-save-as</property>
 			  <property name="icon_size">1</property>
@@ -116,7 +116,7 @@
 		      <property name="visible">True</property>
 		      <property name="label">gtk-quit</property>
 		      <property name="use_stock">True</property>
-		      <signal name="activate" handler="on_quit1_activate" last_modification_time="Fri, 13 Apr 2012 12:22:17 GMT"/>
+		      <signal name="activate" handler="on_quit_activate" last_modification_time="Fri, 04 May 2012 15:01:59 GMT"/>
 		    </widget>
 		  </child>
 		</widget>
@@ -135,38 +135,38 @@
 		<widget class="GtkMenu" id="item1_menu">
 
 		  <child>
-		    <widget class="GtkImageMenuItem" id="cut1">
+		    <widget class="GtkImageMenuItem" id="cut">
 		      <property name="visible">True</property>
 		      <property name="label">gtk-cut</property>
 		      <property name="use_stock">True</property>
-		      <signal name="activate" handler="on_cut1_activate" last_modification_time="Fri, 13 Apr 2012 12:22:17 GMT"/>
+		      <signal name="activate" handler="on_cut_activate" last_modification_time="Fri, 04 May 2012 15:01:59 GMT"/>
 		    </widget>
 		  </child>
 
 		  <child>
-		    <widget class="GtkImageMenuItem" id="copy1">
+		    <widget class="GtkImageMenuItem" id="copy">
 		      <property name="visible">True</property>
 		      <property name="label">gtk-copy</property>
 		      <property name="use_stock">True</property>
-		      <signal name="activate" handler="on_copy1_activate" last_modification_time="Fri, 13 Apr 2012 12:22:17 GMT"/>
+		      <signal name="activate" handler="on_copy_activate" last_modification_time="Fri, 04 May 2012 15:01:59 GMT"/>
 		    </widget>
 		  </child>
 
 		  <child>
-		    <widget class="GtkImageMenuItem" id="paste1">
+		    <widget class="GtkImageMenuItem" id="paste">
 		      <property name="visible">True</property>
 		      <property name="label">gtk-paste</property>
 		      <property name="use_stock">True</property>
-		      <signal name="activate" handler="on_paste1_activate" last_modification_time="Fri, 13 Apr 2012 12:22:17 GMT"/>
+		      <signal name="activate" handler="on_paste_activate" last_modification_time="Fri, 04 May 2012 15:01:59 GMT"/>
 		    </widget>
 		  </child>
 
 		  <child>
-		    <widget class="GtkImageMenuItem" id="delete1">
+		    <widget class="GtkImageMenuItem" id="delete">
 		      <property name="visible">True</property>
 		      <property name="label">gtk-delete</property>
 		      <property name="use_stock">True</property>
-		      <signal name="activate" handler="on_delete1_activate" last_modification_time="Fri, 13 Apr 2012 12:22:17 GMT"/>
+		      <signal name="activate" handler="on_delete_activate" last_modification_time="Fri, 04 May 2012 15:01:59 GMT"/>
 		    </widget>
 		  </child>
 		</widget>
@@ -184,11 +184,47 @@
 		<widget class="GtkMenu" id="menuitem5_menu">
 
 		  <child>
-		    <widget class="GtkMenuItem" id="test_archive1">
+		    <widget class="GtkMenuItem" id="test_archive">
 		      <property name="visible">True</property>
 		      <property name="label" translatable="yes">_Test archive</property>
 		      <property name="use_underline">True</property>
-		      <signal name="activate" handler="on_test_archive1_activate" last_modification_time="Wed, 25 Apr 2012 07:25:58 GMT"/>
+		      <signal name="activate" handler="on_test_archive_activate" last_modification_time="Fri, 04 May 2012 15:01:59 GMT"/>
+		    </widget>
+		  </child>
+
+		  <child>
+		    <widget class="GtkMenuItem" id="recompress_archive">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">_Recompress archive</property>
+		      <property name="use_underline">True</property>
+		      <signal name="activate" handler="on_recompress_archive_activate" last_modification_time="Fri, 04 May 2012 14:59:31 GMT"/>
+		    </widget>
+		  </child>
+
+		  <child>
+		    <widget class="GtkMenuItem" id="find_file_in_archive">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">Find _file in archive</property>
+		      <property name="use_underline">True</property>
+		      <signal name="activate" handler="on_find_file_in_archive_activate" last_modification_time="Fri, 04 May 2012 14:59:31 GMT"/>
+		    </widget>
+		  </child>
+
+		  <child>
+		    <widget class="GtkMenuItem" id="find_contents_in_archive">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">Find _contents in archive</property>
+		      <property name="use_underline">True</property>
+		      <signal name="activate" handler="on_find_contents_in_archive_activate" last_modification_time="Fri, 04 May 2012 14:59:31 GMT"/>
+		    </widget>
+		  </child>
+
+		  <child>
+		    <widget class="GtkMenuItem" id="compare_archive_with">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">_Compare archive with...</property>
+		      <property name="use_underline">True</property>
+		      <signal name="activate" handler="on_compare_archive_with_activate" last_modification_time="Fri, 04 May 2012 14:59:31 GMT"/>
 		    </widget>
 		  </child>
 		</widget>
@@ -201,6 +237,29 @@
 	      <property name="visible">True</property>
 	      <property name="label" translatable="yes">_View</property>
 	      <property name="use_underline">True</property>
+
+	      <child>
+		<widget class="GtkMenu" id="menuitem6_menu">
+
+		  <child>
+		    <widget class="GtkMenuItem" id="flat_view1">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">_Flat view</property>
+		      <property name="use_underline">True</property>
+		      <signal name="activate" handler="on_flat_view1_activate" last_modification_time="Fri, 04 May 2012 15:00:42 GMT"/>
+		    </widget>
+		  </child>
+
+		  <child>
+		    <widget class="GtkMenuItem" id="tree_view1">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">_Tree view</property>
+		      <property name="use_underline">True</property>
+		      <signal name="activate" handler="on_tree_view1_activate" last_modification_time="Fri, 04 May 2012 15:00:42 GMT"/>
+		    </widget>
+		  </child>
+		</widget>
+	      </child>
 	    </widget>
 	  </child>
 

@@ -36,26 +36,26 @@ begin
    Gtk_New (Azip.Menuitem4_Menu);
 
    Gtk_New (Azip.New_Archive, -"New archive...");
-   Gtk_New (Azip.Image7 , "gtk-new", Gtk_Icon_Size'Val (1));
-   Set_Alignment (Azip.Image7, 0.5, 0.5);
-   Set_Padding (Azip.Image7, 0, 0);
-   Set_Image (Azip.New_Archive, Azip.Image7);
+   Gtk_New (Azip.Image13 , "gtk-new", Gtk_Icon_Size'Val (1));
+   Set_Alignment (Azip.Image13, 0.5, 0.5);
+   Set_Padding (Azip.Image13, 0, 0);
+   Set_Image (Azip.New_Archive, Azip.Image13);
 
 
    Append (Azip.Menuitem4_Menu, Azip.New_Archive);
    Gtk_New (Azip.Open_Archive, -"Open archive...");
-   Gtk_New (Azip.Image8 , "gtk-open", Gtk_Icon_Size'Val (1));
-   Set_Alignment (Azip.Image8, 0.5, 0.5);
-   Set_Padding (Azip.Image8, 0, 0);
-   Set_Image (Azip.Open_Archive, Azip.Image8);
+   Gtk_New (Azip.Image14 , "gtk-open", Gtk_Icon_Size'Val (1));
+   Set_Alignment (Azip.Image14, 0.5, 0.5);
+   Set_Padding (Azip.Image14, 0, 0);
+   Set_Image (Azip.Open_Archive, Azip.Image14);
 
 
    Append (Azip.Menuitem4_Menu, Azip.Open_Archive);
    Gtk_New (Azip.Save_Archive_As, -"Save archive as...");
-   Gtk_New (Azip.Image9 , "gtk-save-as", Gtk_Icon_Size'Val (1));
-   Set_Alignment (Azip.Image9, 0.5, 0.5);
-   Set_Padding (Azip.Image9, 0, 0);
-   Set_Image (Azip.Save_Archive_As, Azip.Image9);
+   Gtk_New (Azip.Image15 , "gtk-save-as", Gtk_Icon_Size'Val (1));
+   Set_Alignment (Azip.Image15, 0.5, 0.5);
+   Set_Padding (Azip.Image15, 0, 0);
+   Set_Image (Azip.Save_Archive_As, Azip.Image15);
 
 
    Append (Azip.Menuitem4_Menu, Azip.Save_Archive_As);
@@ -74,31 +74,52 @@ begin
 
    Gtk_New (Azip.Item1_Menu);
 
-   Gtk_New_From_Stock (Azip.Cut1, "gtk-cut");
+   Gtk_New_From_Stock (Azip.Cut, "gtk-cut");
 
-   Append (Azip.Item1_Menu, Azip.Cut1);
-   Gtk_New_From_Stock (Azip.Copy1, "gtk-copy");
+   Append (Azip.Item1_Menu, Azip.Cut);
+   Gtk_New_From_Stock (Azip.Copy, "gtk-copy");
 
-   Append (Azip.Item1_Menu, Azip.Copy1);
-   Gtk_New_From_Stock (Azip.Paste1, "gtk-paste");
+   Append (Azip.Item1_Menu, Azip.Copy);
+   Gtk_New_From_Stock (Azip.Paste, "gtk-paste");
 
-   Append (Azip.Item1_Menu, Azip.Paste1);
-   Gtk_New_From_Stock (Azip.Delete1, "gtk-delete");
+   Append (Azip.Item1_Menu, Azip.Paste);
+   Gtk_New_From_Stock (Azip.Delete, "gtk-delete");
 
-   Append (Azip.Item1_Menu, Azip.Delete1);
+   Append (Azip.Item1_Menu, Azip.Delete);
    Set_Submenu (Azip.Item1, Azip.Item1_Menu);
    Append (Azip.Menubar1, Azip.Item1);
    Gtk_New_With_Mnemonic (Azip.Menuitem5, -("_Tools"));
 
    Gtk_New (Azip.Menuitem5_Menu);
 
-   Gtk_New_With_Mnemonic (Azip.Test_Archive1, -("_Test archive"));
+   Gtk_New_With_Mnemonic (Azip.Test_Archive, -("_Test archive"));
 
-   Append (Azip.Menuitem5_Menu, Azip.Test_Archive1);
+   Append (Azip.Menuitem5_Menu, Azip.Test_Archive);
+   Gtk_New_With_Mnemonic (Azip.Recompress_Archive, -("_Recompress archive"));
+
+   Append (Azip.Menuitem5_Menu, Azip.Recompress_Archive);
+   Gtk_New_With_Mnemonic (Azip.Find_File_In_Archive, -("Find _file in archive"));
+
+   Append (Azip.Menuitem5_Menu, Azip.Find_File_In_Archive);
+   Gtk_New_With_Mnemonic (Azip.Find_Contents_In_Archive, -("Find _contents in archive"));
+
+   Append (Azip.Menuitem5_Menu, Azip.Find_Contents_In_Archive);
+   Gtk_New_With_Mnemonic (Azip.Compare_Archive_With, -("_Compare archive with..."));
+
+   Append (Azip.Menuitem5_Menu, Azip.Compare_Archive_With);
    Set_Submenu (Azip.Menuitem5, Azip.Menuitem5_Menu);
    Append (Azip.Menubar1, Azip.Menuitem5);
    Gtk_New_With_Mnemonic (Azip.Menuitem6, -("_View"));
 
+   Gtk_New (Azip.Menuitem6_Menu);
+
+   Gtk_New_With_Mnemonic (Azip.Flat_View1, -("_Flat view"));
+
+   Append (Azip.Menuitem6_Menu, Azip.Flat_View1);
+   Gtk_New_With_Mnemonic (Azip.Tree_View1, -("_Tree view"));
+
+   Append (Azip.Menuitem6_Menu, Azip.Tree_View1);
+   Set_Submenu (Azip.Menuitem6, Azip.Menuitem6_Menu);
    Append (Azip.Menubar1, Azip.Menuitem6);
    Gtk_New_With_Mnemonic (Azip.Menuitem7, -("_Help"));
 
@@ -169,25 +190,43 @@ begin
       Menu_Item_Callback.To_Marshaller (On_Recent_Activate'Access), False);
    Image_Menu_Item_Callback.Connect
      (Azip.Quit, "activate",
-      Image_Menu_Item_Callback.To_Marshaller (On_Quit1_Activate'Access), False);
+      Image_Menu_Item_Callback.To_Marshaller (On_Quit_Activate'Access), False);
    Image_Menu_Item_Callback.Connect
-     (Azip.Cut1, "activate",
-      Image_Menu_Item_Callback.To_Marshaller (On_Cut1_Activate'Access), False);
+     (Azip.Cut, "activate",
+      Image_Menu_Item_Callback.To_Marshaller (On_Cut_Activate'Access), False);
    Image_Menu_Item_Callback.Connect
-     (Azip.Copy1, "activate",
-      Image_Menu_Item_Callback.To_Marshaller (On_Copy1_Activate'Access), False);
+     (Azip.Copy, "activate",
+      Image_Menu_Item_Callback.To_Marshaller (On_Copy_Activate'Access), False);
    Image_Menu_Item_Callback.Connect
-     (Azip.Paste1, "activate",
-      Image_Menu_Item_Callback.To_Marshaller (On_Paste1_Activate'Access), False);
+     (Azip.Paste, "activate",
+      Image_Menu_Item_Callback.To_Marshaller (On_Paste_Activate'Access), False);
    Image_Menu_Item_Callback.Connect
-     (Azip.Delete1, "activate",
-      Image_Menu_Item_Callback.To_Marshaller (On_Delete1_Activate'Access), False);
+     (Azip.Delete, "activate",
+      Image_Menu_Item_Callback.To_Marshaller (On_Delete_Activate'Access), False);
    Menu_Item_Callback.Connect
      (Azip.Item1, "activate",
       Menu_Item_Callback.To_Marshaller (On_Item1_Activate'Access), False);
    Menu_Item_Callback.Connect
-     (Azip.Test_Archive1, "activate",
-      Menu_Item_Callback.To_Marshaller (On_Test_Archive1_Activate'Access), False);
+     (Azip.Test_Archive, "activate",
+      Menu_Item_Callback.To_Marshaller (On_Test_Archive_Activate'Access), False);
+   Menu_Item_Callback.Connect
+     (Azip.Recompress_Archive, "activate",
+      Menu_Item_Callback.To_Marshaller (On_Recompress_Archive_Activate'Access), False);
+   Menu_Item_Callback.Connect
+     (Azip.Find_File_In_Archive, "activate",
+      Menu_Item_Callback.To_Marshaller (On_Find_File_In_Archive_Activate'Access), False);
+   Menu_Item_Callback.Connect
+     (Azip.Find_Contents_In_Archive, "activate",
+      Menu_Item_Callback.To_Marshaller (On_Find_Contents_In_Archive_Activate'Access), False);
+   Menu_Item_Callback.Connect
+     (Azip.Compare_Archive_With, "activate",
+      Menu_Item_Callback.To_Marshaller (On_Compare_Archive_With_Activate'Access), False);
+   Menu_Item_Callback.Connect
+     (Azip.Flat_View1, "activate",
+      Menu_Item_Callback.To_Marshaller (On_Flat_View1_Activate'Access), False);
+   Menu_Item_Callback.Connect
+     (Azip.Tree_View1, "activate",
+      Menu_Item_Callback.To_Marshaller (On_Tree_View1_Activate'Access), False);
    Menu_Item_Callback.Connect
      (Azip.About, "activate",
       Menu_Item_Callback.To_Marshaller (On_About_Activate'Access), False);

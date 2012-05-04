@@ -14,25 +14,43 @@ package Azip_Pkg.Callbacks is
    procedure On_Recent_Activate
      (Object : access Gtk_Menu_Item_Record'Class);
 
-   procedure On_Quit1_Activate
+   procedure On_Quit_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class);
 
-   procedure On_Cut1_Activate
+   procedure On_Cut_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class);
 
-   procedure On_Copy1_Activate
+   procedure On_Copy_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class);
 
-   procedure On_Paste1_Activate
+   procedure On_Paste_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class);
 
-   procedure On_Delete1_Activate
+   procedure On_Delete_Activate
      (Object : access Gtk_Image_Menu_Item_Record'Class);
 
    procedure On_Item1_Activate
      (Object : access Gtk_Menu_Item_Record'Class);
 
-   procedure On_Test_Archive1_Activate
+   procedure On_Test_Archive_Activate
+     (Object : access Gtk_Menu_Item_Record'Class);
+
+   procedure On_Recompress_Archive_Activate
+     (Object : access Gtk_Menu_Item_Record'Class);
+
+   procedure On_Find_File_In_Archive_Activate
+     (Object : access Gtk_Menu_Item_Record'Class);
+
+   procedure On_Find_Contents_In_Archive_Activate
+     (Object : access Gtk_Menu_Item_Record'Class);
+
+   procedure On_Compare_Archive_With_Activate
+     (Object : access Gtk_Menu_Item_Record'Class);
+
+   procedure On_Flat_View1_Activate
+     (Object : access Gtk_Menu_Item_Record'Class);
+
+   procedure On_Tree_View1_Activate
      (Object : access Gtk_Menu_Item_Record'Class);
 
    procedure On_About_Activate
