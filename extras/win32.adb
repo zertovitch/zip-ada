@@ -1,6 +1,3 @@
-with Ada.Unchecked_Conversion;
-with System;
-
 package body Win32 is
 
    function Cat (Left, Right : String) return String is

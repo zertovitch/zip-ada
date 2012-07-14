@@ -807,7 +807,7 @@ package body UnZip.Decompress is
            129..255 => 8 );
 
         procedure LoadFollowers is
-          list_followers: constant Boolean:= trace >= some;
+          list_followers: constant Boolean:= some_trace;
           procedure Show_symbol(S: Symbol_range) is
           begin
             if S in 32..254 then

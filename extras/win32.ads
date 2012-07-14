@@ -328,7 +328,6 @@ private
    pragma Inline (To_C);
    pragma Inline (To_Win);
    pragma Inline (To_Chars_Ptr);
-   pragma Inline (To_Chars_Ptr);
    pragma Inline (To_PSTR);
    pragma Inline (To_PCSTR);
 

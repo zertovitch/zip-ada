@@ -42,12 +42,12 @@ private
 
   -- Primitive tracing using Ada.Text_IO
   --
-  type Trace_type is (none, some, full);
+  type Trace_type is (none, some_t, full);
 
   trace: constant Trace_type:= none; -- <== Choice
 
-  no_trace  : constant Boolean:= trace=none;
-  full_trace: constant Boolean:= trace=full;
-  some_trace: constant Boolean:= trace>=some;
+  no_trace  : constant Boolean:= trace = none;
+  some_trace: constant Boolean:= trace >= some_t;
+  full_trace: constant Boolean:= trace = full;
 
 end UnZip.Decompress;
