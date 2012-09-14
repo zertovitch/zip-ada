@@ -157,6 +157,7 @@ package body Zip is
       date_time        : Time;
       method           : PKZip_method;
       unicode_file_name: Boolean;
+      read_only        : Boolean;
       node             : in out p_Dir_node
       )
     is
@@ -174,13 +175,18 @@ package body Zip is
              crc_32            => crc_32,
              date_time         => date_time,
              method            => method,
-             unicode_file_name => unicode_file_name
+             unicode_file_name => unicode_file_name,
+             read_only         => read_only
              )
           );
       elsif dico_name > node.dico_name then
-        Insert( dico_name, file_name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.right );
+        Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
+          crc_32, date_time, method, unicode_file_name, read_only,
+          node.right );
       elsif dico_name < node.dico_name then
-        Insert( dico_name, file_name, file_index, comp_size, uncomp_size, crc_32, date_time, method, unicode_file_name, node.left );
+        Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
+          crc_32, date_time, method, unicode_file_name, read_only,
+          node.left );
       else
         raise Duplicate_name;
       end if;
@@ -238,6 +244,8 @@ package body Zip is
                 unicode_file_name =>
                   (header.short_info.bit_flag and
                    Zip.Headers.Language_Encoding_Flag_Bit) /= 0,
+                read_only   => header.made_by_version / 256 = 0 and -- DOS-like
+                               (header.external_attributes and 1) = 1,
                 node        => p );
         -- Since the files are usually well ordered, the tree as inserted
         -- is very unbalanced; we need to rebalance it from time to time
@@ -384,7 +392,8 @@ package body Zip is
           p.crc_32,
           p.date_time,
           p.method,
-          p.unicode_file_name
+          p.unicode_file_name,
+          p.read_only
         );
         Traverse(p.right);
       end if;

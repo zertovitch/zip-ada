@@ -156,7 +156,8 @@ package Zip is
       crc_32           : Interfaces.Unsigned_32;
       date_time        : Time;
       method           : PKZip_method;
-      unicode_file_name: Boolean
+      unicode_file_name: Boolean;
+      read_only        : Boolean
     );
   procedure Traverse_verbose( z: Zip_info );
 
@@ -294,8 +295,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "43-pre";
-  reference : constant String:= "14-Jul-2012";
+  version   : constant String:= "43";
+  reference : constant String:= "15-Sep-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
@@ -326,6 +327,7 @@ private
     date_time        : Time;
     method           : PKZip_method;
     unicode_file_name: Boolean;
+    read_only        : Boolean; -- TBD: attributes of most supported systems
   end record;
 
   type p_String is access String;
