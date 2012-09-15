@@ -31,8 +31,9 @@ For details about the code's history, read the file unzip.ads.
 Licence / Warning / Legal stuff
 ===============================
 
-There is NO WARRANTY in this software.
-You find the licence and copyright notice in zip.ads.
+There is NO WARRANTY in the Zip-Ada software.
+Zip-Ada is licensed under the MIT License.
+You find the full licence and copyright notice in zip.ads.
 
 Contents
 ========
@@ -73,6 +74,13 @@ Contents
   or reading time stamps (ZipAda). A Ada 95-only compiler will protest and
   you can use custom functions instead of the Ada 2005 ones.
 
+  UnZipAda uses a procedure from an extension to Ada.Directories for setting
+  time stamps of extracted files.
+  This extension in its turn uses a system-specific call.
+  You can replace the call to Set_Modification_Time by null
+  and remove the line with Ada_Directories_Extensions to get a totally portable
+  tool using only Zip-Ada and Ada standard libraries.
+
 * To build the tests, simply "gnatmake" or "adamake" them !
   You can also start "make_za" for minimal effort with GNAT.
 
@@ -100,6 +108,9 @@ packages.
 
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
+
+* Changes in '43', 15-Sep-2012:
+  - Read-only attribute is recognized
 
 * Changes in '42', 30-Jan-2012:
   - Support for Zip archives appended to other files,
