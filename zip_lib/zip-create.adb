@@ -2,6 +2,7 @@ with Ada.Exceptions;
 with Ada.Unchecked_Deallocation;
 with Ada.Text_IO;
 with Interfaces;                        use Interfaces;
+with Ada.Calendar;
 
 package body Zip.Create is
 
@@ -21,7 +22,15 @@ package body Zip.Create is
       if Z_Stream.all in File_Zipstream'Class then
         Zip_Streams.Create (File_Zipstream(Z_Stream.all), Ada.Streams.Stream_IO.Out_File);
       end if;
+      Info.Creation_time:= Convert(Ada.Calendar.Clock);
    end Create;
+
+   procedure Set(Info       : out Zip_Create_info;
+                 New_Method : Zip.Compress.Compression_Method)
+   is
+   begin
+     Info.Compress:= New_Method;
+   end Set;
 
    function Name(Info: Zip_Create_info) return String is
    begin

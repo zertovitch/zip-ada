@@ -22,8 +22,6 @@ is
 
   --  Define data types needed to implement input and output file buffers
 
-  BUFSIZE: constant  := 10240;   --  Use 10K file buffers
-
   procedure Dispose is
     new Ada.Unchecked_Deallocation(Byte_Buffer, p_Byte_Buffer);
 
@@ -456,11 +454,11 @@ begin
   --  Allocate input and output buffers ...
   if input_size_known then
     InBuf:= new Byte_Buffer
-      (1..Integer'Min(Integer'Max(8,Integer(input_size)), BUFSIZE));
+      (1..Integer'Min(Integer'Max(8,Integer(input_size)), output_buffer_size));
   else
-    InBuf:= new Byte_Buffer(1..BUFSIZE);
+    InBuf:= new Byte_Buffer(1..output_buffer_size);
   end if;
-  OutBuf:= new Byte_Buffer(1..BUFSIZE);
+  OutBuf:= new Byte_Buffer(1..output_buffer_size);
   OutBufIdx := 1;
   Build_Data_Structures;   --  ... and other data structures required
   Initialize_Data_Structures;

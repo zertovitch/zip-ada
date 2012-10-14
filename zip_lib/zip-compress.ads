@@ -60,4 +60,8 @@ package Zip.Compress is
     -- ^ code corresponding to the compression method actually used
   );
 
+private
+
+  output_buffer_size: constant:= 1024 * 1024;
+
 end Zip.Compress;

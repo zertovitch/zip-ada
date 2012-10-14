@@ -62,9 +62,7 @@ is
 
   --  Define data types needed to implement input and output file buffers
 
-  BUFSIZE: constant  := 10240;
-
-  InBuf, OutBuf: Byte_Buffer(1..BUFSIZE);
+  InBuf, OutBuf: Byte_Buffer(1..output_buffer_size);
 
   InBufIdx: Positive;  --  Points to next char in buffer to be read
   OutBufIdx: Positive; --  Points to next free space in output buffer

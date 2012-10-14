@@ -28,6 +28,11 @@ package Zip.Create is
                     Name        : String;
                     Compress    : Zip.Compress.Compression_Method:= Zip.Compress.Shrink);
 
+   -- Set a new compression format for the next data to be added to the archive.
+   -- Can be useful if data are known to be already compressed - or not.
+
+   procedure Set(Info       : out Zip_Create_info;
+                 New_Method : Zip.Compress.Compression_Method);
 
    function Name(Info: Zip_Create_info) return String;
 
@@ -93,6 +98,7 @@ private
       Contains  : Pdir_entries:= null;
       Last_entry: Natural:= 0;
       -- 'Contains' has unused room, to avoid reallocating each time
+      Creation_time: Time;
    end record;
 
 end Zip.Create;
