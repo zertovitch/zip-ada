@@ -67,7 +67,7 @@ package body Zip.Compress is
             -- The usage of Stream_Element_Array instead of Byte_Buffer is
             -- a workaround for the severe xxx'Read xxx'Write performance
             -- problems in the GNAT and ObjectAda compilers (as in 2009)
-            Buffer      : Ada.Streams.Stream_Element_Array (1 .. output_buffer_size);
+            Buffer      : Ada.Streams.Stream_Element_Array (1 .. buffer_size);
             Last_Read   : Ada.Streams.Stream_Element_Offset;
           begin
             Read (input.all, Buffer, Last_Read);

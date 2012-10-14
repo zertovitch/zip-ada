@@ -454,11 +454,11 @@ begin
   --  Allocate input and output buffers ...
   if input_size_known then
     InBuf:= new Byte_Buffer
-      (1..Integer'Min(Integer'Max(8,Integer(input_size)), output_buffer_size));
+      (1..Integer'Min(Integer'Max(8,Integer(input_size)), buffer_size));
   else
-    InBuf:= new Byte_Buffer(1..output_buffer_size);
+    InBuf:= new Byte_Buffer(1..buffer_size);
   end if;
-  OutBuf:= new Byte_Buffer(1..output_buffer_size);
+  OutBuf:= new Byte_Buffer(1..buffer_size);
   OutBufIdx := 1;
   Build_Data_Structures;   --  ... and other data structures required
   Initialize_Data_Structures;

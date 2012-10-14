@@ -62,6 +62,6 @@ package Zip.Compress is
 
 private
 
-  output_buffer_size: constant:= 1024 * 1024;
+  buffer_size: constant:= 1024 * 1024; -- 1 MB
 
 end Zip.Compress;

@@ -62,7 +62,7 @@ is
 
   --  Define data types needed to implement input and output file buffers
 
-  InBuf, OutBuf: Byte_Buffer(1..output_buffer_size);
+  InBuf, OutBuf: Byte_Buffer(1..buffer_size);
 
   InBufIdx: Positive;  --  Points to next char in buffer to be read
   OutBufIdx: Positive; --  Points to next free space in output buffer
