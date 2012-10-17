@@ -296,7 +296,7 @@ package Zip is
   --------------------------------------------------------------
 
   version   : constant String:= "44 preview 1";
-  reference : constant String:= "14-Oct-2012";
+  reference : constant String:= "17-Oct-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

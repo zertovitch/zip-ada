@@ -208,6 +208,7 @@ package body Zip.Create is
    begin
      Set(temp_zip_stream, Contents);
      Set_Name(acc_temp_zip_stream, Name_in_archive);
+     Set_Time(acc_temp_zip_stream, Info.Creation_time);
      Set_Unicode_Name_Flag(acc_temp_zip_stream, Name_UTF_8_encoded);
      Add_Stream (Info, acc_temp_zip_stream);
    end Add_String;
