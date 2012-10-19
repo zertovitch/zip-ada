@@ -555,7 +555,7 @@ package body Zip is
         aux:= aux.right;
       elsif up_name < aux.dico_name then
         aux:= aux.left;
-      else  -- file found !
+      else  -- entry found !
         file_index := aux.file_index;
         comp_size  := aux.comp_size;
         uncomp_size:= aux.uncomp_size;
@@ -567,6 +567,31 @@ package body Zip is
       "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
     );
   end Find_offset;
+
+  function Exists(
+    info           : in     Zip_info;
+    name           : in     String;
+    case_sensitive : in     Boolean
+  )
+  return Boolean
+  is
+    aux: p_Dir_node:= info.dir_binary_tree;
+    up_name: String:= Normalize(name, case_sensitive);
+  begin
+    if not info.loaded then
+      raise Forgot_to_load_zip_info;
+    end if;
+    while aux /= null loop
+      if up_name > aux.dico_name then
+        aux:= aux.right;
+      elsif up_name < aux.dico_name then
+        aux:= aux.left;
+      else  -- entry found !
+        return True;
+      end if;
+    end loop;
+    return False;
+  end Exists;
 
   procedure Get_sizes(
     info           : in     Zip_info;

@@ -204,6 +204,13 @@ package Zip is
 
   File_name_not_found: exception;
 
+  function Exists(
+    info           : in     Zip_info;
+    name           : in     String;
+    case_sensitive : in     Boolean
+  )
+  return Boolean;
+
   procedure Get_sizes(
     info           : in     Zip_info;
     name           : in     String;
@@ -295,8 +302,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "44 preview 1";
-  reference : constant String:= "17-Oct-2012";
+  version   : constant String:= "44 preview 2";
+  reference : constant String:= "19-Oct-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
