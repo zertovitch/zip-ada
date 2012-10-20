@@ -51,57 +51,63 @@ package body Zip.Compress is
     idx_out: constant Positive:= Index(output);
     compression_ok: Boolean;
     first_feedback: Boolean:= True;
+    --
+    procedure Store_data is
+    begin
+      zip_type:= 0; -- "Store" method
+      counted:= 0;
+      while not End_Of_Stream(input) loop
+        if input_size_known and counted >= input_size then
+          exit;
+        end if;
+        -- Copy data
+        declare
+          -- The usage of Stream_Element_Array instead of Byte_Buffer is
+          -- a workaround for the severe xxx'Read xxx'Write performance
+          -- problems in the GNAT and ObjectAda compilers (as in 2009)
+          Buffer      : Ada.Streams.Stream_Element_Array (1 .. buffer_size);
+          Last_Read   : Ada.Streams.Stream_Element_Offset;
+        begin
+          Read (input.all, Buffer, Last_Read);
+          counted:= counted + File_size_type (Last_Read);
+          Write (output.all, Buffer (1 .. Last_Read));
+          for I in 1 .. Last_Read loop
+            Zip.CRC.Update(CRC, (1 => Byte (Buffer (I))));
+          end loop;
+        end;
+        -- Feedback
+        if feedback /= null and then
+          (first_feedback or (counted mod (2**16)=0) or
+          (input_size_known and counted = input_size))
+        then
+          if input_size_known then
+            feedback(
+              percents_done =>
+                Natural( (100.0 * Float(counted)) / Float(input_size) ),
+              entry_skipped => False,
+              user_abort    => user_aborting );
+          else
+            feedback(
+              percents_done => 0,
+              entry_skipped => False,
+              user_abort    => user_aborting );
+          end if;
+          first_feedback:= False;
+          if user_aborting then
+            raise User_abort;
+          end if;
+        end if;
+      end loop;
+      output_size:= counted;
+      compression_ok:= True;
+    end Store_data;
+    --
   begin
     Zip.CRC.Init(CRC);
     case method is
       --
       when Store =>
-        zip_type:= 0; -- "Store" method
-        counted:= 0;
-        while not End_Of_Stream(input) loop
-          if input_size_known and counted >= input_size then
-            exit;
-          end if;
-          -- Copy data
-          declare
-            -- The usage of Stream_Element_Array instead of Byte_Buffer is
-            -- a workaround for the severe xxx'Read xxx'Write performance
-            -- problems in the GNAT and ObjectAda compilers (as in 2009)
-            Buffer      : Ada.Streams.Stream_Element_Array (1 .. buffer_size);
-            Last_Read   : Ada.Streams.Stream_Element_Offset;
-          begin
-            Read (input.all, Buffer, Last_Read);
-            counted:= counted + File_size_type (Last_Read);
-            Write (output.all, Buffer (1 .. Last_Read));
-            for I in 1 .. Last_Read loop
-              Zip.CRC.Update(CRC, (1 => Byte (Buffer (I))));
-            end loop;
-          end;
-          -- Feedback
-          if feedback /= null and then
-            (first_feedback or (counted mod (2**16)=0) or
-            (input_size_known and counted = input_size))
-          then
-            if input_size_known then
-              feedback(
-                percents_done =>
-                  Natural( (100.0 * Float(counted)) / Float(input_size) ),
-                entry_skipped => False,
-                user_abort    => user_aborting );
-            else
-              feedback(
-                percents_done => 0,
-                entry_skipped => False,
-                user_abort    => user_aborting );
-            end if;
-            first_feedback:= False;
-            if user_aborting then
-              raise User_abort;
-            end if;
-          end if;
-        end loop;
-        output_size:= counted;
-        compression_ok:= True;
+        Store_data;
       --
       when Shrink =>
         Zip.Compress.Shrink(
@@ -142,14 +148,9 @@ package body Zip.Compress is
       -- Go back to the beginning and just store the data
       Set_Index(input, idx_in);
       Set_Index(output, idx_out);
-      Compress_data
-        ( input, output, input_size_known, input_size,
-          Store,      -- Force the "store" method this time
-          feedback,
-          CRC,
-          output_size,
-          zip_type
-        );
+      Zip.CRC.Init(CRC);
+      Store_data;
+      CRC:= Zip.CRC.Final(CRC);
     end if;
   end Compress_data;
 
