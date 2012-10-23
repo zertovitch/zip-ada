@@ -159,14 +159,18 @@ package body Zip.Create is
                        Delete_file_after : Boolean:= False;
                        -- practical to delete temporary file after
                        -- adding
-                       Name_UTF_8_encoded: Boolean:= False
-                       -- True if Name[_in_archive] is actually UTF-8 encoded
+                       Name_UTF_8_encoded: Boolean:= False;
+                       -- True if Name[_in_archive] is actually
+                       -- UTF-8 encoded (Unicode)
+                       Feedback          : Feedback_proc:= null
    )
    is
       temp_zip_stream     : aliased File_Zipstream;
       acc_temp_zip_stream : constant Zipstream_Class := temp_zip_stream'Unchecked_Access;
       use Ada.Text_IO;
       fd: File_Type;
+      Compressed_Size: Zip.File_size_type; -- unused
+      Final_Method   : Natural; -- unused
    begin
      -- Read the file
      Set_Name(acc_temp_zip_stream, Name);
@@ -177,7 +181,7 @@ package body Zip.Create is
      end if;
      Set_Unicode_Name_Flag(acc_temp_zip_stream, Name_UTF_8_encoded);
      -- Stuff into the .zip archive:
-     Add_Stream (Info, acc_temp_zip_stream);
+     Add_Stream (Info, acc_temp_zip_stream, Feedback, Compressed_Size, Final_Method);
      Close(temp_zip_stream);
      if Delete_file_after then
         Open(fd, In_File, Name);

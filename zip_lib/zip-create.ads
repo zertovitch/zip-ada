@@ -3,6 +3,7 @@
 --
 -- Change log:
 -- ==========
+-- 14-Oct-2012: GdM: Added Set procedure for changing compression method
 -- 30-Mar-2010: GdM: Added Name function
 -- 25-Feb-2010: GdM: Fixed major bottlenecks around Dir_entries
 --                     -> 5x faster overall for 1000 files, 356x for 100'000 !
@@ -57,9 +58,10 @@ package Zip.Create is
                        Delete_file_after : Boolean:= False;
                        -- practical to delete temporary file after
                        -- adding
-                       Name_UTF_8_encoded: Boolean:= False
+                       Name_UTF_8_encoded: Boolean:= False;
                        -- True if Name[_in_archive] is actually
                        -- UTF-8 encoded (Unicode)
+                       Feedback          : Feedback_proc:= null
    );
 
    -- Add new entries to a Zip archive, from a buffer stored in a string
