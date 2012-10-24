@@ -753,7 +753,7 @@ package body Zip is
   begin
     remains:= bytes;
     while remains > 0 loop
-      Zip.BlockRead(from,buf(1..Integer'Min(remains, buf'Last)),actually_read);
+      Zip.BlockRead(from, buf(1..Integer'Min(remains, buf'Last)), actually_read);
       if actually_read = 0 then -- premature end, unexpected
         raise Zip.Zip_File_Error;
       end if;
@@ -765,7 +765,7 @@ package body Zip is
   -- Copy a whole file into a stream, using a temporary buffer
   procedure Copy_file(
     file_name  : String;
-    into       : Zip_Streams.Zipstream_Class;
+    into       : in out Ada.Streams.Root_Stream_Type'Class;
     buffer_size: Positive
   )
   is
@@ -776,9 +776,9 @@ package body Zip is
   begin
     Open(f, In_File, file_name);
     loop
-      Zip.BlockRead(f,buf,actually_read);
+      Zip.BlockRead(f, buf, actually_read);
       exit when actually_read = 0; -- this is expected
-      Zip.BlockWrite(into.all, buf(1..actually_read));
+      Zip.BlockWrite(into, buf(1..actually_read));
     end loop;
     Close(f);
   end Copy_file;

@@ -289,7 +289,7 @@ package Zip is
   -- Copy a whole file into a stream, using a temporary buffer
   procedure Copy_file(
     file_name  : String;
-    into       : Zip_Streams.Zipstream_Class;
+    into       : in out Ada.Streams.Root_Stream_Type'Class;
     buffer_size: Positive
   );
 

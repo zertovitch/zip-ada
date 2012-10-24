@@ -756,7 +756,7 @@ procedure ReZip is
       Zip.Headers.Write(Streamrepacked_zip_file, e.head.short_info);
       String'Write(Streamrepacked_zip_file, S(e.name));
       -- Copy the compressed data
-      Zip.Copy_file( Temp_name(True,choice), Streamrepacked_zip_file, 1024*1024 );
+      Zip.Copy_file( Temp_name(True,choice), Streamrepacked_zip_file.all, 1024*1024 );
       Dual_IO.Put_Line(" done");
       Dual_IO.New_Line;
     end Process_one;
