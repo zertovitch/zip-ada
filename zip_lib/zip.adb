@@ -740,6 +740,49 @@ package body Zip is
     return Method_from_code(Natural(x));
   end Method_from_code;
 
+  -- Copy a chunk from a stream into another one, using a temporary buffer
+  procedure Copy_chunk(
+    from       : Zip_Streams.Zipstream_Class;
+    into       : in out Ada.Streams.Root_Stream_Type'Class;
+    bytes      : Natural;
+    buffer_size: Positive
+  )
+  is
+    buf: Zip.Byte_Buffer(1..buffer_size);
+    actually_read, remains: Natural;
+  begin
+    remains:= bytes;
+    while remains > 0 loop
+      Zip.BlockRead(from,buf(1..Integer'Min(remains, buf'Last)),actually_read);
+      if actually_read = 0 then -- premature end, unexpected
+        raise Zip.Zip_File_Error;
+      end if;
+      remains:= remains - actually_read;
+      Zip.BlockWrite(into, buf(1..actually_read));
+    end loop;
+  end Copy_chunk;
+
+  -- Copy a whole file into a stream, using a temporary buffer
+  procedure Copy_file(
+    file_name  : String;
+    into       : Zip_Streams.Zipstream_Class;
+    buffer_size: Positive
+  )
+  is
+    use Ada.Streams.Stream_IO;
+    f: File_Type;
+    buf: Zip.Byte_Buffer(1..buffer_size);
+    actually_read: Natural;
+  begin
+    Open(f, In_File, file_name);
+    loop
+      Zip.BlockRead(f,buf,actually_read);
+      exit when actually_read = 0; -- this is expected
+      Zip.BlockWrite(into.all, buf(1..actually_read));
+    end loop;
+    Close(f);
+  end Copy_file;
+
   -- This does the same as Ada 2005's Ada.Directories.Exists
   -- Just there as helper for Ada 95 only systems
   --

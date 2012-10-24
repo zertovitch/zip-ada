@@ -46,6 +46,7 @@ with Ada.Numerics.Discrete_Random;
 with Interfaces;                        use Interfaces;
 
 with GNAT.OS_Lib;
+with Zip;
 
 procedure ReZip is
 
@@ -78,38 +79,6 @@ procedure ReZip is
     Ada.Text_IO.Put_Line("external packers (available for Windows and Linux):");
     Ada.Text_IO.New_Line;
   end Usage;
-
-  -- Copy a chunk from a stream into another one:
-  procedure Copy_chunk(from : Zipstream_Class;
-                       into : Ada.Streams.Stream_IO.File_Type; bytes: Natural) is
-    buf: Zip.Byte_Buffer(1..32768);
-    actually_read, remains: Natural;
-  begin
-    remains:= bytes;
-    while remains > 0 loop
-      Zip.BlockRead(from,buf(1..Integer'Min(remains, buf'Last)),actually_read);
-      if actually_read = 0 then -- premature end, unexpected
-        raise Zip.Zip_File_Error;
-      end if;
-      remains:= remains - actually_read;
-      Zip.BlockWrite(Stream(into).all, buf(1..actually_read));
-    end loop;
-  end Copy_chunk;
-
-  -- Copy a whole file into a stream:
-  procedure Copy(from: String; into: Zipstream_Class) is
-    f: Ada.Streams.Stream_IO.File_Type;
-    buf: Zip.Byte_Buffer(1..32768);
-    actually_read: Natural;
-  begin
-    Open(f, In_File, from);
-    loop
-      Zip.BlockRead(f,buf,actually_read);
-      exit when actually_read = 0; -- this is expected
-      Zip.BlockWrite(into.all, buf(1..actually_read));
-    end loop;
-    Close(f);
-  end Copy;
 
   function S (Source : Ada.Strings.Unbounded.Unbounded_String) return String
     renames Ada.Strings.Unbounded.To_String;
@@ -150,7 +119,7 @@ procedure ReZip is
     );
     -- * Get the data, compressed
     Create(file_out, Out_File, rip_rename);
-    Copy_Chunk(InputStream, file_out, Integer(comp_size));
+    Zip.Copy_Chunk(InputStream, Stream(file_out).all, Integer(comp_size), 1024*1024);
     Close(file_out);
     if unzip_rename /= "" then
       -- * Get the data, uncompressed
@@ -787,7 +756,7 @@ procedure ReZip is
       Zip.Headers.Write(Streamrepacked_zip_file, e.head.short_info);
       String'Write(Streamrepacked_zip_file, S(e.name));
       -- Copy the compressed data
-      Copy( Temp_name(True,choice), Streamrepacked_zip_file );
+      Zip.Copy_file( Temp_name(True,choice), Streamrepacked_zip_file, 1024*1024 );
       Dual_IO.Put_Line(" done");
       Dual_IO.New_Line;
     end Process_one;

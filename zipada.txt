@@ -111,8 +111,9 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 
 * Changes in '44' (not yet released):
   - Zip.Create: archive creation date is used when entries are added which
-        are not from a file but a memory buffer
-  - Zip.Create: compression method can be changed before adding new entries
+        are from a memory buffer
+  - Zip.Create: compression method can be changed "on the fly", before
+        adding new entries
   - Zip.Compress: set a larger, standard output buffer size
 
 * Changes in '43', 15-Sep-2012:

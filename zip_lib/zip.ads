@@ -231,7 +231,8 @@ package Zip is
     );
 
   -------------------------------------------------------------------------
-  -- Goodies - things used internally but that might be generally useful --
+  -- Goodies - things used internally by Zip-Ada but are not bound to    --
+  -- Zip archive purposes and that might be generally useful.            --
   -------------------------------------------------------------------------
 
   -- BlockRead: general-purpose procedure (nothing really specific to Zip /
@@ -277,13 +278,28 @@ package Zip is
     buffer : in     Byte_Buffer
   );
 
+  -- Copy a chunk from a stream into another one, using a temporary buffer
+  procedure Copy_chunk (
+    from       : Zip_Streams.Zipstream_Class;
+    into       : in out Ada.Streams.Root_Stream_Type'Class;
+    bytes      : Natural;
+    buffer_size: Positive
+    );
+
+  -- Copy a whole file into a stream, using a temporary buffer
+  procedure Copy_file(
+    file_name  : String;
+    into       : Zip_Streams.Zipstream_Class;
+    buffer_size: Positive
+  );
+
   -- This does the same as Ada 2005's Ada.Directories.Exists
   -- Just there as helper for Ada 95 only systems
   --
   function Exists(name:String) return Boolean;
 
-  -- Write a string containing line endings (possible from another system)
-  --   into a text file, with the correct native line endings.
+  -- Write a string containing line endings (possibly from another system)
+  --   into a text file, with the "correct", native line endings.
   --   Works for displaying/saving correctly
   --   CR&LF (DOS/Win), LF (UNIX), CR (Mac OS < 9)
   --
@@ -302,8 +318,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "44 preview 3";
-  reference : constant String:= "20-Oct-2012";
+  version   : constant String:= "44 preview 4";
+  reference : constant String:= "24-Oct-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
