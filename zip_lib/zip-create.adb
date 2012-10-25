@@ -56,8 +56,8 @@ package body Zip.Create is
       end if;
    end Resize;
 
-   procedure Add_Stream (Info           : in out Zip_Create_info;
-                         Stream         : Zipstream_Class)
+   procedure Add_Stream (Info   : in out Zip_Create_info;
+                         Stream : in out Root_Zipstream_Type'Class)
    is
      Compressed_Size: Zip.File_size_type; -- dummy
      Final_Method   : Natural;            -- dummy
@@ -66,7 +66,14 @@ package body Zip.Create is
    end Add_Stream;
 
    procedure Add_Stream (Info           : in out Zip_Create_info;
-                         Stream         : Zipstream_Class;
+                         Stream         : Zipstream_Class)
+   is
+   begin
+     Add_Stream(Info, Stream.all); -- call the pointer-free version
+   end Add_Stream;
+
+   procedure Add_Stream (Info           : in out Zip_Create_info;
+                         Stream         : in out Root_Zipstream_Type'Class;
                          Feedback       : in     Feedback_proc;
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural)
@@ -129,7 +136,7 @@ package body Zip.Create is
       --  Write compressed file
       Zip.Compress.Compress_data
         (input            => Stream,
-         output           => Info.Stream,
+         output           => Info.Stream.all,
          input_size_known => True,
          input_size       =>
            Info.Contains (Last).head.short_info.dd.uncompressed_size,
@@ -149,6 +156,17 @@ package body Zip.Create is
       --
       Compressed_Size:= Info.Contains (Last).head.short_info.dd.compressed_size;
       Final_Method   := Natural(Info.Contains (Last).head.short_info.zip_type);
+   end Add_Stream;
+
+   procedure Add_Stream (Info           : in out Zip_Create_info;
+                         Stream         : Zipstream_Class;
+                         Feedback       : in     Feedback_proc;
+                         Compressed_Size:    out Zip.File_size_type;
+                         Final_Method   :    out Natural)
+   is
+   begin
+     Add_Stream (Info, Stream.all, Feedback, Compressed_Size, Final_Method);
+     -- call the pointer-free version
    end Add_Stream;
 
    procedure Add_File (Info              : in out Zip_Create_info;

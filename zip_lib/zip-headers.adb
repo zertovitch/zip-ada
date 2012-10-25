@@ -63,8 +63,8 @@ package body Zip.Headers is
   -- PKZIP file header, as in central directory - PK12 --
   -------------------------------------------------------
   procedure Read_and_check(
-    stream : in  Zipstream_Class;
-    header : out Central_File_Header
+    stream : in out Root_Zipstream_Type'Class;
+    header :    out Central_File_Header
   )
   is
     chb: Byte_Buffer( 1..46 );
@@ -94,8 +94,17 @@ package body Zip.Headers is
 
   end Read_and_check;
 
+  procedure Read_and_check(
+    stream : in  Zipstream_Class;
+    header : out Central_File_Header
+  )
+  is
+  begin
+    Read_and_check(stream.all, header); -- call the pointer-free version
+  end Read_and_check;
+
   procedure Write(
-    stream : in     Zipstream_Class;
+    stream : in out Root_Zipstream_Type'Class;
     header : in     Central_File_Header
   )
   is
@@ -121,14 +130,22 @@ package body Zip.Headers is
     chb(39..42):= Intel_bf( header.external_attributes );
     chb(43..46):= Intel_bf( header.local_header_offset );
 
-    BlockWrite(stream.all, chb);
+    BlockWrite(stream, chb);
   end Write;
 
+  procedure Write(
+    stream : in     Zipstream_Class;
+    header : in     Central_File_Header
+  )
+  is
+  begin
+    Write(stream.all, header); -- call the pointer-free version
+  end Write;
   -----------------------------------------------------------------------
   -- PKZIP local file header, in front of every file in archive - PK34 --
   -----------------------------------------------------------------------
   procedure Read_and_check(
-    stream : in     Zipstream_Class;
+    stream : in out Root_Zipstream_Type'Class;
     header :    out Local_File_Header
   )
   is
@@ -154,10 +171,19 @@ package body Zip.Headers is
 
   end Read_and_check;
 
+  procedure Read_and_check(
+    stream : in     Zipstream_Class;
+    header :    out Local_File_Header
+  )
+  is
+  begin
+    Read_and_check(stream.all, header); -- call the pointer-free version
+  end Read_and_check;
+
   procedure Write(
-                  stream : in     Zipstream_Class;
-                  header : in     Local_File_Header
-                 )
+    stream : in out Root_Zipstream_Type'Class;
+    header : in     Local_File_Header
+  )
   is
     lhb: Byte_Buffer( 1..30 );
   begin
@@ -173,7 +199,16 @@ package body Zip.Headers is
     lhb(27..28):= Intel_bf( header.filename_length );
     lhb(29..30):= Intel_bf( header.extra_field_length );
 
-    BlockWrite(stream.all, lhb);
+    BlockWrite(stream, lhb);
+  end Write;
+
+  procedure Write(
+    stream : in     Zipstream_Class;
+    header : in     Local_File_Header
+  )
+  is
+  begin
+    Write(stream.all, header); -- call the pointer-free version
   end Write;
 
   -------------------------------------------
@@ -220,9 +255,9 @@ package body Zip.Headers is
   --  3) zipped files
 
   procedure Load(
-    stream : in     Zipstream_Class;
-    the_end:    out End_of_Central_Dir
-    )
+    stream  : in out Root_Zipstream_Type'Class;
+    the_end :    out End_of_Central_Dir
+  )
   is
     end_buffer: Byte_Buffer( 1..22 );
     min_end_start: Ada.Streams.Stream_IO.Count;
@@ -245,7 +280,7 @@ package body Zip.Headers is
       Zip_Streams.Set_Index(stream, Positive(i));
       begin
         for j in end_buffer'Range loop
-          Byte'Read(stream, end_buffer(j));
+          Byte'Read(stream'Access, end_buffer(j));
           -- 20-Jun-2001: useless to read more if 1st character is not 'P'
           if j=end_buffer'First and then
              end_buffer(j)/=Character'Pos('P') then
@@ -279,8 +314,17 @@ package body Zip.Headers is
     end loop;
   end Load;
 
+  procedure Load(
+    stream : in     Zipstream_Class;
+    the_end:    out End_of_Central_Dir
+    )
+  is
+  begin
+    Load(stream.all, the_end); -- call the pointer-free version
+  end Load;
+
   procedure Write(
-    stream  : in     Zipstream_Class;
+    stream  : in out Root_Zipstream_Type'Class;
     the_end : in     End_of_Central_Dir
   )
   is
@@ -296,7 +340,16 @@ package body Zip.Headers is
     eb(17..20):= Intel_bf( the_end.central_dir_offset );
     eb(21..22):= Intel_bf( the_end.main_comment_length );
 
-    BlockWrite(stream.all, eb);
+    BlockWrite(stream, eb);
+  end Write;
+
+  procedure Write(
+    stream  : in     Zipstream_Class;
+    the_end : in     End_of_Central_Dir
+  )
+  is
+  begin
+    Write(stream.all, the_end); -- call the pointer-free version
   end Write;
 
   ------------------------------------------------------------------

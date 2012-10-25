@@ -68,6 +68,11 @@ package Zip is
   -- Load from a stream
 
   procedure Load(
+    info           :    out Zip_info;
+    from           : in out Zip_Streams.Root_Zipstream_Type'Class;
+    case_sensitive : in     Boolean:= False
+  );
+  procedure Load(
     info           : out Zip_info;
     from           : in  Zip_Streams.Zipstream_Class;
     case_sensitive : in  Boolean:= False
@@ -255,6 +260,12 @@ package Zip is
   -- Same for general streams
   --
   procedure BlockRead(
+    stream       : in out Zip_Streams.Root_Zipstream_Type'Class;
+    buffer       :    out Byte_Buffer;
+    actually_read:    out Natural
+    -- = buffer'Length if no end of stream before last buffer element
+  );
+  procedure BlockRead(
     stream       : in     Zip_Streams.Zipstream_Class;
     buffer       :    out Byte_Buffer;
     actually_read:    out Natural
@@ -265,6 +276,10 @@ package Zip is
   -- the buffer cannot be fully read.
   -- This mimics the 'Read stream attribute; can be a lot faster, depending
   -- on the compiler's run-time library.
+  procedure BlockRead(
+    stream : in out Zip_Streams.Root_Zipstream_Type'Class;
+    buffer :    out Byte_Buffer
+  );
   procedure BlockRead(
     stream : in     Zip_Streams.Zipstream_Class;
     buffer :    out Byte_Buffer
@@ -280,17 +295,17 @@ package Zip is
 
   -- Copy a chunk from a stream into another one, using a temporary buffer
   procedure Copy_chunk (
-    from       : Zip_Streams.Zipstream_Class;
+    from       : in out Zip_Streams.Root_Zipstream_Type'Class;
     into       : in out Ada.Streams.Root_Stream_Type'Class;
     bytes      : Natural;
-    buffer_size: Positive
+    buffer_size: Positive:= 1024*1024
     );
 
   -- Copy a whole file into a stream, using a temporary buffer
   procedure Copy_file(
     file_name  : String;
     into       : in out Ada.Streams.Root_Stream_Type'Class;
-    buffer_size: Positive
+    buffer_size: Positive:= 1024*1024
   );
 
   -- This does the same as Ada 2005's Ada.Directories.Exists
@@ -318,8 +333,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "44 preview 4";
-  reference : constant String:= "24-Oct-2012";
+  version   : constant String:= "44 preview 5";
+  reference : constant String:= "25-Oct-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

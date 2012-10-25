@@ -87,7 +87,7 @@ procedure ReZip is
 
   procedure Rip_data(
     archive      : Zip.Zip_info; -- from this archive...
-    InputStream  : in Zipstream_Class;
+    input        : in out Root_Zipstream_Type'Class;
     data_name    : String;       -- extract this data
     rip_rename   : String;       -- to this file (compressed)
     unzip_rename : String;       -- and this one (uncompressed)
@@ -109,17 +109,17 @@ procedure ReZip is
       comp_size      => comp_size,
       uncomp_size    => uncomp_size
     );
-    Set_Index(InputStream, Positive(file_index));
-    Zip.Headers.Read_and_check(InputStream, header);
+    Set_Index(input, Positive(file_index));
+    Zip.Headers.Read_and_check(input, header);
     -- Skip name and extra field
-    Set_Index(InputStream,
-      Index(InputStream) +
+    Set_Index(input,
+      Index(input) +
         Positive (header.extra_field_length +
         header.filename_length)
     );
     -- * Get the data, compressed
     Create(file_out, Out_File, rip_rename);
-    Zip.Copy_Chunk(InputStream, Stream(file_out).all, Integer(comp_size), 1024*1024);
+    Zip.Copy_Chunk(input, Stream(file_out).all, Integer(comp_size), 1024*1024);
     Close(file_out);
     if unzip_rename /= "" then
       -- * Get the data, uncompressed
@@ -363,7 +363,6 @@ procedure ReZip is
     zi_ext: Zip.Zip_info;
     header: Zip.Headers.Local_File_Header;
     MyStream   : aliased File_Zipstream;
-    StreamFile : constant Zipstream_Class := MyStream'Unchecked_Access;
     cur_dir: constant String:= Current_Directory;
     size_memory: array(1..rand_stable) of Zip.File_size_type:= (others => 0);
     size: Zip.File_size_type:= 0;
@@ -386,12 +385,12 @@ procedure ReZip is
       -- Post processing of "deflated" entries with DeflOpt:
       Call_external(S(defl_opt.name), temp_zip);
       -- Now, rip
-      Set_Name (StreamFile, temp_zip);
+      Set_Name (MyStream, temp_zip);
       Open (MyStream, In_File);
-      Zip.Load( zi_ext, StreamFile, False );
+      Zip.Load( zi_ext, MyStream, False );
       Rip_data(
         archive      => zi_ext,
-        InputStream  => StreamFile,
+        input        => MyStream,
         data_name    => data_name,
         rip_rename   => out_name,
         unzip_rename => "",
@@ -466,11 +465,9 @@ procedure ReZip is
     use type Zip.PKZip_method;
     zi: Zip.Zip_info;
     MyStream   : aliased File_Zipstream;
-    StreamFile : constant Zipstream_Class := MyStream'Unchecked_Access;
 
     list, e, curr: p_Dir_entry:= null;
     repacked_zip_file   : aliased File_Zipstream;
-    Streamrepacked_zip_file : constant Zipstream_Class := repacked_zip_file'Unchecked_Access;
     total: Packer_info_array:= (others => (0,0,0,0,0,NN,1));
     -- total(a).count counts the files where approach 'a' was optimal
     -- total(a).saved counts the saved bytes when approach 'a' was optimal
@@ -492,9 +489,7 @@ procedure ReZip is
       comp_size  :  Zip.File_size_type;
       uncomp_size:  Zip.File_size_type;
       File_in       : aliased File_Zipstream;
-      StreamFile_in : constant Zipstream_Class := File_in'Unchecked_Access;
       File_out      : aliased File_Zipstream;
-      StreamFile_out: constant Zipstream_Class := File_out'Unchecked_Access;
       choice: Approach:= original;
       deco: constant String:= "-->-->-->" & (20+unique_name'Length) * '-';
       mth: Zip.PKZip_method;
@@ -556,7 +551,7 @@ procedure ReZip is
       Dual_IO.Put("    Phase 1:  dump & unzip -");
       Rip_data(
         archive      => zi,
-        InputStream  => StreamFile,
+        input        => MyStream,
         data_name    => unique_name,
         rip_rename   => Temp_name(True,original),
         unzip_rename => Temp_name(False,original),
@@ -612,14 +607,14 @@ procedure ReZip is
               mth:= Zip.Method_from_code(e.info(a).zfm);
               --
             when Internal =>
-              Set_Name (StreamFile_in, Temp_name(False,original));
+              Set_Name (File_in, Temp_name(False,original));
               Open (File_in, In_File);
-              Set_Name (StreamFile_out, Temp_name(True,a));
+              Set_Name (File_out, Temp_name(True,a));
               Create (File_out, Out_File);
               Zip.Compress.Compress_data
               (
-                input            => StreamFile_in,
-                output           => StreamFile_out,
+                input            => File_in,
+                output           => File_out,
                 input_size_known => True,
                 input_size       => e.head.short_info.dd.uncompressed_size,
                 method           => Approach_to_Method(a),
@@ -752,11 +747,11 @@ procedure ReZip is
       -- Put the winning size and method
       e.head.short_info.dd.compressed_size:= e.info(choice).size;
       e.head.short_info.zip_type:= e.info(choice).zfm;
-      e.head.local_header_offset:= Unsigned_32(Index(Streamrepacked_zip_file))-1;
-      Zip.Headers.Write(Streamrepacked_zip_file, e.head.short_info);
-      String'Write(Streamrepacked_zip_file, S(e.name));
+      e.head.local_header_offset:= Unsigned_32(Index(repacked_zip_file))-1;
+      Zip.Headers.Write(repacked_zip_file, e.head.short_info);
+      String'Write(repacked_zip_file'Access, S(e.name));
       -- Copy the compressed data
-      Zip.Copy_file( Temp_name(True,choice), Streamrepacked_zip_file.all, 1024*1024 );
+      Zip.Copy_file( Temp_name(True,choice), repacked_zip_file );
       Dual_IO.Put_Line(" done");
       Dual_IO.New_Line;
     end Process_one;
@@ -807,11 +802,11 @@ procedure ReZip is
         always_consider(a):= a not in reduce_1..reduce_4;
       end if;
     end loop;
-    Set_Name (StreamFile, orig_name);
+    Set_Name (MyStream, orig_name);
     Open (MyStream, In_File);
-    Zip.Load( zi, StreamFile, True );
+    Zip.Load( zi, MyStream, True );
 
-    Set_Name (Streamrepacked_zip_file, repacked_name);
+    Set_Name (repacked_zip_file, repacked_name);
     Create(repacked_zip_file, Out_File);
     Create(summary, Out_File, log_name);
     Put_Line(summary,
@@ -875,7 +870,7 @@ procedure ReZip is
     --
     -- 2/ Almost done - write Central Directory:
     --
-    ed.central_dir_offset:= Unsigned_32(Index(streamrepacked_zip_file))-1;
+    ed.central_dir_offset:= Unsigned_32(Index(repacked_zip_file))-1;
     ed.total_entries:= 0;
     ed.central_dir_size:= 0;
     ed.main_comment_length:= 0;
@@ -889,8 +884,8 @@ procedure ReZip is
       e:= list;
       while e /= null loop
         ed.total_entries:= ed.total_entries + 1;
-        Zip.Headers.Write(Streamrepacked_zip_file, e.head);
-        String'Write(Streamrepacked_zip_file, S(e.name));
+        Zip.Headers.Write(repacked_zip_file, e.head);
+        String'Write(repacked_zip_file'Access, S(e.name));
         ed.central_dir_size:=
           ed.central_dir_size +
           Zip.Headers.central_header_length +
@@ -900,9 +895,9 @@ procedure ReZip is
       ed.disknum:= 0;
       ed.disknum_with_start:= 0;
       ed.disk_total_entries:= ed.total_entries;
-      Zip.Headers.Write(Streamrepacked_zip_file, ed);
+      Zip.Headers.Write(repacked_zip_file, ed);
       if not del_comment then
-        String'Write(Streamrepacked_zip_file, comment);
+        String'Write(repacked_zip_file'Access, comment);
       end if;
     end;
     Close(repacked_zip_file);

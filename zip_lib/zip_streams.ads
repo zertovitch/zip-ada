@@ -12,6 +12,8 @@
 -- Change log:
 -- ==========
 --
+-- 25-Oct-2012: GdM: All methods also with pointer-free profiles
+--                    (no more anonymous 'access', nor access types needed)
 -- 20-Jul-2011: GdM/JH: - Underscore in Get_Name, Set_Name, Get_Time, Set_Time
 --                      - The 4 methods above are not anymore abstract
 --                      - Name and Modification_Time fields moved to Root_Zipstream_Type
@@ -43,65 +45,81 @@ package Zip_Streams is
    type Zipstream_Class is access all Root_Zipstream_Type'Class;
 
    -- Set the index on the stream
+   procedure Set_Index (S : in out Root_Zipstream_Type;
+                        To : Positive) is abstract;
    procedure Set_Index (S : access Root_Zipstream_Type;
                         To : Positive) is abstract;
 
    -- returns the index of the stream
+   function Index (S : in Root_Zipstream_Type) return Integer is abstract;
    function Index (S : access Root_Zipstream_Type) return Integer is abstract;
 
    -- returns the Size of the stream
+   function Size (S : in Root_Zipstream_Type) return Integer is abstract;
    function Size (S : access Root_Zipstream_Type) return Integer is abstract;
 
    -- this procedure sets the name of the stream
+   procedure Set_Name(S : in out Root_Zipstream_Type; Name : String);
    procedure Set_Name(S : access Root_Zipstream_Type; Name : String);
-
    procedure SetName(S : access Root_Zipstream_Type; Name : String) renames Set_Name;
    pragma Obsolescent (SetName);
 
    -- this procedure returns the name of the stream
+   function Get_Name(S : in Root_Zipstream_Type) return String;
    function Get_Name(S : access Root_Zipstream_Type) return String;
-
    function GetName(S : access Root_Zipstream_Type) return String renames Get_Name;
    pragma Obsolescent (GetName);
 
+   procedure Set_Unicode_Name_Flag (S     : out Root_Zipstream_Type;
+                                    Value : in Boolean);
    procedure Set_Unicode_Name_Flag (S     : access Root_Zipstream_Type;
                                     Value : in Boolean);
+   function Is_Unicode_Name(S : in Root_Zipstream_Type)
+                            return Boolean;
    function Is_Unicode_Name(S : access Root_Zipstream_Type)
                             return Boolean;
 
    -- this procedure sets the Modification_Time of the stream
+   procedure Set_Time(S : in out Root_Zipstream_Type;
+                      Modification_Time : Time);
    procedure Set_Time(S : access Root_Zipstream_Type;
                       Modification_Time : Time);
-
    procedure SetTime(S : access Root_Zipstream_Type;
                       Modification_Time : Time) renames Set_Time;
    pragma Obsolescent (SetTime);
 
-   -- same, with the standard Time type
+   -- Same Set_Time, with the standard Ada Time type.
+   -- We don't need inheritance on that, hence class-wide profiles
+   procedure Set_Time(S : out Root_Zipstream_Type'Class;
+                      Modification_Time : Ada.Calendar.Time);
    procedure Set_Time(S : Zipstream_Class;
                       Modification_Time : Ada.Calendar.Time);
-
    procedure SetTime(S : Zipstream_Class;
                       Modification_Time : Ada.Calendar.Time) renames Set_Time;
    pragma Obsolescent (SetTime);
 
    -- this procedure returns the ModificationTime of the stream
+   function Get_Time(S : in Root_Zipstream_Type)
+                     return Time;
    function Get_Time(S : access Root_Zipstream_Type)
                      return Time;
-
    function GetTime(S : access Root_Zipstream_Type)
                     return Time renames Get_Time;
    pragma Obsolescent (GetTime);
 
-   -- same, with the standard Time type
+   -- Same Get_Time, with the standard Ada Time type.
+   -- We don't need inheritance on that, hence class-wide profiles
+   function Get_Time(S : in Root_Zipstream_Type'Class)
+                     return Ada.Calendar.Time;
    function Get_Time(S : Zipstream_Class)
                      return Ada.Calendar.Time;
-
    function GetTime(S : Zipstream_Class)
                     return Ada.Calendar.Time renames Get_Time;
    pragma Obsolescent (GetTime);
 
    -- returns true if the index is at the end of the stream, else false
+   function End_Of_Stream (S : in Root_Zipstream_Type)
+      return Boolean is abstract;
    function End_Of_Stream (S : access Root_Zipstream_Type)
       return Boolean is abstract;
 
@@ -201,15 +219,19 @@ private
       Item   : Stream_Element_Array);
 
    -- Set the index on the stream
+   procedure Set_Index (S : in out Memory_Zipstream; To : Positive);
    procedure Set_Index (S : access Memory_Zipstream; To : Positive);
 
    -- returns the index of the stream
+   function Index (S : in Memory_Zipstream) return Integer;
    function Index (S : access Memory_Zipstream) return Integer;
 
    -- returns the Size of the stream
+   function Size (S : in Memory_Zipstream) return Integer;
    function Size (S : access Memory_Zipstream) return Integer;
 
    -- returns true if the index is at the end of the stream
+   function End_Of_Stream (S : in Memory_Zipstream) return Boolean;
    function End_Of_Stream (S : access Memory_Zipstream) return Boolean;
 
 
@@ -231,15 +253,19 @@ private
       Item   : Stream_Element_Array);
 
    -- Set the index on the stream
+   procedure Set_Index (S : in out File_Zipstream; To : Positive);
    procedure Set_Index (S : access File_Zipstream; To : Positive);
 
    -- returns the index of the stream
+   function Index (S : in File_Zipstream) return Integer;
    function Index (S : access File_Zipstream) return Integer;
 
    -- returns the Size of the stream
+   function Size (S : in File_Zipstream) return Integer;
    function Size (S : access File_Zipstream) return Integer;
 
    -- returns true if the index is at the end of the stream
+   function End_Of_Stream (S : in File_Zipstream) return Boolean;
    function End_Of_Stream (S : access File_Zipstream) return Boolean;
 
 end Zip_Streams;

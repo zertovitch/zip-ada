@@ -34,7 +34,7 @@ package body Zip.Compress is
 
   procedure Compress_data
    (input,
-    output          : Zip_Streams.Zipstream_Class;
+    output          : in out Zip_Streams.Root_Zipstream_Type'Class;
     input_size_known: Boolean;
     input_size      : File_size_type;
     method          : Compression_Method;
@@ -68,9 +68,9 @@ package body Zip.Compress is
           Buffer      : Ada.Streams.Stream_Element_Array (1 .. buffer_size);
           Last_Read   : Ada.Streams.Stream_Element_Offset;
         begin
-          Read (input.all, Buffer, Last_Read);
+          Read (input, Buffer, Last_Read);
           counted:= counted + File_size_type (Last_Read);
-          Write (output.all, Buffer (1 .. Last_Read));
+          Write (output, Buffer (1 .. Last_Read));
           for I in 1 .. Last_Read loop
             Zip.CRC.Update(CRC, (1 => Byte (Buffer (I))));
           end loop;

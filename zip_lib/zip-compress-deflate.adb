@@ -22,7 +22,7 @@ with Zip_Streams;
 
 procedure Zip.Compress.Deflate
  (input,
-  output          : Zip_Streams.Zipstream_Class;
+  output          : in out Zip_Streams.Root_Zipstream_Type'Class;
   input_size_known: Boolean;
   input_size      : File_size_type;
   feedback        : Feedback_proc;
@@ -74,7 +74,7 @@ is
       -- uncompressed size.
       raise Compression_unefficient;
     end if;
-    Zip.BlockWrite(output.all, OutBuf(1 .. amount));
+    Zip.BlockWrite(output, OutBuf(1 .. amount));
     OutBufIdx := 1;
   end Write_Block;
 

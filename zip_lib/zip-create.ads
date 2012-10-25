@@ -40,7 +40,16 @@ package Zip.Create is
    -- Add a new entry to a Zip archive, from a general Zipstream
 
    procedure Add_Stream (Info   : in out Zip_Create_info;
+                         Stream : in out Root_Zipstream_Type'Class);
+
+   procedure Add_Stream (Info   : in out Zip_Create_info;
                          Stream : Zipstream_Class);
+
+   procedure Add_Stream (Info           : in out Zip_Create_info;
+                         Stream         : in out Root_Zipstream_Type'Class;
+                         Feedback       : in     Feedback_proc;
+                         Compressed_Size:    out Zip.File_size_type;
+                         Final_Method   :    out Natural);
 
    procedure Add_Stream (Info           : in out Zip_Create_info;
                          Stream         : Zipstream_Class;

@@ -15,7 +15,7 @@
 
 private procedure Zip.Compress.Shrink(
   input,
-  output          : Zip_Streams.Zipstream_Class;
+  output          : in out Zip_Streams.Root_Zipstream_Type'Class;
   input_size_known: Boolean;
   input_size      : File_size_type; -- ignored if unknown
   feedback        : Feedback_proc;

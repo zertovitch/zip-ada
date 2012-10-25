@@ -110,6 +110,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '44' (not yet released):
+  - Zip_Streams: All methods also with pointer-free profiles
   - Zip.Create: archive creation date is used when entries are added which
         are from a memory buffer
   - Zip.Create: compression method can be changed "on the fly", before

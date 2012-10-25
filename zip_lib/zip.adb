@@ -142,10 +142,11 @@ package body Zip is
   -- Load Zip_info from a stream containing the .zip archive --
   -------------------------------------------------------------
 
-  procedure Load
-   (info           : out Zip_info;
-    from           : in  Zip_Streams.Zipstream_Class;
-    case_sensitive : in  Boolean:= False)
+  procedure Load(
+    info           :    out Zip_info;
+    from           : in out Zip_Streams.Root_Zipstream_Type'Class;
+    case_sensitive : in     Boolean:= False
+  )
   is
     procedure Insert(
       dico_name        : String; -- UPPER if case-insensitive search
@@ -206,7 +207,7 @@ package body Zip is
     -- We take the opportunity to read the main comment, which is right
     -- after the end-of-central-directory block.
     main_comment:= new String(1..Integer(the_end.main_comment_length));
-    String'Read(from, main_comment.all);
+    String'Read(from'Access, main_comment.all);
     -- Process central directory:
     Zip_Streams.Set_Index(
       from,
@@ -221,7 +222,7 @@ package body Zip is
       declare
         this_name: String(1..Natural(header.short_info.filename_length));
       begin
-        String'Read(from, this_name);
+        String'Read(from'Access, this_name);
         -- Skip extra field and entry comment.
         Zip_Streams.Set_Index(
           from, Positive (
@@ -260,12 +261,21 @@ package body Zip is
     Binary_tree_rebalancing.Rebalance(p);
     info:= ( loaded           => True,
              zip_file_name    => new String'("This is a stream, no direct file!"),
-             zip_input_stream => from,
+             zip_input_stream => from'Unchecked_Access,
              dir_binary_tree  => p,
              total_entries    => Integer(the_end.total_entries),
              zip_file_comment => main_comment
            );
   end Load;
+
+  procedure Load
+   (info           : out Zip_info;
+    from           : in  Zip_Streams.Zipstream_Class;
+    case_sensitive : in  Boolean:= False)
+  is
+  begin
+    Load(info, from.all, case_sensitive); -- call the pointer-free version
+  end load;
 
   -----------------------------------------------------------
   -- Load Zip_info from a file containing the .zip archive --
@@ -654,7 +664,7 @@ package body Zip is
   end BlockRead;
 
   procedure BlockRead(
-    stream       : in     Zip_Streams.Zipstream_Class;
+    stream       : in out Zip_Streams.Root_Zipstream_Type'Class;
     buffer       :    out Byte_Buffer;
     actually_read:    out Natural
   )
@@ -666,7 +676,7 @@ package body Zip is
     Last_Read   : Stream_Element_Offset;
   begin
     if workaround_possible then
-      Read(stream.all, SE_Buffer, Last_Read);
+      Read(stream, SE_Buffer, Last_Read);
       actually_read:= Natural(Last_Read);
     else
       if End_Of_Stream(stream) then
@@ -675,7 +685,7 @@ package body Zip is
         actually_read:=
           Integer'Min( buffer'Length, Integer(Size(stream) - Index(stream) + 1) );
         Byte_Buffer'Read(
-          stream,
+          stream'Access,
           buffer(buffer'First .. buffer'First + actually_read - 1)
         );
       end if;
@@ -683,7 +693,17 @@ package body Zip is
   end BlockRead;
 
   procedure BlockRead(
-    stream : in     Zip_Streams.Zipstream_Class;
+    stream       : in     Zip_Streams.Zipstream_Class;
+    buffer       :    out Byte_Buffer;
+    actually_read:    out Natural
+  )
+  is
+  begin
+    BlockRead(stream.all, buffer, actually_read); -- call the pointer-free version
+  end BlockRead;
+
+  procedure BlockRead(
+    stream : in out Zip_Streams.Root_Zipstream_Type'Class;
     buffer :    out Byte_Buffer
   )
   is
@@ -693,6 +713,15 @@ package body Zip is
     if actually_read < buffer'Length then
       raise Ada.IO_Exceptions.End_Error;
     end if;
+  end BlockRead;
+
+  procedure BlockRead(
+    stream : in     Zip_Streams.Zipstream_Class;
+    buffer :    out Byte_Buffer
+  )
+  is
+  begin
+    BlockRead(stream.all, buffer); -- call the pointer-free version
   end BlockRead;
 
   procedure BlockWrite(
@@ -741,12 +770,12 @@ package body Zip is
   end Method_from_code;
 
   -- Copy a chunk from a stream into another one, using a temporary buffer
-  procedure Copy_chunk(
-    from       : Zip_Streams.Zipstream_Class;
+  procedure Copy_chunk (
+    from       : in out Zip_Streams.Root_Zipstream_Type'Class;
     into       : in out Ada.Streams.Root_Stream_Type'Class;
     bytes      : Natural;
-    buffer_size: Positive
-  )
+    buffer_size: Positive:= 1024*1024
+    )
   is
     buf: Zip.Byte_Buffer(1..buffer_size);
     actually_read, remains: Natural;
@@ -766,7 +795,7 @@ package body Zip is
   procedure Copy_file(
     file_name  : String;
     into       : in out Ada.Streams.Root_Stream_Type'Class;
-    buffer_size: Positive
+    buffer_size: Positive:= 1024*1024
   )
   is
     use Ada.Streams.Stream_IO;
