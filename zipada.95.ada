@@ -55,10 +55,9 @@ procedure ZipAda is
 
   --  Final zipfile stream
   MyStream : aliased File_Zipstream;
-  ZipFileStream : constant Zipstream_Class := MyStream'Unchecked_Access;
   Info: Zip.Create.Zip_Create_info;
 
-  procedure Add_1_Stream(Stream : Zipstream_Class) is
+  procedure Add_1_Stream(Stream : in out Root_Zipstream_Type'Class) is
     Compressed_Size: Zip.File_size_type;
     Final_Method   : Natural;
   begin
@@ -71,7 +70,7 @@ procedure ZipAda is
     end;
     --
     Zip.Create.Add_Stream(
-      Info, Stream, My_feedback'Access, Compressed_Size, Final_Method
+      Info, Stream'Unchecked_Access, My_feedback'Access, Compressed_Size, Final_Method
     );
     --
     if Size(Stream) = 0 then
@@ -109,6 +108,19 @@ procedure ZipAda is
 
   method: Compression_Method:= shrink;
   zip_name_set: Boolean:= False;
+
+  procedure Zip_a_file(arg: String) is
+    InStream: File_Zipstream;
+  begin
+    Set_Name (InStream, arg);
+    -- Set_Time (InStream, Ada.Directories.Modification_Time(arg));
+    Open (InStream, In_File);
+    Add_1_Stream (InStream);
+    Close (InStream);
+  exception
+    when Ada.Text_IO.Use_Error =>
+      Put_Line("  ** Warning: skipping invalid entry: " & arg);
+  end Zip_a_file;
 
 begin
   Blurb;
@@ -150,26 +162,14 @@ begin
         end if;
         Put_Line("Creating archive " & arg_zip);
         T0:= Clock;
-        Zip.Create.Create(Info, ZipFileStream, arg_zip, method);
+        Zip.Create.Create(Info, MyStream'Unchecked_Access, arg_zip, method);
       else -- First real argument has already been used for archive's name
         if To_Upper(arg) = To_Upper(Zip.Create.Name(Info)) then
           Put_Line("  ** Warning: skipping archive's name as entry: " & arg);
           -- avoid zipping the archive itself!
           -- NB: case insensitive
         elsif Zip.Exists(arg) then
-          declare
-            InStream   : aliased File_Zipstream;
-            StreamFile : constant Zipstream_Class := InStream'Unchecked_Access;
-          begin
-            Set_Name (StreamFile, arg);
-            -- SetTime (StreamFile, Ada.Directories.Modification_Time(arg));
-            Open (InStream, In_File);
-            Add_1_Stream (StreamFile);
-            Close (InStream);
-          exception
-            when Ada.Text_IO.Use_Error =>
-              Put_Line("  ** Warning: skipping invalid entry: " & arg);
-          end;
+          Zip_a_file(arg);
         else
           Put_Line("  ** Warning: name not matched: " & arg);
         end if;
