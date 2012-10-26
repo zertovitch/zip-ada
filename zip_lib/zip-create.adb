@@ -56,6 +56,43 @@ package body Zip.Create is
       end if;
    end Resize;
 
+   -- Internal - add the catalogue entry corresponding to a
+   -- compressed file in the Zip archive.
+   -- The entire catalogue will be written at the end of the zip stream,
+   -- and the entry as a local header just before the compressed data.
+   -- The entry's is mostly incomplete in the end (name, size, ...); stream
+   -- operations on the archive being built are not performed here,
+   -- see Add_Stream for that.
+   --
+   procedure Add_catalogue_entry (Info: in out Zip_Create_info)
+   is
+   begin
+      if Info.Last_entry = 0 then
+        Info.Last_entry:= 1;
+        Resize (Info.Contains, 32);
+      else
+        Info.Last_entry:= Info.Last_entry + 1;
+        if Info.Last_entry > Info.Contains'Last then
+          -- Info.Contains is full, time to resize it!
+          -- We do nothing less than double the size - better than
+          -- whatever offer you'd get in your e-mails.
+          Resize (Info.Contains, Info.Contains'Last * 2);
+        end if;
+      end if;
+      declare
+        cfh: Central_File_Header renames Info.Contains(Info.Last_entry).head;
+      begin
+        --  Administration
+        cfh.made_by_version      := 23; -- version 2.30
+        cfh.comment_length       := 0;
+        cfh.disk_number_start    := 0;
+        cfh.internal_attributes  := 0; -- 0: binary; 1: text
+        cfh.external_attributes  := 0;
+        cfh.short_info.needed_extract_version := 10; -- Value put by Zip/PKZip
+        cfh.short_info.bit_flag  := 0;
+      end;
+   end Add_catalogue_entry;
+
    procedure Add_Stream (Info   : in out Zip_Create_info;
                          Stream : in out Root_Zipstream_Type'Class)
    is
@@ -91,28 +128,9 @@ package body Zip.Create is
         end if;
       end loop;
       --
-      if Info.Last_entry = 0 then
-        Info.Last_entry:= 1;
-        Resize (Info.Contains, 32);
-      else
-        Info.Last_entry:= Info.Last_entry + 1;
-        if Info.Last_entry > Info.Contains'Last then
-          -- Info.Contains is full, time to resize it!
-          -- We do nothing less than double the size - better than
-          -- whatever offer you'd get in your e-mails.
-          Resize (Info.Contains, Info.Contains'Last * 2);
-        end if;
-      end if;
+      Add_catalogue_entry (Info);
       Last:= Info.Last_entry;
-      --  Administration
-      Info.Contains (Last).head.made_by_version      := 23; -- version 2.30
-      Info.Contains (Last).head.comment_length       := 0;
-      Info.Contains (Last).head.disk_number_start    := 0;
-      Info.Contains (Last).head.internal_attributes  := 0; -- 0:binary; 1:text
-      Info.Contains (Last).head.external_attributes               := 0;
-      Info.Contains (Last).head.short_info.needed_extract_version :=
-        10; -- Value put by Zip/PKZip
-      Info.Contains (Last).head.short_info.bit_flag               := 0;
+      --  Administration - continued
       if Zip_Streams.Is_Unicode_Name (Stream) then
          Info.Contains (Last).head.short_info.bit_flag
            := Info.Contains (Last).head.short_info.bit_flag or Zip.Headers.Language_Encoding_Flag_Bit;
@@ -234,6 +252,39 @@ package body Zip.Create is
      Set_Unicode_Name_Flag(acc_temp_zip_stream, Name_UTF_8_encoded);
      Add_Stream (Info, acc_temp_zip_stream);
    end Add_String;
+
+   procedure Add_Compressed_Stream (
+     Info           : in out Zip_Create_info;
+     Stream         : in out Root_Zipstream_Type'Class;
+     Feedback       : in     Feedback_proc
+   )
+   is
+      lh: Zip.Headers.Local_File_Header;
+   begin
+      Add_catalogue_entry (Info);
+      Zip.Headers.Read_and_check(Stream, lh);
+      Info.Contains (Info.Last_entry).head.local_header_offset :=
+        Unsigned_32 (Index (Info.Stream)) - 1;
+      Zip.Headers.Write(Info.Stream, lh);
+      -- Copy name and extra field
+      declare
+        name: String(1..Positive(lh.filename_length));
+        extra: String(1..Natural(lh.extra_field_length));
+      begin
+        String'Read(Stream'Access, name);
+        String'Read(Stream'Access, extra);
+        Info.Contains (Info.Last_entry).name := new String'(name);
+        String'Write(Info.Stream, name);
+        String'Write(Info.Stream, extra);
+      end;
+      Zip.Copy_Chunk(
+        Stream,
+        Info.Stream.all,
+        Integer(lh.dd.compressed_size),
+        feedback => Feedback
+      );
+      Info.Contains (Info.Last_entry).head.short_info:= lh;
+   end Add_Compressed_Stream;
 
    procedure Finish (Info : in out Zip_Create_info) is
       ed : Zip.Headers.End_of_Central_Dir;

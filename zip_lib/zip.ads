@@ -298,8 +298,9 @@ package Zip is
     from       : in out Zip_Streams.Root_Zipstream_Type'Class;
     into       : in out Ada.Streams.Root_Stream_Type'Class;
     bytes      : Natural;
-    buffer_size: Positive:= 1024*1024
-    );
+    buffer_size: Positive:= 1024*1024;
+    Feedback   : Feedback_proc:= null
+  );
 
   -- Copy a whole file into a stream, using a temporary buffer
   procedure Copy_file(
@@ -333,8 +334,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "44 preview 5";
-  reference : constant String:= "25-Oct-2012";
+  version   : constant String:= "44 preview 6";
+  reference : constant String:= "26-Oct-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

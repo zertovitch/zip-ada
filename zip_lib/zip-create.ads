@@ -3,6 +3,10 @@
 --
 -- Change log:
 -- ==========
+--
+-- 26-Oct-2012: GdM: Added Add_Compressed_Stream
+-- 25-Oct-2012: GdM: Some procedures using Zip_Streams' objects also with
+--                     pointer-free profiles (no more 'access' or access type)
 -- 14-Oct-2012: GdM: Added Set procedure for changing compression method
 -- 30-Mar-2010: GdM: Added Name function
 -- 25-Feb-2010: GdM: Fixed major bottlenecks around Dir_entries
@@ -57,7 +61,7 @@ package Zip.Create is
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural);
 
-   -- Add a new entry to a Zip archive, from a file
+   -- Add a new entry to a Zip archive, from an entire file
 
    procedure Add_File (Info              : in out Zip_Create_info;
                        Name              : String;
@@ -73,7 +77,7 @@ package Zip.Create is
                        Feedback          : Feedback_proc:= null
    );
 
-   -- Add new entries to a Zip archive, from a buffer stored in a string
+   -- Add a new entry to a Zip archive, from a buffer stored in a string
 
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : String;
@@ -87,6 +91,15 @@ package Zip.Create is
                          Name_in_archive   : String;
                          Name_UTF_8_encoded: Boolean:= False
                          -- True if Name is actually UTF-8 encoded (Unicode)
+   );
+
+   -- Add a new entry to a Zip archive, copied from another Zip archive.
+   -- The stream is set at the beginning of a local header in the archive.
+
+   procedure Add_Compressed_Stream (
+     Info           : in out Zip_Create_info;
+     Stream         : in out Root_Zipstream_Type'Class;
+     Feedback       : in     Feedback_proc
    );
 
    -- Complete the Zip archive; close the file if the stream is a file
