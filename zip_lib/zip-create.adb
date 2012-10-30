@@ -169,7 +169,7 @@ package body Zip.Create is
       Final_Method   := Natural(Info.Contains (Last).head.short_info.zip_type);
    end Add_Stream;
 
-   procedure Add_File (Info              : in out Zip_Create_info;
+procedure Add_File (Info              : in out Zip_Create_info;
                        Name              : String;
                        Name_in_archive   : String:= "";
                        -- default: add the file in the archive
@@ -180,8 +180,9 @@ package body Zip.Create is
                        Name_UTF_8_encoded: Boolean:= False;
                        -- True if Name[_in_archive] is actually
                        -- UTF-8 encoded (Unicode)
+                       Modification_time : Time:= default_time;
                        Feedback          : Feedback_proc:= null
-   )
+                       )
    is
       temp_zip_stream     : aliased File_Zipstream;
       use Ada.Text_IO;
@@ -197,6 +198,7 @@ package body Zip.Create is
         Set_Name(temp_zip_stream, Name_in_archive);
      end if;
      Set_Unicode_Name_Flag(temp_zip_stream, Name_UTF_8_encoded);
+     Set_Time(temp_zip_stream, Modification_time);
      -- Stuff into the .zip archive:
      Add_Stream (Info, temp_zip_stream, Feedback, Compressed_Size, Final_Method);
      Close(temp_zip_stream);

@@ -67,6 +67,7 @@ package Zip.Create is
                        Name_UTF_8_encoded: Boolean:= False;
                        -- True if Name[_in_archive] is actually
                        -- UTF-8 encoded (Unicode)
+                       Modification_time : Time:= default_time;
                        Feedback          : Feedback_proc:= null
    );
 

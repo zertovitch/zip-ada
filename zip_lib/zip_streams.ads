@@ -42,6 +42,8 @@ package Zip_Streams is
    -- See subpackage Calendar below for own Split, Time_Of and Convert from/to
    -- Ada.Calendar.Time.
 
+   default_time: constant Time; -- some default time
+
    ----------------------------------------------------
    -- Root_Zipstream_Type: root abstract stream type --
    ----------------------------------------------------
@@ -162,12 +164,12 @@ private
    -- Currently: DOS format (pkzip appnote.txt: part V., J.), as stored
    -- in zip archives. Subject to change, this is why this type is private.
 
-   some_time: constant Time:= 16789 * 65536;
+   default_time: constant Time:= 16789 * 65536;
 
    type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with
       record
          Name              : Unbounded_String;
-         Modification_Time : Time := some_time;
+         Modification_Time : Time := default_time;
          Is_Unicode_Name   : Boolean := False;
       end record;
 
