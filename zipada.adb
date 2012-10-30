@@ -66,7 +66,7 @@ procedure ZipAda is
     end;
     --
     Zip.Create.Add_Stream(
-      Info, Stream'Unchecked_Access, My_feedback'Access, Compressed_Size, Final_Method
+      Info, Stream, My_feedback'Access, Compressed_Size, Final_Method
     );
     --
     if Size(Stream) = 0 then

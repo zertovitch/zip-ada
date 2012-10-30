@@ -72,12 +72,6 @@ package Zip is
     from           : in out Zip_Streams.Root_Zipstream_Type'Class;
     case_sensitive : in     Boolean:= False
   );
-  procedure Load(
-    info           : out Zip_info;
-    from           : in  Zip_Streams.Zipstream_Class;
-    case_sensitive : in  Boolean:= False
-  );
-
 
   Zip_file_Error,
   Zip_file_open_Error,
@@ -95,7 +89,7 @@ package Zip is
 
   function Zip_comment( info: in Zip_info ) return String;
 
-  function Zip_stream( info: in Zip_info ) return Zip_Streams.Zipstream_Class;
+  function Zip_stream( info: in Zip_info ) return Zip_Streams.Zipstream_Class_Access;
 
   function Entries( info: in Zip_info ) return Natural;
 
@@ -181,14 +175,14 @@ package Zip is
   -- Find 1st offset in a Zip stream
 
   procedure Find_first_offset(
-    file           : in     Zip_Streams.Zipstream_Class;
+    file           : in out Zip_Streams.Root_Zipstream_Type'Class;
     file_index     :    out Positive );
 
   -- Find offset of a certain compressed file
   -- in a Zip file (file opened and kept open)
 
   procedure Find_offset(
-    file           : in     Zip_Streams.Zipstream_Class;
+    file           : in out Zip_Streams.Root_Zipstream_Type'Class;
     name           : in     String;
     case_sensitive : in     Boolean;
     file_index     :    out Positive;
@@ -265,12 +259,6 @@ package Zip is
     actually_read:    out Natural
     -- = buffer'Length if no end of stream before last buffer element
   );
-  procedure BlockRead(
-    stream       : in     Zip_Streams.Zipstream_Class;
-    buffer       :    out Byte_Buffer;
-    actually_read:    out Natural
-    -- = buffer'Length if no end of stream before last buffer element
-  );
 
   -- Same, but instead of giving actually_read, raises End_Error if
   -- the buffer cannot be fully read.
@@ -278,10 +266,6 @@ package Zip is
   -- on the compiler's run-time library.
   procedure BlockRead(
     stream : in out Zip_Streams.Root_Zipstream_Type'Class;
-    buffer :    out Byte_Buffer
-  );
-  procedure BlockRead(
-    stream : in     Zip_Streams.Zipstream_Class;
     buffer :    out Byte_Buffer
   );
 
@@ -334,8 +318,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "44 preview 6";
-  reference : constant String:= "26-Oct-2012";
+  version   : constant String:= "44 preview 7";
+  reference : constant String:= "30-Oct-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
@@ -374,7 +358,7 @@ private
   type Zip_info is record
     loaded          : Boolean:= False;
     zip_file_name   : p_String;        -- a file name...
-    zip_input_stream: Zip_Streams.Zipstream_Class; -- ...or an input stream
+    zip_input_stream: Zip_Streams.Zipstream_Class_Access; -- ...or an input stream
     -- ^ when not null, we use this and not zip_file_name
     dir_binary_tree : p_Dir_node;
     total_entries   : Natural;

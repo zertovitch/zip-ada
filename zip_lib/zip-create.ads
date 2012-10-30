@@ -4,6 +4,8 @@
 -- Change log:
 -- ==========
 --
+-- 30-Oct-2012: GdM: Removed all profiles using Zip_Streams' objects
+--                      with accesses (cf 25-Oct's modifications)
 -- 26-Oct-2012: GdM: Added Add_Compressed_Stream
 -- 25-Oct-2012: GdM: Some procedures using Zip_Streams' objects also with
 --                     pointer-free profiles (no more 'access' or access type)
@@ -29,7 +31,7 @@ package Zip.Create is
    -- Create the Zip archive; create the file if the stream is a file
 
    procedure Create(Info        : out Zip_Create_info;
-                    Z_Stream    : in Zipstream_Class;
+                    Z_Stream    : in Zipstream_Class_Access;
                     Name        : String;
                     Compress    : Zip.Compress.Compression_Method:= Zip.Compress.Shrink);
 
@@ -46,17 +48,8 @@ package Zip.Create is
    procedure Add_Stream (Info   : in out Zip_Create_info;
                          Stream : in out Root_Zipstream_Type'Class);
 
-   procedure Add_Stream (Info   : in out Zip_Create_info;
-                         Stream : Zipstream_Class);
-
    procedure Add_Stream (Info           : in out Zip_Create_info;
                          Stream         : in out Root_Zipstream_Type'Class;
-                         Feedback       : in     Feedback_proc;
-                         Compressed_Size:    out Zip.File_size_type;
-                         Final_Method   :    out Natural);
-
-   procedure Add_Stream (Info           : in out Zip_Create_info;
-                         Stream         : Zipstream_Class;
                          Feedback       : in     Feedback_proc;
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural);
@@ -117,7 +110,7 @@ private
    type Pdir_entries is access Dir_entries;
 
    type Zip_Create_info is record
-      Stream    : Zipstream_Class;
+      Stream    : Zipstream_Class_Access;
       Compress  : Zip.Compress.Compression_Method;
       Contains  : Pdir_entries:= null;
       Last_entry: Natural:= 0;

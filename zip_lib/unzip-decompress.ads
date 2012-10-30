@@ -18,7 +18,7 @@ with Zip_Streams;
 private package UnZip.Decompress is
 
    procedure Decompress_data(
-    zip_file            : Zip_Streams.Zipstream_Class;
+    zip_file            : in out Zip_Streams.Root_Zipstream_Type'Class;
     -- zip_file must be open and its index is meant
     -- to point to the beginning of compressed data
     format              : PKZip_method;

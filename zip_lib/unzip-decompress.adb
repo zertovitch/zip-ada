@@ -5,7 +5,7 @@ with Ada.Streams.Stream_IO;
 package body UnZip.Decompress is
 
   procedure Decompress_data(
-    zip_file            : Zip_Streams.Zipstream_Class;
+    zip_file            : in out Zip_Streams.Root_Zipstream_Type'Class;
     format              : PKZip_method;
     mode                : Write_mode;
     output_file_name    : String;

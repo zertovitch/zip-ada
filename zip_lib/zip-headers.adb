@@ -94,15 +94,6 @@ package body Zip.Headers is
 
   end Read_and_check;
 
-  procedure Read_and_check(
-    stream : in  Zipstream_Class;
-    header : out Central_File_Header
-  )
-  is
-  begin
-    Read_and_check(stream.all, header); -- call the pointer-free version
-  end Read_and_check;
-
   procedure Write(
     stream : in out Root_Zipstream_Type'Class;
     header : in     Central_File_Header
@@ -133,14 +124,6 @@ package body Zip.Headers is
     BlockWrite(stream, chb);
   end Write;
 
-  procedure Write(
-    stream : in     Zipstream_Class;
-    header : in     Central_File_Header
-  )
-  is
-  begin
-    Write(stream.all, header); -- call the pointer-free version
-  end Write;
   -----------------------------------------------------------------------
   -- PKZIP local file header, in front of every file in archive - PK34 --
   -----------------------------------------------------------------------
@@ -171,15 +154,6 @@ package body Zip.Headers is
 
   end Read_and_check;
 
-  procedure Read_and_check(
-    stream : in     Zipstream_Class;
-    header :    out Local_File_Header
-  )
-  is
-  begin
-    Read_and_check(stream.all, header); -- call the pointer-free version
-  end Read_and_check;
-
   procedure Write(
     stream : in out Root_Zipstream_Type'Class;
     header : in     Local_File_Header
@@ -200,15 +174,6 @@ package body Zip.Headers is
     lhb(29..30):= Intel_bf( header.extra_field_length );
 
     BlockWrite(stream, lhb);
-  end Write;
-
-  procedure Write(
-    stream : in     Zipstream_Class;
-    header : in     Local_File_Header
-  )
-  is
-  begin
-    Write(stream.all, header); -- call the pointer-free version
   end Write;
 
   -------------------------------------------
@@ -235,7 +200,7 @@ package body Zip.Headers is
   end Copy_and_check;
 
   procedure Read_and_check(
-    stream  : in     Zipstream_Class;
+    stream  : in out Root_Zipstream_Type'Class;
     the_end :    out End_of_Central_Dir
   )
   is
@@ -314,15 +279,6 @@ package body Zip.Headers is
     end loop;
   end Load;
 
-  procedure Load(
-    stream : in     Zipstream_Class;
-    the_end:    out End_of_Central_Dir
-    )
-  is
-  begin
-    Load(stream.all, the_end); -- call the pointer-free version
-  end Load;
-
   procedure Write(
     stream  : in out Root_Zipstream_Type'Class;
     the_end : in     End_of_Central_Dir
@@ -341,15 +297,6 @@ package body Zip.Headers is
     eb(21..22):= Intel_bf( the_end.main_comment_length );
 
     BlockWrite(stream, eb);
-  end Write;
-
-  procedure Write(
-    stream  : in     Zipstream_Class;
-    the_end : in     End_of_Central_Dir
-  )
-  is
-  begin
-    Write(stream.all, the_end); -- call the pointer-free version
   end Write;
 
   ------------------------------------------------------------------
@@ -372,7 +319,7 @@ package body Zip.Headers is
   end Copy_and_check;
 
   procedure Read_and_check(
-    stream        : in     Zipstream_Class;
+    stream        : in out Root_Zipstream_Type'Class;
     the_data_desc :    out Data_descriptor
   )
   is
@@ -383,8 +330,8 @@ package body Zip.Headers is
   end Read_and_check;
 
   procedure Write(
-    stream        : in Zipstream_Class;
-    the_data_desc : in Data_descriptor
+    stream        : in out Root_Zipstream_Type'Class;
+    the_data_desc : in     Data_descriptor
   )
   is
     ddb: Byte_Buffer( 1..16 );
@@ -395,7 +342,7 @@ package body Zip.Headers is
     ddb( 9..12):= Intel_bf( the_data_desc.compressed_size );
     ddb(13..16):= Intel_bf( the_data_desc.uncompressed_size );
 
-    BlockWrite(stream.all, ddb);
+    BlockWrite(stream, ddb);
   end Write;
 
 end Zip.Headers;

@@ -23,7 +23,7 @@ package body UnZip.Streams is
   --------------------------------------------------
 
   procedure UnZipFile (
-    zip_file        :        Zip_Streams.Zipstream_Class;
+    zip_file        : in out Zip_Streams.Root_Zipstream_Type'Class;
     header_index    : in out Ada.Streams.Stream_IO.Positive_Count;
     mem_ptr         :    out p_Stream_Element_Array;
     password        : in out Ada.Strings.Unbounded.Unbounded_String;
@@ -38,13 +38,9 @@ package body UnZip.Streams is
     method: PKZip_method;
     use Ada.Streams.Stream_IO, Zip, Zip_Streams;
   begin
-     begin
-        Zip_Streams.Set_Index(zip_file, Positive(header_index));
-         declare
-            TempStream : constant Zipstream_Class := zip_file;
-         begin
-            Zip.Headers.Read_and_check(TempStream, local_header);
-         end;
+    begin
+      Zip_Streams.Set_Index(zip_file, Positive(header_index));
+      Zip.Headers.Read_and_check(zip_file, local_header);
     exception
       when Zip.Headers.bad_local_header =>
         raise;
@@ -126,7 +122,7 @@ package body UnZip.Streams is
   use Ada.Streams.Stream_IO;
 
   procedure S_Extract( from     : Zip.Zip_info;
-                       stream   : in Zip_Streams.Zipstream_Class;
+                       stream   : in out Zip_Streams.Root_Zipstream_Type'Class;
                        what     : String;
                        mem_ptr  : out p_Stream_Element_Array;
                        Password : in String;
@@ -191,8 +187,8 @@ package body UnZip.Streams is
       Case_sensitive : in Boolean:= False
      ) is
     use Zip_Streams, Ada.Streams;
-    MyStream     : aliased File_Zipstream;
-    input_stream : Zipstream_Class;
+    zip_file     : aliased File_Zipstream;
+    input_stream : Zipstream_Class_Access;
     use_a_file   : constant Boolean:= Zip.Zip_Stream(Archive_Info) = null;
   begin
     if File = null then
@@ -201,9 +197,9 @@ package body UnZip.Streams is
       raise Use_Error;
     end if;
     if use_a_file then
-      input_stream:= MyStream'Unchecked_Access;
-      Set_Name (input_stream , Zip.Zip_name(Archive_Info));
-      Open (MyStream, Ada.Streams.Stream_IO.In_File);
+      input_stream:= zip_file'Unchecked_Access;
+      Set_Name (zip_file , Zip.Zip_name(Archive_Info));
+      Open (zip_file, Ada.Streams.Stream_IO.In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_Stream(Archive_Info);
     end if;
@@ -213,19 +209,19 @@ package body UnZip.Streams is
     begin
       S_Extract(
         File.archive_info,
-        input_stream,
+        input_stream.all,
         Name,
         File.Uncompressed,
         Password,
         Case_sensitive
       );
       if use_a_file then
-        Close (MyStream);
+        Close (zip_file);
       end if;
     exception
       when others =>
         if use_a_file then
-          Close (MyStream);
+          Close (zip_file);
         end if;
         raise;
     end;
@@ -257,7 +253,7 @@ package body UnZip.Streams is
 
   procedure Open
      (File           : in out Zipped_File_Type; -- File-in-archive handle
-      Archive_Stream : in Zip_Streams.Zipstream_Class; -- Archive's stream
+      Archive_Stream : in out Zip_Streams.Root_Zipstream_Type'Class; -- Archive's stream
       Name           : in String;               -- Name of zipped entry
       Password       : in String := "";         -- Decryption password
       Case_sensitive : in Boolean:= False

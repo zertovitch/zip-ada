@@ -36,7 +36,7 @@ package UnZip.Streams is
    -- Version: Zip as a stream
    procedure Open
      (File           : in out Zipped_File_Type; -- File-in-archive handle
-      Archive_Stream : in Zip_Streams.Zipstream_Class; -- Archive's stream
+      Archive_Stream : in out Zip_Streams.Root_Zipstream_Type'Class; -- Archive's stream
       Name           : in String;               -- Name of zipped entry
       Password       : in String := "";         -- Decryption password
       Case_sensitive : in Boolean:= False

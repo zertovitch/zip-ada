@@ -13,7 +13,7 @@ package body UnZip is
   --------------------------------------------------
 
   procedure UnZipFile (
-    zip_file                 : Zip_Streams.Zipstream_Class;
+    zip_file                 : in out Zip_Streams.Root_Zipstream_Type'Class;
     out_name                 : String;
     name_from_header         : Boolean;
     header_index             : in out Positive;
@@ -189,12 +189,8 @@ package body UnZip is
 
   begin
     begin
-         Set_Index ( zip_file, work_index);
-         declare
-            TempStream : constant Zipstream_Class := zip_file;
-         begin
-            Zip.Headers.Read_and_check(TempStream, local_header );
-         end;
+      Set_Index ( zip_file, work_index);
+      Zip.Headers.Read_and_check(zip_file, local_header );
     exception
       when Zip.Headers.bad_local_header =>
         raise;
@@ -240,7 +236,7 @@ package body UnZip is
 
     if name_from_header then -- Name from local header is used as output name
       the_name_len:= Natural(local_header.filename_length);
-      String'Read(zip_file, the_name(1..the_name_len));
+      String'Read(zip_file'Access, the_name(1..the_name_len));
       if not data_descriptor_after_data then
         Inform_User(
           the_name(1..the_name_len),
@@ -453,9 +449,8 @@ package body UnZip is
                 )
    is
     use Zip, Zip_Streams;
-    MyStream     : aliased File_Zipstream;
+    zip_file     : File_Zipstream;
                    -- was Unbounded_Stream & file->buffer copy in v.26
-    zip_file     : constant Zipstream_Class := MyStream'Unchecked_Access;
     header_index : Positive;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
@@ -465,7 +460,7 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Set_Name (zip_file, from);
-    Open (MyStream, In_File);
+    Open (zip_file, In_File);
     Zip.Find_offset(
       zip_file,
       what,options( case_sensitive_match ),
@@ -483,7 +478,7 @@ package body UnZip is
       work_password,
       file_system_routines
     );
-    Close(MyStream);
+    Close(zip_file);
   end Extract;
 
   -- Extract one precise file (what) from an archive (from),
@@ -501,9 +496,8 @@ package body UnZip is
                 )
   is
     use Zip, Zip_Streams;
-    MyStream     : aliased File_Zipstream;
+    zip_file     : aliased File_Zipstream;
                    -- was Unbounded_Stream & file->buffer copy in v.26
-    zip_file     : constant Zipstream_Class := MyStream'Unchecked_Access;
     header_index : Positive;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
@@ -513,7 +507,7 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Set_Name (zip_file, from);
-    Open (MyStream, In_File);
+    Open (zip_file, In_File);
     Zip.Find_offset(
       zip_file,
       what,options( case_sensitive_match ),
@@ -531,7 +525,7 @@ package body UnZip is
       work_password,
       file_system_routines
     );
-    Close(MyStream);
+    Close(zip_file);
   end Extract;
 
   -- Extract all files from an archive (from)
@@ -547,9 +541,8 @@ package body UnZip is
                 )
   is
     use Zip, Zip_Streams;
-    MyStream     : aliased File_Zipstream;
+    zip_file     : File_Zipstream;
                    -- was Unbounded_Stream & file->buffer copy in v.26
-    zip_file     : constant Zipstream_Class := MyStream'Unchecked_Access;
     header_index : Positive;
     work_password: Unbounded_String:= To_Unbounded_String(password);
   begin
@@ -557,7 +550,7 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Set_Name (zip_file, from);
-    Open (MyStream, In_File);
+    Open (zip_file, In_File);
     Zip.Find_first_offset(zip_file, header_index); -- >= 13-May-2001
     -- We simply unzip everything sequentially, until the end:
     all_files: loop
@@ -575,11 +568,11 @@ package body UnZip is
     end loop all_files;
   exception
     when Zip.Headers.bad_local_header =>
-      Close(MyStream); -- normal case: end was hit
+      Close(zip_file); -- normal case: end was hit
     when Zip.Zip_file_open_Error =>
       raise;    -- couldn't open zip file
     when others =>
-      Close(MyStream);
+      Close(zip_file);
       raise;    -- something else wrong
   end Extract;
 
@@ -635,14 +628,14 @@ package body UnZip is
     uncomp_size  : File_size_type;
     work_password: Unbounded_String:= To_Unbounded_String(password);
     use Zip, Zip_Streams;
-    MyStream     : aliased File_Zipstream;
-    input_stream : Zipstream_Class;
+    zip_file     : aliased File_Zipstream;
+    input_stream : Zipstream_Class_Access;
     use_a_file   : constant Boolean:= Zip.Zip_stream(from) = null;
   begin
     if use_a_file then
-      input_stream:= MyStream'Unchecked_Access;
-      Set_Name (input_stream , Zip.Zip_name(from));
-      Open (MyStream, Ada.Streams.Stream_IO.In_File);
+      input_stream:= zip_file'Unchecked_Access;
+      Set_Name (zip_file , Zip.Zip_name(from));
+      Open (zip_file, Ada.Streams.Stream_IO.In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_stream(from);
     end if;
@@ -656,7 +649,7 @@ package body UnZip is
       uncomp_size
     );
     UnZipFile(
-      input_stream,
+      input_stream.all,
       what, False,
       header_index,
       comp_size,
@@ -666,7 +659,7 @@ package body UnZip is
       file_system_routines
     );
     if use_a_file then
-      Close (MyStream);
+      Close (zip_file);
     end if;
   end Extract;
 
@@ -690,14 +683,14 @@ package body UnZip is
     uncomp_size  : File_size_type;
     work_password: Unbounded_String:= To_Unbounded_String(password);
     use Zip, Zip_Streams;
-    MyStream     : aliased File_Zipstream;
-    input_stream : Zipstream_Class;
+    zip_file     : aliased File_Zipstream;
+    input_stream : Zipstream_Class_Access;
     use_a_file   : constant Boolean:= Zip.Zip_stream(from) = null;
   begin
     if use_a_file then
-      input_stream:= MyStream'Unchecked_Access;
-      Set_Name (input_stream , Zip.Zip_name(from));
-      Open (MyStream, Ada.Streams.Stream_IO.In_File);
+      input_stream:= zip_file'Unchecked_Access;
+      Set_Name (zip_file , Zip.Zip_name(from));
+      Open (zip_file, Ada.Streams.Stream_IO.In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_stream(from);
     end if;
@@ -711,7 +704,7 @@ package body UnZip is
       uncomp_size
     );
     UnZipFile(
-      input_stream,
+      input_stream.all,
       rename,
       False,
       header_index,
@@ -722,7 +715,7 @@ package body UnZip is
       file_system_routines
     );
     if use_a_file then
-      Close (MyStream);
+      Close (zip_file);
     end if;
   end Extract;
 

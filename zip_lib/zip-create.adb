@@ -7,14 +7,14 @@ with Ada.Calendar;
 package body Zip.Create is
 
    procedure Create(Info        : out Zip_Create_info;
-                    Z_Stream    : in Zipstream_Class;
+                    Z_Stream    : in Zipstream_Class_Access;
                     Name        : String;
                     Compress    : Zip.Compress.Compression_Method:= Zip.Compress.Shrink) is
    begin
       Info.Stream := Z_Stream;
       Info.Compress := Compress;
       if Name /= "" then
-         Set_Name (Info.Stream, Name);
+         Set_Name (Info.Stream.all, Name);
       end if;
       --
       -- If we have a real file (File_Zipstream or descendent), create the file too:
@@ -34,7 +34,7 @@ package body Zip.Create is
 
    function Name(Info: Zip_Create_info) return String is
    begin
-     return Get_Name(Info.Stream);
+     return Get_Name(Info.Stream.all);
    end Name;
 
    procedure Dispose is new
@@ -103,13 +103,6 @@ package body Zip.Create is
    end Add_Stream;
 
    procedure Add_Stream (Info           : in out Zip_Create_info;
-                         Stream         : Zipstream_Class)
-   is
-   begin
-     Add_Stream(Info, Stream.all); -- call the pointer-free version
-   end Add_Stream;
-
-   procedure Add_Stream (Info           : in out Zip_Create_info;
                          Stream         : in out Root_Zipstream_Type'Class;
                          Feedback       : in     Feedback_proc;
                          Compressed_Size:    out Zip.File_size_type;
@@ -144,10 +137,10 @@ package body Zip.Create is
       Info.Contains (Last).head.short_info.extra_field_length     := 0;
       Info.Contains (Last).name := new String'(entry_name);
 
-      mem1 := Index (Info.Stream);
+      mem1 := Index (Info.Stream.all);
       Info.Contains (Last).head.local_header_offset := Unsigned_32 (mem1) - 1;
       --  Write the local header with incomplete informations
-      Zip.Headers.Write (Info.Stream, Info.Contains (Last).head.short_info);
+      Zip.Headers.Write (Info.Stream.all, Info.Contains (Last).head.short_info);
 
       String'Write(Info.Stream, Info.Contains (Last).name.all);
 
@@ -164,27 +157,16 @@ package body Zip.Create is
          output_size      => Info.Contains (Last).head.short_info.dd.compressed_size,
          zip_type         => Info.Contains (Last).head.short_info.zip_type
       );
-      mem2 := Index (Info.Stream);
+      mem2 := Index (Info.Stream.all);
       --  Go back to the local header to rewrite it
       --  with complete informations
-      Set_Index (Info.Stream, mem1);
-      Zip.Headers.Write (Info.Stream, Info.Contains (Last).head.short_info);
+      Set_Index (Info.Stream.all, mem1);
+      Zip.Headers.Write (Info.Stream.all, Info.Contains (Last).head.short_info);
       --  Return to momentaneous end of file
-      Set_Index (Info.Stream, mem2);
+      Set_Index (Info.Stream.all, mem2);
       --
       Compressed_Size:= Info.Contains (Last).head.short_info.dd.compressed_size;
       Final_Method   := Natural(Info.Contains (Last).head.short_info.zip_type);
-   end Add_Stream;
-
-   procedure Add_Stream (Info           : in out Zip_Create_info;
-                         Stream         : Zipstream_Class;
-                         Feedback       : in     Feedback_proc;
-                         Compressed_Size:    out Zip.File_size_type;
-                         Final_Method   :    out Natural)
-   is
-   begin
-     Add_Stream (Info, Stream.all, Feedback, Compressed_Size, Final_Method);
-     -- call the pointer-free version
    end Add_Stream;
 
    procedure Add_File (Info              : in out Zip_Create_info;
@@ -202,22 +184,21 @@ package body Zip.Create is
    )
    is
       temp_zip_stream     : aliased File_Zipstream;
-      acc_temp_zip_stream : constant Zipstream_Class := temp_zip_stream'Unchecked_Access;
       use Ada.Text_IO;
       fd: File_Type;
       Compressed_Size: Zip.File_size_type; -- unused
       Final_Method   : Natural; -- unused
    begin
      -- Read the file
-     Set_Name(acc_temp_zip_stream, Name);
+     Set_Name(temp_zip_stream, Name);
      Open(temp_zip_stream, Ada.Streams.Stream_IO.In_File);
      -- Eventually we set a new name for archiving:
      if Name_in_archive /= "" then
-        Set_Name(acc_temp_zip_stream, Name_in_archive);
+        Set_Name(temp_zip_stream, Name_in_archive);
      end if;
-     Set_Unicode_Name_Flag(acc_temp_zip_stream, Name_UTF_8_encoded);
+     Set_Unicode_Name_Flag(temp_zip_stream, Name_UTF_8_encoded);
      -- Stuff into the .zip archive:
-     Add_Stream (Info, acc_temp_zip_stream, Feedback, Compressed_Size, Final_Method);
+     Add_Stream (Info, temp_zip_stream, Feedback, Compressed_Size, Final_Method);
      Close(temp_zip_stream);
      if Delete_file_after then
         Open(fd, In_File, Name);
@@ -244,13 +225,12 @@ package body Zip.Create is
    )
    is
      temp_zip_stream     : aliased Memory_Zipstream;
-     acc_temp_zip_stream : constant Zipstream_Class := temp_zip_stream'Unchecked_Access;
    begin
      Set(temp_zip_stream, Contents);
-     Set_Name(acc_temp_zip_stream, Name_in_archive);
-     Set_Time(acc_temp_zip_stream, Info.Creation_time);
-     Set_Unicode_Name_Flag(acc_temp_zip_stream, Name_UTF_8_encoded);
-     Add_Stream (Info, acc_temp_zip_stream);
+     Set_Name(temp_zip_stream, Name_in_archive);
+     Set_Time(temp_zip_stream, Info.Creation_time);
+     Set_Unicode_Name_Flag(temp_zip_stream, Name_UTF_8_encoded);
+     Add_Stream (Info, temp_zip_stream);
    end Add_String;
 
    procedure Add_Compressed_Stream (
@@ -264,8 +244,8 @@ package body Zip.Create is
       Add_catalogue_entry (Info);
       Zip.Headers.Read_and_check(Stream, lh);
       Info.Contains (Info.Last_entry).head.local_header_offset :=
-        Unsigned_32 (Index (Info.Stream)) - 1;
-      Zip.Headers.Write(Info.Stream, lh);
+        Unsigned_32 (Index (Info.Stream.all)) - 1;
+      Zip.Headers.Write(Info.Stream.all, lh);
       -- Copy name and extra field
       declare
         name: String(1..Positive(lh.filename_length));
@@ -292,7 +272,7 @@ package body Zip.Create is
       --
       --  2/ Almost done - write Central Directory:
       --
-      ed.central_dir_offset := Unsigned_32 (Index (Info.Stream)) - 1;
+      ed.central_dir_offset := Unsigned_32 (Index (Info.Stream.all)) - 1;
       ed.total_entries := 0;
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
@@ -303,7 +283,7 @@ package body Zip.Create is
       if Info.Contains /= null then
         for e in 1..Info.Last_entry loop
            ed.total_entries := ed.total_entries + 1;
-           Zip.Headers.Write (Info.Stream, Info.Contains (e).head);
+           Zip.Headers.Write (Info.Stream.all, Info.Contains (e).head);
            String'Write(Info.Stream, Info.Contains (e).name.all);
            ed.central_dir_size :=
              ed.central_dir_size +
@@ -317,7 +297,7 @@ package body Zip.Create is
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;
-      Zip.Headers.Write (Info.Stream, ed);
+      Zip.Headers.Write (Info.Stream.all, ed);
       --
       -- If we have a real file (File_Zipstream or descendent), close the file too:
       --

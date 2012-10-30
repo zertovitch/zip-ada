@@ -268,15 +268,6 @@ package body Zip is
            );
   end Load;
 
-  procedure Load
-   (info           : out Zip_info;
-    from           : in  Zip_Streams.Zipstream_Class;
-    case_sensitive : in  Boolean:= False)
-  is
-  begin
-    Load(info, from.all, case_sensitive); -- call the pointer-free version
-  end load;
-
   -----------------------------------------------------------
   -- Load Zip_info from a file containing the .zip archive --
   -----------------------------------------------------------
@@ -288,9 +279,8 @@ package body Zip is
   is
     use Zip_Streams;
     MyStream   : aliased File_Zipstream;
-    StreamFile : constant Zipstream_Class:= MyStream'Unchecked_Access;
   begin
-    Set_Name (StreamFile, from);
+    Set_Name (MyStream, from);
     begin
       Open (MyStream, Ada.Streams.Stream_IO.In_File);
     exception
@@ -301,7 +291,7 @@ package body Zip is
     -- Call the stream version of Load(...)
     Load(
       info,
-      StreamFile,
+      MyStream,
       case_sensitive
     );
     Close (MyStream);
@@ -331,7 +321,7 @@ package body Zip is
     return info.zip_file_comment.all;
   end Zip_comment;
 
-  function Zip_stream( info: in Zip_info ) return Zip_Streams.Zipstream_Class
+  function Zip_stream( info: in Zip_info ) return Zip_Streams.Zipstream_Class_Access
   is
   begin
     if not info.loaded then
@@ -458,7 +448,7 @@ package body Zip is
   --         be in the same order that files appear in the zipfile.    "
 
   procedure Find_first_offset(
-    file           : in     Zip_Streams.Zipstream_Class;
+    file           : in out Zip_Streams.Root_Zipstream_Type'Class;
     file_index     :    out Positive
   )
   is
@@ -474,13 +464,8 @@ package body Zip is
 
     min_offset:= the_end.central_dir_offset; -- will be lowered
 
-      for i in 1..the_end.total_entries loop
-         declare
-            TempStream : constant Zip_Streams.Zipstream_Class := file;
-         begin
-            Zip.Headers.Read_and_check(TempStream, header );
-         end;
-
+    for i in 1..the_end.total_entries loop
+      Zip.Headers.Read_and_check(file, header );
       Set_Index( file, Index( file ) +
              Positive
                ( header.short_info.filename_length +
@@ -501,7 +486,7 @@ package body Zip is
   -- central directory :-(
 
   procedure Find_offset(
-    file           : in     Zip_Streams.Zipstream_Class;
+    file           : in out Zip_Streams.Root_Zipstream_Type'Class;
     name           : in     String;
     case_sensitive : in     Boolean;
     file_index     :    out Positive;
@@ -516,15 +501,11 @@ package body Zip is
     Zip.Headers.Load(file, the_end);
     Set_Index(file, Positive(1 + the_end.central_dir_offset + the_end.offset_shifting));
     for i in 1..the_end.total_entries loop
-      declare
-         TempStream : constant Zipstream_Class := file;
-      begin
-         Zip.Headers.Read_and_check(TempStream, header);
-      end;
+      Zip.Headers.Read_and_check(file, header);
       declare
         this_name: String(1..Natural(header.short_info.filename_length));
       begin
-        String'Read(file, this_name);
+        String'Read(file'Access, this_name);
         Set_Index( file, Index( file ) +
                 Natural (Ada.Streams.Stream_IO.Count
                   (header.short_info.extra_field_length +
@@ -693,16 +674,6 @@ package body Zip is
   end BlockRead;
 
   procedure BlockRead(
-    stream       : in     Zip_Streams.Zipstream_Class;
-    buffer       :    out Byte_Buffer;
-    actually_read:    out Natural
-  )
-  is
-  begin
-    BlockRead(stream.all, buffer, actually_read); -- call the pointer-free version
-  end BlockRead;
-
-  procedure BlockRead(
     stream : in out Zip_Streams.Root_Zipstream_Type'Class;
     buffer :    out Byte_Buffer
   )
@@ -713,15 +684,6 @@ package body Zip is
     if actually_read < buffer'Length then
       raise Ada.IO_Exceptions.End_Error;
     end if;
-  end BlockRead;
-
-  procedure BlockRead(
-    stream : in     Zip_Streams.Zipstream_Class;
-    buffer :    out Byte_Buffer
-  )
-  is
-  begin
-    BlockRead(stream.all, buffer); -- call the pointer-free version
   end BlockRead;
 
   procedure BlockWrite(
