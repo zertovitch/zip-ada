@@ -72,6 +72,11 @@ package Zip_Streams is
    function Is_Unicode_Name(S : in Root_Zipstream_Type)
                             return Boolean;
 
+   procedure Set_Read_Only_Flag (S     : out Root_Zipstream_Type;
+                                 Value : in Boolean);
+   function Is_Read_only(S : in Root_Zipstream_Type)
+                         return Boolean;
+
    -- this procedure sets the Modification_Time of the stream
    procedure Set_Time(S : in out Root_Zipstream_Type;
                       Modification_Time : Time);
@@ -171,6 +176,7 @@ private
          Name              : Unbounded_String;
          Modification_Time : Time := default_time;
          Is_Unicode_Name   : Boolean := False;
+         Is_Read_Only      : Boolean := False; -- only indicative
       end record;
 
    -- Memory_Zipstream spec

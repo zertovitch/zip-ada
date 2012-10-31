@@ -57,6 +57,20 @@ package body Zip_Streams is
      return S.Is_Unicode_Name;
    end;
 
+   procedure Set_Read_Only_Flag (S     : out Root_Zipstream_Type;
+                                 Value : in Boolean)
+   is
+   begin
+     S.Is_Read_Only := Value;
+   end Set_Read_Only_Flag;
+
+   function Is_Read_only(S : in Root_Zipstream_Type)
+                         return Boolean
+   is
+   begin
+     return S.Is_Read_Only;
+   end Is_Read_Only;
+
    ---------------------------------------------------------------------
    -- Unbounded_Stream: stream based on an in-memory Unbounded_String --
    ---------------------------------------------------------------------

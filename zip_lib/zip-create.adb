@@ -123,50 +123,53 @@ package body Zip.Create is
       --
       Add_catalogue_entry (Info);
       Last:= Info.Last_entry;
-      --  Administration - continued
-      if Zip_Streams.Is_Unicode_Name (Stream) then
-         Info.Contains (Last).head.short_info.bit_flag
-           := Info.Contains (Last).head.short_info.bit_flag or Zip.Headers.Language_Encoding_Flag_Bit;
-      end if;
-      Info.Contains (Last).head.short_info.file_timedate          :=
-        Get_Time (Stream);
-      Info.Contains (Last).head.short_info.dd.uncompressed_size   :=
-        Unsigned_32 (Size (Stream));
-      Info.Contains (Last).head.short_info.filename_length        :=
-        entry_name'Length;
-      Info.Contains (Last).head.short_info.extra_field_length     := 0;
-      Info.Contains (Last).name := new String'(entry_name);
+      declare
+        cfh: Central_File_Header renames Info.Contains(Last).head;
+      begin
+        --  Administration - continued
+        if Zip_Streams.Is_Unicode_Name (Stream) then
+          cfh.short_info.bit_flag
+            := cfh.short_info.bit_flag or Zip.Headers.Language_Encoding_Flag_Bit;
+        end if;
+        if Is_Read_Only(Stream) then
+          cfh.external_attributes:= cfh.external_attributes or 1;
+        end if;
+        cfh.short_info.file_timedate        := Get_Time (Stream);
+        cfh.short_info.dd.uncompressed_size := Unsigned_32 (Size (Stream));
+        cfh.short_info.filename_length      := entry_name'Length;
+        Info.Contains (Last).name           := new String'(entry_name);
+        cfh.short_info.extra_field_length   := 0;
 
-      mem1 := Index (Info.Stream.all);
-      Info.Contains (Last).head.local_header_offset := Unsigned_32 (mem1) - 1;
-      --  Write the local header with incomplete informations
-      Zip.Headers.Write (Info.Stream.all, Info.Contains (Last).head.short_info);
+        mem1 := Index (Info.Stream.all);
+        cfh.local_header_offset := Unsigned_32 (mem1) - 1;
+        --  Write the local header with incomplete informations
+        Zip.Headers.Write (Info.Stream.all, cfh.short_info);
 
-      String'Write(Info.Stream, Info.Contains (Last).name.all);
+        String'Write(Info.Stream, entry_name);
 
-      --  Write compressed file
-      Zip.Compress.Compress_data
-        (input            => Stream,
-         output           => Info.Stream.all,
-         input_size_known => True,
-         input_size       =>
-           Info.Contains (Last).head.short_info.dd.uncompressed_size,
-         method           => Info.Compress,
-         feedback         => Feedback,
-         CRC              => Info.Contains (Last).head.short_info.dd.crc_32,
-         output_size      => Info.Contains (Last).head.short_info.dd.compressed_size,
-         zip_type         => Info.Contains (Last).head.short_info.zip_type
-      );
-      mem2 := Index (Info.Stream.all);
-      --  Go back to the local header to rewrite it
-      --  with complete informations
-      Set_Index (Info.Stream.all, mem1);
-      Zip.Headers.Write (Info.Stream.all, Info.Contains (Last).head.short_info);
-      --  Return to momentaneous end of file
-      Set_Index (Info.Stream.all, mem2);
-      --
-      Compressed_Size:= Info.Contains (Last).head.short_info.dd.compressed_size;
-      Final_Method   := Natural(Info.Contains (Last).head.short_info.zip_type);
+        --  Write compressed file
+        Zip.Compress.Compress_data
+          (input            => Stream,
+           output           => Info.Stream.all,
+           input_size_known => True,
+           input_size       => cfh.short_info.dd.uncompressed_size,
+           method           => Info.Compress,
+           feedback         => Feedback,
+           CRC              => cfh.short_info.dd.crc_32,
+           output_size      => cfh.short_info.dd.compressed_size,
+           zip_type         => cfh.short_info.zip_type
+          );
+        mem2 := Index (Info.Stream.all);
+        --  Go back to the local header to rewrite it
+        --  with complete informations
+        Set_Index (Info.Stream.all, mem1);
+        Zip.Headers.Write (Info.Stream.all, cfh.short_info);
+        --  Return to momentaneous end of file
+        Set_Index (Info.Stream.all, mem2);
+        --
+        Compressed_Size:= cfh.short_info.dd.compressed_size;
+        Final_Method   := Natural(cfh.short_info.zip_type);
+      end;
    end Add_Stream;
 
 procedure Add_File (Info              : in out Zip_Create_info;
@@ -181,6 +184,7 @@ procedure Add_File (Info              : in out Zip_Create_info;
                        -- True if Name[_in_archive] is actually
                        -- UTF-8 encoded (Unicode)
                        Modification_time : Time:= default_time;
+                       Is_read_only      : Boolean:= False;
                        Feedback          : Feedback_proc:= null
                        )
    is
@@ -198,6 +202,7 @@ procedure Add_File (Info              : in out Zip_Create_info;
         Set_Name(temp_zip_stream, Name_in_archive);
      end if;
      Set_Unicode_Name_Flag(temp_zip_stream, Name_UTF_8_encoded);
+     Set_Read_Only_Flag(temp_zip_stream, Is_read_only);
      Set_Time(temp_zip_stream, Modification_time);
      -- Stuff into the .zip archive:
      Add_Stream (Info, temp_zip_stream, Feedback, Compressed_Size, Final_Method);
