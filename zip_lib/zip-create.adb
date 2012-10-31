@@ -172,7 +172,7 @@ package body Zip.Create is
       end;
    end Add_Stream;
 
-procedure Add_File (Info              : in out Zip_Create_info;
+   procedure Add_File (Info              : in out Zip_Create_info;
                        Name              : String;
                        Name_in_archive   : String:= "";
                        -- default: add the file in the archive
@@ -186,7 +186,7 @@ procedure Add_File (Info              : in out Zip_Create_info;
                        Modification_time : Time:= default_time;
                        Is_read_only      : Boolean:= False;
                        Feedback          : Feedback_proc:= null
-                       )
+   )
    is
       temp_zip_stream     : aliased File_Zipstream;
       use Ada.Text_IO;
@@ -252,7 +252,6 @@ procedure Add_File (Info              : in out Zip_Create_info;
       Zip.Headers.Read_and_check(Stream, lh);
       Info.Contains (Info.Last_entry).head.local_header_offset :=
         Unsigned_32 (Index (Info.Stream.all)) - 1;
-      Zip.Headers.Write(Info.Stream.all, lh);
       -- Copy name and extra field
       declare
         name: String(1..Positive(lh.filename_length));
@@ -261,8 +260,9 @@ procedure Add_File (Info              : in out Zip_Create_info;
         String'Read(Stream'Access, name);
         String'Read(Stream'Access, extra);
         Info.Contains (Info.Last_entry).name := new String'(name);
+        lh.extra_field_length:= 0; -- extra field is zeroed (causes problems if not)
+        Zip.Headers.Write(Info.Stream.all, lh);
         String'Write(Info.Stream, name);
-        String'Write(Info.Stream, extra);
       end;
       Zip.Copy_Chunk(
         Stream,
@@ -292,6 +292,7 @@ procedure Add_File (Info              : in out Zip_Create_info;
            ed.total_entries := ed.total_entries + 1;
            Zip.Headers.Write (Info.Stream.all, Info.Contains (e).head);
            String'Write(Info.Stream, Info.Contains (e).name.all);
+		   -- The extra field here is assumed to be empty!
            ed.central_dir_size :=
              ed.central_dir_size +
                Zip.Headers.central_header_length +
