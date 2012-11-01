@@ -3,7 +3,7 @@
 -- *** Just needed to comment out / null-ify the references to Ada.Directories
 
 ------------------------------------------------------------------------------
---  File:            ZipAda.adb
+--  File:            ZipAda95.adb
 --  Description:     A minimal standalone command-line zip archiving utility
 --                     using the Zip-Ada library.
 --  Date/version:    19-Oct-2009; ... ; Dec-2007
@@ -29,7 +29,7 @@ with Zip.Compress, Zip.Create;
 
 with My_feedback;
 
-procedure ZipAda is
+procedure ZipAda95 is
 
   T0, T1 : Ada.Calendar.Time;
   seconds: Duration;
@@ -190,4 +190,4 @@ begin
     Put_Line("          -es    : ""shrink"" (LZW algorithm)");
     Put_Line("          -edf   : ""deflate"", with one fixed block");
   end if;
-end ZipAda;
+end ZipAda95;

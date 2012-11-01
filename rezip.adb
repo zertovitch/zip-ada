@@ -5,7 +5,8 @@
 --                     tools and methods. Typically the optimal archive will
 --                     contain some entries compressed with the BZip2 format,
 --                     and others with the Deflate or Deflate_e ones.
---                     Compression speed doesn't matter, only the final size.
+--                     Compression speed doesn't matter (except extrem cases),
+--                     only the final size does.
 --
 --  Date/version:    ... ; 11-Jan-2008
 --  Author:          Gautier de Montmollin
@@ -119,7 +120,7 @@ procedure ReZip is
     );
     -- * Get the data, compressed
     Create(file_out, Out_File, rip_rename);
-    Zip.Copy_Chunk(input, Stream(file_out).all, Integer(comp_size), 1024*1024);
+    Zip.Copy_Chunk(input, Stream(file_out).all, Integer(comp_size));
     Close(file_out);
     if unzip_rename /= "" then
       -- * Get the data, uncompressed

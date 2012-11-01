@@ -109,11 +109,16 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '44' (not yet released):
+* Changes in '44', 3-Nov-2012:
+  - The libary provides now a complete toolset for managing Zip archives
+      (creating, updating, extracting)
   -!- Zip_Streams: All methods now with pointer-free profiles
-  - Zip.Create: archive creation date is used when entries are added which
-        are from a memory buffer
-  - Zip.Create: compression method can be changed "on the fly", before
+  - Zip.Create:
+    - file modification date and read-only attribute can be passed
+        to Add_File 
+    - archive creation date is used when entries are added which
+        are from a memory buffer (Add_String)
+    - compression method can be changed "on the fly", before
         adding new entries
   - Zip.Compress: set a larger, standard output buffer size
 
@@ -354,6 +359,7 @@ Tucker Taft (himself!), SofCheck, for providing fixes (v.24) and
    an impressive targets in-use list
 
 Pascal Pignard, for testing the UnZipAda.adb tool under Mac OS X
+   and PowerPC processors
 
 Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
@@ -363,8 +369,8 @@ Open bugs (as of v.30)
 ======================
   - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's reduce_* archives,
       but unzip <=5.12 and WinZip accept them all
-  - UnZip.Decompress rejects many "enhanced deflate" files made by WinZip (...
-        sometimes CRC errors, or:
+  - UnZip.Decompress rejects many "enhanced deflate" (=deflate64)
+        files made by WinZip (sometimes CRC errors, or:
 	unzip-decompress.adb:1711 Huffman tree errors: huft_incomplete
 	unzip-decompress.adb:1542 Inflate_Stored block length check fails
 	unzip-decompress.adb:1469 Inflate_codes E = invalid
@@ -372,17 +378,17 @@ Open bugs (as of v.30)
     )...
     but accepts all archives with the same contents and compression
     method from 7-Zip (7z -mm=deflate64)! Since 7-Zip compresses a lot
-    better also with that "enhanced deflate" format, just use it and
-    not WinZip...
+    better also with that "enhanced deflate" format, a workaround is
+	just to use 7-Zip and not WinZip...
     
 To do
 =====
   - more profiling - see prof_za.cmd and test/prof.cmd
-  - store (some) file attributes in Zip_info
   - use tasking for decoding in UnZip.Streams, instead of storing
       the whole decoded data in a buffer (this exercise may be difficult!)
   - a Freshen_Zip tool that freshen files from an archive, or files
-      to an archive, or both (i.e. like "zip -f" and/or "unzip -f" combined)
+      to an archive, or both (i.e. like "zip -f" and/or "unzip -f" combined);
+	  possible with Zip.Create's Add_Compressed_Stream.
 
 To do further
 =============
@@ -392,7 +398,8 @@ To do further
       (see appnote.txt) 
       - LZMA: 7z / 7-Zip sources and SDK: C/LzmaDec.c
               Pascal version: http://www.birtles.org.uk/programming/
-      - PPMd
+      - PPMd (but there are incompatiblities between different
+	          existing tools)
 
 Note on portability
 ===================
@@ -415,6 +422,7 @@ MS-DOS, DR-DOS (Novell)		Intel x86 (16/32 bit)
 OpenBSD				(one of several)
 FreeBSD				Intel x86 (32 bit)
 FreeBSD				Intel x64 (64 bit)
+Android 2.3+		ARM
 
 MS Windows 95,98,NT,2K,XP	Intel x86 (32 bit)	Aonix - ObjectAda
 

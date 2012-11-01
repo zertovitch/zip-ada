@@ -3,7 +3,7 @@
 -- *** Just needed to comment out / null-ify the references to Ada.Directories
 
 ------------------------------------------------------------------------------
---  File:            UnZipAda.adb
+--  File:            UnZipAda95.adb
 --  Description:     A minimal standalone command-line unzipping tool
 --                     using the Zip-Ada library.
 --  Date/version:    15-Feb-2012; 18-Jun-2009; ... ; 1-Dec-1999
@@ -27,7 +27,7 @@ with Zip, UnZip;
 with My_feedback, My_resolve_conflict, My_tell_data, My_get_password;
 with Summary;
 
-procedure UnZipAda is
+procedure UnZipAda95 is
 
   ------------------------------------------------------
   -- Potential Ada 201X items                         --
@@ -347,4 +347,4 @@ begin
     Put_Line("Archive successfully processed (or no archive!)");
   end if;
 
-end UnZipAda;
+end UnZipAda95;

@@ -292,7 +292,7 @@ package body Zip.Create is
            ed.total_entries := ed.total_entries + 1;
            Zip.Headers.Write (Info.Stream.all, Info.Contains (e).head);
            String'Write(Info.Stream, Info.Contains (e).name.all);
-		   -- The extra field here is assumed to be empty!
+           -- The extra field here is assumed to be empty!
            ed.central_dir_size :=
              ed.central_dir_size +
                Zip.Headers.central_header_length +
