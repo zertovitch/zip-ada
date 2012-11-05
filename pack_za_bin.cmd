@@ -13,7 +13,7 @@ upx --ultra-brute zipada.exe
 upx --ultra-brute bunzip.exe
 :skip_upx
 
-set version=43
+set version=44
 
 zip -9 zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe
 
