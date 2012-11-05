@@ -114,6 +114,8 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
       (creating, updating, extracting)
   -!- Zip_Streams: All methods now with pointer-free profiles
   - Zip.Create:
+    - new Add_Compressed_Stream for copying entries from an archive
+        to another one
     - file modification date and read-only attribute can be passed
         to Add_File 
     - archive creation date is used when entries are added which
