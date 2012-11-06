@@ -367,8 +367,14 @@ Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
 
 
-Open bugs (as of v.30)
+Open bugs (as of v.44)
 ======================
+  - Zip: Exists, Find_Offset, Get_Sizes should not have
+      case_sensitive as a parameter.
+      Zip_info should have it as a field.
+      Rationale: it doesn't make sense (and doesn't work)
+      to have a case-sensitive-called Load and an insensitive search or
+      vice-versa.
   - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's reduce_* archives,
       but unzip <=5.12 and WinZip accept them all
   - UnZip.Decompress rejects many "enhanced deflate" (=deflate64)
