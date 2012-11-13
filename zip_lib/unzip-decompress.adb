@@ -46,8 +46,9 @@ package body UnZip.Decompress is
       compsize,            -- compressed size of file
       reachedsize,         -- number of bytes read from zipfile
       uncompsize,          -- uncompressed size of file
-      effective_writes :   -- count of effective bytes written (for feedback)
-        UnZip.File_size_type;
+      effective_writes : UnZip.File_size_type;
+      -- ^ count of effective bytes written or tested, for feedback only
+      percents_done    : Natural;
       crc32val : Unsigned_32;  -- crc calculated from data
       Zip_EOF  : Boolean;      -- read over end of zip section for this file
       uncompressed_index  : Ada.Streams.Stream_Element_Offset;
@@ -139,6 +140,7 @@ package body UnZip.Decompress is
         UnZ_Glob.slide_index := 0;
         UnZ_Glob.reachedsize      := 0;
         UnZ_Glob.effective_writes := 0;
+        UnZ_Glob.percents_done    := 0;
         UnZ_Glob.Zip_EOF := False;
         Zip.CRC.Init( UnZ_Glob.crc32val );
         Bit_buffer.Init;
@@ -349,6 +351,7 @@ package body UnZip.Decompress is
 
       procedure Flush ( x: Natural ) is
         use Zip, UnZip, Ada.Streams;
+        new_percents_done: Natural;
         user_aborting: Boolean;
       begin
         if full_trace then
@@ -380,14 +383,19 @@ package body UnZip.Decompress is
           UnZ_Glob.effective_writes:=
             UnZ_Glob.effective_writes + File_size_type(x);
           if UnZ_Glob.uncompsize > 0 then
-            feedback.all(
-              percents_done => Natural(
+            new_percents_done:= Natural(
                 (100.0 * Float(UnZ_Glob.effective_writes)) /
-                Float(UnZ_Glob.uncompsize) ),
-              entry_skipped => False,
-              user_abort    => user_aborting );
-            if user_aborting then
-              raise User_abort;
+                Float(UnZ_Glob.uncompsize) );
+            if new_percents_done > UnZ_Glob.percents_done then
+              feedback.all(
+                percents_done => new_percents_done,
+                entry_skipped => False,
+                user_abort    => user_aborting
+              );
+              if user_aborting then
+                raise User_abort;
+              end if;
+              UnZ_Glob.percents_done:= new_percents_done;
             end if;
           end if;
         end if;
@@ -568,6 +576,7 @@ package body UnZip.Decompress is
 
       procedure Unshrink_Flush is
         use Zip, UnZip, Ada.Streams, Ada.Streams.Stream_IO;
+        new_percents_done: Natural;
         user_aborting: Boolean;
       begin
         if full_trace then
@@ -596,15 +605,19 @@ package body UnZip.Decompress is
         if feedback /= null then -- inform user
           UnZ_Glob.effective_writes:=
             UnZ_Glob.effective_writes + File_size_type(Write_Ptr);
-          feedback.all(
-            percents_done => Natural(
-              (100.0 * Float(UnZ_Glob.effective_writes)) /
-              Float(UnZ_Glob.uncompsize)
-            ),
-            entry_skipped => False,
-            user_abort    => user_aborting );
-          if user_aborting then
-            raise User_abort;
+          new_percents_done:= Natural(
+             (100.0 * Float(UnZ_Glob.effective_writes)) /
+              Float(UnZ_Glob.uncompsize) );
+          if new_percents_done > UnZ_Glob.percents_done then
+            feedback.all(
+              percents_done => new_percents_done,
+              entry_skipped => False,
+              user_abort    => user_aborting
+            );
+            if user_aborting then
+              raise User_abort;
+            end if;
+            UnZ_Glob.percents_done:= new_percents_done;
           end if;
         end if;
       end Unshrink_Flush;
