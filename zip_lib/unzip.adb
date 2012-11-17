@@ -312,17 +312,22 @@ package body UnZip is
       );
 
       if actual_mode /= just_test then
-        if file_system_routines.Set_Time_Stamp /= null then
-          file_system_routines.Set_Time_Stamp(
-            To_String(the_output_name),
-            Convert(local_header.file_timedate)
-          );
-        elsif file_system_routines.Set_ZTime_Stamp /= null then
-          file_system_routines.Set_ZTime_Stamp(
-            To_String(the_output_name),
-            local_header.file_timedate
-          );
-        end if;
+        begin
+          if file_system_routines.Set_Time_Stamp /= null then
+            file_system_routines.Set_Time_Stamp(
+              To_String(the_output_name),
+              Convert(local_header.file_timedate)
+            );
+          elsif file_system_routines.Set_ZTime_Stamp /= null then
+            file_system_routines.Set_ZTime_Stamp(
+              To_String(the_output_name),
+              local_header.file_timedate
+            );
+          end if;
+        exception
+          when Zip_Streams.Calendar.Time_Error =>
+            null; -- invalid time, we give up setting the time stamp
+        end;
       end if;
 
       if data_descriptor_after_data then -- Sizes and CRC at the end

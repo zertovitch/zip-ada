@@ -255,13 +255,22 @@ package body Zip_Streams is
          d_date : constant Integer:= Integer(Date  /  65536);
          d_time : constant Integer:= Integer(Date and 65535);
          use Interfaces;
+         x           : Integer;
          hours       : Integer;
          minutes     : Integer;
          seconds_only: Integer;
       begin
          Year := 1980 + d_date / 512;
-         Month:= (d_date / 32) mod 16;
-         Day  := d_date mod 32;
+         x:= (d_date / 32) mod 16;
+         if x not in Month_Number then -- that is 0, or in 13..15
+           raise Time_Error;
+         end if;
+         Month:= x;
+         x:= d_date mod 32;
+         if x not in Day_Number then -- that is 0
+           raise Time_Error;
+         end if;
+         Day:= x;
          hours   := d_time / 2048;
          minutes := (d_time / 32) mod 64;
          seconds_only := 2 * (d_time mod 32);
