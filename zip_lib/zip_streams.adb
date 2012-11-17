@@ -274,6 +274,12 @@ package body Zip_Streams is
          hours   := d_time / 2048;
          minutes := (d_time / 32) mod 64;
          seconds_only := 2 * (d_time mod 32);
+         if hours not in 0..23 or
+           minutes not in 0..59 or
+           seconds_only not in 0..59
+         then
+           raise Time_Error;
+         end if;
          Seconds:= Day_Duration(hours * 3600 + minutes * 60 + seconds_only);
       end Split;
       --
