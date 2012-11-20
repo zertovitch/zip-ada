@@ -298,6 +298,12 @@ package body Zip is
     Dispose(info.zip_file_name);
     info.zip_file_name:= new String'(from);
     info.zip_input_stream:= null; -- forget about the stream!
+  exception
+    when others =>
+      if Is_Open(MyStream) then
+        Close(MyStream);
+      end if;
+      raise;
   end Load;
 
   function Is_loaded (info: in Zip_info) return Boolean is

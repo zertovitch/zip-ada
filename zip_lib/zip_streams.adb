@@ -203,6 +203,11 @@ package body Zip_Streams is
       Ada.Streams.Stream_IO.Close(Str.File);
    end Close;
 
+   function Is_Open (Str : in File_Zipstream) return Boolean is
+   begin
+      return Ada.Streams.Stream_IO.Is_Open(Str.File);
+   end Is_Open;
+
    procedure Read
      (Stream : in out File_Zipstream;
       Item   : out Stream_Element_Array;

@@ -12,6 +12,7 @@
 -- Change log:
 -- ==========
 --
+-- 20-Nov-2012: GdM: Added Is_Open method for File_Zipstream
 -- 30-Oct-2012: GdM/NB: - Removed method profiles with 'access' as
 --                          overriding some methods with 'access' and some without
 --                          at different inheritance levels may be dangerous
@@ -101,9 +102,9 @@ package Zip_Streams is
    function End_Of_Stream (S : in Root_Zipstream_Type)
       return Boolean is abstract;
 
-   ---------------------------------------------------------------------
-   -- Unbounded_Stream: stream based on an in-memory Unbounded_String --
-   ---------------------------------------------------------------------
+   ------------------------------------------------------------------
+   -- Memory_Stream: stream based on an in-memory Unbounded_String --
+   ------------------------------------------------------------------
    type Memory_Zipstream is new Root_Zipstream_Type with private;
    subtype Unbounded_Stream is Memory_Zipstream;
    pragma Obsolescent (Unbounded_Stream);
@@ -132,6 +133,9 @@ package Zip_Streams is
 
    -- Close the File_Zipstream
    procedure Close (Str : in out File_Zipstream);
+
+   -- Is the File_Zipstream open ?
+   function Is_Open (Str : in File_Zipstream) return Boolean;
 
    --------------------------
    -- Routines around Time --
