@@ -648,7 +648,7 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Zip.Find_offset(
-      from,what,options( case_sensitive_match ),
+      from,what,
       Ada.Streams.Stream_IO.Positive_Count(header_index),
       comp_size,
       uncomp_size
@@ -703,7 +703,7 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Zip.Find_offset(
-      from,what,options( case_sensitive_match ),
+      from,what,
       Ada.Streams.Stream_IO.Positive_Count(header_index),
       comp_size,
       uncomp_size

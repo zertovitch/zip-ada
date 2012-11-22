@@ -125,9 +125,9 @@ package body UnZip.Streams is
                        stream   : in out Zip_Streams.Root_Zipstream_Type'Class;
                        what     : String;
                        mem_ptr  : out p_Stream_Element_Array;
-                       Password : in String;
-                       Case_sensitive : in Boolean
-                      ) is
+                       Password : in String
+                      )
+  is
     header_index : Positive_Count;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
@@ -135,7 +135,7 @@ package body UnZip.Streams is
       Ada.Strings.Unbounded.To_Unbounded_String(password);
   begin
     Zip.Find_offset(
-      from, what, Case_sensitive,
+      from, what,
       header_index,
       comp_size,
       uncomp_size
@@ -183,9 +183,9 @@ package body UnZip.Streams is
      (File           : in out Zipped_File_Type; -- File-in-archive handle
       Archive_Info   : in Zip.Zip_info;         -- loaded by Load_zip_info
       Name           : in String;               -- Name of zipped entry
-      Password       : in String := "";         -- Decryption password
-      Case_sensitive : in Boolean:= False
-     ) is
+      Password       : in String := ""          -- Decryption password
+     )
+  is
     use Zip_Streams, Ada.Streams;
     zip_file     : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
@@ -212,8 +212,7 @@ package body UnZip.Streams is
         input_stream.all,
         Name,
         File.Uncompressed,
-        Password,
-        Case_sensitive
+        Password
       );
       if use_a_file then
         Close (zip_file);
@@ -247,7 +246,7 @@ package body UnZip.Streams is
     -- this local record (but not the full tree) is copied by Open(..)
   begin
     Zip.Load( temp_info, Archive_Name, Case_sensitive);
-    Open( File, temp_info, Name, Password, Case_sensitive );
+    Open( File, temp_info, Name, Password );
     File.delete_info_on_closing:= True; -- Close will delete temp. dir tree
   end Open;
 
@@ -263,7 +262,7 @@ package body UnZip.Streams is
     -- this local record (but not the full tree) is copied by Open(..)
   begin
     Zip.Load( temp_info, Archive_Stream, Case_sensitive);
-    Open( File, temp_info, Name, Password, Case_sensitive );
+    Open( File, temp_info, Name, Password );
     File.delete_info_on_closing:= True; -- Close will delete temp. dir tree
   end Open;
 

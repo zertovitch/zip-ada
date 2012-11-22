@@ -13,8 +13,8 @@ file format. It supplies:
  - Zip_info and Zip_Create_info to handle quickly and easily archives
  - cross format compatibility with the most various tools and file formats
      based on the Zip format: 7-zip, Info-Zip's Zip, WinZip, PKZip, Java's JARs,
-     OpenDocument files, MS Office 2007+, and many others (see Open bugs
-     list for the rare exceptions)
+     OpenDocument files, MS Office 2007+, Nokia themes, and many others
+    (see Open bugs list for the rare exceptions)
  - task safety: this library can be used ad libitum in parallel processing
  - endian-neutral I/O
 
@@ -108,6 +108,16 @@ packages.
 
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
+
+* Changes in '45', (not yet released)
+  - Massive speedup when checking files that are invalid Zip archives
+      or Zip archives with large comments
+  - Added Is_Open method for File_Zipstream
+  - Zip.Load closes properly the file when loading fails
+  - Improved detection of invalid dates in some Zip archives
+     (e.g. wmpChrome.crx Chrome extension)
+  - UnZip.Decompress: Optimized calls of feedback: called only when
+     1% more done
 
 * Changes in '44', 3-Nov-2012:
   - The libary provides now a complete toolset for managing Zip archives
@@ -367,23 +377,9 @@ Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
 
 
-Open bugs (as of v.44)
+Open bugs (as of v.45)
 ======================
-  - Zip.Exists, Zip.Find_Offset, Zip.Get_Sizes with , and UnZip.Streams.Open
-      versions with Zip_Info profiles should not have
-      case_sensitive as a parameter.
-      Zip_info should keep this information as a field after Load.
-      Rationale: it doesn't make sense (and doesn't work)
-      to have a case-sensitive-called Load and an insensitive search or
-      vice-versa.
-      For a case-sensitive use, you have to write things like,
-      not forgetting any "True":
-      ---
-         Load(Jarzip, To_String(Us), case_sensitive => True);
-         if Exists(Jarzip, Name, case_sensitive => True) then
-            Open(F, Jarzip, Name, case_sensitive => True);
-      ---
-      
+
   - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's reduce_* archives,
       but unzip <=5.12 and WinZip accept them all
   - UnZip.Decompress rejects many "enhanced deflate" (=deflate64)

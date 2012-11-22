@@ -92,7 +92,6 @@ procedure ReZip is
     data_name    : String;       -- extract this data
     rip_rename   : String;       -- to this file (compressed)
     unzip_rename : String;       -- and this one (uncompressed)
-    case_match   : Boolean;
     header       : out Zip.Headers.Local_File_Header
   )
   is
@@ -105,7 +104,6 @@ procedure ReZip is
     Zip.Find_Offset(
       info           => archive,
       name           => data_name,
-      case_sensitive => case_match,
       file_index     => file_index,
       comp_size      => comp_size,
       uncomp_size    => uncomp_size
@@ -131,7 +129,7 @@ procedure ReZip is
         options =>
         (   test_only => False,
             junk_directories => False,
-            case_sensitive_match => case_match,
+            case_sensitive_match => True,
             extract_as_text => False
         )
       );
@@ -388,14 +386,13 @@ procedure ReZip is
       -- Now, rip
       Set_Name (MyStream, temp_zip);
       Open (MyStream, In_File);
-      Zip.Load( zi_ext, MyStream, False );
+      Zip.Load( zi_ext, MyStream, True );
       Rip_data(
         archive      => zi_ext,
         input        => MyStream,
         data_name    => data_name,
         rip_rename   => out_name,
         unzip_rename => "",
-        case_match   => False, -- external packers are DOS/Windows
         header       => header
       );
       Close(MyStream);
@@ -556,7 +553,6 @@ procedure ReZip is
         data_name    => unique_name,
         rip_rename   => Temp_name(True,original),
         unzip_rename => Temp_name(False,original),
-        case_match   => True,
         header       => e.head.short_info
       );
       --
@@ -570,7 +566,6 @@ procedure ReZip is
       Zip.Get_sizes(
         info           => zi,
         name           => unique_name,
-        case_sensitive => True,
         comp_size      => comp_size,
         uncomp_size    => uncomp_size
       );

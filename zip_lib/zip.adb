@@ -177,7 +177,8 @@ package body Zip is
              date_time         => date_time,
              method            => method,
              unicode_file_name => unicode_file_name,
-             read_only         => read_only
+             read_only         => read_only,
+             user_code         => 0
              )
           );
       elsif dico_name > node.dico_name then
@@ -260,6 +261,7 @@ package body Zip is
     end loop;
     Binary_tree_rebalancing.Rebalance(p);
     info:= ( loaded           => True,
+             case_sensitive   => case_sensitive,
              zip_file_name    => new String'("This is a stream, no direct file!"),
              zip_input_stream => from'Unchecked_Access,
              dir_binary_tree  => p,
@@ -535,14 +537,13 @@ package body Zip is
   procedure Find_offset(
     info           : in     Zip_info;
     name           : in     String;
-    case_sensitive : in     Boolean;
     file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type
   )
   is
     aux: p_Dir_node:= info.dir_binary_tree;
-    up_name: String:= Normalize(name, case_sensitive);
+    up_name: String:= Normalize(name, info.case_sensitive);
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
@@ -567,13 +568,12 @@ package body Zip is
 
   function Exists(
     info           : in     Zip_info;
-    name           : in     String;
-    case_sensitive : in     Boolean
+    name           : in     String
   )
   return Boolean
   is
     aux: p_Dir_node:= info.dir_binary_tree;
-    up_name: String:= Normalize(name, case_sensitive);
+    up_name: String:= Normalize(name, info.case_sensitive);
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
@@ -590,10 +590,64 @@ package body Zip is
     return False;
   end Exists;
 
+  procedure Set_user_code(
+    info           : in Zip_info;
+    name           : in String;
+    code           : in Integer
+  )
+  is
+    aux: p_Dir_node:= info.dir_binary_tree;
+    up_name: String:= Normalize(name, info.case_sensitive);
+  begin
+    if not info.loaded then
+      raise Forgot_to_load_zip_info;
+    end if;
+    while aux /= null loop
+      if up_name > aux.dico_name then
+        aux:= aux.right;
+      elsif up_name < aux.dico_name then
+        aux:= aux.left;
+      else  -- entry found !
+        aux.user_code:= code;
+        return;
+      end if;
+    end loop;
+    Ada.Exceptions.Raise_Exception(
+      File_name_not_found'Identity,
+      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
+    );
+  end Set_user_code;
+
+  function User_code(
+    info           : in Zip_info;
+    name           : in String
+  )
+  return Integer
+  is
+    aux: p_Dir_node:= info.dir_binary_tree;
+    up_name: String:= Normalize(name, info.case_sensitive);
+  begin
+    if not info.loaded then
+      raise Forgot_to_load_zip_info;
+    end if;
+    while aux /= null loop
+      if up_name > aux.dico_name then
+        aux:= aux.right;
+      elsif up_name < aux.dico_name then
+        aux:= aux.left;
+      else  -- entry found !
+        return aux.user_code;
+      end if;
+    end loop;
+    Ada.Exceptions.Raise_Exception(
+      File_name_not_found'Identity,
+      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
+    );
+  end User_code;
+
   procedure Get_sizes(
     info           : in     Zip_info;
     name           : in     String;
-    case_sensitive : in     Boolean;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type
   )
@@ -601,7 +655,7 @@ package body Zip is
     dummy_file_index: Ada.Streams.Stream_IO.Positive_Count;
   begin
     Find_offset(
-      info, name, case_sensitive, dummy_file_index,
+      info, name, dummy_file_index,
       comp_size, uncomp_size
     );
   end Get_sizes;

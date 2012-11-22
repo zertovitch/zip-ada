@@ -52,8 +52,7 @@ package UnZip.Streams is
      (File           : in out Zipped_File_Type; -- File-in-archive handle
       Archive_Info   : in Zip.Zip_info;         -- Archive's Zip_info
       Name           : in String;               -- Name of zipped entry
-      Password       : in String := "";         -- Decryption password
-      Case_sensitive : in Boolean:= False
+      Password       : in String := ""          -- Decryption password
      );
 
    procedure Close (File : in out Zipped_File_Type);
