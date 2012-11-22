@@ -11,8 +11,41 @@
 -- * Copying a header from a buffer (Copy_and_check)
 -- * Writing a header to a data stream (Write)
 
+  -- Some quick explanations about the Zip file structure - GdM 2001, 2012
+  --
+  -- The zip archive containing N entries can be roughly seen as
+  -- a data stream with the following structure:
+  --
+  -- 1) {local header, then compressed data} - that, N times
+  -- 2) central directory, with a summary of each of the N entries
+  -- 3) end-of-central-directory, with a summary of the central directory
+  --
+  -- Since N is not necessarily known before or during the phase 1,
+  -- the central directory's size is also potentially unknown.
+  -- Then obvious place for the central directory is *after* the data,
+  -- it is why it appears on phase 2.
+  --
+  -- An advantage of that structure is that the .ZIP archive can be later
+  -- appended to an .EXE, for self-extracting purposes, or to other
+  -- kind of files.
+  --
+  -- So, the most general infos are at the end, and we crawl back
+  -- for more precise infos:
+  --
+  --  1) end-of-central-directory
+  --  2) central directory
+  --  3) zipped data entries
+
 -- Change log:
 -- ==========
+--
+-- 22-Nov-2012: GdM: End-of-central-directory loaded in a single stream Read
+--                      operation instead of up to ~1.4 million Read
+--                      operations (for a non Zip file with 65535 times
+--                      the letter 'P'). Execution flow simplified, without
+--                      use of exceptions. Massive speedup there, on files
+--                      that are either invalid Zip files, or Zip files with
+--                      a large comment.
 --
 -- 30-Oct-2012: GdM: Removed all profiles using Zip_Streams' objects
 --                      with accesses (cf 25-Oct's modifications)
