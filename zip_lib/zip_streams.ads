@@ -102,9 +102,9 @@ package Zip_Streams is
    function End_Of_Stream (S : in Root_Zipstream_Type)
       return Boolean is abstract;
 
-   ------------------------------------------------------------------
-   -- Memory_Stream: stream based on an in-memory Unbounded_String --
-   ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   -- Memory_Zipstream: stream based on an in-memory Unbounded_String --
+   ---------------------------------------------------------------------
    type Memory_Zipstream is new Root_Zipstream_Type with private;
    subtype Unbounded_Stream is Memory_Zipstream;
    pragma Obsolescent (Unbounded_Stream);

@@ -369,12 +369,21 @@ Manuel Op de Coul, Huygens-Fokker Foundation
 
 Open bugs (as of v.44)
 ======================
-  - Zip: Exists, Find_Offset, Get_Sizes should not have
+  - Zip.Exists, Zip.Find_Offset, Zip.Get_Sizes with , and UnZip.Streams.Open
+      versions with Zip_Info profiles should not have
       case_sensitive as a parameter.
-      Zip_info should have it as a field.
+      Zip_info should keep this information as a field after Load.
       Rationale: it doesn't make sense (and doesn't work)
       to have a case-sensitive-called Load and an insensitive search or
       vice-versa.
+      For a case-sensitive use, you have to write things like,
+      not forgetting any "True":
+      ---
+         Load(Jarzip, To_String(Us), case_sensitive => True);
+         if Exists(Jarzip, Name, case_sensitive => True) then
+            Open(F, Jarzip, Name, case_sensitive => True);
+      ---
+      
   - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's reduce_* archives,
       but unzip <=5.12 and WinZip accept them all
   - UnZip.Decompress rejects many "enhanced deflate" (=deflate64)
