@@ -156,7 +156,8 @@ package Zip is
       date_time        : Time;
       method           : PKZip_method;
       unicode_file_name: Boolean;
-      read_only        : Boolean
+      read_only        : Boolean;
+      user_code        : in out Integer
     );
   procedure Traverse_verbose( z: Zip_info );
 

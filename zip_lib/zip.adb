@@ -401,7 +401,8 @@ package body Zip is
           p.date_time,
           p.method,
           p.unicode_file_name,
-          p.read_only
+          p.read_only,
+          p.user_code
         );
         Traverse(p.right);
       end if;
