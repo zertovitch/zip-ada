@@ -1851,7 +1851,6 @@ package body UnZip.Decompress is
       Zip.Headers.Copy_and_check( dd_buffer, descriptor );
     end Process;
 
-    tolerance_wrong_password: constant:= 4; -- after that, error !
     work_index: Ada.Streams.Stream_IO.Positive_Count;
     use Zip, UnZ_Meth;
 
