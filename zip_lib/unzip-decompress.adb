@@ -30,12 +30,12 @@ package body UnZip.Decompress is
     --  Size of sliding dictionary and output buffer
     wsize     : constant:= 16#10000#; -- (orig: 16#8000# B = 32 KB)
 
-    --------------------------------------
-    -- Specifications of UnZ_* packages --
-    --------------------------------------
+    ----------------------------------------------------------------------------
+    -- Specifications of UnZ_* packages (remain of Info Zip's code structure) --
+    ----------------------------------------------------------------------------
     use Interfaces;
 
-    package UnZ_Glob is
+    package UnZ_Glob is -- No more global, since local to Decompress_data :-)
       -- I/O Buffers
       -- > Sliding dictionary for unzipping, and output buffer as well
       slide: Zip.Byte_Buffer( 0..wsize );
@@ -125,6 +125,33 @@ package body UnZip.Decompress is
       procedure Inflate;
       procedure Bunzip2; -- Nov-2009
     end UnZ_Meth;
+
+    procedure Process_feedback(new_bytes: File_size_type) is
+    pragma Inline(Process_feedback);
+      new_percents_done: Natural;
+      user_aborting: Boolean;
+      use Zip;
+    begin
+      if feedback = null or else UnZ_Glob.uncompsize = 0 then
+        return; -- no feedback proc. or cannot calculate percentage
+      end if;
+      UnZ_Glob.effective_writes:=
+        UnZ_Glob.effective_writes + new_bytes;
+      new_percents_done:= Natural(
+        (100.0 * Float(UnZ_Glob.effective_writes)) / Float(UnZ_Glob.uncompsize)
+      );
+      if new_percents_done > UnZ_Glob.percents_done then
+        feedback(
+          percents_done => new_percents_done,
+          entry_skipped => False,
+          user_abort    => user_aborting
+        );
+        if user_aborting then
+          raise User_abort;
+        end if;
+        UnZ_Glob.percents_done:= new_percents_done;
+      end if;
+    end Process_feedback;
 
     ------------------------------
     -- Bodies of UnZ_* packages --
@@ -351,8 +378,6 @@ package body UnZip.Decompress is
 
       procedure Flush ( x: Natural ) is
         use Zip, UnZip, Ada.Streams;
-        new_percents_done: Natural;
-        user_aborting: Boolean;
       begin
         if full_trace then
           Ada.Text_IO.Put("[Flush...");
@@ -379,26 +404,7 @@ package body UnZip.Decompress is
             raise UnZip.Write_Error;
         end;
         Zip.CRC.Update( UnZ_Glob.crc32val, UnZ_Glob.slide( 0..x-1 ) );
-        if feedback /= null then -- inform user
-          UnZ_Glob.effective_writes:=
-            UnZ_Glob.effective_writes + File_size_type(x);
-          if UnZ_Glob.uncompsize > 0 then
-            new_percents_done:= Natural(
-                (100.0 * Float(UnZ_Glob.effective_writes)) /
-                Float(UnZ_Glob.uncompsize) );
-            if new_percents_done > UnZ_Glob.percents_done then
-              feedback.all(
-                percents_done => new_percents_done,
-                entry_skipped => False,
-                user_abort    => user_aborting
-              );
-              if user_aborting then
-                raise User_abort;
-              end if;
-              UnZ_Glob.percents_done:= new_percents_done;
-            end if;
-          end if;
-        end if;
+        Process_Feedback(File_size_type(x));
         if full_trace then
           Ada.Text_IO.Put_Line("finished]");
         end if;
@@ -576,8 +582,6 @@ package body UnZip.Decompress is
 
       procedure Unshrink_Flush is
         use Zip, UnZip, Ada.Streams, Ada.Streams.Stream_IO;
-        new_percents_done: Natural;
-        user_aborting: Boolean;
       begin
         if full_trace then
           Ada.Text_IO.Put("[Unshrink_Flush]");
@@ -602,24 +606,7 @@ package body UnZip.Decompress is
             raise UnZip.Write_Error;
         end;
         Zip.CRC.Update( UnZ_Glob.crc32val, Writebuf(0 .. Write_Ptr-1) );
-        if feedback /= null then -- inform user
-          UnZ_Glob.effective_writes:=
-            UnZ_Glob.effective_writes + File_size_type(Write_Ptr);
-          new_percents_done:= Natural(
-             (100.0 * Float(UnZ_Glob.effective_writes)) /
-              Float(UnZ_Glob.uncompsize) );
-          if new_percents_done > UnZ_Glob.percents_done then
-            feedback.all(
-              percents_done => new_percents_done,
-              entry_skipped => False,
-              user_abort    => user_aborting
-            );
-            if user_aborting then
-              raise User_abort;
-            end if;
-            UnZ_Glob.percents_done:= new_percents_done;
-          end if;
-        end if;
+        Process_feedback(File_size_type(Write_Ptr));
       end Unshrink_Flush;
 
       procedure Write_Byte( B: Zip.Byte ) is
@@ -1424,7 +1411,9 @@ package body UnZip.Decompress is
           begin
             UnZ_IO.Flush ( Natural(read_in) );  -- Takes care of CRC too
           exception
-            when others=>
+            when User_abort =>
+              raise;
+            when others =>
               raise UnZip.Write_Error;
           end;
           absorbed:= absorbed + read_in;
@@ -1756,7 +1745,7 @@ package body UnZip.Decompress is
           );
           if huft_incomplete then -- do nothing!
             if some_trace then
-              Ada.Text_IO.Put_Line("PKZIP 1.93a bug workaround");
+              Ada.Text_IO.Put_Line("Huffman tree incomplete - PKZIP 1.93a bug workaround");
             end if;
           end if;
         exception
