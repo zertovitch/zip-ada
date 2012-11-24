@@ -211,6 +211,12 @@ package body Zip.Create is
         Open(fd, In_File, Name);
         Delete(fd);
      end if;
+   exception
+     when User_Abort =>
+       if Is_Open(temp_zip_stream) then
+         Close(temp_zip_stream);
+       end if;
+       raise;
    end Add_File;
 
    procedure Add_String (Info              : in out Zip_Create_info;

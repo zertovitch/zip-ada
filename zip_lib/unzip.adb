@@ -666,6 +666,12 @@ package body UnZip is
     if use_a_file then
       Close (zip_file);
     end if;
+  exception
+    when others =>
+      if use_a_file and then Is_Open(zip_file) then
+        Close (zip_file);
+      end if;
+      raise;
   end Extract;
 
   -- Extract one precise file (what) from an archive (from)
@@ -722,6 +728,12 @@ package body UnZip is
     if use_a_file then
       Close (zip_file);
     end if;
+  exception
+    when others =>
+      if use_a_file and then Is_Open(zip_file) then
+        Close (zip_file);
+      end if;
+      raise;
   end Extract;
 
 end UnZip;
