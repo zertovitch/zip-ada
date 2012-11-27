@@ -35,7 +35,7 @@ package body UnZip.Decompress is
     ----------------------------------------------------------------------------
     use Interfaces;
 
-    package UnZ_Glob is -- No more global, since local to Decompress_data :-)
+    package UnZ_Glob is -- Not global anymore, since local to Decompress_data :-)
       -- I/O Buffers
       -- > Sliding dictionary for unzipping, and output buffer as well
       slide: Zip.Byte_Buffer( 0..wsize );
@@ -132,11 +132,10 @@ package body UnZip.Decompress is
       user_aborting: Boolean;
       use Zip;
     begin
-      if feedback = null or else UnZ_Glob.uncompsize = 0 then
+      if feedback = null or UnZ_Glob.uncompsize = 0 then
         return; -- no feedback proc. or cannot calculate percentage
       end if;
-      UnZ_Glob.effective_writes:=
-        UnZ_Glob.effective_writes + new_bytes;
+      UnZ_Glob.effective_writes:= UnZ_Glob.effective_writes + new_bytes;
       new_percents_done:= Natural(
         (100.0 * Float(UnZ_Glob.effective_writes)) / Float(UnZ_Glob.uncompsize)
       );
