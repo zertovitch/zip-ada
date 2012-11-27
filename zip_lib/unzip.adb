@@ -15,6 +15,7 @@ package body UnZip is
   procedure UnZipFile (
     zip_file                 : in out Zip_Streams.Root_Zipstream_Type'Class;
     out_name                 : String;
+    is_out_name_UTF_8        : Boolean;
     name_from_header         : Boolean;
     header_index             : in out Positive;
     hint_comp_size           : File_size_type; -- Added 2007 for .ODS files
@@ -120,7 +121,11 @@ package body UnZip is
       Set_definitively_named_outfile(name);
     end Set_outfile;
 
-    procedure Set_outfile_interactive( long_not_composed_possible_name: String ) is
+    procedure Set_outfile_interactive(
+      long_not_composed_possible_name: String;
+      utf_8                          : Boolean
+    )
+    is
       -- Eventually trash the archived directory structure, then
       -- eventually add/modify/... another one:
       possible_name: constant String:=
@@ -133,7 +138,7 @@ package body UnZip is
           case current_user_attitude is
             when yes | no | rename_it => -- then ask for this name too
               help_the_file_exists(
-                possible_name,
+                possible_name, utf_8,
                 current_user_attitude,
                 new_name, new_name_length
               );
@@ -251,7 +256,11 @@ package body UnZip is
         -- This is a directory name (12-feb-2000)
         skip_this_file:= True;
       elsif actual_mode in Write_to_file then
-        Set_outfile_interactive( the_name(1..the_name_len));
+        Set_outfile_interactive(
+          the_name(1..the_name_len),
+          (local_header.bit_flag and
+           Zip.Headers.Language_Encoding_Flag_Bit) /= 0
+        );
       else -- only informational, no need for interaction
         Set_outfile(the_name(1..the_name_len));
       end if;
@@ -270,7 +279,7 @@ package body UnZip is
         -- This is a directory name, so do not write anything (30-Jan-2012).
         skip_this_file:= True;
       elsif actual_mode in Write_to_file then
-        Set_outfile_interactive(out_name);
+        Set_outfile_interactive(out_name, is_out_name_UTF_8);
       else -- only informational, no need for interaction
         Set_outfile(out_name);
       end if;
@@ -474,14 +483,19 @@ package body UnZip is
       uncomp_size
     );
     UnZipFile(
-      zip_file,
-      what, False,
-      header_index,
-      comp_size,
-      feedback, help_the_file_exists, tell_data, get_pwd,
-      options,
-      work_password,
-      file_system_routines
+      zip_file             => zip_file,
+      out_name             => what,
+      is_out_name_UTF_8    => False,
+      name_from_header     => False,
+      header_index         => header_index,
+      hint_comp_size       => comp_size,
+      feedback             => feedback,
+      help_the_file_exists => help_the_file_exists,
+      tell_data            => tell_data,
+      get_pwd              => get_pwd,
+      options              => options,
+      password             => work_password,
+      file_system_routines => file_system_routines
     );
     Close(zip_file);
   end Extract;
@@ -521,14 +535,19 @@ package body UnZip is
       uncomp_size
     );
     UnZipFile(
-      zip_file,
-      rename, False,
-      header_index,
-      comp_size,
-      feedback, null, tell_data, get_pwd,
-      options,
-      work_password,
-      file_system_routines
+      zip_file             => zip_file,
+      out_name             => rename,
+      is_out_name_UTF_8    => False,
+      name_from_header     => False,
+      header_index         => header_index,
+      hint_comp_size       => comp_size,
+      feedback             => feedback,
+      help_the_file_exists => null,
+      tell_data            => tell_data,
+      get_pwd              => get_pwd,
+      options              => options,
+      password             => work_password,
+      file_system_routines => file_system_routines
     );
     Close(zip_file);
   end Extract;
@@ -560,15 +579,20 @@ package body UnZip is
     -- We simply unzip everything sequentially, until the end:
     all_files: loop
       UnZipFile(
-        zip_file,
-        "", True,
-        header_index,
-        File_size_type'Last,
-        -- ^ no better hint available if comp_size is 0 in local header
-        feedback, help_the_file_exists, tell_data, get_pwd,
-        options,
-        work_password,
-        file_system_routines
+        zip_file             => zip_file,
+        out_name             => "",
+        is_out_name_UTF_8    => False, -- ignored
+        name_from_header     => True,
+        header_index         => header_index,
+        hint_comp_size       => File_size_type'Last,
+        --                      ^ no better hint available if comp_size is 0 in local header
+        feedback             => feedback,
+        help_the_file_exists => help_the_file_exists,
+        tell_data            => tell_data,
+        get_pwd              => get_pwd,
+        options              => options,
+        password             => work_password,
+        file_system_routines => file_system_routines
       );
     end loop all_files;
   exception
@@ -636,6 +660,7 @@ package body UnZip is
     zip_file     : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
     use_a_file   : constant Boolean:= Zip.Zip_stream(from) = null;
+    is_name_UTF_8: Boolean;
   begin
     if use_a_file then
       input_stream:= zip_file'Unchecked_Access;
@@ -648,20 +673,25 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Zip.Find_offset(
-      from,what,
+      from, what, is_name_UTF_8,
       Ada.Streams.Stream_IO.Positive_Count(header_index),
       comp_size,
       uncomp_size
     );
     UnZipFile(
-      input_stream.all,
-      what, False,
-      header_index,
-      comp_size,
-      feedback, help_the_file_exists, tell_data, get_pwd,
-      options,
-      work_password,
-      file_system_routines
+      zip_file             => input_stream.all,
+      out_name             => what,
+      is_out_name_UTF_8    => is_name_UTF_8,
+      name_from_header     => False,
+      header_index         => header_index,
+      hint_comp_size       => comp_size,
+      feedback             => feedback,
+      help_the_file_exists => help_the_file_exists,
+      tell_data            => tell_data,
+      get_pwd              => get_pwd,
+      options              => options,
+      password             => work_password,
+      file_system_routines => file_system_routines
     );
     if use_a_file then
       Close (zip_file);
@@ -697,6 +727,7 @@ package body UnZip is
     zip_file     : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
     use_a_file   : constant Boolean:= Zip.Zip_stream(from) = null;
+    is_name_UTF_8: Boolean;
   begin
     if use_a_file then
       input_stream:= zip_file'Unchecked_Access;
@@ -709,21 +740,25 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Zip.Find_offset(
-      from,what,
+      from, what, is_name_UTF_8,
       Ada.Streams.Stream_IO.Positive_Count(header_index),
       comp_size,
       uncomp_size
     );
     UnZipFile(
-      input_stream.all,
-      rename,
-      False,
-      header_index,
-      comp_size,
-      feedback, null, tell_data, get_pwd,
-      options,
-      work_password,
-      file_system_routines
+      zip_file             => input_stream.all,
+      out_name             => rename,
+      is_out_name_UTF_8    => is_name_UTF_8, -- assumption: encoding same as name
+      name_from_header     => False,
+      header_index         => header_index,
+      hint_comp_size       => comp_size,
+      feedback             => feedback,
+      help_the_file_exists => null,
+      tell_data            => tell_data,
+      get_pwd              => get_pwd,
+      options              => options,
+      password             => work_password,
+      file_system_routines => file_system_routines
     );
     if use_a_file then
       Close (zip_file);

@@ -180,6 +180,7 @@ package UnZip is
 
   type Resolve_conflict_proc is access
     procedure ( name            :  in String;
+                is_UTF_8        :  in Boolean;
                 action          : out Name_conflict_intervention;
                 new_name        : out String;
                 new_name_length : out Natural );

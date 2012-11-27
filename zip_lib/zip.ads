@@ -196,6 +196,7 @@ package Zip is
   procedure Find_offset(
     info           : in     Zip_info;
     name           : in     String;
+    is_UTF_8       :    out Boolean;
     file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type

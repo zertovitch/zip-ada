@@ -133,9 +133,11 @@ package body UnZip.Streams is
     uncomp_size  : File_size_type;
     work_password: Ada.Strings.Unbounded.Unbounded_String:=
       Ada.Strings.Unbounded.To_Unbounded_String(password);
+    dummy_utf_8  : Boolean;
   begin
     Zip.Find_offset(
       from, what,
+      dummy_utf_8,
       header_index,
       comp_size,
       uncomp_size

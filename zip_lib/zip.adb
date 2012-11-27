@@ -538,6 +538,7 @@ package body Zip is
   procedure Find_offset(
     info           : in     Zip_info;
     name           : in     String;
+    is_UTF_8       :    out Boolean;
     file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type
@@ -555,6 +556,7 @@ package body Zip is
       elsif up_name < aux.dico_name then
         aux:= aux.left;
       else  -- entry found !
+        is_UTF_8   := aux.unicode_file_name;
         file_index := aux.file_index;
         comp_size  := aux.comp_size;
         uncomp_size:= aux.uncomp_size;
@@ -654,9 +656,10 @@ package body Zip is
   )
   is
     dummy_file_index: Ada.Streams.Stream_IO.Positive_Count;
+    dummy_utf_8: Boolean;
   begin
     Find_offset(
-      info, name, dummy_file_index,
+      info, name, dummy_utf_8, dummy_file_index,
       comp_size, uncomp_size
     );
   end Get_sizes;
