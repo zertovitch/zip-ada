@@ -99,11 +99,13 @@ procedure ReZip is
     comp_size  :  Zip.File_size_type;
     uncomp_size:  Zip.File_size_type;
     file_out   : Ada.Streams.Stream_IO.File_Type;
+    dummy_utf_8: Boolean;
     use UnZip;
   begin
     Zip.Find_Offset(
       info           => archive,
       name           => data_name,
+      is_utf_8       => dummy_utf_8,
       file_index     => file_index,
       comp_size      => comp_size,
       uncomp_size    => uncomp_size

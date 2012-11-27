@@ -50,9 +50,10 @@ package body UnZip.Decompress is
       -- ^ count of effective bytes written or tested, for feedback only
       percents_done    : Natural;
       crc32val : Unsigned_32;  -- crc calculated from data
-      Zip_EOF  : Boolean;      -- read over end of zip section for this file
       uncompressed_index  : Ada.Streams.Stream_Element_Offset;
     end UnZ_Glob;
+
+    Zip_EOF  : Boolean; -- read over end of zip section for this file
 
     package UnZ_IO is
       out_bin_file: Ada.Streams.Stream_IO.File_Type;
@@ -167,7 +168,7 @@ package body UnZip.Decompress is
         UnZ_Glob.reachedsize      := 0;
         UnZ_Glob.effective_writes := 0;
         UnZ_Glob.percents_done    := 0;
-        UnZ_Glob.Zip_EOF := False;
+        Zip_EOF := False;
         Zip.CRC.Init( UnZ_Glob.crc32val );
         Bit_buffer.Init;
       end Init_Buffers;
@@ -181,7 +182,7 @@ package body UnZip.Decompress is
           -- +2: last code is smaller than requested!
           UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
           -- Simulates reading -> no blocking
-          UnZ_Glob.Zip_EOF := True;
+          Zip_EOF := True;
         else
           begin
             Zip.BlockRead(
@@ -193,12 +194,12 @@ package body UnZip.Decompress is
             when others => -- I/O error
               UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
               -- Simulates reading -> CRC error
-              UnZ_Glob.Zip_EOF := True;
+              Zip_EOF := True;
           end;
           if UnZ_Glob.readpos = 0 then
             UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
             -- Simulates reading -> CRC error
-            UnZ_Glob.Zip_EOF := True;
+            Zip_EOF := True;
           end if;
 
           UnZ_Glob.reachedsize:=
@@ -709,7 +710,7 @@ package body UnZip.Decompress is
         Write_Byte ( Last_Outcode );
         S:= S - 1;
 
-        while S > 0 and then not UnZ_Glob.Zip_EOF loop
+        while S > 0 and then not Zip_EOF loop
           Read_Code;
           if Incode = Code_for_Special then
             Read_Code;
@@ -858,7 +859,7 @@ package body UnZip.Decompress is
       begin
         LoadFollowers;
 
-        while S > 0 and then not UnZ_Glob.Zip_EOF loop
+        while S > 0 and then not Zip_EOF loop
 
           -- 1/ Probabilistic expansion
           if Slen(last_char) = 0 then
@@ -1000,7 +1001,7 @@ package body UnZip.Decompress is
         UnZ_IO.Bit_buffer.Init;
 
         S := UnZ_Glob.uncompsize;
-        while  S > 0  and  not UnZ_Glob.Zip_EOF  loop
+        while  S > 0  and  not Zip_EOF  loop
           if UnZ_IO.Bit_buffer.Read_and_dump(1) /= 0 then  -- 1: Litteral
             S:= S - 1;
             Ct:= Tb.table;
@@ -1083,7 +1084,7 @@ package body UnZip.Decompress is
         end loop;
 
         UnZ_IO.Flush ( W );
-        if UnZ_Glob.Zip_EOF then
+        if Zip_EOF then
           raise UnZip.Read_Error;
         end if;
 
@@ -1112,7 +1113,7 @@ package body UnZip.Decompress is
 
         UnZ_IO.Bit_buffer.Init;
         S := UnZ_Glob.uncompsize;
-        while  S > 0  and not UnZ_Glob.Zip_EOF  loop
+        while  S > 0  and not Zip_EOF  loop
           if UnZ_IO.Bit_buffer.Read_and_dump(1) /= 0 then  -- 1: Litteral
             S:= S - 1;
             UnZ_Glob.slide ( W ):=
@@ -1177,7 +1178,7 @@ package body UnZip.Decompress is
         end loop;
 
         UnZ_IO.Flush ( W );
-        if UnZ_Glob.Zip_EOF then
+        if Zip_EOF then
           raise UnZip.Read_Error;
         end if;
 
@@ -1434,7 +1435,7 @@ package body UnZip.Decompress is
 
         -- inflate the coded data
         main_loop:
-        while not UnZ_Glob.Zip_EOF loop
+        while not Zip_EOF loop
           CTE:= Tl.table( UnZ_IO.Bit_buffer.Read(Bl) )'Access;
 
           loop
@@ -1513,7 +1514,7 @@ package body UnZip.Decompress is
         then
           raise Zip.Zip_file_Error;
         end if;
-        while N > 0  and then not UnZ_Glob.Zip_EOF loop
+        while N > 0  and then not Zip_EOF loop
           -- Read and output the non-compressed data
           N:= N - 1;
           UnZ_Glob.slide ( UnZ_Glob.slide_index ) :=
@@ -1803,7 +1804,7 @@ package body UnZip.Decompress is
         procedure Read( b: out BZ_Buffer ) is
         begin
           for i in b'Range loop
-            exit when UnZ_Glob.Zip_EOF;
+            exit when Zip_EOF;
             UnZ_IO.Read_raw_byte(b(i));
           end loop;
         end Read;

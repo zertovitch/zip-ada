@@ -124,6 +124,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
   - Added User_code to Zip_info entries. Can be set with the Set_user_code
       and User_code subprograms, or via the Action procedure for the generic
       Traverse_Verbose procedure.
+  - Improved Unicode support (UTF-8)
 
 * Changes in '44', 3-Nov-2012:
   - The libary provides now a complete toolset for managing Zip archives
