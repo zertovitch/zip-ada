@@ -138,6 +138,9 @@ package body Zip is
     return sn;
   end Normalize;
 
+  boolean_to_encoding: constant array(Boolean) of Zip_name_encoding:=
+    (False => IBM_437, True => UTF_8);
+
   -------------------------------------------------------------
   -- Load Zip_info from a stream containing the .zip archive --
   -------------------------------------------------------------
@@ -157,7 +160,7 @@ package body Zip is
       crc_32           : Unsigned_32;
       date_time        : Time;
       method           : PKZip_method;
-      unicode_file_name: Boolean;
+      name_encoding    : Zip_name_encoding;
       read_only        : Boolean;
       node             : in out p_Dir_node
       )
@@ -176,18 +179,18 @@ package body Zip is
              crc_32            => crc_32,
              date_time         => date_time,
              method            => method,
-             unicode_file_name => unicode_file_name,
+             name_encoding     => name_encoding,
              read_only         => read_only,
              user_code         => 0
              )
           );
       elsif dico_name > node.dico_name then
         Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
-          crc_32, date_time, method, unicode_file_name, read_only,
+          crc_32, date_time, method, name_encoding, read_only,
           node.right );
       elsif dico_name < node.dico_name then
         Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
-          crc_32, date_time, method, unicode_file_name, read_only,
+          crc_32, date_time, method, name_encoding, read_only,
           node.left );
       else
         raise Duplicate_name;
@@ -243,9 +246,10 @@ package body Zip is
                 crc_32      => header.short_info.dd.crc_32,
                 date_time   => header.short_info.file_timedate,
                 method      => Method_from_code(header.short_info.zip_type),
-                unicode_file_name =>
-                  (header.short_info.bit_flag and
-                   Zip.Headers.Language_Encoding_Flag_Bit) /= 0,
+                name_encoding =>
+                  boolean_to_encoding(
+                   (header.short_info.bit_flag and
+                    Zip.Headers.Language_Encoding_Flag_Bit) /= 0),
                 read_only   => header.made_by_version / 256 = 0 and -- DOS-like
                                (header.external_attributes and 1) = 1,
                 node        => p );
@@ -400,7 +404,7 @@ package body Zip is
           p.crc_32,
           p.date_time,
           p.method,
-          p.unicode_file_name,
+          p.name_encoding,
           p.read_only,
           p.user_code
         );
@@ -538,7 +542,7 @@ package body Zip is
   procedure Find_offset(
     info           : in     Zip_info;
     name           : in     String;
-    is_UTF_8       :    out Boolean;
+    name_encoding  :    out Zip_name_encoding;
     file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type
@@ -556,10 +560,10 @@ package body Zip is
       elsif up_name < aux.dico_name then
         aux:= aux.left;
       else  -- entry found !
-        is_UTF_8   := aux.unicode_file_name;
-        file_index := aux.file_index;
-        comp_size  := aux.comp_size;
-        uncomp_size:= aux.uncomp_size;
+        name_encoding := aux.name_encoding;
+        file_index    := aux.file_index;
+        comp_size     := aux.comp_size;
+        uncomp_size   := aux.uncomp_size;
         return;
       end if;
     end loop;
@@ -656,10 +660,10 @@ package body Zip is
   )
   is
     dummy_file_index: Ada.Streams.Stream_IO.Positive_Count;
-    dummy_utf_8: Boolean;
+    dummy_name_encoding: Zip_name_encoding;
   begin
     Find_offset(
-      info, name, dummy_utf_8, dummy_file_index,
+      info, name, dummy_name_encoding, dummy_file_index,
       comp_size, uncomp_size
     );
   end Get_sizes;

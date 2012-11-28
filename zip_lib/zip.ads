@@ -81,7 +81,7 @@ package Zip is
   Form_For_IO_Open_N_Create : Ada.Strings.Unbounded.Unbounded_String
     := Ada.Strings.Unbounded.Null_Unbounded_String;
   -- See RM A.8.2: File Management
-  -- Example: "encoding=8bits"
+  -- Example: "encoding=8bits", "encoding=utf8"
 
   function Is_loaded( info: in Zip_info ) return Boolean;
 
@@ -135,6 +135,16 @@ package Zip is
   function Convert(date : in Time) return Ada.Calendar.Time
     renames Zip_Streams.Calendar.Convert;
 
+  -- Entry names within Zip archives are encoded either with
+  --    * the IBM PC (the one with a monochrome screen, only text mode)'s
+  --        character set: IBM 437
+  -- or
+  --    * Unicode UTF-8
+  --
+  -- Documentation: PKWARE's Appnote.txt, APPENDIX D - Language Encoding (EFS)
+
+  type Zip_name_encoding is (IBM_437, UTF_8);
+
   -- Traverse a whole Zip_info directory in sorted order, giving the
   -- name for each entry to an user-defined "Action" procedure.
   -- Concretely, you can process a whole Zip file that way, by extracting data
@@ -155,7 +165,7 @@ package Zip is
       crc_32           : Interfaces.Unsigned_32;
       date_time        : Time;
       method           : PKZip_method;
-      unicode_file_name: Boolean;
+      name_encoding    : Zip_name_encoding;
       read_only        : Boolean;
       user_code        : in out Integer
     );
@@ -196,7 +206,7 @@ package Zip is
   procedure Find_offset(
     info           : in     Zip_info;
     name           : in     String;
-    is_UTF_8       :    out Boolean;
+    name_encoding  :    out Zip_name_encoding;
     file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type
@@ -328,8 +338,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "45, preview #3";
-  reference : constant String:= "27-Nov-2012";
+  version   : constant String:= "45, preview #4";
+  reference : constant String:= "28-Nov-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
@@ -359,7 +369,7 @@ private
     crc_32           : Interfaces.Unsigned_32;
     date_time        : Time;
     method           : PKZip_method;
-    unicode_file_name: Boolean;
+    name_encoding    : Zip_name_encoding;
     read_only        : Boolean; -- TBD: attributes of most supported systems
     user_code        : Integer;
   end record;

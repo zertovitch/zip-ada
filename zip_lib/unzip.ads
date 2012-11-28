@@ -81,7 +81,11 @@ package UnZip is
 
   -- This is for modifying output file names (e.g. adding a
   -- work directory, modifying the archived path, etc.)
-  type Compose_func is access function (File_Name : String) return String;
+  type Compose_func is access function (
+    File_Name     : String;
+    Name_encoding : Zip.Zip_name_encoding
+  )
+  return String;
 
   -- File System dependent settings
   type FS_routines_type is record
@@ -180,7 +184,7 @@ package UnZip is
 
   type Resolve_conflict_proc is access
     procedure ( name            :  in String;
-                is_UTF_8        :  in Boolean;
+                name_encoding   :  in Zip.Zip_name_encoding;
                 action          : out Name_conflict_intervention;
                 new_name        : out String;
                 new_name_length : out Natural );

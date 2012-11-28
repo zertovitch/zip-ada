@@ -178,11 +178,8 @@ package body Zip.Create is
                        -- default: add the file in the archive
                        -- under the same name
                        Delete_file_after : Boolean:= False;
-                       -- practical to delete temporary file after
-                       -- adding
-                       Name_UTF_8_encoded: Boolean:= False;
-                       -- True if Name[_in_archive] is actually
-                       -- UTF-8 encoded (Unicode)
+                       -- practical to delete temporary file after adding
+                       Name_encoding     : Zip_name_encoding:= IBM_437;
                        Modification_time : Time:= default_time;
                        Is_read_only      : Boolean:= False;
                        Feedback          : Feedback_proc:= null
@@ -201,7 +198,7 @@ package body Zip.Create is
      if Name_in_archive /= "" then
         Set_Name(temp_zip_stream, Name_in_archive);
      end if;
-     Set_Unicode_Name_Flag(temp_zip_stream, Name_UTF_8_encoded);
+     Set_Unicode_Name_Flag(temp_zip_stream, Name_encoding = UTF_8);
      Set_Read_Only_Flag(temp_zip_stream, Is_read_only);
      Set_Time(temp_zip_stream, Modification_time);
      -- Stuff into the .zip archive:

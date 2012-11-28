@@ -62,11 +62,8 @@ package Zip.Create is
                        -- default: add the file in the archive
                        -- under the same name
                        Delete_file_after : Boolean:= False;
-                       -- practical to delete temporary file after
-                       -- adding
-                       Name_UTF_8_encoded: Boolean:= False;
-                       -- True if Name[_in_archive] is actually
-                       -- UTF-8 encoded (Unicode)
+                       -- practical to delete temporary file after adding
+                       Name_encoding     : Zip_name_encoding:= IBM_437;
                        Modification_time : Time:= default_time;
                        Is_read_only      : Boolean:= False;
                        Feedback          : Feedback_proc:= null

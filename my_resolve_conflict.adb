@@ -1,16 +1,20 @@
 ------------------------------------------------------------------------------
---  File:            Myrescon.adb or My_resolve_conflict.adb
---  Description:     part of Unzipada demo
+--  File:            my_resolve_conflict.adb
+--  Description:     part of the UnZipAda demo
 ------------------------------------------------------------------------------
 
-with Unzip;                             use Unzip;
+with Zip;
+with UnZip;                             use UnZip;
 with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure My_resolve_conflict
             ( name            :  in String;
+              name_encoding   :  in Zip.Zip_name_encoding;
               action          : out name_conflict_intervention;
               new_name        : out String;
-              new_name_length : out Natural ) is
+              new_name_length : out Natural )
+is
+  pragma Unreferenced (name_encoding);
   c: Character;
 begin
   loop
