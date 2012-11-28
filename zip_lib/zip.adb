@@ -193,6 +193,10 @@ package body Zip is
           crc_32, date_time, method, name_encoding, read_only,
           node.left );
       else
+        Ada.Exceptions.Raise_Exception
+          (Duplicate_name'Identity,
+           "Name (in dictionary: " & dico_name &
+           ") was already in at insertion.");
         raise Duplicate_name;
       end if;
     end Insert;
