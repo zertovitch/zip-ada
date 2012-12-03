@@ -1,6 +1,6 @@
 with Zip.CRC, UnZip.Decompress.Huffman, BZip2;
-with Ada.Text_IO, Interfaces;
-with Ada.Streams.Stream_IO;
+
+with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
 package body UnZip.Decompress is
 
@@ -1910,7 +1910,7 @@ package body UnZip.Decompress is
       end loop password_passes;
     end if;
 
-    -- Unzip correct type
+    -- UnZip correct type
     begin
       case format is
         when store    => Copy_stored;
@@ -1926,7 +1926,10 @@ package body UnZip.Decompress is
           UnZ_Meth.Inflate;
         when Zip.bzip2 => UnZ_Meth.Bunzip2;
         when others =>
-          raise Unsupported_method;
+          Ada.Exceptions.Raise_Exception
+            (Unsupported_method'Identity,
+             "Format (method) " & PKZip_method'Image(format) &
+             " is not supported for decompression");
       end case;
     exception
       when others =>

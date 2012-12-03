@@ -1,7 +1,9 @@
-with Ada.Streams.Stream_IO;
-with Interfaces;                        use Interfaces;
 with Zip.Headers, UnZip.Decompress;
 with Zip_Streams;
+
+with Ada.Exceptions;
+with Ada.Streams.Stream_IO;
+with Interfaces;                        use Interfaces;
 
 package body UnZip is
 
@@ -217,7 +219,10 @@ package body UnZip is
 
     method:= Zip.Method_from_code(local_header.zip_type);
     if method = unknown then
-      raise Unsupported_method;
+      Ada.Exceptions.Raise_Exception
+        (Unsupported_method'Identity,
+         "Format (method) #" & Unsigned_16'Image(local_header.zip_type) &
+         " is unknown");
     end if;
 
     -- calculate offset of data
