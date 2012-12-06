@@ -5,6 +5,7 @@ with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
+with Ada.Strings.Unbounded;
 
 package body Zip is
 
@@ -866,7 +867,7 @@ package body Zip is
     if Index(name, "*") > 0 then
       return False;
     end if;
-    Open(f,In_File,name, Form => Ada.Strings.Unbounded.To_String (Form_For_IO_Open_N_Create));
+    Open(f,In_File,name, Form => Ada.Strings.Unbounded.To_String (Zip_Streams.Form_For_IO_Open_and_Create));
     Close(f);
     return True;
   exception

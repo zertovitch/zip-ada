@@ -39,7 +39,7 @@
 -- http://www.opensource.org/licenses/mit-license.php
 
 with Zip_Streams;
-with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Strings.Unbounded;
+with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO;
 with Interfaces;
 
 package Zip is
@@ -76,12 +76,6 @@ package Zip is
   Zip_file_Error,
   Zip_file_open_Error,
   Duplicate_name: exception;
-
-  -- Parameter Form added to *_IO.[Open|Create]
-  Form_For_IO_Open_N_Create : Ada.Strings.Unbounded.Unbounded_String
-    := Ada.Strings.Unbounded.Null_Unbounded_String;
-  -- See RM A.8.2: File Management
-  -- Example: "encoding=8bits", "encoding=utf8"
 
   function Is_loaded( info: in Zip_info ) return Boolean;
 
@@ -338,8 +332,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "45, preview #4";
-  reference : constant String:= "28-Nov-2012";
+  version   : constant String:= "45, preview #5";
+  reference : constant String:= "6-Dec-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

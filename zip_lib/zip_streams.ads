@@ -168,6 +168,12 @@ package Zip_Streams is
       Time_Error : exception;
    end Calendar;
 
+  -- Parameter Form added to *_IO.[Open|Create]
+  Form_For_IO_Open_and_Create : Ada.Strings.Unbounded.Unbounded_String
+    := Ada.Strings.Unbounded.Null_Unbounded_String;
+  -- See RM A.8.2: File Management
+  -- Example: "encoding=8bits", "encoding=utf8"
+
 private
 
    type Time is new Interfaces.Unsigned_32;

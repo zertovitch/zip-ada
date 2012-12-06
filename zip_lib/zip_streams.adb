@@ -1,12 +1,9 @@
--- Changes
+-- Some changes
 --
 -- 11-Nov-2009 (GdM): Unbounded_Stream.Write and .Set_Index are buffered
 -- 18-Jan-2009 (GdM): Fixed Read(Stream, Item...) which read
 --                      only 1st element of Item
 
---with Ada.Strings.Unbounded.Text_IO; use Ada.Strings.Unbounded.Text_IO;
---with Ada.Text_IO;-- use Ada.Text_IO;
-with Zip;
 package body Zip_Streams is
 
    procedure Set_Name (S: in out Root_Zipstream_Type; Name: String) is
@@ -189,13 +186,13 @@ package body Zip_Streams is
    procedure Open (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
       Ada.Streams.Stream_IO.Open(Str.File, Mode, To_String(Str.Name),
-                                 Form => To_String (Zip.Form_For_IO_Open_N_Create));
+                                 Form => To_String (Form_For_IO_Open_and_Create));
    end Open;
 
    procedure Create (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
       Ada.Streams.Stream_IO.Create(Str.File, Mode, To_String (Str.Name),
-                                 Form => To_String (Zip.Form_For_IO_Open_N_Create));
+                                 Form => To_String (Form_For_IO_Open_and_Create));
    end Create;
 
    procedure Close (Str : in out File_Zipstream) is
