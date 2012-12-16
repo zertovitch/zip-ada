@@ -338,7 +338,7 @@ package body UnZip is
         encrypted            => encrypted,
         password             => password,
         get_new_password     => get_pwd,
-        hint                 => local_header.dd
+        hint                 => local_header
       );
 
       if actual_mode /= just_test then

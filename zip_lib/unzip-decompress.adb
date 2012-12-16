@@ -17,7 +17,7 @@ package body UnZip.Decompress is
     encrypted           : Boolean;
     password            : in out Unbounded_String;
     get_new_password    : Get_password_proc;
-    hint                : in out Zip.Headers.Data_descriptor
+    hint                : in out Zip.Headers.Local_File_Header
   )
   is
     -- Disable AdaControl rule for detecting global variables,
@@ -262,6 +262,7 @@ package body UnZip.Decompress is
         procedure Init( password: String; crc_check: Unsigned_32) is
           buffer: array( 0..11 ) of Zip.Byte;
           c: Zip.Byte;
+          t: Unsigned_32;
         begin
           -- Step 1 - Initializing the encryption keys
 
@@ -284,7 +285,10 @@ package body UnZip.Decompress is
             buffer(i):= c;
           end loop;
 
-          if buffer( buffer'Last ) /= Zip.Byte(Shift_Right( crc_check, 24 ))
+          t:= Zip_Streams.Calendar.Convert(hint.file_timedate);
+          if c /= Zip.Byte(Shift_Right( crc_check, 24 )) and not
+            -- This is a "feature" of Info-Zip (crypt.c), not documented in appnote.txt
+            ( end_data_descriptor and c = Zip.Byte(Shift_Right(t, 8) and 16#FF#) )
           then
             raise UnZip.Wrong_password;
           end if;
@@ -1865,28 +1869,28 @@ package body UnZip.Decompress is
       when write_to_memory =>
         output_memory_access:= new
           Ada.Streams.Stream_Element_Array(
-            1 .. Ada.Streams.Stream_Element_Offset(hint.uncompressed_size)
+            1 .. Ada.Streams.Stream_Element_Offset(hint.dd.uncompressed_size)
           );
         UnZ_Glob.uncompressed_index := output_memory_access'First;
       when just_test =>
         null;
     end case;
 
-    UnZ_Glob.compsize  := hint.compressed_size;
+    UnZ_Glob.compsize  := hint.dd.compressed_size;
     -- 2008: from TT's version:
     -- Avoid wraparound in read_buffer, when File_size_type'Last is given
     -- as hint.compressed_size (unknown size)
     if UnZ_Glob.compsize > File_size_type'Last - 2 then
       UnZ_Glob.compsize:= File_size_type'Last - 2;
     end if;
-    UnZ_Glob.uncompsize:= hint.uncompressed_size;
+    UnZ_Glob.uncompsize:= hint.dd.uncompressed_size;
     UnZ_IO.Init_Buffers;
     UnZ_IO.Decryption.Set_mode( encrypted );
     if encrypted then
       work_index := Ada.Streams.Stream_IO.Positive_Count (Zip_Streams.Index(zip_file));
       password_passes: for p in 1..tolerance_wrong_password loop
         begin
-          UnZ_IO.Decryption.Init( To_String(password), hint.crc_32 );
+          UnZ_IO.Decryption.Init( To_String(password), hint.dd.crc_32 );
           exit password_passes; -- the current password fits, then go on!
         exception
           when Wrong_password =>
@@ -1940,11 +1944,11 @@ package body UnZip.Decompress is
     if end_data_descriptor then -- Sizes and CRC at the end
       declare
        memo_uncomp_size: constant Unsigned_32:=
-         hint.uncompressed_size;
+         hint.dd.uncompressed_size;
       begin
-        Process(hint); -- CRC for checking and sizes for informing user
+        Process(hint.dd); -- CRC for checking and sizes for informing user
         if memo_uncomp_size < Unsigned_32'Last and then --
-           memo_uncomp_size /= hint.uncompressed_size
+           memo_uncomp_size /= hint.dd.uncompressed_size
         then
           UnZ_IO.Delete_output;
           raise Uncompressed_size_Error;
@@ -1952,7 +1956,7 @@ package body UnZip.Decompress is
       end;
     end if;
 
-    if hint.crc_32 /= UnZ_Glob.crc32val then
+    if hint.dd.crc_32 /= UnZ_Glob.crc32val then
       UnZ_IO.Delete_output;
       raise CRC_Error;
     end if;
