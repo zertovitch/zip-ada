@@ -509,7 +509,8 @@ package body Zip is
     case_sensitive : in     Boolean;
     file_index     :    out Positive;
     comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type
+    uncomp_size    :    out File_size_type;
+    crc_32         :    out Interfaces.Unsigned_32
   )
   is
     the_end: Zip.Headers.End_of_Central_Dir;
@@ -535,6 +536,7 @@ package body Zip is
           file_index := Positive (1 + header.local_header_offset + the_end.offset_shifting);
           comp_size  := File_size_type(header.short_info.dd.compressed_size);
           uncomp_size:= File_size_type(header.short_info.dd.uncompressed_size);
+          crc_32     := header.short_info.dd.crc_32;
           return;
         end if;
       end;
@@ -550,7 +552,8 @@ package body Zip is
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
     comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type
+    uncomp_size    :    out File_size_type;
+    crc_32         :    out Interfaces.Unsigned_32
   )
   is
     aux: p_Dir_node:= info.dir_binary_tree;
@@ -569,6 +572,7 @@ package body Zip is
         file_index    := aux.file_index;
         comp_size     := aux.comp_size;
         uncomp_size   := aux.uncomp_size;
+        crc_32        := aux.crc_32;
         return;
       end if;
     end loop;
@@ -666,10 +670,11 @@ package body Zip is
   is
     dummy_file_index: Ada.Streams.Stream_IO.Positive_Count;
     dummy_name_encoding: Zip_name_encoding;
+    dummy_crc_32: Interfaces.Unsigned_32;
   begin
     Find_offset(
       info, name, dummy_name_encoding, dummy_file_index,
-      comp_size, uncomp_size
+      comp_size, uncomp_size, dummy_crc_32
     );
   end Get_sizes;
 

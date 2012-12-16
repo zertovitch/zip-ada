@@ -192,7 +192,8 @@ package Zip is
     case_sensitive : in     Boolean;
     file_index     :    out Positive;
     comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type
+    uncomp_size    :    out File_size_type;
+    crc_32         :    out Interfaces.Unsigned_32
   );
 
   -- Find offset of a certain compressed file in a Zip_info data
@@ -203,7 +204,8 @@ package Zip is
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
     comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type
+    uncomp_size    :    out File_size_type;
+    crc_32         :    out Interfaces.Unsigned_32
   );
 
   File_name_not_found: exception;
@@ -332,8 +334,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "45, preview #5";
-  reference : constant String:= "6-Dec-2012";
+  version   : constant String:= "45, preview #6";
+  reference : constant String:= "16-Dec-2012";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

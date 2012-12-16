@@ -28,6 +28,7 @@ package body UnZip.Streams is
     mem_ptr         :    out p_Stream_Element_Array;
     password        : in out Ada.Strings.Unbounded.Unbounded_String;
     hint_comp_size  : in     File_size_type; -- Added 2007 for .ODS files
+    hint_crc_32     : in     Unsigned_32;    -- Added 2012 for decryption
     cat_uncomp_size : in     File_size_type
   )
   is
@@ -66,7 +67,7 @@ package body UnZip.Streams is
 
     if data_descriptor_present then
       -- Sizes and crc are after the data
-      local_header.dd.crc_32 := 0;
+      local_header.dd.crc_32            := hint_crc_32;
       local_header.dd.uncompressed_size := cat_uncomp_size;
       local_header.dd.compressed_size   := hint_comp_size;
     else
@@ -131,24 +132,28 @@ package body UnZip.Streams is
     header_index : Positive_Count;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
+    crc_32: Interfaces.Unsigned_32;
     work_password: Ada.Strings.Unbounded.Unbounded_String:=
       Ada.Strings.Unbounded.To_Unbounded_String(password);
     dummy_name_encoding: Zip.Zip_name_encoding;
   begin
     Zip.Find_offset(
-      from, what,
-      dummy_name_encoding,
-      header_index,
-      comp_size,
-      uncomp_size
+      info          => from,
+      name          => what ,
+      name_encoding => dummy_name_encoding,
+      file_index    => header_index,
+      comp_size     => comp_size,
+      uncomp_size   => uncomp_size,
+      crc_32        => crc_32
     );
     UnZipFile(
-      stream,
-      header_index,
-      mem_ptr,
-      work_password,
-      comp_size,
-      uncomp_size
+      zip_file        => stream,
+      header_index    => header_index,
+      mem_ptr         => mem_ptr,
+      password        => work_password,
+      hint_comp_size  => comp_size,
+      hint_crc_32     => crc_32,
+      cat_uncomp_size => uncomp_size
     );
   end S_Extract;
 

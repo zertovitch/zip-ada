@@ -24,6 +24,7 @@ package body UnZip is
     name_from_header         : Boolean;
     header_index             : in out Positive;
     hint_comp_size           : File_size_type; -- Added 2007 for .ODS files
+    hint_crc_32              : Unsigned_32;    -- Added 2012 for decryption
     feedback                 : Zip.Feedback_proc;
     help_the_file_exists     : Resolve_conflict_proc;
     tell_data                : Tell_data_proc;
@@ -239,7 +240,7 @@ package body UnZip is
     if data_descriptor_after_data then
       -- Sizes and CRC are stored after the data
       -- We set size to avoid getting a sudden Zip_EOF !
-      local_header.dd.crc_32            := 0;
+      local_header.dd.crc_32            := hint_crc_32;
       local_header.dd.compressed_size   := hint_comp_size;
       local_header.dd.uncompressed_size := File_size_type'Last;
       actual_feedback := null; -- no feedback possible: unknown sizes
@@ -488,6 +489,7 @@ package body UnZip is
     header_index : Positive;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
+    crc_32       : Unsigned_32;
     work_password: Unbounded_String:= To_Unbounded_String(password);
   begin
     if feedback = null then
@@ -496,11 +498,13 @@ package body UnZip is
     Set_Name (zip_file, from);
     Open (zip_file, In_File);
     Zip.Find_offset(
-      zip_file,
-      what,options( case_sensitive_match ),
-      header_index,
-      comp_size,
-      uncomp_size
+      file           => zip_file,
+      name           => what,
+      case_sensitive => options( case_sensitive_match ),
+      file_index     => header_index,
+      comp_size      => comp_size,
+      uncomp_size    => uncomp_size,
+      crc_32         => crc_32
     );
     UnZipFile(
       zip_file             => zip_file,
@@ -509,6 +513,7 @@ package body UnZip is
       name_from_header     => False,
       header_index         => header_index,
       hint_comp_size       => comp_size,
+      hint_crc_32          => crc_32,
       feedback             => feedback,
       help_the_file_exists => help_the_file_exists,
       tell_data            => tell_data,
@@ -540,6 +545,7 @@ package body UnZip is
     header_index : Positive;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
+    crc_32       : Unsigned_32;
     work_password: Unbounded_String:= To_Unbounded_String(password);
   begin
     if feedback = null then
@@ -548,11 +554,13 @@ package body UnZip is
     Set_Name (zip_file, from);
     Open (zip_file, In_File);
     Zip.Find_offset(
-      zip_file,
-      what,options( case_sensitive_match ),
-      header_index,
-      comp_size,
-      uncomp_size
+      file           => zip_file,
+      name           => what,
+      case_sensitive => options( case_sensitive_match ),
+      file_index     => header_index,
+      comp_size      => comp_size,
+      uncomp_size    => uncomp_size,
+      crc_32         => crc_32
     );
     UnZipFile(
       zip_file             => zip_file,
@@ -561,6 +569,7 @@ package body UnZip is
       name_from_header     => False,
       header_index         => header_index,
       hint_comp_size       => comp_size,
+      hint_crc_32          => crc_32,
       feedback             => feedback,
       help_the_file_exists => null,
       tell_data            => tell_data,
@@ -606,6 +615,7 @@ package body UnZip is
         header_index         => header_index,
         hint_comp_size       => File_size_type'Last,
         --                      ^ no better hint available if comp_size is 0 in local header
+        hint_crc_32          => 0, -- 2.0 decryption can fail if data descriptor after data
         feedback             => feedback,
         help_the_file_exists => help_the_file_exists,
         tell_data            => tell_data,
@@ -675,6 +685,7 @@ package body UnZip is
     header_index : Positive;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
+    crc_32       : Unsigned_32;
     work_password: Unbounded_String:= To_Unbounded_String(password);
     use Zip, Zip_Streams;
     zip_file     : aliased File_Zipstream;
@@ -693,10 +704,13 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Zip.Find_offset(
-      from, what, name_encoding,
-      Ada.Streams.Stream_IO.Positive_Count(header_index),
-      comp_size,
-      uncomp_size
+      info          => from,
+      name          => what,
+      name_encoding => name_encoding,
+      file_index    => Ada.Streams.Stream_IO.Positive_Count(header_index),
+      comp_size     => comp_size,
+      uncomp_size   => uncomp_size,
+      crc_32        => crc_32
     );
     UnZipFile(
       zip_file              => input_stream.all,
@@ -705,6 +719,7 @@ package body UnZip is
       name_from_header      => False,
       header_index          => header_index,
       hint_comp_size        => comp_size,
+      hint_crc_32           => crc_32,
       feedback              => feedback,
       help_the_file_exists  => help_the_file_exists,
       tell_data             => tell_data,
@@ -742,6 +757,7 @@ package body UnZip is
     header_index : Positive;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
+    crc_32       : Unsigned_32;
     work_password: Unbounded_String:= To_Unbounded_String(password);
     use Zip, Zip_Streams;
     zip_file     : aliased File_Zipstream;
@@ -760,10 +776,13 @@ package body UnZip is
       current_user_attitude:= yes_to_all; -- non-interactive
     end if;
     Zip.Find_offset(
-      from, what, name_encoding,
-      Ada.Streams.Stream_IO.Positive_Count(header_index),
-      comp_size,
-      uncomp_size
+      info          => from,
+      name          => what,
+      name_encoding => name_encoding,
+      file_index    => Ada.Streams.Stream_IO.Positive_Count(header_index),
+      comp_size     => comp_size,
+      uncomp_size   => uncomp_size,
+      crc_32        => crc_32
     );
     UnZipFile(
       zip_file             => input_stream.all,
@@ -772,6 +791,7 @@ package body UnZip is
       name_from_header     => False,
       header_index         => header_index,
       hint_comp_size       => comp_size,
+      hint_crc_32          => crc_32,
       feedback             => feedback,
       help_the_file_exists => null,
       tell_data            => tell_data,
