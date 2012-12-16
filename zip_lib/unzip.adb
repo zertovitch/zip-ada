@@ -326,19 +326,19 @@ package body UnZip is
         when others => raise Read_Error;
       end;
       UnZip.Decompress.Decompress_data(
-        zip_file             => zip_file,
-        format               => method,
-        mode                 => actual_mode,
-        output_file_name     => To_String(the_output_name),
-        output_memory_access => dummy,
-        feedback             => actual_feedback,
-        explode_literal_tree => (local_header.bit_flag and 4) /= 0,
-        explode_slide_8KB    => (local_header.bit_flag and 2) /= 0,
-        end_data_descriptor  => data_descriptor_after_data,
-        encrypted            => encrypted,
-        password             => password,
-        get_new_password     => get_pwd,
-        hint                 => local_header
+        zip_file                   => zip_file,
+        format                     => method,
+        mode                       => actual_mode,
+        output_file_name           => To_String(the_output_name),
+        output_memory_access       => dummy,
+        feedback                   => actual_feedback,
+        explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
+        explode_slide_8KB          => (local_header.bit_flag and 2) /= 0,
+        data_descriptor_after_data => data_descriptor_after_data,
+        encrypted                  => encrypted,
+        password                   => password,
+        get_new_password           => get_pwd,
+        hint                       => local_header
       );
 
       if actual_mode /= just_test then

@@ -13,7 +13,7 @@ package body UnZip.Decompress is
     feedback            : Zip.Feedback_proc;
     explode_literal_tree: Boolean;
     explode_slide_8KB   : Boolean;
-    end_data_descriptor : Boolean;
+    data_descriptor_after_data : Boolean;
     encrypted           : Boolean;
     password            : in out Unbounded_String;
     get_new_password    : Get_password_proc;
@@ -287,8 +287,11 @@ package body UnZip.Decompress is
 
           t:= Zip_Streams.Calendar.Convert(hint.file_timedate);
           if c /= Zip.Byte(Shift_Right( crc_check, 24 )) and not
-            -- This is a "feature" of Info-Zip (crypt.c), not documented in appnote.txt
-            ( end_data_descriptor and c = Zip.Byte(Shift_Right(t, 8) and 16#FF#) )
+            -- Dec. 2012. This is a feature of Info-Zip (crypt.c).
+            -- Since CRC is only known at the end of a one-way stream
+            -- compression, and cannot be written back, they are using a byte of
+            -- the time stamp instead. This is not documented in appnote.txt v.6.3.3.
+            ( data_descriptor_after_data and c = Zip.Byte(Shift_Right(t, 8) and 16#FF#) )
           then
             raise UnZip.Wrong_password;
           end if;
@@ -1831,27 +1834,31 @@ package body UnZip.Decompress is
 
     end UnZ_Meth;
 
-    procedure Process(descriptor: out Zip.Headers.Data_descriptor)
+    procedure Process_descriptor(dd: out Zip.Headers.Data_descriptor)
     is
       start: Integer;
       b: Unsigned_8;
       dd_buffer: Zip.Byte_Buffer(1..30);
     begin
       UnZ_IO.Bit_buffer.Dump_to_byte_boundary;
+      UnZ_IO.Decryption.Set_mode(False);
       UnZ_IO.Read_raw_byte(b);
-      if b = 75 then -- 'K' ('P' is before, Java/JAR bug!)
+      if b = 75 then -- 'K' ('P' is before, this is a Java/JAR bug!)
         dd_buffer(1):= 80;
         dd_buffer(2):= 75;
         start:= 3;
       else
-        dd_buffer(1):= b; -- hopefully = 80
+        dd_buffer(1):= b; -- hopefully = 80 (will be checked)
         start:= 2;
       end if;
       for i in start..16 loop
         UnZ_IO.Read_raw_byte( dd_buffer(i) );
       end loop;
-      Zip.Headers.Copy_and_check( dd_buffer, descriptor );
-    end Process;
+      Zip.Headers.Copy_and_check( dd_buffer, dd );
+    exception
+      when Zip.Headers.Bad_data_descriptor =>
+        raise Zip.Zip_file_Error;
+    end Process_descriptor;
 
     work_index: Ada.Streams.Stream_IO.Positive_Count;
     use Zip, UnZ_Meth;
@@ -1941,12 +1948,12 @@ package body UnZip.Decompress is
     UnZ_Glob.crc32val := Zip.CRC.Final( UnZ_Glob.crc32val );
     -- Decompression done !
 
-    if end_data_descriptor then -- Sizes and CRC at the end
+    if data_descriptor_after_data then -- Sizes and CRC at the end
       declare
        memo_uncomp_size: constant Unsigned_32:=
          hint.dd.uncompressed_size;
       begin
-        Process(hint.dd); -- CRC for checking and sizes for informing user
+        Process_descriptor(hint.dd); -- CRC is for checking; sizes are for informing user
         if memo_uncomp_size < Unsigned_32'Last and then --
            memo_uncomp_size /= hint.dd.uncompressed_size
         then

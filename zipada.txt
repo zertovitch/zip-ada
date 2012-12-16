@@ -110,17 +110,21 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '45', (not yet released)
+  - Decryption's password check also working for archives encrypted
+      by Info-Zip software.
   - Massive speedup when checking files that are invalid Zip archives
-      or Zip archives with large comments
-  - Added Is_Open method for File_Zipstream
-  - Zip.Load closes properly the file when loading fails
+      or Zip archives with large comments.
+  - Added Is_Open method for File_Zipstream.
+  - Zip.Load closes properly the file when loading fails.
   - Improved detection of invalid dates in some Zip archives
-      (e.g. wmpChrome.crx Chrome extension)
+      (e.g. wmpChrome.crx Chrome extension).
   - UnZip.Decompress: Optimized calls of feedback: called only when
-      1% more done
+      1% more done.
   -!- Removed case_sensitive as a parameter in Zip.Exists, Zip.Find_Offset,
       Zip.Get_Sizes, and UnZip.Streams.Open, versions with Zip_Info profiles.
-      The Zip_info objects now keep this information as a field after Load.
+      The Zip_info objects now keep this information in a field after Load.
+      Rationale: case-sensitivity mode for search make only sense when it
+      matches the mode used for building the dictionary.
   - Added User_code to Zip_info entries. Can be set with the Set_user_code
       and User_code subprograms, or via the Action procedure for the generic
       Traverse_Verbose procedure.

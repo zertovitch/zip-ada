@@ -34,7 +34,7 @@ package body UnZip.Streams is
   is
     work_index: Ada.Streams.Stream_IO.Positive_Count:= header_index;
     local_header: Zip.Headers.Local_File_Header;
-    data_descriptor_present: Boolean;
+    data_descriptor_after_data: Boolean;
     encrypted: Boolean;
     method: PKZip_method;
     use Ada.Streams.Stream_IO, Zip, Zip_Streams;
@@ -63,9 +63,9 @@ package body UnZip.Streams is
               Zip.Headers.local_header_length
       );
 
-    data_descriptor_present:= (local_header.bit_flag and 8) /= 0;
+    data_descriptor_after_data:= (local_header.bit_flag and 8) /= 0;
 
-    if data_descriptor_present then
+    if data_descriptor_after_data then
       -- Sizes and crc are after the data
       local_header.dd.crc_32            := hint_crc_32;
       local_header.dd.uncompressed_size := cat_uncomp_size;
@@ -87,19 +87,19 @@ package body UnZip.Streams is
 
     -- Unzip correct type
     UnZip.Decompress.Decompress_data(
-      zip_file             => zip_file,
-      format               => method,
-      mode                 => write_to_memory,
-      output_file_name     => "",
-      output_memory_access => mem_ptr,
-      feedback             => null,
-      explode_literal_tree => (local_header.bit_flag and 4) /= 0,
-      explode_slide_8KB    => (local_header.bit_flag and 2) /= 0,
-      end_data_descriptor  => data_descriptor_present,
-      encrypted            => encrypted,
-      password             => password,
-      get_new_password     => null,
-      hint                 => local_header
+      zip_file                   => zip_file,
+      format                     => method,
+      mode                       => write_to_memory,
+      output_file_name           => "",
+      output_memory_access       => mem_ptr,
+      feedback                   => null,
+      explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
+      explode_slide_8KB          => (local_header.bit_flag and 2) /= 0,
+      data_descriptor_after_data => data_descriptor_after_data,
+      encrypted                  => encrypted,
+      password                   => password,
+      get_new_password           => null,
+      hint                       => local_header
     );
 
     -- Set the offset on the next zipped file
@@ -113,7 +113,7 @@ package body UnZip.Streams is
         local_header.dd.compressed_size
       );
 
-    if data_descriptor_present then
+    if data_descriptor_after_data then
       header_index:= header_index + Count(Zip.Headers.data_descriptor_length);
     end if;
 
