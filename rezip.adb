@@ -100,6 +100,7 @@ procedure ReZip is
     uncomp_size    : Zip.File_size_type;
     file_out       : Ada.Streams.Stream_IO.File_Type;
     dummy_encoding : Zip.Zip_name_encoding;
+    dummy_crc      : Unsigned_32;
     use UnZip;
   begin
     Zip.Find_Offset(
@@ -108,7 +109,8 @@ procedure ReZip is
       name_encoding  => dummy_encoding,
       file_index     => file_index,
       comp_size      => comp_size,
-      uncomp_size    => uncomp_size
+      uncomp_size    => uncomp_size,
+      crc_32         => dummy_crc
     );
     Set_Index(input, Positive(file_index));
     Zip.Headers.Read_and_check(input, header);

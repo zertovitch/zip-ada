@@ -99,7 +99,7 @@ package body UnZip.Streams is
       encrypted            => encrypted,
       password             => password,
       get_new_password     => null,
-      hint                 => local_header.dd
+      hint                 => local_header
     );
 
     -- Set the offset on the next zipped file
