@@ -228,7 +228,7 @@ package body UnZip.Decompress is
       package body Decryption is
 
         type Decrypt_keys is array( 0..2 ) of Unsigned_32;
-        the_keys     : Decrypt_keys;
+        keys     : Decrypt_keys;
         decrypt_mode : Boolean;
 
         procedure Set_mode( crypted: Boolean ) is
@@ -241,23 +241,22 @@ package body UnZip.Decompress is
           return decrypt_mode;
         end Get_mode;
 
-        procedure Update_keys( by: Zip.Byte; keys: in out Decrypt_keys ) is
+        procedure Update_keys( by: Zip.Byte ) is
         begin
-          Zip.CRC.Update( keys(0), (0=> by) );
+          Zip.CRC.Update( keys(0), (0 => by) );
           keys(1) := keys(1) + (keys(0) and 16#000000ff#);
           keys(1) := keys(1) * 134775813 + 1;
           Zip.CRC.Update(
             keys(2),
-            (0=> Zip.Byte(Shift_Right( keys(1), 24 )))
+            (0 => Zip.Byte(Shift_Right( keys(1), 24 )))
           );
         end Update_keys;
 
-        function Decrypt_byte( Key_2: Unsigned_32 ) return Zip.Byte is
-          temp: Unsigned_32;
+        function Decrypt_byte return Zip.Byte is
+          temp: Unsigned_16;
         begin
-          temp:= (Key_2 and 16#ffff#) or 2;
-          temp:= temp * (16#ffff# and (temp xor 1));
-          return Zip.Byte( Shift_Right(temp, 8) and 16#ff#);
+          temp:= Unsigned_16(keys(2) and 16#ffff#) or 2;
+          return Zip.Byte(Shift_Right(temp * (temp xor 1), 8));
         end Decrypt_byte;
 
         procedure Init( password: String; crc_check: Unsigned_32) is
@@ -266,27 +265,26 @@ package body UnZip.Decompress is
         begin
           -- Step 1 - Initializing the encryption keys
 
-          the_keys:= (
+          keys:= (
             0 => 305419896,
             1 => 591751049,
             2 => 878082192
           );
 
           for i in password'Range loop
-            Update_keys( Zip.Byte( Character'Pos(password(i)) ), the_keys );
+            Update_keys( Character'Pos(password(i)) );
           end loop;
 
           -- Step 2 - Decrypting the encryption header
 
           for i in buffer'Range loop
             Read_byte_no_decrypt( c );
-            c:= c xor Decrypt_byte( the_keys(2) );
-            Update_keys(c, the_keys);
+            c:= c xor Decrypt_byte;
+            Update_keys(c);
             buffer(i):= c;
           end loop;
 
-          if buffer( buffer'Last ) /=
-            Zip.Byte(Shift_Right( crc_check, 24 ))
+          if buffer( buffer'Last ) /= Zip.Byte(Shift_Right( crc_check, 24 ))
           then
             raise UnZip.Wrong_password;
           end if;
@@ -296,8 +294,8 @@ package body UnZip.Decompress is
         procedure Decode( b: in out Zip.Byte ) is
         begin
           if decrypt_mode then
-            b:= b xor Decrypt_byte( the_keys(2) );
-            Update_keys(b, the_keys);
+            b:= b xor Decrypt_byte;
+            Update_keys(b);
           end if;
         end Decode;
 
