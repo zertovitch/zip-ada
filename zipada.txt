@@ -109,7 +109,7 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '45', (not yet released)
+* Changes in '45', 22-Dec-2012:
   - Decryption's password check also working for archives encrypted
       by Info-Zip software.
   - Massive speedup when checking files that are invalid Zip archives
