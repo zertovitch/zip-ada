@@ -3,16 +3,16 @@
 --  Description:     Demo / test / prototype derived from ZipTest.
 --  Purpose:         Stuff many files directly into a zip file.
 --                     Can be helpful when using network drives, for instance.
---  Date/version:    4-Feb-2009
+--  Date/version:    9-Jan-2013; 4-Feb-2009
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
-with Ada.Text_IO;
-
 with Zip_Streams;                       use Zip_Streams;
 with Zip.Create;                        use Zip.Create;
-with Zip.Compress;
+
+with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Ada.Text_IO;
+--with Ada.Streams.Stream_IO;
 
 procedure Demo_csv_into_zip is
 
@@ -40,7 +40,7 @@ procedure Demo_csv_into_zip is
     Japan_Korea,
     South_America,
     Central_America,
-    Carribean,
+    Caribbean,
     Other
   );
 
@@ -80,7 +80,7 @@ procedure Demo_csv_into_zip is
     Japan_Korea => Overseas,
     South_America => Latin_America,
     Central_America => Latin_America,
-    Carribean => Latin_America,
+    Caribbean => Latin_America,
     Other => Other
   );
 
@@ -108,14 +108,14 @@ procedure Demo_csv_into_zip is
     Close(f);
   end Output_results;
 
-  procedure Output_results(
+  procedure Pack_results(
     g            : GroupCountries;
     p            : Peril;
     to_archive   : in out Zip_Create_info
   )
   is
     temp_name: constant String:= "temp.csv";
-    true_name: constant String:=
+    final_name: constant String:=
       To_Lower(
         Peril'Image(p) & '/' &
         Continent'Image(groupcountries_to_continent(g)) & '/' &
@@ -127,10 +127,10 @@ procedure Demo_csv_into_zip is
     Zip.Create.Add_File(
       Info              => to_archive,
       Name              => temp_name,
-      Name_in_archive   => true_name,
+      Name_in_archive   => final_name,
       Delete_file_after => True
     );
-  end Output_results;
+  end Pack_results;
 
   procedure Output_all_results is
     MyStream_file : aliased File_Zipstream; -- Zip archive as a file
@@ -138,12 +138,11 @@ procedure Demo_csv_into_zip is
   begin
     Create (archive,
       MyStream_file'Unchecked_Access,
-      "Detailed_results.zip",
-      Zip.Compress.Shrink
+      "Detailed_results.zip"
     );
     for p in Peril loop
       for g in Groupcountries loop
-        Output_results(g,p,archive);
+        Pack_results(g,p,archive);
       end loop;
     end loop;
     Finish (archive);
