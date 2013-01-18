@@ -165,6 +165,8 @@ package Zip_Streams is
          Day     : Day_Number;
          Seconds : Day_Duration := 0.0) return Time;
       --
+      function ">"  (Left, Right : Time) return Boolean;
+      --
       Time_Error : exception;
    end Calendar;
 

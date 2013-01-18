@@ -315,6 +315,12 @@ package body Zip_Streams is
          return Time(result);
       end Time_Of;
 
+      function ">"  (Left, Right : Time) return Boolean is
+        use Interfaces;
+      begin
+        return Unsigned_32(Left) > Unsigned_32(Right);
+      end ">";
+
       function Convert(date : in Ada.Calendar.Time) return Time is
          year            : Year_Number;
          month           : Month_Number;
