@@ -163,6 +163,7 @@ package body Zip is
       method           : PKZip_method;
       name_encoding    : Zip_name_encoding;
       read_only        : Boolean;
+      encrypted_2_x    : Boolean;
       node             : in out p_Dir_node
       )
     is
@@ -182,16 +183,19 @@ package body Zip is
              method            => method,
              name_encoding     => name_encoding,
              read_only         => read_only,
+             encrypted_2_x     => encrypted_2_x,
              user_code         => 0
              )
           );
       elsif dico_name > node.dico_name then
         Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
-          crc_32, date_time, method, name_encoding, read_only,
+          crc_32, date_time, method, name_encoding,
+          read_only, encrypted_2_x,
           node.right );
       elsif dico_name < node.dico_name then
         Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
-          crc_32, date_time, method, name_encoding, read_only,
+          crc_32, date_time, method, name_encoding,
+          read_only, encrypted_2_x,
           node.left );
       else
         Ada.Exceptions.Raise_Exception
@@ -257,6 +261,7 @@ package body Zip is
                     Zip.Headers.Language_Encoding_Flag_Bit) /= 0),
                 read_only   => header.made_by_version / 256 = 0 and -- DOS-like
                                (header.external_attributes and 1) = 1,
+                encrypted_2_x => (header.short_info.bit_flag and 1) /= 0,
                 node        => p );
         -- Since the files are usually well ordered, the tree as inserted
         -- is very unbalanced; we need to rebalance it from time to time
@@ -411,6 +416,7 @@ package body Zip is
           p.method,
           p.name_encoding,
           p.read_only,
+          p.encrypted_2_x,
           p.user_code
         );
         Traverse(p.right);

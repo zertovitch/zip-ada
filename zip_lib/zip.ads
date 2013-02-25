@@ -161,6 +161,7 @@ package Zip is
       method           : PKZip_method;
       name_encoding    : Zip_name_encoding;
       read_only        : Boolean;
+      encrypted_2_x    : Boolean; -- PKZip 2.x encryption
       user_code        : in out Integer
     );
   procedure Traverse_verbose( z: Zip_info );
@@ -334,8 +335,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "45";
-  reference : constant String:= "22-Dec-2012";
+  version   : constant String:= "46 preview 1";
+  reference : constant String:= "25-Feb-2013";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
@@ -367,6 +368,7 @@ private
     method           : PKZip_method;
     name_encoding    : Zip_name_encoding;
     read_only        : Boolean; -- TBD: attributes of most supported systems
+    encrypted_2_x    : Boolean;
     user_code        : Integer;
   end record;
 
