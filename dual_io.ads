@@ -9,7 +9,7 @@
 --          genuine Text_IO for Files and String I/O.
 --
 --
---  Date/version:    2-Feb-2011; 7-Jul-2001; 4-Jul-2001
+--  Date/version:    2-Mar-2013; 2-Feb-2011; 7-Jul-2001; 4-Jul-2001
 --  Author:          G. de Montmollin
 --                   http://gautiersblog.blogspot.com/
 ------------------------------------------------------------------------------
@@ -39,6 +39,7 @@ package Dual_IO is
    procedure Create_Log (Name : in String);
    procedure Append_Log (Name : in String);
    procedure Close_Log;
+   function Is_Log_Open return Boolean;
 
    -- Close and reopen: have an up to date copy on file system
    procedure Close_and_Append_Log;

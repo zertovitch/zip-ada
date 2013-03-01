@@ -35,6 +35,11 @@ package body Dual_IO is
      Log_open:= False;
    end Close_Log;
 
+   function Is_Log_Open return Boolean is
+   begin
+     return Log_open;
+   end Is_Log_Open;
+   
    procedure Close_and_Append_Log is
      log_name: constant String:= Text_IO.Name( Log_text );
    begin
