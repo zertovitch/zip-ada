@@ -27,9 +27,6 @@ procedure Test_Stream_Performance is
 
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
 
-  buffer_size, SE_buffer_size: Natural:= 0;
-  -- To check if buffers are binary compatible (same packing)
-
   type Buffer is array(Natural range <>) of Unsigned_8;
 
   ------------------------------------------------
@@ -53,9 +50,6 @@ procedure Test_Stream_Performance is
 
   procedure Write_Attribute( b: in Buffer ) is
   begin
-    if buffer_size = 0 then
-      buffer_size:= b'size; -- just for stats
-    end if;
     Buffer'Write(Stream(f_out), b);
   end Write_Attribute;
 
@@ -82,9 +76,6 @@ procedure Test_Stream_Performance is
     Last      : constant Stream_Element_Offset:= Stream_Element_Offset(b'Last);
     SE_Buffer : Stream_Element_Array (First..Last);
   begin
-    if SE_buffer_size = 0 then
-      SE_buffer_size:= SE_Buffer'size; -- just for stats
-    end if;
     for i in SE_Buffer'Range loop
       SE_Buffer(i):= Stream_Element(b(Natural(i)));
     end loop;
@@ -98,6 +89,7 @@ procedure Test_Stream_Performance is
     Last: Stream_Element_Offset;
     SE_Buffer : Stream_Element_Array (1..b'Length);
     for SE_Buffer'Address use b'Address;
+    pragma Import (Ada, SE_Buffer);
   begin
     Read(Stream(f_in).all, SE_Buffer, Last);
     last_read:= b'First + Natural(Last) - 1;
@@ -107,6 +99,7 @@ procedure Test_Stream_Performance is
     use Ada.Streams;
     SE_Buffer : Stream_Element_Array (1..b'Length);
     for SE_Buffer'Address use b'Address;
+    pragma Import (Ada, SE_Buffer);
   begin
     Write(Stream(f_out).all, SE_Buffer);
   end Write_SE_Overlay;
@@ -134,10 +127,10 @@ procedure Test_Stream_Performance is
     label: String;
     with procedure Read( b: out Buffer; last_read: out Natural  );
     with procedure Write( b: in Buffer  );
-  procedure Test;
+  procedure Test(bytes: Positive);
 
-  procedure Test is
-    b: Buffer(1..1024);
+  procedure Test(bytes: Positive) is
+    b: Buffer(1..bytes);
     l: Natural;
   begin
     Open(f_in, In_File, name);
@@ -155,9 +148,34 @@ procedure Test_Stream_Performance is
   procedure Test_SE_Overlay is new Test("SE_Overlay", Read_SE_Overlay, Write_SE_Overlay);
   procedure Test_SE_UC is new Test("SE_UC", Read_SE_Overlay, Write_SE_UC);
 
-  T0, T1, T2, T3, T4: Time;
-
   use Ada.Text_IO;
+
+  procedure All_Tests(buffer_bytes: Positive) is
+    T0, T1, T2, T3, T4: Time;
+  begin
+    T0:= Clock;
+    Test_Attribute(buffer_bytes);
+    T1:= Clock;
+    Test_SE_Copy(buffer_bytes);
+    T2:= Clock;
+    Test_SE_UC(buffer_bytes);
+    T3:= Clock;
+    Test_SE_Overlay(buffer_bytes);
+    T4:= Clock;
+    Put_Line("xxx'Write / xxx'Read (Stream attributes)........." & Duration'Image(T1-T0) & " seconds");
+    Put_Line("Workarounds with Stream_Element_Array buffer:");
+    Put_Line("  copy (byte buffer from/to SE buffer)..........." & Duration'Image(T2-T1) & " seconds");
+    Put_Line("  overlay (read), unchecked_conversion (write)..." & Duration'Image(T3-T2) & " seconds");
+    Put_Line("  overlay (read and write)......................." & Duration'Image(T4-T3) & " seconds");
+    Put_Line("Factor (Copy)   " & Duration'Image((T1-T0)/(T2-T1)));
+    Put_Line("Factor (UC)     " & Duration'Image((T1-T0)/(T3-T2)));
+    Put_Line("Factor (Overlay)" & Duration'Image((T1-T0)/(T4-T3)));
+    New_Line;
+    Put_Line("Buffer size in bytes....." & Integer'Image(buffer_bytes));
+    Open(f_in, In_File, name);
+    Put_Line("File size in megabytes....." & Float'Image(Float(Size(f_in))/(1024.0*1024.0)));
+    Close(f_in);
+  end All_Tests;
 
 begin
   if Argument_Count=0 then
@@ -165,27 +183,10 @@ begin
     Put_Line(" Produces .tmp files that are copies of <big_file>.");
     return;
   end if;
-  T0:= Clock;
-  Test_Attribute;
-  T1:= Clock;
-  Test_SE_Copy;
-  T2:= Clock;
-  Test_SE_Overlay;
-  T3:= Clock;
-  Test_SE_UC;
-  T4:= Clock;
-  Put_Line("xxx'Write / xxx'Read (Stream attributes)........." & Duration'Image(T1-T0) & " seconds");
-  Put_Line("Workarounds with Stream_Element_Array buffer:");
-  Put_Line("  copy..........................................." & Duration'Image(T2-T1) & " seconds");
-  Put_Line("  overlay (read), unchecked_conversion (write)..." & Duration'Image(T4-T3) & " seconds");
-  Put_Line("  overlay........................................" & Duration'Image(T3-T2) & " seconds");
-  Put_Line("Factor (Copy)   " & Duration'Image((T1-T0)/(T2-T1)));
-  Put_Line("Factor (Overlay)" & Duration'Image((T1-T0)/(T3-T2)));
-  New_Line;
-  Put_Line("Buffer size in bits....." & Integer'Image(buffer_size));
-  Put_Line("SE Buffer size in bits.." & Integer'Image(SE_buffer_size));
-  New_Line;
-  Open(f_in, In_File, name);
-  Put_Line("File size in megabytes....." & Float'Image(Float(Size(f_in))/(1024.0*1024.0)));
-  Close(f_in);
+  All_Tests(1024); -- 1 KB
+  All_Tests(32 * 1024); -- 32 KB
+  All_Tests(64 * 1024); -- 64 KB
+  All_Tests(128 * 1024); -- 128 KB
+  All_Tests(256 * 1024); -- 256 KB
+  All_Tests(1024 * 1024); -- 1 MB
 end;
