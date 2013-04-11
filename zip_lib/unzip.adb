@@ -99,7 +99,13 @@ package body UnZip is
               path(i):= Directory_Separator;
             end if;
           end loop;
-          file_system_routines.Create_Path( path );
+          if path = "" then
+            null;
+          elsif path(path'Last) = ':' then
+            null; -- We are on Windows and cannot create drives (like "D:")
+          else
+            file_system_routines.Create_Path( path );
+          end if;
         end;
       end if;
       -- Now we can create the file itself.
