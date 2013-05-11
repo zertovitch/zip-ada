@@ -148,8 +148,18 @@ package Zip is
     with procedure Action( name: String ); -- 'name' is compressed entry's name
   procedure Traverse( z: Zip_info );
 
-  -- Same as Traverse, but Action gives also technical informations about the
-  -- compressed entry.
+  -- Same as Traverse, but Action gives also full name information.
+  -- The pair (name, name_encoding) allows for an unambiguous Unicode
+  -- name decoding. See the AZip project for an implementation.
+  generic
+    with procedure Action(
+      name          : String; -- 'name' is compressed entry's name
+      name_encoding : Zip_name_encoding
+    );
+  procedure Traverse_Unicode( z: Zip_info );
+
+  -- Same as Traverse, but Action gives also full technical informations
+  -- about the compressed entry.
   generic
     with procedure Action(
       name             : String; -- 'name' is compressed entry's name
@@ -335,8 +345,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "46 preview 2";
-  reference : constant String:= "11-Apr-2013";
+  version   : constant String:= "46 preview 3";
+  reference : constant String:= "11-May-2013";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

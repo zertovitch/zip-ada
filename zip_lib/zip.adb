@@ -400,6 +400,21 @@ package body Zip is
     Traverse(z.dir_binary_tree);
   end Traverse;
 
+  procedure Traverse_Unicode( z: Zip_info ) is
+
+    procedure Traverse( p: p_Dir_node ) is
+    begin
+      if p /= null then
+        Traverse(p.left);
+        Action(p.file_name, p.name_encoding);
+        Traverse(p.right);
+      end if;
+    end Traverse;
+
+  begin
+    Traverse(z.dir_binary_tree);
+  end Traverse_Unicode;
+
   procedure Traverse_verbose( z: Zip_info ) is
 
     procedure Traverse( p: p_Dir_node ) is
