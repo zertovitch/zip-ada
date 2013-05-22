@@ -732,8 +732,10 @@ package body UnZip.Decompress is
                 end if;
               when Code_Clear_table =>
                 Clear_Leaf_Nodes;
-              when others=>
-                raise Zip.Zip_file_Error;
+              when others =>
+                Ada.Exceptions.Raise_Exception
+                 (Zip.Zip_file_Error'Identity,
+                  "Wrong LZW (Shrink) special code" & Integer'Image(Incode));
             end case;
 
           else -- Normal code
@@ -1950,8 +1952,7 @@ package body UnZip.Decompress is
 
     if data_descriptor_after_data then -- Sizes and CRC at the end
       declare
-       memo_uncomp_size: constant Unsigned_32:=
-         hint.dd.uncompressed_size;
+        memo_uncomp_size: constant Unsigned_32:= hint.dd.uncompressed_size;
       begin
         Process_descriptor(hint.dd); -- CRC is for checking; sizes are for informing user
         if memo_uncomp_size < Unsigned_32'Last and then --
