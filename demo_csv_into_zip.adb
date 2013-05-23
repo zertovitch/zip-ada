@@ -138,7 +138,7 @@ procedure Demo_csv_into_zip is
   begin
     Create (archive,
       MyStream_file'Unchecked_Access,
-      "Detailed_results.zip"
+      "detailed_results.zip"
     );
     for p in Peril loop
       for g in Groupcountries loop

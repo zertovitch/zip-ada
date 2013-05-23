@@ -5,19 +5,20 @@ with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 package body UnZip.Decompress is
 
   procedure Decompress_data(
-    zip_file            : in out Zip_Streams.Root_Zipstream_Type'Class;
-    format              : PKZip_method;
-    mode                : Write_mode;
-    output_file_name    : String;
-    output_memory_access: out p_Stream_Element_Array;
-    feedback            : Zip.Feedback_proc;
-    explode_literal_tree: Boolean;
-    explode_slide_8KB   : Boolean;
+    zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
+    format                     : PKZip_method;
+    mode                       : Write_mode;
+    output_file_name           : String; -- relevant only if mode = write_to_file
+    output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory
+    output_stream_access       : p_Stream;                   -- \ = write_to_stream
+    feedback                   : Zip.Feedback_proc;
+    explode_literal_tree       : Boolean;
+    explode_slide_8KB          : Boolean;
     data_descriptor_after_data : Boolean;
-    encrypted           : Boolean;
-    password            : in out Unbounded_String;
-    get_new_password    : Get_password_proc;
-    hint                : in out Zip.Headers.Local_File_Header
+    encrypted                  : Boolean;
+    password                   : in out Unbounded_String;
+    get_new_password           : Get_password_proc;
+    hint                       : in out Zip.Headers.Local_File_Header
   )
   is
     -- Disable AdaControl rule for detecting global variables,
@@ -401,6 +402,8 @@ package body UnZip.Decompress is
                   Ada.Streams.Stream_Element(UnZ_Glob.slide(i));
                 UnZ_Glob.uncompressed_index:= UnZ_Glob.uncompressed_index + 1;
               end loop;
+            when write_to_stream =>
+              BlockWrite(output_stream_access.all, UnZ_Glob.slide(0..x-1));
             when just_test =>
               null;
           end case;
@@ -553,8 +556,8 @@ package body UnZip.Decompress is
               Ada.Streams.Stream_IO.Delete( UnZ_IO.out_bin_file );
             when write_to_text_file =>
               Ada.Text_IO.Delete( UnZ_IO.out_txt_file );
-            when others =>
-              null;
+            when write_to_memory | write_to_stream | just_test =>
+              null; -- Nothing to delete!
           end case;
         end if;
       end Delete_output;
@@ -603,6 +606,8 @@ package body UnZip.Decompress is
                   Stream_Element(Writebuf(I));
                 UnZ_Glob.uncompressed_index :=  UnZ_Glob.uncompressed_index + 1;
               end loop;
+            when write_to_stream =>
+              BlockWrite(output_stream_access.all, Writebuf(0..Write_Ptr-1));
             when just_test =>
               null;
           end case;
@@ -1881,7 +1886,7 @@ package body UnZip.Decompress is
             1 .. Ada.Streams.Stream_Element_Offset(hint.dd.uncompressed_size)
           );
         UnZ_Glob.uncompressed_index := output_memory_access'First;
-      when just_test =>
+      when write_to_stream | just_test =>
         null;
     end case;
 
@@ -1897,16 +1902,15 @@ package body UnZip.Decompress is
     UnZ_IO.Decryption.Set_mode( encrypted );
     if encrypted then
       work_index := Ada.Streams.Stream_IO.Positive_Count (Zip_Streams.Index(zip_file));
-      password_passes: for p in 1..tolerance_wrong_password loop
+      password_passes: for pass in 1..tolerance_wrong_password loop
         begin
           UnZ_IO.Decryption.Init( To_String(password), hint.dd.crc_32 );
           exit password_passes; -- the current password fits, then go on!
         exception
           when Wrong_password =>
-            if p = tolerance_wrong_password then
+            if pass = tolerance_wrong_password then
               raise;
-            end if; -- alarm!
-            if get_new_password /= null then
+            elsif get_new_password /= null then
               get_new_password( password ); -- ask for a new one
             end if;
         end;
@@ -1924,13 +1928,10 @@ package body UnZip.Decompress is
     -- UnZip correct type
     begin
       case format is
-        when store    => Copy_stored;
-        when shrink   => Unshrink;
-        when reduce_1 => Unreduce(1);
-        when reduce_2 => Unreduce(2);
-        when reduce_3 => Unreduce(3);
-        when reduce_4 => Unreduce(4);
-        when implode  =>
+        when store   => Copy_stored;
+        when shrink  => Unshrink;
+        when reduce  => Unreduce(1 + reduce'Pos(format) - reduce'Pos(reduce_1));
+        when implode =>
           UnZ_Meth.Explode( explode_literal_tree, explode_slide_8KB );
         when deflate | deflate_e =>
           UnZ_Meth.deflate_e_mode:= format = deflate_e;
@@ -1974,12 +1975,11 @@ package body UnZip.Decompress is
         Ada.Streams.Stream_IO.Close( UnZ_IO.out_bin_file );
       when write_to_text_file =>
         Ada.Text_IO.Close( UnZ_IO.out_txt_file );
-      when others =>
-        null;
+      when write_to_memory | write_to_stream | just_test =>
+        null; -- Nothing to close!
     end case;
 
   exception
-
     when others => -- close the file in case of an error, if not yet closed
       case mode is -- or deleted
         when write_to_binary_file =>
@@ -1990,11 +1990,10 @@ package body UnZip.Decompress is
           if Ada.Text_IO.Is_Open( UnZ_IO.out_txt_file ) then
             Ada.Text_IO.Close( UnZ_IO.out_txt_file );
           end if;
-        when others =>
-          null;
+        when write_to_memory | write_to_stream | just_test =>
+          null; -- Nothing to close!
       end case;
       raise;
-
   end Decompress_data;
 
 end UnZip.Decompress;

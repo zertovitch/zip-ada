@@ -118,6 +118,8 @@ package Zip is
      unknown
    );
 
+  subtype reduce is PKZip_method range reduce_1..reduce_4;
+
   -- Technical: translates the method code as set in zip archives
   function Method_from_code(x: Interfaces.Unsigned_16) return PKZip_method;
   function Method_from_code(x: Natural) return PKZip_method;
@@ -345,8 +347,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "46 preview 3";
-  reference : constant String:= "11-May-2013";
+  version   : constant String:= "46 preview 4";
+  reference : constant String:= "23-May-2013";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

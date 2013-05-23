@@ -24,7 +24,8 @@ private package UnZip.Decompress is
     format                     : PKZip_method;
     mode                       : Write_mode;
     output_file_name           : String; -- relevant only if mode = write_to_file
-    output_memory_access       : out p_Stream_Element_Array; --   = write_to_memory
+    output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory
+    output_stream_access       : p_Stream;                   -- \ = write_to_stream
     feedback                   : Zip.Feedback_proc;
     explode_literal_tree       : Boolean; -- relevant for the "explode" format
     explode_slide_8KB          : Boolean; -- relevant for the "explode" format

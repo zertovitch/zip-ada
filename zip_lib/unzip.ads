@@ -308,11 +308,14 @@ private
     ( write_to_binary_file,
       write_to_text_file,
       write_to_memory,
+      write_to_stream,
       just_test
     );
 
   subtype Write_to_file is Write_mode
     range write_to_binary_file..write_to_text_file;
+
+  type p_Stream is access all Ada.Streams.Root_Stream_Type'Class;
 
   type p_Stream_Element_Array is access all Ada.Streams.Stream_Element_Array;
 

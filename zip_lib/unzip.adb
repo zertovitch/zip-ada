@@ -210,7 +210,8 @@ package body UnZip is
 
     actual_feedback: Zip.Feedback_proc;
 
-    dummy: p_Stream_Element_Array;
+    dummy_memory: p_Stream_Element_Array;
+    dummy_stream: constant p_Stream:= null;
     encrypted, dummy_bool: Boolean;
 
   begin
@@ -336,7 +337,8 @@ package body UnZip is
         format                     => method,
         mode                       => actual_mode,
         output_file_name           => To_String(the_output_name),
-        output_memory_access       => dummy,
+        output_memory_access       => dummy_memory,
+        output_stream_access       => dummy_stream,
         feedback                   => actual_feedback,
         explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
         explode_slide_8KB          => (local_header.bit_flag and 2) /= 0,
