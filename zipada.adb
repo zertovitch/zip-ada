@@ -15,8 +15,6 @@ with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Directories;                   use Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
-with Ada.Streams;                       use Ada.Streams;
-with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 

@@ -95,7 +95,7 @@ procedure ReZip is
     header       : out Zip.Headers.Local_File_Header
   )
   is
-    file_index     : Ada.Streams.Stream_IO.Positive_Count;
+    file_index     : Zip_Streams.ZS_Index_Type;
     comp_size      : Zip.File_size_type;
     uncomp_size    : Zip.File_size_type;
     file_out       : Ada.Streams.Stream_IO.File_Type;
@@ -112,16 +112,17 @@ procedure ReZip is
       uncomp_size    => uncomp_size,
       crc_32         => dummy_crc
     );
-    Set_Index(input, Positive(file_index));
+    Set_Index(input, file_index);
     Zip.Headers.Read_and_check(input, header);
     -- Skip name and extra field
     Set_Index(input,
       Index(input) +
-        Positive (header.extra_field_length +
-        header.filename_length)
+        Zip_Streams.ZS_Size_Type
+         (header.extra_field_length +
+          header.filename_length)
     );
     -- * Get the data, compressed
-    Create(file_out, Out_File, rip_rename);
+    Ada.Streams.Stream_IO.Create(file_out, Out_File, rip_rename);
     Zip.Copy_Chunk(input, Stream(file_out).all, Integer(comp_size));
     Close(file_out);
     if unzip_rename /= "" then

@@ -580,7 +580,7 @@ is
   procedure Build_stats is new Encode(phase => stats);
   procedure Compress    is new Encode(phase => compress);
 
-  mem: Integer;
+  mem: ZS_Index_Type;
 
 begin
   OutBufIdx := 1;

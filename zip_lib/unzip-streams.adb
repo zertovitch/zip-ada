@@ -24,7 +24,7 @@ package body UnZip.Streams is
 
   procedure UnZipFile (
     zip_stream      : in out Zip_Streams.Root_Zipstream_Type'Class;
-    header_index    : in out Ada.Streams.Stream_IO.Positive_Count;
+    header_index    : in out Zip_Streams.ZS_Index_Type;
     mem_ptr         :    out p_Stream_Element_Array;
     out_stream_ptr  :        p_Stream;
     -- if not null, extract to out_stream_ptr, not to memory
@@ -34,16 +34,16 @@ package body UnZip.Streams is
     cat_uncomp_size : in     File_size_type
   )
   is
-    work_index: Ada.Streams.Stream_IO.Positive_Count:= header_index;
+    work_index: Zip_Streams.ZS_Index_Type:= header_index;
     local_header: Zip.Headers.Local_File_Header;
     data_descriptor_after_data: Boolean;
     encrypted: Boolean;
     method: PKZip_method;
-    use Ada.Streams.Stream_IO, Zip, Zip_Streams;
+    use Zip, Zip_Streams;
     mode: Write_mode;
   begin
     begin
-      Zip_Streams.Set_Index(zip_stream, Positive(header_index));
+      Zip_Streams.Set_Index(zip_stream, header_index);
       Zip.Headers.Read_and_check(zip_stream, local_header);
     exception
       when Zip.Headers.bad_local_header =>
@@ -60,7 +60,8 @@ package body UnZip.Streams is
     -- calculate offset of data
 
     work_index :=
-      work_index + Ada.Streams.Stream_IO.Count(
+      work_index +
+      Zip_Streams.ZS_Size_Type(
               local_header.filename_length    +
               local_header.extra_field_length +
               Zip.Headers.local_header_length
@@ -83,7 +84,7 @@ package body UnZip.Streams is
     encrypted:= (local_header.bit_flag and 1) /= 0;
 
     begin
-      Zip_Streams.Set_Index ( zip_stream, Positive(work_index) ); -- eventually skips the file name
+      Zip_Streams.Set_Index ( zip_stream, work_index ); -- eventually skips the file name
     exception
       when others => raise Read_Error;
     end;
@@ -113,23 +114,21 @@ package body UnZip.Streams is
 
     -- Set the offset on the next zipped file
     header_index:= header_index +
-      Count(
-        File_size_type(
+      Zip_Streams.ZS_Size_Type(
               local_header.filename_length    +
               local_header.extra_field_length +
               Zip.Headers.local_header_length
-        ) +
+      ) +
+      Zip_Streams.ZS_Size_Type(
         local_header.dd.compressed_size
       );
 
     if data_descriptor_after_data then
-      header_index:= header_index + Count(Zip.Headers.data_descriptor_length);
+      header_index:= header_index +
+        Zip_Streams.ZS_Size_Type(Zip.Headers.data_descriptor_length);
     end if;
 
   end UnZipFile;
-
-
-  use Ada.Streams.Stream_IO;
 
   procedure S_Extract( from           : Zip.Zip_info;
                        zip_stream     : in out Zip_Streams.Root_Zipstream_Type'Class;
@@ -139,7 +138,7 @@ package body UnZip.Streams is
                        out_stream_ptr : p_Stream
                       )
   is
-    header_index : Positive_Count;
+    header_index : Zip_Streams.ZS_Index_Type;
     comp_size    : File_size_type;
     uncomp_size  : File_size_type;
     crc_32: Interfaces.Unsigned_32;
@@ -217,7 +216,7 @@ package body UnZip.Streams is
     if use_a_file then
       input_stream:= zip_stream'Unchecked_Access;
       Set_Name (zip_stream , Zip.Zip_name(Archive_Info));
-      Open (zip_stream, Ada.Streams.Stream_IO.In_File);
+      Open (zip_stream, In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_Stream(Archive_Info);
     end if;
@@ -366,7 +365,7 @@ package body UnZip.Streams is
     if use_a_file then
       input_stream:= zip_stream'Unchecked_Access;
       Set_Name (zip_stream , Zip.Zip_name(Archive_Info));
-      Open (zip_stream, Ada.Streams.Stream_IO.In_File);
+      Open (zip_stream, In_File);
     else -- use the given stream
       input_stream:= Zip.Zip_Stream(Archive_Info);
     end if;

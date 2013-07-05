@@ -155,7 +155,7 @@ package body Zip is
     procedure Insert(
       dico_name        : String; -- UPPER if case-insensitive search
       file_name        : String;
-      file_index       : Ada.Streams.Stream_IO.Positive_Count;
+      file_index       : Zip_Streams.ZS_Index_Type;
       comp_size,
       uncomp_size      : File_size_type;
       crc_32           : Unsigned_32;
@@ -211,7 +211,6 @@ package body Zip is
     p      : p_Dir_node:= null;
     zip_info_already_loaded: exception;
     main_comment: p_String;
-    use Ada.Streams, Ada.Streams.Stream_IO;
   begin -- Load Zip_info
     if info.loaded then
       raise zip_info_already_loaded;
@@ -224,7 +223,7 @@ package body Zip is
     -- Process central directory:
     Zip_Streams.Set_Index(
       from,
-      Positive(
+      Zip_Streams.ZS_Index_Type(
         1 +
         the_end.offset_shifting + the_end.central_dir_offset
       )
@@ -234,21 +233,22 @@ package body Zip is
       Zip.Headers.Read_and_check(from, header );
       declare
         this_name: String(1..Natural(header.short_info.filename_length));
+        use Zip_Streams;
       begin
         String'Read(from'Access, this_name);
         -- Skip extra field and entry comment.
-        Zip_Streams.Set_Index(
-          from, Positive (
-          Ada.Streams.Stream_IO.Count(Zip_Streams.Index( from )) +
-          Ada.Streams.Stream_IO.Count(
+        Set_Index(
+          from,
+          Index( from ) +
+          ZS_Size_Type (
             header.short_info.extra_field_length +
             header.comment_length
-          ))
+          )
         );
         -- Now the whole i_th central directory entry is behind
         Insert( dico_name   => Normalize(this_name, case_sensitive),
                 file_name   => Normalize(this_name, True),
-                file_index  => Ada.Streams.Stream_IO.Count
+                file_index  => Zip_Streams.ZS_Index_Type
                  (1 + header.local_header_offset + the_end.offset_shifting),
                 comp_size   => header.short_info.dd.compressed_size,
                 uncomp_size => header.short_info.dd.uncompressed_size,
@@ -298,7 +298,7 @@ package body Zip is
   begin
     Set_Name (MyStream, from);
     begin
-      Open (MyStream, Ada.Streams.Stream_IO.In_File);
+      Open (MyStream, In_File);
     exception
       when others =>
         Ada.Exceptions.Raise_Exception
@@ -488,28 +488,32 @@ package body Zip is
 
   procedure Find_first_offset(
     file           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    file_index     :    out Positive
+    file_index     :    out Zip_Streams.ZS_Index_Type
   )
   is
     the_end   : Zip.Headers.End_of_Central_Dir;
     header    : Zip.Headers.Central_File_Header;
     min_offset: File_size_type;
-    use Ada.Streams.Stream_IO, Zip_Streams;
+    use Zip_Streams;
   begin
     Zip.Headers.Load(file, the_end);
     Set_Index(
-      file, Positive (1 + the_end.offset_shifting + the_end.central_dir_offset)
+      file,
+      ZS_Index_Type (1 + the_end.offset_shifting + the_end.central_dir_offset)
     );
 
     min_offset:= the_end.central_dir_offset; -- will be lowered
 
     for i in 1..the_end.total_entries loop
       Zip.Headers.Read_and_check(file, header );
-      Set_Index( file, Index( file ) +
-             Positive
-               ( header.short_info.filename_length +
+      Set_Index( file,
+        Index( file ) +
+        ZS_Size_Type
+             ( header.short_info.filename_length +
                header.short_info.extra_field_length +
-               header.comment_length )      );
+               header.comment_length
+              )
+      );
       -- Now the whole i_th central directory entry is behind
 
       if header.local_header_offset < min_offset then
@@ -517,7 +521,7 @@ package body Zip is
       end if;
     end loop;
 
-    file_index:= Positive (1 + min_offset + the_end.offset_shifting);
+    file_index:= Zip_Streams.ZS_Index_Type (1 + min_offset + the_end.offset_shifting);
 
   end Find_first_offset;
 
@@ -528,7 +532,7 @@ package body Zip is
     file           : in out Zip_Streams.Root_Zipstream_Type'Class;
     name           : in     String;
     case_sensitive : in     Boolean;
-    file_index     :    out Positive;
+    file_index     :    out Zip_Streams.ZS_Index_Type;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type;
     crc_32         :    out Interfaces.Unsigned_32
@@ -536,25 +540,28 @@ package body Zip is
   is
     the_end: Zip.Headers.End_of_Central_Dir;
     header : Zip.Headers.Central_File_Header;
-    use Ada.Streams, Ada.Streams.Stream_IO, Zip_Streams;
+    use Zip_Streams;
   begin
     Zip.Headers.Load(file, the_end);
-    Set_Index(file, Positive(1 + the_end.central_dir_offset + the_end.offset_shifting));
+    Set_Index(file, ZS_Index_Type(1 + the_end.central_dir_offset + the_end.offset_shifting));
     for i in 1..the_end.total_entries loop
       Zip.Headers.Read_and_check(file, header);
       declare
         this_name: String(1..Natural(header.short_info.filename_length));
       begin
         String'Read(file'Access, this_name);
-        Set_Index( file, Index( file ) +
-                Natural (Ada.Streams.Stream_IO.Count
-                  (header.short_info.extra_field_length +
-                          header.comment_length )));
+        Set_Index( file,
+          Index( file ) +
+          ZS_Size_Type(
+                  header.short_info.extra_field_length +
+                  header.comment_length
+          )
+        );
         -- Now the whole i_th central directory entry is behind
         if Normalize(this_name,case_sensitive) =
            Normalize(name,case_sensitive) then
           -- Name found in central directory !
-          file_index := Positive (1 + header.local_header_offset + the_end.offset_shifting);
+          file_index := Zip_Streams.ZS_Index_Type (1 + header.local_header_offset + the_end.offset_shifting);
           comp_size  := File_size_type(header.short_info.dd.compressed_size);
           uncomp_size:= File_size_type(header.short_info.dd.uncompressed_size);
           crc_32     := header.short_info.dd.crc_32;
@@ -571,7 +578,7 @@ package body Zip is
     info           : in     Zip_info;
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
-    file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
+    file_index     :    out Zip_Streams.ZS_Index_Type;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type;
     crc_32         :    out Interfaces.Unsigned_32
@@ -689,7 +696,7 @@ package body Zip is
     uncomp_size    :    out File_size_type
   )
   is
-    dummy_file_index: Ada.Streams.Stream_IO.Positive_Count;
+    dummy_file_index: Zip_Streams.ZS_Index_Type;
     dummy_name_encoding: Zip_name_encoding;
     dummy_crc_32: Interfaces.Unsigned_32;
   begin
@@ -749,7 +756,7 @@ package body Zip is
     actually_read:    out Natural
   )
   is
-    use Ada.Streams, Ada.Streams.Stream_IO, Zip_Streams;
+    use Ada.Streams, Zip_Streams;
     SE_Buffer   : Stream_Element_Array (1 .. buffer'Length);
     for SE_Buffer'Address use buffer'Address;
     pragma Import (Ada, SE_Buffer);

@@ -47,8 +47,8 @@ package body Zip.Compress is
     use Interfaces;
     counted: File_size_type;
     user_aborting: Boolean;
-    idx_in:  constant Positive:= Index(input);
-    idx_out: constant Positive:= Index(output);
+    idx_in:  constant ZS_Index_Type:= Index(input);
+    idx_out: constant ZS_Index_Type:= Index(output);
     compression_ok: Boolean;
     first_feedback: Boolean:= True;
     --

@@ -146,29 +146,29 @@ package body Zip_Streams is
      end loop;
    end Write;
 
-   procedure Set_Index (S : in out Memory_Zipstream; To : Positive) is
-     I, chunk_size: Integer;
+   procedure Set_Index (S : in out Memory_Zipstream; To : ZS_Index_Type) is
+     I, chunk_size: ZS_Size_Type;
    begin
-     if To > Length(S.Unb) then
+     if To > ZS_Size_Type(Length(S.Unb)) then
        -- ...we are off the string's bounds, we need to extend it.
-       I:= Length(S.Unb) + 1;
+       I:= ZS_Size_Type(Length(S.Unb)) + 1;
        while I <= To loop
-         chunk_size:= Integer'Min(To-I+1, max_chunk_size);
-         Append(S.Unb, (1..chunk_size => ASCII.NUL));
+         chunk_size:= ZS_Size_Type'Min(To-I+1, ZS_Size_Type(max_chunk_size));
+         Append(S.Unb, (1..Integer(chunk_size) => ASCII.NUL));
          I:= I + chunk_size;
        end loop;
      end if;
-     S.Loc := To;
+     S.Loc := Integer(To);
    end Set_Index;
 
-   function Size (S : in Memory_Zipstream) return Integer is
+   function Size (S : in Memory_Zipstream) return ZS_Size_Type is
    begin
-      return Length(S.Unb);
+      return ZS_Size_Type(Length(S.Unb));
    end Size;
 
-   function Index (S : in Memory_Zipstream) return Integer is
+   function Index (S : in Memory_Zipstream) return ZS_Index_Type is
    begin
-      return S.Loc;
+      return ZS_Index_Type(S.Loc);
    end Index;
 
    function End_Of_Stream (S : in Memory_Zipstream) return Boolean is
@@ -185,14 +185,22 @@ package body Zip_Streams is
    --------------------------------------------
    procedure Open (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
-      Ada.Streams.Stream_IO.Open(Str.File, Mode, To_String(Str.Name),
-                                 Form => To_String (Form_For_IO_Open_and_Create));
+      Ada.Streams.Stream_IO.Open(
+        Str.File,
+        Ada.Streams.Stream_IO.File_Mode(Mode),
+        To_String(Str.Name),
+        Form => To_String (Form_For_IO_Open_and_Create)
+      );
    end Open;
 
    procedure Create (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
-      Ada.Streams.Stream_IO.Create(Str.File, Mode, To_String (Str.Name),
-                                 Form => To_String (Form_For_IO_Open_and_Create));
+      Ada.Streams.Stream_IO.Create(
+        Str.File,
+        Ada.Streams.Stream_IO.File_Mode(Mode),
+        To_String (Str.Name),
+        Form => To_String (Form_For_IO_Open_and_Create)
+      );
    end Create;
 
    procedure Close (Str : in out File_Zipstream) is
@@ -221,19 +229,22 @@ package body Zip_Streams is
       Ada.Streams.Stream_IO.Write( Stream.File, Item);
    end Write;
 
-   procedure Set_Index (S : in out File_Zipstream; To : Positive) is
+   procedure Set_Index (S : in out File_Zipstream; To : ZS_Index_Type) is
    begin
-      Ada.Streams.Stream_IO.Set_Index ( S.File, Positive_Count(To));
+      Ada.Streams.Stream_IO.Set_Index (
+        S.File,
+        Ada.Streams.Stream_IO.Positive_Count(To)
+      );
    end Set_Index;
 
-   function Size (S : in File_Zipstream) return Integer is
+   function Size (S : in File_Zipstream) return ZS_Size_Type is
    begin
-      return Integer (Ada.Streams.Stream_IO.Size(S.File));
+      return ZS_Size_Type (Ada.Streams.Stream_IO.Size(S.File));
    end Size;
 
-   function Index (S : in File_Zipstream) return Integer is
+   function Index (S : in File_Zipstream) return ZS_Index_Type is
    begin
-      return Integer (Ada.Streams.Stream_IO.Index(S.File));
+      return ZS_Index_Type (Ada.Streams.Stream_IO.Index(S.File));
    end Index;
 
    function End_Of_Stream (S : in File_Zipstream) return Boolean is

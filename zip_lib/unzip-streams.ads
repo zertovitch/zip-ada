@@ -12,7 +12,7 @@
 
 with Zip, Zip_Streams;
 
-with Ada.Streams.Stream_IO, Ada.IO_Exceptions;
+with Ada.Streams, Ada.IO_Exceptions;
 
 package UnZip.Streams is
 
@@ -63,7 +63,7 @@ package UnZip.Streams is
    function Is_Open     (File : in Zipped_File_Type) return Boolean;
    function End_Of_File (File : in Zipped_File_Type) return Boolean;
 
-   subtype Stream_Access is Ada.Streams.Stream_IO.Stream_Access;
+   type Stream_Access is access all Ada.Streams.Root_Stream_Type'Class;
 
    ------------------------------------------------------------------------
    -- The function Stream gives access to the uncompressed data as input --

@@ -15,7 +15,6 @@ with Zip.Compress;
 with Zip.Create;   use Zip.Create;
 with RW_File; use RW_File;
 
-with Ada.Streams.Stream_IO; use Ada.Streams.Stream_IO;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.IO_Exceptions, Ada.Text_IO;
 

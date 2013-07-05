@@ -1,4 +1,3 @@
-with Ada.Streams; use Ada.Streams;
 package body Zip.Headers is
 
   -----------------------------------------------------------
@@ -217,8 +216,7 @@ package body Zip.Headers is
     the_end :    out End_of_Central_Dir
   )
   is
-    min_end_start: Ada.Streams.Stream_IO.Count;
-    use Ada.Streams.Stream_IO;
+    min_end_start: ZS_Size_Type;
     max_comment: constant:= 65_535;
     -- In appnote.txt :
     -- .ZIP file comment length        2 bytes
@@ -227,19 +225,21 @@ package body Zip.Headers is
     if Size(stream) <= max_comment then
       min_end_start:= 1;
     else
-      min_end_start:= Ada.Streams.Stream_IO.Count(Size(stream)) - max_comment;
+      min_end_start:= Size(stream) - max_comment;
     end if;
-    Zip_Streams.Set_Index(stream, Positive(min_end_start));
+    Set_Index(stream, ZS_Index_Type(min_end_start));
     declare
       -- We copy a large chunk of the zip stream's tail into a buffer.
-      large_buffer: Byte_Buffer(Integer(min_end_start) .. Natural(Size(stream)));
+      large_buffer: Byte_Buffer(0 .. Natural(Size(stream) - min_end_start));
+      ilb: Integer;
     begin
       BlockRead(stream, large_buffer);
-      for i in reverse Integer(min_end_start) .. Size(stream) - 21 loop
+      for i in reverse min_end_start .. Size(stream) - 21 loop
         -- Yes, we must _search_ for the header...
         -- because PKWARE put a variable-size comment _after_ it 8-(
-        if PK_signature(large_buffer(i .. i + 3), 5) then
-          Copy_and_check( large_buffer(i .. i + 21), the_end );
+        ilb:= Integer(i - min_end_start);
+        if PK_signature(large_buffer(ilb .. ilb + 3), 5) then
+          Copy_and_check( large_buffer(ilb .. ilb + 21), the_end );
           -- At this point, the buffer was successfully read, the_end is
           -- is set with its standard contents.
           the_end.offset_shifting:=
@@ -254,7 +254,7 @@ package body Zip.Headers is
             the_end.central_dir_offset +
             the_end.central_dir_size
           );
-          Zip_Streams.Set_Index(stream, Positive(i + 22));
+          Set_Index(stream, i + 22);
           return; -- the_end found and filled -> exit
         end if;
       end loop;

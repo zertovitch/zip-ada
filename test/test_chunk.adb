@@ -3,12 +3,13 @@
 -- reading arrays beyond the file's end
 
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
+with Ada.IO_Exceptions;
 with Ada.Text_IO;
 with UnZip.Streams;                     use UnZip.Streams;
 
 procedure Test_Chunk is
 
-  procedure Consume_Chunks(s: Ada.Streams.Stream_IO.Stream_Access) is
+  procedure Consume_Chunks(s: UnZip.Streams.Stream_Access) is
     chunk: String(1..950); -- Length(f2) = 961 = 31**2
   begin
     for i in 1..1000 loop
@@ -16,14 +17,14 @@ procedure Test_Chunk is
       Ada.Text_IO.Put('[' & chunk & ']');
     end loop;
   exception
-    when Ada.Streams.Stream_IO.End_Error =>
+    when Ada.IO_Exceptions.End_Error =>
       Ada.Text_IO.Put("[=== End_Error (RM 13.13.2(37) T'Read) ===]");
     when Constraint_Error =>
       Ada.Text_IO.Put("[=== Constraint_Error (OA 7.2.2 on T'Read) ===]");
   end Consume_Chunks;
 
   f1: Zipped_File_Type;
-  f2: File_Type;
+  f2: Ada.Streams.Stream_IO.File_Type;
   a: constant String:= "Test_UnZ_Streams.zip";
   n: constant String:= "Test_UnZ_Streams.adb";
 
@@ -42,6 +43,6 @@ begin
         Mode => In_File,
         Name => n
   );
-  Consume_Chunks(Stream(f2));
+  Consume_Chunks(UnZip.Streams.Stream_Access(Stream(f2)));
   Close(f2);
 end Test_Chunk;

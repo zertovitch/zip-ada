@@ -1867,7 +1867,7 @@ package body UnZip.Decompress is
         raise Zip.Zip_file_Error;
     end Process_descriptor;
 
-    work_index: Ada.Streams.Stream_IO.Positive_Count;
+    work_index: Zip_Streams.ZS_Index_Type;
     use Zip, UnZ_Meth;
 
   begin -- Decompress_Data
@@ -1901,7 +1901,7 @@ package body UnZip.Decompress is
     UnZ_IO.Init_Buffers;
     UnZ_IO.Decryption.Set_mode( encrypted );
     if encrypted then
-      work_index := Ada.Streams.Stream_IO.Positive_Count (Zip_Streams.Index(zip_file));
+      work_index := Zip_Streams.Index(zip_file);
       password_passes: for pass in 1..tolerance_wrong_password loop
         begin
           UnZ_IO.Decryption.Init( To_String(password), hint.dd.crc_32 );
@@ -1916,7 +1916,7 @@ package body UnZip.Decompress is
         end;
         -- Go back to data beginning:
         begin
-          Zip_Streams.Set_Index ( zip_file, Positive(work_index) );
+          Zip_Streams.Set_Index ( zip_file, work_index );
         exception
           when others =>
             raise Read_Error;

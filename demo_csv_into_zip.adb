@@ -12,7 +12,6 @@ with Zip.Create;                        use Zip.Create;
 
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Text_IO;
---with Ada.Streams.Stream_IO;
 
 procedure Demo_csv_into_zip is
 

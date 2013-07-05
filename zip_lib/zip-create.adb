@@ -20,7 +20,7 @@ package body Zip.Create is
       -- If we have a real file (File_Zipstream or descendent), create the file too:
       --
       if Z_Stream.all in File_Zipstream'Class then
-        Zip_Streams.Create (File_Zipstream(Z_Stream.all), Ada.Streams.Stream_IO.Out_File);
+        Zip_Streams.Create (File_Zipstream(Z_Stream.all), Zip_Streams.Out_File);
       end if;
       Info.Creation_time:= Convert(Ada.Calendar.Clock);
    end Create;
@@ -108,7 +108,7 @@ package body Zip.Create is
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural)
    is
-      mem1, mem2 : Integer := 1;
+      mem1, mem2 : ZS_Index_Type := 1;
       entry_name : String:= Get_Name (Stream);
       Last: Positive;
    begin
@@ -193,7 +193,7 @@ package body Zip.Create is
    begin
      -- Read the file
      Set_Name(temp_zip_stream, Name);
-     Open(temp_zip_stream, Ada.Streams.Stream_IO.In_File);
+     Open(temp_zip_stream, Zip_Streams.In_File);
      -- Eventually we set a new name for archiving:
      if Name_in_archive /= "" then
         Set_Name(temp_zip_stream, Name_in_archive);

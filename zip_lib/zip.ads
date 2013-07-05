@@ -194,7 +194,7 @@ package Zip is
 
   procedure Find_first_offset(
     file           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    file_index     :    out Positive );
+    file_index     :    out Zip_Streams.ZS_Index_Type );
 
   -- Find offset of a certain compressed file
   -- in a Zip file (file opened and kept open)
@@ -203,7 +203,7 @@ package Zip is
     file           : in out Zip_Streams.Root_Zipstream_Type'Class;
     name           : in     String;
     case_sensitive : in     Boolean;
-    file_index     :    out Positive;
+    file_index     :    out Zip_Streams.ZS_Index_Type;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type;
     crc_32         :    out Interfaces.Unsigned_32
@@ -215,7 +215,7 @@ package Zip is
     info           : in     Zip_info;
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
-    file_index     :    out Ada.Streams.Stream_IO.Positive_Count;
+    file_index     :    out Zip_Streams.ZS_Index_Type;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type;
     crc_32         :    out Interfaces.Unsigned_32
@@ -347,8 +347,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "46 preview 4";
-  reference : constant String:= "23-May-2013";
+  version   : constant String:= "46 preview 5";
+  reference : constant String:= "05-Jul-2013";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
@@ -372,7 +372,7 @@ private
     left, right      : p_Dir_node;
     dico_name        : String(1..name_len); -- UPPER if case-insensitive search
     file_name        : String(1..name_len);
-    file_index       : Ada.Streams.Stream_IO.Positive_Count;
+    file_index       : Zip_Streams.ZS_Index_Type;
     comp_size        : File_size_type;
     uncomp_size      : File_size_type;
     crc_32           : Interfaces.Unsigned_32;
