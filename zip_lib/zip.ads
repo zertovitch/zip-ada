@@ -165,7 +165,7 @@ package Zip is
   generic
     with procedure Action(
       name             : String; -- 'name' is compressed entry's name
-      file_index       : Positive;
+      file_index       : Zip_Streams.ZS_Index_Type;
       comp_size        : File_size_type;
       uncomp_size      : File_size_type;
       crc_32           : Interfaces.Unsigned_32;
@@ -347,8 +347,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "46 preview 5";
-  reference : constant String:= "05-Jul-2013";
+  version   : constant String:= "46 preview, rev. 175";
+  reference : constant String:= "09-Jul-2013";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

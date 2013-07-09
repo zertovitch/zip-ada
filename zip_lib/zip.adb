@@ -423,7 +423,7 @@ package body Zip is
         Traverse(p.left);
         Action(
           p.file_name,
-          Positive(p.file_index),
+          p.file_index,
           p.comp_size,
           p.uncomp_size,
           p.crc_32,

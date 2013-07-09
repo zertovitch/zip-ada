@@ -3,6 +3,7 @@
 --
 -- The Zip_Streams package defines an abstract stream
 -- type, Root_Zipstream_Type, with name, time and an index for random access.
+-- Zip_Streams can be used as such, independently of the Zip-Ada library.
 -- In addition, this package provides two ready-to-use derivations:
 --
 --   - Memory_Zipstream, for using in-memory streaming
@@ -55,10 +56,12 @@ package Zip_Streams is
    type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with private;
    type Zipstream_Class_Access is access all Root_Zipstream_Type'Class;
 
-   type ZS_Size_Type is mod 2**System.Word_Size;
+   min_bits: constant:= Integer'Max(32, System.Word_Size);
    -- 13.3(8): A word is the largest amount of storage that can be
    -- conveniently and efficiently manipulated by the hardware,
    -- given the implementation's run-time model.
+
+   type ZS_Size_Type is mod 2**min_bits;
 
    subtype ZS_Index_Type is ZS_Size_Type range 1..ZS_Size_Type'Last;
 
