@@ -18,9 +18,9 @@ project ZipAda is
      "test_stream_performance.adb",
      "test_extract.adb", 
      "test_extract_tb.ads",
-     "za_gnat.ads", 
+     "za_gnat.ads" --, 
      -- "demo_csv_gnat.ads",
-     "unzipada.adb", "uza_gnat.ads"
+     -- "unzipada.adb", "uza_gnat.ads"
    );
 
    case Build_Mode is
