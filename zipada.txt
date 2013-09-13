@@ -109,10 +109,10 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '46', xx-yyy-2013:
-  - UnZip.Streams decompresses to input and (*new*) output streams
+* Changes in '46', 14-Sep-2013:
+  - UnZip.Streams decompresses to input and (*new*) to output streams
   - Removed usage of signed integers for stream sizes, increasing
-      limits from 2 to 4 GB on 32-bit targets
+      limits from 2 GB to 4 GB on 32-bit targets
   - Added Zip.Traverse_Unicode
   - UnZip: does not attempt to create empty pathes or drives
 
@@ -440,33 +440,40 @@ Portability is unconditional and unrestricted!
 If you still have doubts, here is a list of OS/CPU/Compiler
 combinations where Zip-Ada was reported to be in use:
 
-OS				CPU			Compiler
+OS		    		        CPU			        Compiler
 ----------------------------------------------------------------------------
 
-MS Windows 95,98,NT,2K,XP	Intel x86 (32 bit)	GNU - GNAT
-MS Windows x64			Intel x64 (64 bit)
-Linux				Intel x86 (32 bit)
-Mac OS X			PowerPC (64 bit)
-Mac OS X			Intel x64 (64 bit)
-Solaris				SPARC (32 or 64 bit)
-Solaris				Intel x64 (64 bit)
+OpenVMS                     Itanium (64 bit)   	GNU - GNAT
+AIX                         Power7 (64 bit)
+MS Windows 95,98;
+           NT,2K,XP,7   	Intel x86 (32 bit)
+MS Windows x64			    Intel x64 (64 bit)
+Linux			        	Intel x86 (32 bit)
+Linux on Sony PS3           Cell (64 bit)
+Linux on Raspberry Pi       ARM
+Mac OS X			        PowerPC (64 bit)
+Mac OS X    			    Intel x64 (64 bit)
+Solaris	    		    	SPARC (32 or 64 bit)
+Solaris		        		Intel x64 (64 bit)
 MS-DOS, DR-DOS (Novell)		Intel x86 (16/32 bit)
-OpenBSD				(one of several)
-FreeBSD				Intel x86 (32 bit)
-FreeBSD				Intel x64 (64 bit)
-Android 2.3+		ARM
+OpenBSD     				(one of several)
+FreeBSD		        		Intel x86 (32 bit)
+FreeBSD				        Intel x64 (64 bit)
+Android 2.3+		        ARM
 
-MS Windows 95,98,NT,2K,XP	Intel x86 (32 bit)	Aonix - ObjectAda
+MS Windows 95,98;
+           NT,2K,XP         Intel x86 (32 bit)	Aonix - ObjectAda
 
-MS Windows 95,98,NT,2K,XP	Intel x86 (32 bit)	RR Software - Janus/Ada
+MS Windows 95,98;
+           NT,2K,XP     	Intel x86 (32 bit)	RR Software - Janus/Ada
 
-MS Windows NT+			Intel x86 (32 bit)	SofCheck - AdaMagic
-MS Windows NT+			Intel x64 (64 bit)
-Linux				Intel x86 (32 bit)
-Mac OS X			PowerPC (64 bit)
-Mac OS X			Intel x64 (64 bit)
-Solaris				SPARC (32 or 64 bit)
-Solaris				Intel x64 (64 bit)
+MS Windows NT+			    Intel x86 (32 bit)	SofCheck - AdaMagic
+MS Windows NT+			    Intel x64 (64 bit)
+Linux   				    Intel x86 (32 bit)
+Mac OS X          			PowerPC (64 bit)
+Mac OS X	        		Intel x64 (64 bit)
+Solaris			        	SPARC (32 or 64 bit)
+Solaris				        Intel x64 (64 bit)
 ----------------------------------------------------------------------------
 
 Enjoy!
