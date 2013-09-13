@@ -109,6 +109,13 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '46', xx-yyy-2013:
+  - UnZip.Streams decompresses to input and (*new*) output streams
+  - Removed usage of signed integers for stream sizes, increasing
+      limits from 2 to 4 GB on 32-bit targets
+  - Added Zip.Traverse_Unicode
+  - UnZip: does not attempt to create empty pathes or drives
+
 * Changes in '45', 22-Dec-2012:
   - Decryption's password check also working for archives encrypted
       by Info-Zip software.
@@ -123,11 +130,11 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
   -!- Removed case_sensitive as a parameter in Zip.Exists, Zip.Find_Offset,
       Zip.Get_Sizes, and UnZip.Streams.Open, versions with Zip_Info profiles.
       The Zip_info objects now keep this information in a field after Load.
-      Rationale: case-sensitivity mode for search make only sense when it
+      Rationale: case-sensitivity mode for search makes only sense when it
       matches the mode used for building the dictionary.
-  - Added User_code to Zip_info entries. Can be set with the Set_user_code
-      and User_code subprograms, or via the Action procedure for the generic
-      Traverse_Verbose procedure.
+  - Added User_code to Zip_info entries. Can be set and retrieved with the
+      Set_user_code and User_code subprograms, or via the Action procedure
+      for the generic Traverse_Verbose procedure.
   -!- Improved (if not completed) Unicode support (UTF-8); clearer
       informations about encoding.
 
