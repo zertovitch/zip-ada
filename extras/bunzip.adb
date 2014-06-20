@@ -1,3 +1,5 @@
+-- Standalone BZip2 decoder (for .bz2 files)
+
 with BZip2;
 
 with Ada.Text_IO;                       use Ada.Text_IO;

@@ -12,13 +12,16 @@ project ZipAda is
    for Main use (
      "zipada.adb", "comp_zip.adb", "find_zip.adb",
      "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb",
-     "demo_unzip.adb", "bunzip", "lz", "test_unz_streams.adb",
+     "demo_unzip.adb", "test_unz_streams.adb",
      "test_chunk.adb", "ziptest.adb", "zip_with_many_files.adb",
      "test_zip_info_timing.adb",
      "test_stream_performance.adb",
      "test_extract.adb", 
      "test_extract_tb.ads",
-     "za_gnat.ads" --, 
+     "za_gnat.ads", 
+     "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
+     "lz",       --  A simple LZ-Huffman coder/decoder
+     "lzma_dec"  --  The LZMA Reference Decoder
      -- "demo_csv_gnat.ads",
      -- "unzipada.adb", "uza_gnat.ads"
    );
