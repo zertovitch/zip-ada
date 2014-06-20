@@ -329,40 +329,48 @@ procedure LZMA_Dec is
 -- **c++**    int Decode(bool unpackSizeDefined, UInt64 unpackSize);
 -- **c++**    
 -- **c++**  private:
--- **c++**  
+
   procedure InitLiterals(o: in out CLzmaDecoder) is
   begin
     o.LitProbs.all:= (others => PROB_INIT_VAL);
   end InitLiterals;
 
--- **c++**    void DecodeLiteral(unsigned state, UInt32 rep0)
--- **c++**    {
--- **c++**      unsigned prevByte = 0;
--- **c++**      if (!OutWindow.IsEmpty())
--- **c++**        prevByte = OutWindow.GetByte(1);
--- **c++**      
--- **c++**      unsigned symbol = 1;
--- **c++**      unsigned litState = ((OutWindow.TotalPos & ((1 << lp) - 1)) << lc) + (prevByte >> (8 - lc));
--- **c++**      CProb *probs = &LitProbs[(UInt32)0x300 * litState];
--- **c++**      
--- **c++**      if (state >= 7)
--- **c++**      {
--- **c++**        unsigned matchByte = OutWindow.GetByte(rep0 + 1);
--- **c++**        do
--- **c++**        {
--- **c++**          unsigned matchBit = (matchByte >> 7) & 1;
--- **c++**          matchByte <<= 1;
+  procedure DecodeLiteral(o: in out CLzmaDecoder; state: Unsigned; rep0: UInt32) is
+    prevByte  : Byte:= 0;
+    symbol    : Unsigned:= 1;
+    litState  : Unsigned;
+    probs_idx : Unsigned;
+    matchByte : Byte;
+    matchBit  : Byte;
+    bit       : Unsigned;
+  begin
+    if not IsEmpty(o.OutWindow) then
+      prevByte := GetByte(o.OutWindow, 1);
+    end if;
+    litState := 
+      Unsigned(Shift_Left(
+        (UInt32(o.OutWindow.TotalPos) and (Shift_Left(UInt32'(1), Natural(o.lp)) - 1)), 
+        Natural(o.lc)
+      )) + 
+      Unsigned(Shift_Right(prevByte, (8 - Natural(o.lc))));
+      probs_idx:= 16#300# * litState;
+      if state >= 7 then
+        matchByte := GetByte(o.OutWindow, rep0 + 1);
+        loop
+          matchBit  := Shift_Right(matchByte, 7) and 1;
+          matchByte := Shift_Left(matchByte, 1);
 -- **c++**          unsigned bit = RangeDec.DecodeBit(&probs[((1 + matchBit) << 8) + symbol]);
 -- **c++**          symbol = (symbol << 1) | bit;
 -- **c++**          if (matchBit != bit)
 -- **c++**            break;
 -- **c++**        }
--- **c++**        while (symbol < 0x100);
--- **c++**      }
+          exit when symbol >= 16#100#;
+        end loop;
+      end if;
 -- **c++**      while (symbol < 0x100)
 -- **c++**        symbol = (symbol << 1) | RangeDec.DecodeBit(&probs[symbol]);
 -- **c++**      OutWindow.PutByte((Byte)(symbol - 0x100));
--- **c++**    }
+  end DecodeLiteral;
 -- **c++**  
 -- **c++**    CBitTreeDecoder<6> PosSlotDecoder[kNumLenToPosStates];
 -- **c++**    CBitTreeDecoder<kNumAlignBits> AlignDecoder;
