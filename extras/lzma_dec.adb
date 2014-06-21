@@ -242,8 +242,6 @@ procedure LZMA_Dec is
     HighCoder : BTD_8.Probs;
   end record;
 
-  use BTD_3, BTD_6, BTD_8, BTD_NAB;
-
   procedure Init(o: in out CLenDecoder) is
   begin
     o.Choice  := PROB_INIT_VAL;
@@ -273,7 +271,7 @@ procedure LZMA_Dec is
     res:= res + 16;
   end Decode;
 
-  type State_range is range 0..kNumStates-1;
+  subtype State_range is Unsigned range 0..kNumStates-1;
   type Transition is array(State_range) of State_range;
 
   UpdateState_Literal  : constant Transition:= (0, 0, 0, 0, 1, 2, 3, 4,  5,  6,   4, 5);
@@ -283,6 +281,10 @@ procedure LZMA_Dec is
 
   LZMA_DIC_MIN : constant := 2 ** 12;
 
+  type Slot_Coder_Probs is array(Unsigned'(0) .. kNumLenToPosStates - 1) of BTD_6.Probs;
+
+  Last_PosDecoders: constant := kNumFullDistances - kEndPosModelIndex;
+
   type CLzmaDecoder is record
     RangeDec             : CRangeDecoder;
     OutWindow            : COutWindow;
@@ -291,6 +293,17 @@ procedure LZMA_Dec is
     dictSize             : UInt32;
     dictSizeInProperties : UInt32;
     LitProbs             : p_CProb_array;
+    PosSlotDecoder       : Slot_Coder_Probs;
+    AlignDecoder         : BTD_NAB.Probs;
+    PosDecoders          : CProb_array(0..Last_PosDecoders);
+    IsMatch              : CProb_array(0..kNumStates * 2 ** kNumPosBitsMax-1);
+    IsRep0Long           : CProb_array(0..kNumStates * 2 ** kNumPosBitsMax-1);
+    IsRep                : CProb_array(0..kNumStates-1);
+    IsRepG0              : CProb_array(0..kNumStates-1);
+    IsRepG1              : CProb_array(0..kNumStates-1);
+    IsRepG2              : CProb_array(0..kNumStates-1);
+    LenDecoder           : CLenDecoder;
+    RepLenDecoder        : CLenDecoder;
   end record;
 
 -- **c++**  class CLzmaDecoder
@@ -311,7 +324,6 @@ procedure LZMA_Dec is
 -- **c++**        dictSize = LZMA_DIC_MIN;
 -- **c++**    }
 
--- **c++**    CLzmaDecoder(): LitProbs(NULL) {}
 -- **c++**    ~CLzmaDecoder() { delete []LitProbs; }
 
   procedure CreateLiterals(o: in out CLzmaDecoder) is
@@ -340,9 +352,9 @@ procedure LZMA_Dec is
     symbol    : Unsigned:= 1;
     litState  : Unsigned;
     probs_idx : Unsigned;
-    matchByte : Byte;
-    matchBit  : Byte;
-    bit       : Unsigned;
+    matchByte : UInt32;
+    matchBit  : UInt32;
+    bit       : UInt32;
   begin
     if not IsEmpty(o.OutWindow) then
       prevByte := GetByte(o.OutWindow, 1);
@@ -355,136 +367,131 @@ procedure LZMA_Dec is
       Unsigned(Shift_Right(prevByte, (8 - Natural(o.lc))));
       probs_idx:= 16#300# * litState;
       if state >= 7 then
-        matchByte := GetByte(o.OutWindow, rep0 + 1);
+        matchByte := UInt32(GetByte(o.OutWindow, rep0 + 1));
         loop
           matchBit  := Shift_Right(matchByte, 7) and 1;
           matchByte := Shift_Left(matchByte, 1);
--- **c++**          unsigned bit = RangeDec.DecodeBit(&probs[((1 + matchBit) << 8) + symbol]);
--- **c++**          symbol = (symbol << 1) | bit;
--- **c++**          if (matchBit != bit)
--- **c++**            break;
--- **c++**        }
+          DecodeBit(o.RangeDec, 
+            o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol), 
+            bit
+          );
+          symbol := Unsigned(Shift_Left(UInt32(symbol), 1) or bit);
+          exit when matchBit /= bit;
           exit when symbol >= 16#100#;
         end loop;
       end if;
--- **c++**      while (symbol < 0x100)
--- **c++**        symbol = (symbol << 1) | RangeDec.DecodeBit(&probs[symbol]);
--- **c++**      OutWindow.PutByte((Byte)(symbol - 0x100));
+      while symbol < 16#100# loop
+        DecodeBit(o.RangeDec, o.LitProbs(probs_idx + symbol), bit);
+        symbol := Unsigned( Shift_Left(UInt32(symbol), 1) or bit);
+        PutByte(o.OutWindow, Byte(symbol - 16#100#));
+      end loop;
   end DecodeLiteral;
--- **c++**  
--- **c++**    CBitTreeDecoder<6> PosSlotDecoder[kNumLenToPosStates];
--- **c++**    CBitTreeDecoder<kNumAlignBits> AlignDecoder;
--- **c++**    CProb PosDecoders[1 + kNumFullDistances - kEndPosModelIndex];
--- **c++**    
--- **c++**    void InitDist()
--- **c++**    {
--- **c++**      for (unsigned i = 0; i < kNumLenToPosStates; i++)
--- **c++**        PosSlotDecoder[i].Init();
--- **c++**      AlignDecoder.Init();
--- **c++**      INIT_PROBS(PosDecoders);
--- **c++**    }
--- **c++**    
--- **c++**    unsigned DecodeDistance(unsigned len)
--- **c++**    {
--- **c++**      unsigned lenState = len;
--- **c++**      if (lenState > kNumLenToPosStates - 1)
--- **c++**        lenState = kNumLenToPosStates - 1;
--- **c++**      
--- **c++**      unsigned posSlot = PosSlotDecoder[lenState].Decode(&RangeDec);
--- **c++**      if (posSlot < 4)
--- **c++**        return posSlot;
--- **c++**      
--- **c++**      unsigned numDirectBits = (unsigned)((posSlot >> 1) - 1);
--- **c++**      UInt32 dist = ((2 | (posSlot & 1)) << numDirectBits);
--- **c++**      if (posSlot < kEndPosModelIndex)
--- **c++**        dist += BitTreeReverseDecode(PosDecoders + dist - posSlot, numDirectBits, &RangeDec);
--- **c++**      else
--- **c++**      {
--- **c++**        dist += RangeDec.DecodeDirectBits(numDirectBits - kNumAlignBits) << kNumAlignBits;
--- **c++**        dist += AlignDecoder.ReverseDecode(&RangeDec);
--- **c++**      }
--- **c++**      return dist;
--- **c++**    }
--- **c++**  
--- **c++**    CProb IsMatch[kNumStates << kNumPosBitsMax];
--- **c++**    CProb IsRep[kNumStates];
--- **c++**    CProb IsRepG0[kNumStates];
--- **c++**    CProb IsRepG1[kNumStates];
--- **c++**    CProb IsRepG2[kNumStates];
--- **c++**    CProb IsRep0Long[kNumStates << kNumPosBitsMax];
--- **c++**  
--- **c++**    CLenDecoder LenDecoder;
--- **c++**    CLenDecoder RepLenDecoder;
--- **c++**  
--- **c++**    void Init()
--- **c++**    {
--- **c++**      InitLiterals();
--- **c++**      InitDist();
--- **c++**  
--- **c++**      INIT_PROBS(IsMatch);
--- **c++**      INIT_PROBS(IsRep);
--- **c++**      INIT_PROBS(IsRepG0);
--- **c++**      INIT_PROBS(IsRepG1);
--- **c++**      INIT_PROBS(IsRepG2);
--- **c++**      INIT_PROBS(IsRep0Long);
--- **c++**  
--- **c++**      LenDecoder.Init();
--- **c++**      RepLenDecoder.Init();
--- **c++**    }
--- **c++**  };
--- **c++**      
--- **c++**  
--- **c++**  #define LZMA_RES_ERROR                   0
--- **c++**  #define LZMA_RES_FINISHED_WITH_MARKER    1
--- **c++**  #define LZMA_RES_FINISHED_WITHOUT_MARKER 2
--- **c++**  
--- **c++**  int CLzmaDecoder::Decode(bool unpackSizeDefined, UInt64 unpackSize)
--- **c++**  {
--- **c++**    Init();
--- **c++**    RangeDec.Init();
--- **c++**  
--- **c++**    UInt32 rep0 = 0, rep1 = 0, rep2 = 0, rep3 = 0;
--- **c++**    unsigned state = 0;
--- **c++**    
--- **c++**    for (;;)
--- **c++**    {
--- **c++**      if (unpackSizeDefined && unpackSize == 0 && !markerIsMandatory)
--- **c++**        if (RangeDec.IsFinishedOK())
--- **c++**          return LZMA_RES_FINISHED_WITHOUT_MARKER;
--- **c++**  
--- **c++**      unsigned posState = OutWindow.TotalPos & ((1 << pb) - 1);
--- **c++**  
--- **c++**      if (RangeDec.DecodeBit(&IsMatch[(state << kNumPosBitsMax) + posState]) == 0)
--- **c++**      {
--- **c++**        if (unpackSizeDefined && unpackSize == 0)
--- **c++**          return LZMA_RES_ERROR;
--- **c++**        DecodeLiteral(state, rep0);
--- **c++**        state = UpdateState_Literal(state);
--- **c++**        unpackSize--;
--- **c++**        continue;
--- **c++**      }
--- **c++**      
--- **c++**      unsigned len;
--- **c++**      
--- **c++**      if (RangeDec.DecodeBit(&IsRep[state]) != 0)
--- **c++**      {
--- **c++**        if (unpackSizeDefined && unpackSize == 0)
--- **c++**          return LZMA_RES_ERROR;
--- **c++**        if (OutWindow.IsEmpty())
--- **c++**          return LZMA_RES_ERROR;
--- **c++**        if (RangeDec.DecodeBit(&IsRepG0[state]) == 0)
--- **c++**        {
--- **c++**          if (RangeDec.DecodeBit(&IsRep0Long[(state << kNumPosBitsMax) + posState]) == 0)
--- **c++**          {
--- **c++**            state = UpdateState_ShortRep(state);
--- **c++**            OutWindow.PutByte(OutWindow.GetByte(rep0 + 1));
--- **c++**            unpackSize--;
+
+  procedure InitDist(o: in out CLzmaDecoder) is
+  begin
+    for i in o.PosSlotDecoder'Range loop
+      BTD_6.Init(o.PosSlotDecoder(i));
+    end loop;
+    BTD_NAB.Init(o.AlignDecoder);
+    o.PosDecoders:= (others => PROB_INIT_VAL);
+  end InitDist;
+  
+  procedure DecodeDistance(o: in out CLzmaDecoder; len: Unsigned; res: out Unsigned) is
+    lenState      : Unsigned := len;
+    posSlot       : Unsigned;
+    dist          : UInt32;
+    numDirectBits : Unsigned;
+    deco          : UInt32;
+  begin
+    if lenState > kNumLenToPosStates - 1 then
+      lenState := kNumLenToPosStates - 1;
+    end if;
+    BTD_6.Decode(o.PosSlotDecoder(lenState), o.RangeDec, posSlot);
+    if posSlot < 4 then
+      res:= posSlot;
+      return;
+    end if;
+    numDirectBits := Unsigned(Shift_Right(UInt32(posSlot), 1) - 1);
+    dist := Shift_Left((2 or (UInt32(posSlot) and 1)), Natural(numDirectBits));
+    if posSlot < kEndPosModelIndex then
+      BitTreeReverseDecode(o.PosDecoders(Unsigned(dist) - posSlot .. Last_PosDecoders), 
+      numDirectBits, o.RangeDec, deco);
+      dist:= dist + deco;
+    else
+      DecodeDirectBits(o.RangeDec, numDirectBits - kNumAlignBits, deco);
+      dist:= dist + Shift_Left(deco, kNumAlignBits);
+      BTD_NAB.ReverseDecode(o.AlignDecoder, o.RangeDec, deco);
+      dist:= dist + deco;
+    end if;
+    res:= Unsigned(dist);
+  end DecodeDistance;
+
+  procedure Init(o: in out CLzmaDecoder) is
+  begin
+    InitLiterals(o);
+    InitDist(o);
+    o.IsMatch    := (others => PROB_INIT_VAL);
+    o.IsRep      := (others => PROB_INIT_VAL);
+    o.IsRepG0    := (others => PROB_INIT_VAL);
+    o.IsRepG1    := (others => PROB_INIT_VAL);
+    o.IsRepG2    := (others => PROB_INIT_VAL);
+    o.IsRep0Long := (others => PROB_INIT_VAL);
+    Init(o.LenDecoder);
+    Init(o.RepLenDecoder);
+  end Init;
+
+  type LZMA_Result is (
+    LZMA_RES_FINISHED_WITH_MARKER,
+    LZMA_RES_FINISHED_WITHOUT_MARKER
+  );
+
+  LZMA_RES_ERROR: exception;
+
+  procedure Decode(
+    o: in out CLzmaDecoder; 
+    unpackSizeDefined: Boolean; 
+    unpackSize: in out UInt64;
+    res: out LZMA_Result
+  )
+  is
+    rep0, rep1, rep2, rep3 : UInt32 := 0;
+    state : State_Range := 0;
+    posState: State_Range;
+    bit: UInt32;
+    
+    procedure Process_Litteral is
+    begin
+      if unpackSizeDefined and unpackSize = 0 then
+        raise LZMA_RES_ERROR;
+      end if;
+      DecodeLiteral(o, state, rep0);
+      state := UpdateState_Literal(state);
+      unpackSize:= unpackSize - 1;
+    end Process_Litteral;
+
+    procedure Process_Distance_and_Length is
+      len: Unsigned;
+      isError: Boolean;
+      dist: UInt32;
+    begin
+      DecodeBit(o.RangeDec, o.IsRep(state), bit);
+      if bit /= 0 then
+        if unpackSizeDefined and unpackSize = 0 then
+          raise LZMA_RES_ERROR;
+        end if;
+        if IsEmpty(o.OutWindow) then
+          raise LZMA_RES_ERROR;
+        end if;
+        DecodeBit(o.RangeDec, o.IsRepG0(state), bit);
+        if bit = 0 then
+          DecodeBit(o.RangeDec, o.IsRep0Long(state * 2**kNumPosBitsMax + posState), bit);
+          if bit = 0 then
+            state := UpdateState_ShortRep(state);
+            PutByte(o.OutWindow, GetByte(o.OutWindow, rep0 + 1));
+            unpackSize:= unpackSize - 1;
 -- **c++**            continue;
--- **c++**          }
--- **c++**        }
--- **c++**        else
--- **c++**        {
--- **c++**          UInt32 dist;
+          end if;
+        else
 -- **c++**          if (RangeDec.DecodeBit(&IsRepG1[state]) == 0)
 -- **c++**            dist = rep1;
 -- **c++**          else
@@ -498,17 +505,15 @@ procedure LZMA_Dec is
 -- **c++**            }
 -- **c++**            rep2 = rep1;
 -- **c++**          }
--- **c++**          rep1 = rep0;
--- **c++**          rep0 = dist;
--- **c++**        }
--- **c++**        len = RepLenDecoder.Decode(&RangeDec, posState);
--- **c++**        state = UpdateState_Rep(state);
--- **c++**      }
--- **c++**      else
--- **c++**      {
--- **c++**        rep3 = rep2;
--- **c++**        rep2 = rep1;
--- **c++**        rep1 = rep0;
+          rep1 := rep0;
+          rep0 := dist;
+        end if;
+        Decode(o.RepLenDecoder, o.RangeDec, posState, len);
+        state := UpdateState_Rep(state);
+      else
+        rep3 := rep2;
+        rep2 := rep1;
+        rep1 := rep0;
 -- **c++**        len = LenDecoder.Decode(&RangeDec, posState);
 -- **c++**        state = UpdateState_Match(state);
 -- **c++**        rep0 = DecodeDistance(len);
@@ -521,21 +526,43 @@ procedure LZMA_Dec is
 -- **c++**          return LZMA_RES_ERROR;
 -- **c++**        if (rep0 >= dictSize || !OutWindow.CheckDistance(rep0))
 -- **c++**          return LZMA_RES_ERROR;
--- **c++**      }
--- **c++**      len += kMatchMinLen;
--- **c++**      bool isError = false;
--- **c++**      if (unpackSizeDefined && unpackSize < len)
--- **c++**      {
--- **c++**        len = (unsigned)unpackSize;
--- **c++**        isError = true;
--- **c++**      }
--- **c++**      OutWindow.CopyMatch(rep0 + 1, len);
--- **c++**      unpackSize -= len;
--- **c++**      if (isError)
--- **c++**        return LZMA_RES_ERROR;
--- **c++**    }
--- **c++**  }
--- **c++**  
+      end if;
+      len := len + kMatchMinLen;
+      isError := false;
+      if unpackSizeDefined and unpackSize < UInt64(len) then
+        len := Unsigned(unpackSize);
+        isError := true;
+      end if;
+      CopyMatch(o.OutWindow, rep0 + 1, len);
+      unpackSize:= unpackSize - UInt64(len);
+      if isError then
+        raise LZMA_RES_ERROR;
+      end if;
+    end Process_Distance_and_Length;
+
+  begin
+    Init(o);
+    Init(o.RangeDec);
+    loop
+      if unpackSizeDefined and unpackSize = 0 and (not o.markerIsMandatory)
+        and IsFinishedOK(o.RangeDec)
+      then
+        res:= LZMA_RES_FINISHED_WITHOUT_MARKER;
+        return;
+      end if;
+      posState := State_range(
+        UInt32(o.OutWindow.TotalPos) and
+        (Shift_Left(UInt32'(1), Natural(o.pb)) - 1)
+      );
+      DecodeBit(o.RangeDec, o.IsMatch(state * 2**kNumPosBitsMax + PosState), bit);
+      if bit = 0 then
+        Process_Litteral;
+      else
+        Process_Distance_and_Length;
+      end if;
+    end loop;
+  end Decode;
+
 -- **c++**  static void Print(const char *s)
 -- **c++**  {
 -- **c++**    fputs(s, stdout);
