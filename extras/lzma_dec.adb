@@ -94,9 +94,6 @@ procedure LZMA_Dec is
 
   PROB_INIT_VAL : constant := (2 ** kNumBitModelTotalBits) / 2;
 
--- **c++**  #define INIT_PROBS(p) \
--- **c++**   { for (unsigned i = 0; i < sizeof(p) / sizeof(p[0]); i++) p[i] = PROB_INIT_VAL; }
-
   type CRangeDecoder is record
     RangeZ    : UInt32;
     Code      : UInt32;
@@ -156,6 +153,7 @@ procedure LZMA_Dec is
     v: UInt32 := UInt32(prob); -- unsigned in the C++ code
     bound: constant UInt32:= Shift_Right(o.RangeZ, kNumBitModelTotalBits) * v;
   begin
+    Put_Line("-- DecodeBit, prob =" & prob'img);
     if o.Code < bound then
       v:= v + Shift_Right( (Shift_Left(1, kNumBitModelTotalBits) - v) , kNumMoveBits);
       o.RangeZ := bound;
@@ -222,7 +220,6 @@ procedure LZMA_Dec is
   kNumStates          : constant := 12;
   kNumLenToPosStates  : constant := 4;
   kNumAlignBits       : constant := 4;
-  kStartPosModelIndex : constant := 4;
   kEndPosModelIndex   : constant := 14;
   kNumFullDistances   : constant := 2 ** (kEndPosModelIndex / 2);
   kMatchMinLen        : constant := 2;
@@ -306,23 +303,28 @@ procedure LZMA_Dec is
     RepLenDecoder        : CLenDecoder;
   end record;
 
--- **c++**  class CLzmaDecoder
--- **c++**    void DecodeProperties(const Byte *properties)
--- **c++**    {
--- **c++**      unsigned d = properties[0];
--- **c++**      if (d >= (9 * 5 * 5))
--- **c++**        throw "Incorrect LZMA properties";
--- **c++**      lc = d % 9;
--- **c++**      d /= 9;
--- **c++**      pb = d / 5;
--- **c++**      lp = d % 5;
--- **c++**      dictSizeInProperties = 0;
--- **c++**      for (int i = 0; i < 4; i++)
--- **c++**        dictSizeInProperties |= (UInt32)properties[i + 1] << (8 * i);
--- **c++**      dictSize = dictSizeInProperties;
--- **c++**      if (dictSize < LZMA_DIC_MIN)
--- **c++**        dictSize = LZMA_DIC_MIN;
--- **c++**    }
+  LZMA_Error: exception;
+  
+  procedure DecodeProperties(o: in out CLzmaDecoder; b: Byte_buffer) is
+    d: Unsigned := Unsigned(b(b'First));
+  begin
+    if d >= 9 * 5 * 5 then
+      raise LZMA_Error;
+      -- raise LZMA_Error with "Incorrect LZMA properties"; -- Ada 2005+
+    end if;
+    o.lc := d mod 9;
+    d := d / 9;
+    o.lp := d mod 5;
+    o.pb := d / 5;
+    o.dictSizeInProperties := 0;
+    for i in UInt32'(0)..3 loop
+      o.dictSizeInProperties := o.dictSizeInProperties + UInt32(b(i + 1 + b'First)) * 2 ** Natural(8 * i);
+    end loop;
+    o.dictSize := o.dictSizeInProperties;
+    if o.dictSize < LZMA_DIC_MIN then
+      o.dictSize := LZMA_DIC_MIN;
+    end if;
+  end DecodeProperties;
 
 -- **c++**    ~CLzmaDecoder() { delete []LitProbs; }
 
@@ -337,10 +339,6 @@ procedure LZMA_Dec is
     Create(o.OutWindow, o.dictSize);
     CreateLiterals(o);
   end Create;
-
--- **c++**    int Decode(bool unpackSizeDefined, UInt64 unpackSize);
--- **c++**    
--- **c++**  private:
 
   procedure InitLiterals(o: in out CLzmaDecoder) is
   begin
@@ -365,26 +363,27 @@ procedure LZMA_Dec is
         Natural(o.lc)
       )) + 
       Unsigned(Shift_Right(prevByte, (8 - Natural(o.lc))));
-      probs_idx:= 16#300# * litState;
-      if state >= 7 then
-        matchByte := UInt32(GetByte(o.OutWindow, rep0 + 1));
-        loop
-          matchBit  := Shift_Right(matchByte, 7) and 1;
-          matchByte := Shift_Left(matchByte, 1);
-          DecodeBit(o.RangeDec, 
-            o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol), 
-            bit
-          );
-          symbol := Unsigned(Shift_Left(UInt32(symbol), 1) or bit);
-          exit when matchBit /= bit;
-          exit when symbol >= 16#100#;
-        end loop;
-      end if;
-      while symbol < 16#100# loop
-        DecodeBit(o.RangeDec, o.LitProbs(probs_idx + symbol), bit);
-        symbol := Unsigned( Shift_Left(UInt32(symbol), 1) or bit);
-        PutByte(o.OutWindow, Byte(symbol - 16#100#));
+    probs_idx:= 16#300# * litState;
+    if state >= 7 then
+      matchByte := UInt32(GetByte(o.OutWindow, rep0 + 1));
+      loop
+        matchBit  := Shift_Right(matchByte, 7) and 1;
+        matchByte := Shift_Left(matchByte, 1);
+        DecodeBit(o.RangeDec, 
+          o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol), 
+          bit
+        );
+        symbol := Unsigned(Shift_Left(UInt32(symbol), 1) or bit);
+        exit when matchBit /= bit;
+        exit when symbol >= 16#100#;
       end loop;
+    end if;
+    while symbol < 16#100# loop
+      DecodeBit(o.RangeDec, o.LitProbs(probs_idx + symbol), bit);
+      symbol := Unsigned( Shift_Left(UInt32(symbol), 1) or bit);
+    end loop;
+    PutByte(o.OutWindow, Byte(symbol - 16#100#));
+    Put_Line("DecodeLiteral " & Character'Val((symbol - 16#100#))); -- ***
   end DecodeLiteral;
 
   procedure InitDist(o: in out CLzmaDecoder) is
@@ -396,7 +395,7 @@ procedure LZMA_Dec is
     o.PosDecoders:= (others => PROB_INIT_VAL);
   end InitDist;
   
-  procedure DecodeDistance(o: in out CLzmaDecoder; len: Unsigned; res: out Unsigned) is
+  procedure DecodeDistance(o: in out CLzmaDecoder; len: Unsigned; res: out UInt32) is
     lenState      : Unsigned := len;
     posSlot       : Unsigned;
     dist          : UInt32;
@@ -408,7 +407,7 @@ procedure LZMA_Dec is
     end if;
     BTD_6.Decode(o.PosSlotDecoder(lenState), o.RangeDec, posSlot);
     if posSlot < 4 then
-      res:= posSlot;
+      res:= UInt32(posSlot);
       return;
     end if;
     numDirectBits := Unsigned(Shift_Right(UInt32(posSlot), 1) - 1);
@@ -423,7 +422,7 @@ procedure LZMA_Dec is
       BTD_NAB.ReverseDecode(o.AlignDecoder, o.RangeDec, deco);
       dist:= dist + deco;
     end if;
-    res:= Unsigned(dist);
+    res:= dist;
   end DecodeDistance;
 
   procedure Init(o: in out CLzmaDecoder) is
@@ -445,8 +444,6 @@ procedure LZMA_Dec is
     LZMA_RES_FINISHED_WITHOUT_MARKER
   );
 
-  LZMA_RES_ERROR: exception;
-
   procedure Decode(
     o: in out CLzmaDecoder; 
     unpackSizeDefined: Boolean; 
@@ -462,7 +459,7 @@ procedure LZMA_Dec is
     procedure Process_Litteral is
     begin
       if unpackSizeDefined and unpackSize = 0 then
-        raise LZMA_RES_ERROR;
+        raise LZMA_Error;
       end if;
       DecodeLiteral(o, state, rep0);
       state := UpdateState_Literal(state);
@@ -477,10 +474,10 @@ procedure LZMA_Dec is
       DecodeBit(o.RangeDec, o.IsRep(state), bit);
       if bit /= 0 then
         if unpackSizeDefined and unpackSize = 0 then
-          raise LZMA_RES_ERROR;
+          raise LZMA_Error;
         end if;
         if IsEmpty(o.OutWindow) then
-          raise LZMA_RES_ERROR;
+          raise LZMA_Error;
         end if;
         DecodeBit(o.RangeDec, o.IsRepG0(state), bit);
         if bit = 0 then
@@ -489,22 +486,22 @@ procedure LZMA_Dec is
             state := UpdateState_ShortRep(state);
             PutByte(o.OutWindow, GetByte(o.OutWindow, rep0 + 1));
             unpackSize:= unpackSize - 1;
--- **c++**            continue;
+            return;  -- GdM: will go to the next iteration (C++: continue)
           end if;
         else
--- **c++**          if (RangeDec.DecodeBit(&IsRepG1[state]) == 0)
--- **c++**            dist = rep1;
--- **c++**          else
--- **c++**          {
--- **c++**            if (RangeDec.DecodeBit(&IsRepG2[state]) == 0)
--- **c++**              dist = rep2;
--- **c++**            else
--- **c++**            {
--- **c++**              dist = rep3;
--- **c++**              rep3 = rep2;
--- **c++**            }
--- **c++**            rep2 = rep1;
--- **c++**          }
+          DecodeBit(o.RangeDec, o.IsRepG1(state), bit);
+          if bit = 0 then
+            dist := rep1;
+          else
+            DecodeBit(o.RangeDec, o.IsRepG2(state), bit);
+            if bit = 0 then
+              dist := rep2;
+            else
+              dist := rep3;
+              rep3 := rep2;
+            end if;
+            rep2 := rep1;
+          end if;
           rep1 := rep0;
           rep0 := dist;
         end if;
@@ -514,18 +511,22 @@ procedure LZMA_Dec is
         rep3 := rep2;
         rep2 := rep1;
         rep1 := rep0;
--- **c++**        len = LenDecoder.Decode(&RangeDec, posState);
--- **c++**        state = UpdateState_Match(state);
--- **c++**        rep0 = DecodeDistance(len);
--- **c++**        if (rep0 == 0xFFFFFFFF)
--- **c++**          return RangeDec.IsFinishedOK() ?
--- **c++**              LZMA_RES_FINISHED_WITH_MARKER :
--- **c++**              LZMA_RES_ERROR;
--- **c++**  
--- **c++**        if (unpackSizeDefined && unpackSize == 0)
--- **c++**          return LZMA_RES_ERROR;
--- **c++**        if (rep0 >= dictSize || !OutWindow.CheckDistance(rep0))
--- **c++**          return LZMA_RES_ERROR;
+        Decode(o.LenDecoder, o.RangeDec, posState, len);
+        state := UpdateState_Match(state);
+        DecodeDistance(o, len, rep0);
+        if rep0 = 16#FFFF_FFFF# then
+          if IsFinishedOK(o.RangeDec) then
+            res:= LZMA_RES_FINISHED_WITH_MARKER;
+          else
+            raise LZMA_Error;
+          end if;
+        end if; 
+        if unpackSizeDefined and unpackSize = 0 then
+          raise LZMA_Error;
+        end if;
+        if rep0 >= o.dictSize and not CheckDistance(o.OutWindow, rep0) then
+          raise LZMA_Error;
+        end if;
       end if;
       len := len + kMatchMinLen;
       isError := false;
@@ -536,7 +537,7 @@ procedure LZMA_Dec is
       CopyMatch(o.OutWindow, rep0 + 1, len);
       unpackSize:= unpackSize - UInt64(len);
       if isError then
-        raise LZMA_RES_ERROR;
+        raise LZMA_Error;
       end if;
     end Process_Distance_and_Length;
 
@@ -554,167 +555,95 @@ procedure LZMA_Dec is
         UInt32(o.OutWindow.TotalPos) and
         (Shift_Left(UInt32'(1), Natural(o.pb)) - 1)
       );
+      Put_Line("-- state="&state'img&"  posstate="&posstate'img); --- ***
       DecodeBit(o.RangeDec, o.IsMatch(state * 2**kNumPosBitsMax + PosState), bit);
       if bit = 0 then
         Process_Litteral;
       else
+        Put_Line("  Not literal"); -- ***
         Process_Distance_and_Length;
       end if;
     end loop;
   end Decode;
 
--- **c++**  static void Print(const char *s)
--- **c++**  {
--- **c++**    fputs(s, stdout);
--- **c++**  }
--- **c++**  
--- **c++**  static void PrintError(const char *s)
--- **c++**  {
--- **c++**    fputs(s, stderr);
--- **c++**  }
--- **c++**  
--- **c++**  
--- **c++**  #define CONVERT_INT_TO_STR(charType, tempSize) \
--- **c++**  
--- **c++**  void ConvertUInt64ToString(UInt64 val, char *s)
--- **c++**  {
--- **c++**    char temp[32];
--- **c++**    unsigned i = 0;
--- **c++**    while (val >= 10)
--- **c++**    {
--- **c++**      temp[i++] = (char)('0' + (unsigned)(val % 10));
--- **c++**      val /= 10;
--- **c++**    }
--- **c++**    *s++ = (char)('0' + (unsigned)val);
--- **c++**    while (i != 0)
--- **c++**    {
--- **c++**      i--;
--- **c++**      *s++ = temp[i];
--- **c++**    }
--- **c++**    *s = 0;
--- **c++**  }
--- **c++**  
--- **c++**  void PrintUInt64(const char *title, UInt64 v)
--- **c++**  {
--- **c++**    Print(title);
--- **c++**    Print(" : ");
--- **c++**    char s[32];
--- **c++**    ConvertUInt64ToString(v, s);
--- **c++**    Print(s);
--- **c++**    Print(" bytes \n");
--- **c++**  }
-
+  procedure PrintUInt64(title: String; v: UInt64) is
+    package U64IO is new Integer_IO(UInt64); -- Modular_IO is type modular
   begin
+    Put(title);
+    Put(" : ");
+    U64IO.Put(v, 0);
+    Put(" bytes");
     New_Line;
-    Put_Line("LZMA Reference Decoder 9.31 : Igor Pavlov : Public domain : 2013-02-06");
-    if Argument_Count = 0 then
-      Put_Line("Use: lzma_dec a.lzma outfile");
-      return;
-    elsif Argument_Count /= 2 then
-      Put_Line("You must specify two parameters");
-      return;
+  end;
+
+  lzmaDecoder: CLzmaDecoder;
+  header: Byte_buffer(0..12);
+  unpackSize: UInt64 := 0;
+  unpackSizeDefined: Boolean := false;
+  b: Byte;
+  res: LZMA_Result;
+
+begin
+  New_Line;
+  Put_Line("LZMA Reference Decoder 9.31 : Igor Pavlov : Public domain : 2013-02-06");
+  if Argument_Count = 0 then
+    Put_Line("Use: lzma_dec a.lzma outfile");
+    return;
+  elsif Argument_Count /= 2 then
+    Put_Line("You must specify two parameters");
+    return;
+  end if;
+  Open(f_in, In_File, Argument(1));
+  Create(f_out,Out_File, Argument(2));
+  for i in header'Range loop
+    header(i):= ReadByte;
+  end loop;
+  DecodeProperties(lzmaDecoder, header);
+  Put_Line(
+    "lc=" & Unsigned'Image(lzmaDecoder.lc) & 
+    ", lp=" & Unsigned'Image(lzmaDecoder.lp) &
+    ", pb=" & Unsigned'Image(lzmaDecoder.pb) 
+  );
+  Put_Line("Dictionary size in properties =" & UInt32'Image(lzmaDecoder.dictSizeInProperties));
+  Put_Line("Dictionary size for decoding  =" & UInt32'Image(lzmaDecoder.dictSize));
+
+  for i in UInt32'(0)..7 loop
+    b:= header(5 + i);
+    if b /= 16#FF# then
+      unpackSizeDefined := True;
     end if;
-    Open(f_in, In_File, Argument(1));
-    
--- **c++**    CInputStream inStream;
--- **c++**    inStream.File = fopen(args[1], "rb");
--- **c++**    inStream.Init();
--- **c++**    if (inStream.File == 0)
--- **c++**      throw "Can't open input file";
--- **c++**  
--- **c++**    CLzmaDecoder lzmaDecoder;
-    Create(f_out,Out_File, Argument(2));
--- **c++**    lzmaDecoder.OutWindow.OutStream.File = fopen(args[2], "wb+");
--- **c++**    lzmaDecoder.OutWindow.OutStream.Init();
--- **c++**    if (inStream.File == 0)
--- **c++**      throw "Can't open output file";
--- **c++**  
--- **c++**    Byte header[13];
--- **c++**    int i;
--- **c++**    for (i = 0; i < 13; i++)
--- **c++**      header[i] = inStream.ReadByte();
--- **c++**  
--- **c++**    lzmaDecoder.DecodeProperties(header);
--- **c++**  
--- **c++**    printf("\nlc=%d, lp=%d, pb=%d", lzmaDecoder.lc, lzmaDecoder.lp, lzmaDecoder.pb);
--- **c++**    printf("\nDictionary Size in properties = %u", lzmaDecoder.dictSizeInProperties);
--- **c++**    printf("\nDictionary Size for decoding  = %u", lzmaDecoder.dictSize);
--- **c++**  
--- **c++**    UInt64 unpackSize = 0;
--- **c++**    bool unpackSizeDefined = false;
--- **c++**    for (i = 0; i < 8; i++)
--- **c++**    {
--- **c++**      Byte b = header[5 + i];
--- **c++**      if (b != 0xFF)
--- **c++**        unpackSizeDefined = true;
--- **c++**      unpackSize |= (UInt64)b << (8 * i);
--- **c++**    }
--- **c++**  
--- **c++**    lzmaDecoder.markerIsMandatory = !unpackSizeDefined;
--- **c++**  
--- **c++**    Print("\n");
--- **c++**    if (unpackSizeDefined)
--- **c++**      PrintUInt64("Uncompressed Size", unpackSize);
--- **c++**    else
--- **c++**      Print("End marker is expected\n");
--- **c++**    lzmaDecoder.RangeDec.InStream = &inStream;
--- **c++**  
--- **c++**    Print("\n");
--- **c++**  
--- **c++**    lzmaDecoder.Create();
--- **c++**    // we support the streams that have uncompressed size and marker.
--- **c++**    int res = lzmaDecoder.Decode(unpackSizeDefined, unpackSize);
--- **c++**  
--- **c++**    PrintUInt64("Read    ", inStream.Processed);
--- **c++**    PrintUInt64("Written ", lzmaDecoder.OutWindow.OutStream.Processed);
--- **c++**  
--- **c++**    if (res == LZMA_RES_ERROR)
--- **c++**      throw "LZMA decoding error";
--- **c++**    else if (res == LZMA_RES_FINISHED_WITHOUT_MARKER)
--- **c++**      Print("Finished without end marker");
--- **c++**    else if (res == LZMA_RES_FINISHED_WITH_MARKER)
--- **c++**    {
--- **c++**      if (unpackSizeDefined)
--- **c++**      {
--- **c++**        if (lzmaDecoder.OutWindow.OutStream.Processed != unpackSize)
--- **c++**          throw "Finished with end marker before than specified size";
--- **c++**        Print("Warning: ");
--- **c++**      }
--- **c++**      Print("Finished with end marker");
--- **c++**    }
--- **c++**    else
--- **c++**      throw "Internal Error";
--- **c++**  
--- **c++**    Print("\n");
--- **c++**    
--- **c++**    if (lzmaDecoder.RangeDec.Corrupted)
--- **c++**    {
--- **c++**      Print("\nWarning: LZMA stream is corrupted\n");
--- **c++**    }
--- **c++**  
--- **c++**    return 0;
--- **c++**  }
--- **c++**  
--- **c++**  
--- **c++**  int
--- **c++**    #ifdef _MSC_VER
--- **c++**      __cdecl
--- **c++**    #endif
--- **c++**  main(int numArgs, const char *args[])
--- **c++**  {
--- **c++**    try { return main2(numArgs, args); }
--- **c++**    catch (const char *s)
--- **c++**    {
--- **c++**      PrintError("\nError:\n");
--- **c++**      PrintError(s);
--- **c++**      PrintError("\n");
--- **c++**      return 1;
--- **c++**    }
--- **c++**    catch(...)
--- **c++**    {
--- **c++**      PrintError("\nError\n");
--- **c++**      return 1;
--- **c++**    }
--- **c++**  }
--- **c++**  
+    unpackSize := unpackSize + UInt64(b) * 2 ** Natural(8 * i);
+  end loop;
+
+  lzmaDecoder.markerIsMandatory := not unpackSizeDefined;
+
+  New_Line;
+  if unpackSizeDefined then
+    PrintUInt64("Uncompressed size", unpackSize);
+  else
+    Put_Line("Uncompressed size not defined, end marker is expected.");
+  end if;
+  New_Line;
+
+  Create(lzmaDecoder);
+  -- we support the streams that have uncompressed size and marker.
+  Decode(lzmaDecoder, unpackSizeDefined, unpackSize, res);
+  PrintUInt64("Read    ", UInt64(Index(f_in)));
+  PrintUInt64("Written ", UInt64(Index(f_out)));
+  case res is
+    when LZMA_RES_FINISHED_WITHOUT_MARKER =>
+       Put_Line("Finished without end marker");
+    when LZMA_RES_FINISHED_WITH_MARKER =>
+       if unpackSizeDefined then
+         if UInt64(Index(f_out)) /= unpackSize then
+           Put_Line("Warning: finished with end marker before than specified size");
+           -- GdM: should raise LZMA_Error from Decode ?
+         end if;
+       end if;
+       Put_Line("Finished with end marker");
+  end case;
+
+  if lzmaDecoder.RangeDec.Corrupted then
+    Put_Line("Warning: LZMA stream is corrupted");
+  end if;
 end LZMA_Dec;
