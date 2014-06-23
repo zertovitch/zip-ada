@@ -1,17 +1,20 @@
+-- LZMA_Dec - Ada translation of LzmaSpec.cpp, LZMA Reference Decoder
+-- 2013-07-28 : Igor Pavlov : Public domain
+
+with Ada.Command_Line;                  use Ada.Command_Line;
+with Ada.Finalization;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
-with Ada.Command_Line;                  use Ada.Command_Line;
+with Ada.Unchecked_Deallocation;
 with Interfaces;                        use Interfaces;
 
 procedure LZMA_Dec is
--- **c++**  /* LzmaSpec.c -- LZMA Reference Decoder
--- **c++**  2013-07-28 : Igor Pavlov : Public domain */
 
   subtype Byte is Unsigned_8;
   subtype UInt16 is Unsigned_16;
   subtype UInt32 is Unsigned_32;
-  subtype UInt64 is Long_Long_Integer;    -- !! Unsigned_64 if provided
-  type Unsigned is new Natural; -- unsigned integer, at least 16 bits in size
+  subtype UInt64 is Unsigned_32;  -- !! Unsigned_64 if provided
+  type Unsigned is new Natural;   -- !! unsigned integer, at least 16 bits in size
   
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
 
@@ -283,7 +286,7 @@ procedure LZMA_Dec is
 
   Last_PosDecoders: constant := kNumFullDistances - kEndPosModelIndex;
 
-  type CLzmaDecoder is record
+  type CLzmaDecoder is new Ada.Finalization.Limited_Controlled with record
     RangeDec             : CRangeDecoder;
     OutWindow            : COutWindow;
     markerIsMandatory    : Boolean;
@@ -303,6 +306,14 @@ procedure LZMA_Dec is
     LenDecoder           : CLenDecoder;
     RepLenDecoder        : CLenDecoder;
   end record;
+
+  procedure Finalize(o: in out CLzmaDecoder) is
+    procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
+    procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
+  begin
+    Dispose(o.LitProbs);
+    Dispose(o.OutWindow.Buf);
+  end Finalize;
 
   LZMA_Error: exception;
   
@@ -327,18 +338,11 @@ procedure LZMA_Dec is
     end if;
   end DecodeProperties;
 
--- **c++**    ~CLzmaDecoder() { delete []LitProbs; }
-
-  procedure CreateLiterals(o: in out CLzmaDecoder) is
+  procedure Create(o: in out CLzmaDecoder) is
     length: constant Unsigned:= 16#300# * 2 ** Natural(o.lc + o.lp);
   begin
-    o.LitProbs := new CProb_array(0..length-1);
-  end CreateLiterals;
-
-  procedure Create(o: in out CLzmaDecoder) is
-  begin
     Create(o.OutWindow, o.dictSize);
-    CreateLiterals(o);
+    o.LitProbs := new CProb_array(0..length-1); -- Literals
   end Create;
 
   procedure InitLiterals(o: in out CLzmaDecoder) is
@@ -567,7 +571,7 @@ procedure LZMA_Dec is
   end Decode;
 
   procedure PrintUInt64(title: String; v: UInt64) is
-    package U64IO is new Integer_IO(UInt64); -- Modular_IO is type modular
+    package U64IO is new Modular_IO(UInt64); -- Modular_IO is type modular
   begin
     Put(title);
     Put(" : ");
@@ -598,6 +602,9 @@ begin
   for i in header'Range loop
     header(i):= ReadByte;
   end loop;
+  
+  -- GdM vvv DecodeProperties and later will be in a Decode_Header procedure !!
+
   DecodeProperties(lzmaDecoder, header);
   Put_Line(
     "lc=" & Unsigned'Image(lzmaDecoder.lc) & 
@@ -616,6 +623,7 @@ begin
   end loop;
 
   lzmaDecoder.markerIsMandatory := not unpackSizeDefined;
+  -- GdM ^^^ This up to DecodeProperties will be in a Decode_Header procedure !!
 
   New_Line;
   if unpackSizeDefined then
@@ -646,4 +654,5 @@ begin
   if lzmaDecoder.RangeDec.Corrupted then
     Put_Line("Warning: LZMA stream is corrupted");
   end if;
+  
 end LZMA_Dec;
