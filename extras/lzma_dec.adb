@@ -50,8 +50,8 @@ procedure LZMA_Dec is
   procedure PutByte(o: in out COutWindow; b: Byte) is
   begin
     o.TotalPos := o.TotalPos + 1;
-    o.Pos := o.Pos + 1;
     o.Buf(o.Pos):= b;
+    o.Pos := o.Pos + 1;
     if o.Pos = o.Size then
       o.Pos := 0;
       o.IsFull := True;
@@ -153,7 +153,6 @@ procedure LZMA_Dec is
     v: UInt32 := UInt32(prob); -- unsigned in the C++ code
     bound: constant UInt32:= Shift_Right(o.RangeZ, kNumBitModelTotalBits) * v;
   begin
-    Put_Line("-- DecodeBit, prob =" & prob'img);
     if o.Code < bound then
       v:= v + Shift_Right( (Shift_Left(1, kNumBitModelTotalBits) - v) , kNumMoveBits);
       o.RangeZ := bound;
@@ -168,13 +167,15 @@ procedure LZMA_Dec is
     Normalize(o);
   end DecodeBit;
 
+  -- BitTreeReverseDecode is used for decoding distances.
+  
   procedure BitTreeReverseDecode(prob: in out CProb_array; numBits : Unsigned; rc: in out CRangeDecoder; symbol: out UInt32) is
     m: UInt32 := 1;
     bit: UInt32;
   begin
     symbol := 0;
     for i in 0..numBits-1 loop
-      DecodeBit(rc, prob(Unsigned(m)), bit);
+      DecodeBit(rc, prob(Unsigned(m)+prob'First), bit);
       m := Shift_Left(m, 1);
       m := m + bit;
       symbol := symbol or Shift_Left(bit, Natural(i));
@@ -329,9 +330,9 @@ procedure LZMA_Dec is
 -- **c++**    ~CLzmaDecoder() { delete []LitProbs; }
 
   procedure CreateLiterals(o: in out CLzmaDecoder) is
-    length: constant UInt32:= Shift_Left(16#300#, Natural(o.lc + o.lp));
+    length: constant Unsigned:= 16#300# * 2 ** Natural(o.lc + o.lp);
   begin
-    o.LitProbs := new CProb_array(0..Unsigned(length-1));
+    o.LitProbs := new CProb_array(0..length-1);
   end CreateLiterals;
 
   procedure Create(o: in out CLzmaDecoder) is
@@ -358,11 +359,13 @@ procedure LZMA_Dec is
       prevByte := GetByte(o.OutWindow, 1);
     end if;
     litState := 
-      Unsigned(Shift_Left(
-        (UInt32(o.OutWindow.TotalPos) and (Shift_Left(UInt32'(1), Natural(o.lp)) - 1)), 
-        Natural(o.lc)
-      )) + 
-      Unsigned(Shift_Right(prevByte, (8 - Natural(o.lc))));
+      Unsigned(
+        Shift_Left(
+          (UInt32(o.OutWindow.TotalPos) and (Shift_Left(UInt32'(1), Natural(o.lp)) - 1)), 
+          Natural(o.lc)
+        ) + 
+        Shift_Right(UInt32(prevByte), (8 - Natural(o.lc)))
+      );
     probs_idx:= 16#300# * litState;
     if state >= 7 then
       matchByte := UInt32(GetByte(o.OutWindow, rep0 + 1));
@@ -383,7 +386,6 @@ procedure LZMA_Dec is
       symbol := Unsigned( Shift_Left(UInt32(symbol), 1) or bit);
     end loop;
     PutByte(o.OutWindow, Byte(symbol - 16#100#));
-    Put_Line("DecodeLiteral " & Character'Val((symbol - 16#100#))); -- ***
   end DecodeLiteral;
 
   procedure InitDist(o: in out CLzmaDecoder) is
@@ -555,12 +557,10 @@ procedure LZMA_Dec is
         UInt32(o.OutWindow.TotalPos) and
         (Shift_Left(UInt32'(1), Natural(o.pb)) - 1)
       );
-      Put_Line("-- state="&state'img&"  posstate="&posstate'img); --- ***
       DecodeBit(o.RangeDec, o.IsMatch(state * 2**kNumPosBitsMax + PosState), bit);
       if bit = 0 then
         Process_Litteral;
       else
-        Put_Line("  Not literal"); -- ***
         Process_Distance_and_Length;
       end if;
     end loop;
