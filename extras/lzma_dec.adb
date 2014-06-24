@@ -4,6 +4,7 @@
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Finalization;
 with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Direct_IO;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Ada.Unchecked_Deallocation;
 with Interfaces;                        use Interfaces;
@@ -13,8 +14,9 @@ procedure LZMA_Dec is
   subtype Byte is Unsigned_8;
   subtype UInt16 is Unsigned_16;
   subtype UInt32 is Unsigned_32;
-  subtype UInt64 is Unsigned_32;  -- !! Unsigned_64 if provided
-  type Unsigned is new Natural;   -- !! unsigned integer, at least 16 bits in size
+  package BIO is new Ada.Direct_IO(Byte); -- BIO is only there for the Count type
+  subtype Data_Bytes_Count is BIO.Count;
+  type Unsigned is mod 2 ** Standard'Address_Size;
   
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
 
@@ -152,12 +154,14 @@ procedure LZMA_Dec is
     end loop;
   end DecodeDirectBits;
 
+  kNumBitModel_Count: constant:= 2 ** kNumBitModelTotalBits;
+
   procedure DecodeBit(o: in out CRangeDecoder; prob: in out CProb; symbol: out UInt32) is
     v: UInt32 := UInt32(prob); -- unsigned in the C++ code
     bound: constant UInt32:= Shift_Right(o.RangeZ, kNumBitModelTotalBits) * v;
   begin
     if o.Code < bound then
-      v:= v + Shift_Right( (Shift_Left(1, kNumBitModelTotalBits) - v) , kNumMoveBits);
+      v:= v + Shift_Right( (kNumBitModel_Count - v) , kNumMoveBits);
       o.RangeZ := bound;
       symbol := 0;
     else
@@ -179,8 +183,7 @@ procedure LZMA_Dec is
     symbol := 0;
     for i in 0..numBits-1 loop
       DecodeBit(rc, prob(Unsigned(m)+prob'First), bit);
-      m := Shift_Left(m, 1);
-      m := m + bit;
+      m := Shift_Left(m, 1) + bit;
       symbol := symbol or Shift_Left(bit, Natural(i));
     end loop;
   end BitTreeReverseDecode;
@@ -209,7 +212,7 @@ procedure LZMA_Dec is
         DecodeBit(rc, p(m),symbol);
         m:= m * 2 + Unsigned(symbol);
       end loop;
-      res:= m - 2**Natural(NumBits);
+      res:= m - Unsigned(Shift_Left(UInt32'(1), Natural(NumBits)));
     end Decode;
 
     procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32) is
@@ -286,11 +289,19 @@ procedure LZMA_Dec is
 
   Last_PosDecoders: constant := kNumFullDistances - kEndPosModelIndex;
 
+  subtype LC_range is Integer range 0..8;
+  subtype LP_range is Integer range 0..4;
+  subtype PB_range is Integer range 0..4;
+
   type CLzmaDecoder is new Ada.Finalization.Limited_Controlled with record
     RangeDec             : CRangeDecoder;
     OutWindow            : COutWindow;
     markerIsMandatory    : Boolean;
-    lc, pb, lp           : Unsigned;
+    lc                   : LC_range; -- the number of "literal context" bits
+    lp                   : LP_range; -- the number of "literal pos" bits
+    pb                   : PB_range; -- the number of "pos" bits
+    literal_pos_mask     : UInt32;
+    pos_bits_mask        : UInt32;
     dictSize             : UInt32;
     dictSizeInProperties : UInt32;
     LitProbs             : p_CProb_array;
@@ -324,10 +335,12 @@ procedure LZMA_Dec is
       raise LZMA_Error;
       -- raise LZMA_Error with "Incorrect LZMA properties"; -- Ada 2005+
     end if;
-    o.lc := d mod 9;
+    o.lc := LC_range(d mod 9);
     d := d / 9;
-    o.lp := d mod 5;
-    o.pb := d / 5;
+    o.lp := LP_range(d mod 5);
+    o.literal_pos_mask:= 2 ** o.lp - 1;
+    o.pb := PB_range(d / 5);
+    o.pos_bits_mask:= 2 ** o.pb - 1;
     o.dictSizeInProperties := 0;
     for i in UInt32'(0)..3 loop
       o.dictSizeInProperties := o.dictSizeInProperties + UInt32(b(i + 1 + b'First)) * 2 ** Natural(8 * i);
@@ -339,7 +352,7 @@ procedure LZMA_Dec is
   end DecodeProperties;
 
   procedure Create(o: in out CLzmaDecoder) is
-    length: constant Unsigned:= 16#300# * 2 ** Natural(o.lc + o.lp);
+    length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
   begin
     Create(o.OutWindow, o.dictSize);
     o.LitProbs := new CProb_array(0..length-1); -- Literals
@@ -364,11 +377,8 @@ procedure LZMA_Dec is
     end if;
     litState := 
       Unsigned(
-        Shift_Left(
-          (UInt32(o.OutWindow.TotalPos) and (Shift_Left(UInt32'(1), Natural(o.lp)) - 1)), 
-          Natural(o.lc)
-        ) + 
-        Shift_Right(UInt32(prevByte), (8 - Natural(o.lc)))
+        Shift_Left(UInt32(o.OutWindow.TotalPos) and o.literal_pos_mask, o.lc) + 
+        Shift_Right(UInt32(prevByte), 8 - o.lc)
       );
     probs_idx:= 16#300# * litState;
     if state >= 7 then
@@ -453,7 +463,7 @@ procedure LZMA_Dec is
   procedure Decode(
     o: in out CLzmaDecoder; 
     unpackSizeDefined: Boolean; 
-    unpackSize: in out UInt64;
+    unpackSize: in out Data_Bytes_Count;
     res: out LZMA_Result
   )
   is
@@ -461,6 +471,7 @@ procedure LZMA_Dec is
     state : State_Range := 0;
     posState: State_Range;
     bit: UInt32;
+    use type BIO.Count; 
     
     procedure Process_Litteral is
     begin
@@ -536,12 +547,12 @@ procedure LZMA_Dec is
       end if;
       len := len + kMatchMinLen;
       isError := false;
-      if unpackSizeDefined and unpackSize < UInt64(len) then
+      if unpackSizeDefined and unpackSize < Data_Bytes_Count(len) then
         len := Unsigned(unpackSize);
         isError := true;
       end if;
       CopyMatch(o.OutWindow, rep0 + 1, len);
-      unpackSize:= unpackSize - UInt64(len);
+      unpackSize:= unpackSize - Data_Bytes_Count(len);
       if isError then
         raise LZMA_Error;
       end if;
@@ -557,10 +568,7 @@ procedure LZMA_Dec is
         res:= LZMA_RES_FINISHED_WITHOUT_MARKER;
         return;
       end if;
-      posState := State_range(
-        UInt32(o.OutWindow.TotalPos) and
-        (Shift_Left(UInt32'(1), Natural(o.pb)) - 1)
-      );
+      posState := State_range(UInt32(o.OutWindow.TotalPos) and o.pos_bits_mask);
       DecodeBit(o.RangeDec, o.IsMatch(state * 2**kNumPosBitsMax + PosState), bit);
       if bit = 0 then
         Process_Litteral;
@@ -570,8 +578,8 @@ procedure LZMA_Dec is
     end loop;
   end Decode;
 
-  procedure PrintUInt64(title: String; v: UInt64) is
-    package U64IO is new Modular_IO(UInt64); -- Modular_IO is type modular
+  procedure PrintData_Bytes_Count(title: String; v: Data_Bytes_Count) is
+    package U64IO is new Integer_IO(Data_Bytes_Count);
   begin
     Put(title);
     Put(" : ");
@@ -582,10 +590,11 @@ procedure LZMA_Dec is
 
   lzmaDecoder: CLzmaDecoder;
   header: Byte_buffer(0..12);
-  unpackSize: UInt64 := 0;
+  unpackSize: Data_Bytes_Count := 0;
   unpackSizeDefined: Boolean := false;
   b: Byte;
   res: LZMA_Result;
+  use type BIO.Count; 
 
 begin
   New_Line;
@@ -607,9 +616,9 @@ begin
 
   DecodeProperties(lzmaDecoder, header);
   Put_Line(
-    "lc=" & Unsigned'Image(lzmaDecoder.lc) & 
-    ", lp=" & Unsigned'Image(lzmaDecoder.lp) &
-    ", pb=" & Unsigned'Image(lzmaDecoder.pb) 
+    "lc="   & LC_Range'Image(lzmaDecoder.lc) & 
+    ", lp=" & LP_Range'Image(lzmaDecoder.lp) &
+    ", pb=" & PB_range'Image(lzmaDecoder.pb) 
   );
   Put_Line("Dictionary size in properties =" & UInt32'Image(lzmaDecoder.dictSizeInProperties));
   Put_Line("Dictionary size for decoding  =" & UInt32'Image(lzmaDecoder.dictSize));
@@ -619,15 +628,32 @@ begin
     if b /= 16#FF# then
       unpackSizeDefined := True;
     end if;
-    unpackSize := unpackSize + UInt64(b) * 2 ** Natural(8 * i);
   end loop;
+  
+  if unpackSizeDefined then
+    for i in UInt32'(0)..7 loop
+      b:= header(5 + i);
+      if b /= 16#FF# then
+        unpackSizeDefined := True;
+      end if;
+      if b /= 0 then
+        if 8 * (i+1) > Data_Bytes_Count'Size then
+          raise LZMA_Error; -- Overflow
+        else
+          unpackSize := unpackSize + Data_Bytes_Count(b) * 2 ** Natural(8 * i);
+        end if;
+      end if;
+    end loop;
+  else
+    unpackSize:= Data_Bytes_Count'Last;
+  end if;
 
   lzmaDecoder.markerIsMandatory := not unpackSizeDefined;
   -- GdM ^^^ This up to DecodeProperties will be in a Decode_Header procedure !!
 
   New_Line;
   if unpackSizeDefined then
-    PrintUInt64("Uncompressed size", unpackSize);
+    PrintData_Bytes_Count("Uncompressed size", unpackSize);
   else
     Put_Line("Uncompressed size not defined, end marker is expected.");
   end if;
@@ -636,14 +662,14 @@ begin
   Create(lzmaDecoder);
   -- we support the streams that have uncompressed size and marker.
   Decode(lzmaDecoder, unpackSizeDefined, unpackSize, res);
-  PrintUInt64("Read    ", UInt64(Index(f_in)));
-  PrintUInt64("Written ", UInt64(Index(f_out)));
+  PrintData_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in)));
+  PrintData_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out)));
   case res is
     when LZMA_RES_FINISHED_WITHOUT_MARKER =>
        Put_Line("Finished without end marker");
     when LZMA_RES_FINISHED_WITH_MARKER =>
        if unpackSizeDefined then
-         if UInt64(Index(f_out)) /= unpackSize then
+         if Data_Bytes_Count(Index(f_out)) /= unpackSize then
            Put_Line("Warning: finished with end marker before than specified size");
            -- GdM: should raise LZMA_Error from Decode ?
          end if;
