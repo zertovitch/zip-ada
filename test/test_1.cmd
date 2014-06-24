@@ -1,5 +1,5 @@
 @echo off
-rem Test for one file
+rem Test UnZipAda for one data file compressed with external zippers (no ZipAda !)
 
 if (%2)==() goto vide
 
@@ -10,7 +10,7 @@ ren %1 $13_kzip.tmp
 kzip %2 $13_kzip.tmp
 
 ren $13_kzip.tmp $00store.tmp
-pkzip250 -e0 %2 $00store.tmp
+zip -0 %2 $00store.tmp
 
 ren $00store.tmp $01redu1.tmp
 pkzip090 -ea1 %2 $01redu1.tmp

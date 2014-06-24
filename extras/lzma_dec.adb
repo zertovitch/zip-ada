@@ -314,6 +314,9 @@ procedure LZMA_Dec is
     IsRepG2              : CProb_array(0..kNumStates - 1);
     LenDecoder           : CLenDecoder;
     RepLenDecoder        : CLenDecoder;
+    unpackSize           : Data_Bytes_Count;
+    unpackSize_as_defined: Data_Bytes_Count;
+    unpackSizeDefined    : Boolean;
   end record;
 
   procedure Finalize(o: in out CLzmaDecoder) is
@@ -350,12 +353,12 @@ procedure LZMA_Dec is
     end if;
   end DecodeProperties;
 
-  procedure Create(o: in out CLzmaDecoder) is
+  procedure Create_Large_Arrays(o: in out CLzmaDecoder) is
     length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
   begin
     Create(o.OutWindow, o.dictSize);
     o.LitProbs := new CProb_array(0..length-1); -- Literals
-  end Create;
+  end Create_Large_Arrays;
 
   procedure InitLiterals(o: in out CLzmaDecoder) is
   begin
@@ -461,27 +464,22 @@ procedure LZMA_Dec is
     LZMA_RES_FINISHED_WITHOUT_MARKER
   );
 
-  procedure Decode(
-    o: in out CLzmaDecoder; 
-    unpackSizeDefined: Boolean; 
-    unpackSize: in out Data_Bytes_Count;
-    res: out LZMA_Result
-  )
-  is
+  procedure Decode_Contents(o: in out CLzmaDecoder; res: out LZMA_Result) is
     rep0, rep1, rep2, rep3 : UInt32 := 0;
     state : State_Range := 0;
     posState: State_Range;
     bit: UInt32;
-    use type BIO.Count; 
+    use type BIO.Count;
+    Marker_exit: exception;
     
     procedure Process_Litteral is
     begin
-      if unpackSizeDefined and unpackSize = 0 then
+      if o.unpackSizeDefined and o.unpackSize = 0 then
         raise LZMA_Error;
       end if;
       DecodeLiteral(o, state, rep0);
       state := UpdateState_Literal(state);
-      unpackSize:= unpackSize - 1;
+      o.unpackSize:= o.unpackSize - 1;
     end Process_Litteral;
 
     procedure Process_Distance_and_Length is
@@ -491,7 +489,7 @@ procedure LZMA_Dec is
     begin
       DecodeBit(o.RangeDec, o.IsRep(state), bit);
       if bit /= 0 then
-        if unpackSizeDefined and unpackSize = 0 then
+        if o.unpackSizeDefined and o.unpackSize = 0 then
           raise LZMA_Error;
         end if;
         if IsEmpty(o.OutWindow) then
@@ -503,7 +501,7 @@ procedure LZMA_Dec is
           if bit = 0 then
             state := UpdateState_ShortRep(state);
             PutByte(o.OutWindow, GetByte(o.OutWindow, rep0 + 1));
-            unpackSize:= unpackSize - 1;
+            o.unpackSize:= o.unpackSize - 1;
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
@@ -534,26 +532,26 @@ procedure LZMA_Dec is
         DecodeDistance(o, len, rep0);
         if rep0 = 16#FFFF_FFFF# then
           if IsFinishedOK(o.RangeDec) then
-            res:= LZMA_RES_FINISHED_WITH_MARKER;
+            raise Marker_exit;
           else
             raise LZMA_Error;
           end if;
         end if; 
-        if unpackSizeDefined and unpackSize = 0 then
+        if o.unpackSizeDefined and o.unpackSize = 0 then
           raise LZMA_Error;
         end if;
-        if rep0 >= o.dictSize and not CheckDistance(o.OutWindow, rep0) then
+        if rep0 >= o.dictSize or not CheckDistance(o.OutWindow, rep0) then
           raise LZMA_Error;
         end if;
       end if;
       len := len + kMatchMinLen;
       isError := false;
-      if unpackSizeDefined and unpackSize < Data_Bytes_Count(len) then
-        len := Unsigned(unpackSize);
+      if o.unpackSizeDefined and o.unpackSize < Data_Bytes_Count(len) then
+        len := Unsigned(o.unpackSize);
         isError := true;
       end if;
       CopyMatch(o.OutWindow, rep0 + 1, len);
-      unpackSize:= unpackSize - Data_Bytes_Count(len);
+      o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       if isError then
         raise LZMA_Error;
       end if;
@@ -563,7 +561,7 @@ procedure LZMA_Dec is
     Init(o);
     Init(o.RangeDec);
     loop
-      if unpackSizeDefined and unpackSize = 0 and (not o.markerIsMandatory)
+      if o.unpackSizeDefined and o.unpackSize = 0 and (not o.markerIsMandatory)
         and IsFinishedOK(o.RangeDec)
       then
         res:= LZMA_RES_FINISHED_WITHOUT_MARKER;
@@ -577,7 +575,53 @@ procedure LZMA_Dec is
         Process_Distance_and_Length;
       end if;
     end loop;
-  end Decode;
+  exception
+    when Marker_exit =>
+      res:= LZMA_RES_FINISHED_WITH_MARKER;
+  end Decode_Contents;
+
+  procedure Decode_Header(o: in out CLzmaDecoder) is
+    header: Byte_buffer(0..12);
+    b: Byte;
+    use type BIO.Count; 
+  begin
+    o.unpackSize := 0;
+    o.unpackSizeDefined := False;
+    
+    for i in header'Range loop
+      header(i):= ReadByte;
+    end loop;
+
+    DecodeProperties(o, header);
+
+    for i in UInt32'(0)..7 loop
+      b:= header(5 + i);
+      if b /= 16#FF# then
+        o.unpackSizeDefined := True;
+      end if;
+    end loop;
+  
+    if o.unpackSizeDefined then
+      for i in UInt32'(0)..7 loop
+        b:= header(5 + i);
+        if b /= 16#FF# then
+          o.unpackSizeDefined := True;
+        end if;
+        if b /= 0 then
+          if 8 * (i+1) > Data_Bytes_Count'Size then
+            raise LZMA_Error; -- Overflow
+          else
+            o.unpackSize := o.unpackSize + Data_Bytes_Count(b) * 2 ** Natural(8 * i);
+          end if;
+        end if;
+      end loop;
+      o.unpackSize_as_defined:= o.unpackSize;
+    else
+      o.unpackSize:= Data_Bytes_Count'Last;
+    end if;
+
+    o.markerIsMandatory := not o.unpackSizeDefined;
+  end Decode_Header;
 
   procedure Print_Data_Bytes_Count(title: String; v: Data_Bytes_Count) is
     package CIO is new Integer_IO(Data_Bytes_Count);
@@ -590,16 +634,14 @@ procedure LZMA_Dec is
   end Print_Data_Bytes_Count;
 
   lzmaDecoder: CLzmaDecoder;
-  header: Byte_buffer(0..12);
-  unpackSize: Data_Bytes_Count := 0;
-  unpackSizeDefined: Boolean := false;
-  b: Byte;
   res: LZMA_Result;
+
   use type BIO.Count; 
 
 begin
   New_Line;
   Put_Line("LZMA Reference Decoder 9.31 : Igor Pavlov : Public domain : 2013-02-06");
+  Put_Line("This is an Ada translation of LzmaSpec.cpp");
   if Argument_Count = 0 then
     Put_Line("Use: lzma_dec a.lzma outfile");
     return;
@@ -609,13 +651,9 @@ begin
   end if;
   Open(f_in, In_File, Argument(1));
   Create(f_out,Out_File, Argument(2));
-  for i in header'Range loop
-    header(i):= ReadByte;
-  end loop;
   
-  -- GdM vvv DecodeProperties and later will be in a Decode_Header procedure !!
+  Decode_Header(lzmaDecoder);
 
-  DecodeProperties(lzmaDecoder, header);
   Put_Line(
     "lc="   & LC_Range'Image(lzmaDecoder.lc) & 
     ", lp=" & LP_Range'Image(lzmaDecoder.lp) &
@@ -623,56 +661,29 @@ begin
   );
   Put_Line("Dictionary size in properties =" & UInt32'Image(lzmaDecoder.dictSizeInProperties));
   Put_Line("Dictionary size for decoding  =" & UInt32'Image(lzmaDecoder.dictSize));
-
-  for i in UInt32'(0)..7 loop
-    b:= header(5 + i);
-    if b /= 16#FF# then
-      unpackSizeDefined := True;
-    end if;
-  end loop;
-  
-  if unpackSizeDefined then
-    for i in UInt32'(0)..7 loop
-      b:= header(5 + i);
-      if b /= 16#FF# then
-        unpackSizeDefined := True;
-      end if;
-      if b /= 0 then
-        if 8 * (i+1) > Data_Bytes_Count'Size then
-          raise LZMA_Error; -- Overflow
-        else
-          unpackSize := unpackSize + Data_Bytes_Count(b) * 2 ** Natural(8 * i);
-        end if;
-      end if;
-    end loop;
-  else
-    unpackSize:= Data_Bytes_Count'Last;
-  end if;
-
-  lzmaDecoder.markerIsMandatory := not unpackSizeDefined;
-  -- GdM ^^^ This up to DecodeProperties will be in a Decode_Header procedure !!
-
   New_Line;
-  if unpackSizeDefined then
-    Print_Data_Bytes_Count("Uncompressed size", unpackSize);
+
+  if lzmaDecoder.unpackSizeDefined then
+    Print_Data_Bytes_Count("Uncompressed size", lzmaDecoder.unpackSize_as_defined);
+    -- !! unpackSizeDefined, unpackSize_as_defined only available as public function
   else
     Put_Line("Uncompressed size not defined, end marker is expected.");
   end if;
   New_Line;
 
-  Create(lzmaDecoder);
-  -- we support the streams that have uncompressed size and marker.
-  Decode(lzmaDecoder, unpackSizeDefined, unpackSize, res);
-  Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in)));
-  Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out)));
+  Create_Large_Arrays(lzmaDecoder);
+  Decode_Contents(lzmaDecoder, res);
+  
+  Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in) - 1));
+  Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out) - 1));
   case res is
     when LZMA_RES_FINISHED_WITHOUT_MARKER =>
        Put_Line("Finished without end marker");
     when LZMA_RES_FINISHED_WITH_MARKER =>
-       if unpackSizeDefined then
-         if Data_Bytes_Count(Index(f_out)) /= unpackSize then
+       if lzmaDecoder.unpackSizeDefined then
+         if Data_Bytes_Count(Index(f_out) - 1) /= lzmaDecoder.unpackSize_as_defined then
            Put_Line("Warning: finished with end marker before than specified size");
-           -- GdM: should raise LZMA_Error from Decode ?
+           -- !! unpackSizeDefined, unpackSize_as_defined only available as public function
          end if;
        end if;
        Put_Line("Finished with end marker");

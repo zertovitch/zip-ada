@@ -5,17 +5,20 @@ echo Don't hesitate to tune it your way!
 echo.
 echo You need to have in your path:
 echo.
-echo unzipada.exe
+echo   unzipada.exe
 echo.
-echo pkzip090.exe (or pkzip092.exe)
-echo pkzip101.exe (or pkzip102.exe)
-echo pkzip110.exe
-echo pkzip193.exe
-echo pkzip204.exe
-echo pkzip250.exe
-echo 7z.exe
-echo kzip.exe
-echo zip.exe (v.3 or later)
+echo The test will try to call the following compressors,
+echo they should be also visible in the path:
+echo.
+echo   pkzip090.exe (or pkzip092.exe)
+echo   pkzip101.exe (or pkzip102.exe)
+echo   pkzip110.exe
+echo   pkzip193.exe
+echo   pkzip204.exe
+echo   pkzip250.exe
+echo   7z.exe
+echo   kzip.exe
+echo   zip.exe (v.3 or later)
 echo.
 
 echo The PK compressors are renamed from "pkzip.exe" in various versions
