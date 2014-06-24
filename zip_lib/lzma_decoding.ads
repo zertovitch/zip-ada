@@ -2,7 +2,7 @@
 -- Based on a translation of LzmaSpec.cpp, the LZMA Reference Decoder, by Igor Pavlov.
 -- Public domain.
 
-with Ada.Direct_IO, Ada.Finalization, Interfaces;
+with Ada.Direct_IO, Ada.Finalization, Interfaces, System;
 
 generic
   -- Input:
@@ -59,7 +59,7 @@ private
   subtype Byte is Unsigned_8;
   subtype UInt16 is Unsigned_16;
   subtype UInt32 is Unsigned_32;
-  type Unsigned is mod 2 ** Standard'Address_Size;
+  type Unsigned is mod 2 ** System.Word_Size;
 
     type Byte_buffer is array(UInt32 range <>) of Byte;
   type p_Byte_buffer is access Byte_buffer;

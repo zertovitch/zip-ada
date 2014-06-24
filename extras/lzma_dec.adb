@@ -1,6 +1,6 @@
 -- Standalone, command-line, LZMA Decoder (for .lzma files).
 
-with LZMA_Decoding;
+with LZMA_Dec_Pkg;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -9,24 +9,7 @@ with Interfaces;                        use Interfaces;
 
 procedure LZMA_Dec is
 
-  subtype Byte is Unsigned_8;
-  
-  f_in, f_out: Ada.Streams.Stream_IO.File_Type;
-
-  function Read_Byte return Byte is
-    b: Byte;
-  begin
-    Byte'Read(Stream(f_in), b);
-    return b;
-  end;
-
-  procedure Write_Byte(b: Byte) is
-  begin
-    Byte'Write(Stream(f_out), b);
-  end;
-
-  package My_LZMA_Decoding is new LZMA_Decoding(Read_Byte, Write_Byte);
-  use My_LZMA_Decoding;
+  use LZMA_Dec_Pkg, LZMA_Dec_Pkg.My_LZMA_Decoding;
 
   procedure Print_Data_Bytes_Count(title: String; v: Data_Bytes_Count) is
     package CIO is new Integer_IO(Data_Bytes_Count);
@@ -95,4 +78,6 @@ begin
     Put_Line("Warning: LZMA stream is corrupted");
   end if;
   
+  Close(f_in);
+  Close(f_out);
 end LZMA_Dec;
