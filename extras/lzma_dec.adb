@@ -136,7 +136,7 @@ procedure LZMA_Dec is
     end if;
   end Normalize;
  
-  procedure DecodeDirectBits(o: in out CRangeDecoder; numBits : Unsigned; res: out UInt32) is
+  procedure DecodeDirectBits(o: in out CRangeDecoder; numBits : Natural; res: out UInt32) is
     t: UInt32;
   begin
     res := 0;
@@ -149,8 +149,7 @@ procedure LZMA_Dec is
         o.Corrupted := True;
       end if;
       Normalize(o);
-      res := Shift_Left(res, 1);
-      res := res + t + 1;
+      res := Shift_Left(res, 1) + t + 1;
     end loop;
   end DecodeDirectBits;
 
@@ -161,7 +160,7 @@ procedure LZMA_Dec is
     bound: constant UInt32:= Shift_Right(o.RangeZ, kNumBitModelTotalBits) * v;
   begin
     if o.Code < bound then
-      v:= v + Shift_Right( (kNumBitModel_Count - v) , kNumMoveBits);
+      v:= v + Shift_Right(kNumBitModel_Count - v, kNumMoveBits);
       o.RangeZ := bound;
       symbol := 0;
     else
@@ -174,9 +173,7 @@ procedure LZMA_Dec is
     Normalize(o);
   end DecodeBit;
 
-  -- BitTreeReverseDecode is used for decoding distances.
-  
-  procedure BitTreeReverseDecode(prob: in out CProb_array; numBits : Unsigned; rc: in out CRangeDecoder; symbol: out UInt32) is
+  procedure BitTreeReverseDecode(prob: in out CProb_array; numBits : Natural; rc: in out CRangeDecoder; symbol: out UInt32) is
     m: UInt32 := 1;
     bit: UInt32;
   begin
@@ -184,14 +181,14 @@ procedure LZMA_Dec is
     for i in 0..numBits-1 loop
       DecodeBit(rc, prob(Unsigned(m)+prob'First), bit);
       m := Shift_Left(m, 1) + bit;
-      symbol := symbol or Shift_Left(bit, Natural(i));
+      symbol := symbol or Shift_Left(bit, i);
     end loop;
   end BitTreeReverseDecode;
 
   generic
-    NumBits: Unsigned;
+    NumBits: Positive;
   package CBitTreeDecoder is
-    subtype Probs is CProb_array(0 .. 2**Natural(NumBits) - 1);
+    subtype Probs is CProb_array(0 .. 2**NumBits - 1);
     procedure Init(p: out Probs);
     procedure Decode(p: in out Probs; rc: in out CRangeDecoder; res: out Unsigned);
     procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32);
@@ -208,11 +205,11 @@ procedure LZMA_Dec is
       symbol: UInt32;
       m: Unsigned:= 1;
     begin
-      for i in 0 .. NumBits-1 loop
+      for count in 1..NumBits loop
         DecodeBit(rc, p(m),symbol);
         m:= m * 2 + Unsigned(symbol);
       end loop;
-      res:= m - Unsigned(Shift_Left(UInt32'(1), Natural(NumBits)));
+      res:= m - Unsigned(Shift_Left(UInt32'(1), NumBits));
     end Decode;
 
     procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32) is
@@ -223,6 +220,7 @@ procedure LZMA_Dec is
   end CBitTreeDecoder;
 
   kNumPosBitsMax : constant := 4;
+  kNumPosBitsMax_Count : constant := 2**kNumPosBitsMax;
 
   kNumStates          : constant := 12;
   kNumLenToPosStates  : constant := 4;
@@ -236,7 +234,7 @@ procedure LZMA_Dec is
   package BTD_8   is new CBitTreeDecoder(8);
   package BTD_NAB is new CBitTreeDecoder(kNumAlignBits);
 
-  type LM_Coder_Probs is array(Unsigned'(0) .. 2**kNumPosBitsMax - 1) of BTD_3.Probs;
+  type LM_Coder_Probs is array(Unsigned'(0) .. kNumPosBitsMax_Count - 1) of BTD_3.Probs;
 
   type CLenDecoder is record
     Choice    : CProb;
@@ -308,12 +306,12 @@ procedure LZMA_Dec is
     PosSlotDecoder       : Slot_Coder_Probs;
     AlignDecoder         : BTD_NAB.Probs;
     PosDecoders          : CProb_array(0..Last_PosDecoders);
-    IsMatch              : CProb_array(0..kNumStates * 2 ** kNumPosBitsMax-1);
-    IsRep0Long           : CProb_array(0..kNumStates * 2 ** kNumPosBitsMax-1);
-    IsRep                : CProb_array(0..kNumStates-1);
-    IsRepG0              : CProb_array(0..kNumStates-1);
-    IsRepG1              : CProb_array(0..kNumStates-1);
-    IsRepG2              : CProb_array(0..kNumStates-1);
+    IsMatch              : CProb_array(0..kNumStates * kNumPosBitsMax_Count - 1);
+    IsRep0Long           : CProb_array(0..kNumStates * kNumPosBitsMax_Count - 1);
+    IsRep                : CProb_array(0..kNumStates - 1);
+    IsRepG0              : CProb_array(0..kNumStates - 1);
+    IsRepG1              : CProb_array(0..kNumStates - 1);
+    IsRepG2              : CProb_array(0..kNumStates - 1);
     LenDecoder           : CLenDecoder;
     RepLenDecoder        : CLenDecoder;
   end record;
@@ -342,8 +340,9 @@ procedure LZMA_Dec is
     o.pb := PB_range(d / 5);
     o.pos_bits_mask:= 2 ** o.pb - 1;
     o.dictSizeInProperties := 0;
-    for i in UInt32'(0)..3 loop
-      o.dictSizeInProperties := o.dictSizeInProperties + UInt32(b(i + 1 + b'First)) * 2 ** Natural(8 * i);
+    for i in 0..3 loop
+      o.dictSizeInProperties := o.dictSizeInProperties +
+        UInt32(b(UInt32(i) + 1 + b'First)) * 2 ** (8 * i);
     end loop;
     o.dictSize := o.dictSizeInProperties;
     if o.dictSize < LZMA_DIC_MIN then
@@ -415,7 +414,7 @@ procedure LZMA_Dec is
     lenState      : Unsigned := len;
     posSlot       : Unsigned;
     dist          : UInt32;
-    numDirectBits : Unsigned;
+    numDirectBits : Natural;
     deco          : UInt32;
   begin
     if lenState > kNumLenToPosStates - 1 then
@@ -426,11 +425,13 @@ procedure LZMA_Dec is
       res:= UInt32(posSlot);
       return;
     end if;
-    numDirectBits := Unsigned(Shift_Right(UInt32(posSlot), 1) - 1);
-    dist := Shift_Left((2 or (UInt32(posSlot) and 1)), Natural(numDirectBits));
+    numDirectBits := Natural(Shift_Right(UInt32(posSlot), 1) - 1);
+    dist := Shift_Left(2 or (UInt32(posSlot) and 1), numDirectBits);
     if posSlot < kEndPosModelIndex then
-      BitTreeReverseDecode(o.PosDecoders(Unsigned(dist) - posSlot .. Last_PosDecoders), 
-      numDirectBits, o.RangeDec, deco);
+      BitTreeReverseDecode(
+        o.PosDecoders(Unsigned(dist) - posSlot .. Last_PosDecoders), 
+        numDirectBits, o.RangeDec, deco
+      );
       dist:= dist + deco;
     else
       DecodeDirectBits(o.RangeDec, numDirectBits - kNumAlignBits, deco);
@@ -498,12 +499,12 @@ procedure LZMA_Dec is
         end if;
         DecodeBit(o.RangeDec, o.IsRepG0(state), bit);
         if bit = 0 then
-          DecodeBit(o.RangeDec, o.IsRep0Long(state * 2**kNumPosBitsMax + posState), bit);
+          DecodeBit(o.RangeDec, o.IsRep0Long(state * kNumPosBitsMax_Count + posState), bit);
           if bit = 0 then
             state := UpdateState_ShortRep(state);
             PutByte(o.OutWindow, GetByte(o.OutWindow, rep0 + 1));
             unpackSize:= unpackSize - 1;
-            return;  -- GdM: will go to the next iteration (C++: continue)
+            return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
           DecodeBit(o.RangeDec, o.IsRepG1(state), bit);
@@ -569,7 +570,7 @@ procedure LZMA_Dec is
         return;
       end if;
       posState := State_range(UInt32(o.OutWindow.TotalPos) and o.pos_bits_mask);
-      DecodeBit(o.RangeDec, o.IsMatch(state * 2**kNumPosBitsMax + PosState), bit);
+      DecodeBit(o.RangeDec, o.IsMatch(state * kNumPosBitsMax_Count + PosState), bit);
       if bit = 0 then
         Process_Litteral;
       else
@@ -578,15 +579,15 @@ procedure LZMA_Dec is
     end loop;
   end Decode;
 
-  procedure PrintData_Bytes_Count(title: String; v: Data_Bytes_Count) is
-    package U64IO is new Integer_IO(Data_Bytes_Count);
+  procedure Print_Data_Bytes_Count(title: String; v: Data_Bytes_Count) is
+    package CIO is new Integer_IO(Data_Bytes_Count);
   begin
     Put(title);
     Put(" : ");
-    U64IO.Put(v, 0);
+    CIO.Put(v, 0);
     Put(" bytes");
     New_Line;
-  end;
+  end Print_Data_Bytes_Count;
 
   lzmaDecoder: CLzmaDecoder;
   header: Byte_buffer(0..12);
@@ -653,7 +654,7 @@ begin
 
   New_Line;
   if unpackSizeDefined then
-    PrintData_Bytes_Count("Uncompressed size", unpackSize);
+    Print_Data_Bytes_Count("Uncompressed size", unpackSize);
   else
     Put_Line("Uncompressed size not defined, end marker is expected.");
   end if;
@@ -662,8 +663,8 @@ begin
   Create(lzmaDecoder);
   -- we support the streams that have uncompressed size and marker.
   Decode(lzmaDecoder, unpackSizeDefined, unpackSize, res);
-  PrintData_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in)));
-  PrintData_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out)));
+  Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in)));
+  Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out)));
   case res is
     when LZMA_RES_FINISHED_WITHOUT_MARKER =>
        Put_Line("Finished without end marker");
