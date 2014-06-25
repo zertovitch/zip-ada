@@ -1,5 +1,7 @@
 @echo off
-rem Test UnZipAda for one data file compressed with external zippers (no ZipAda !)
+echo Test UnZipAda for one data file compressed with external zippers (no ZipAda !)
+echo Archive name = %2
+echo Data name = %1
 
 if (%2)==() goto vide
 
@@ -46,7 +48,7 @@ ren $10defl3.tmp $11defl4.tmp
 pkzip204 -ex %2 $11defl4.tmp
 
 ren $11defl4.tmp $12defl5.tmp
-pkzip250 -exx -stralala %2 $12defl5.tmp
+pkzip250 -exx %2 $12defl5.tmp
 
 ren $12defl5.tmp $14_df64.tmp
 call 7z a -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000 %2.zip $14_df64.tmp
@@ -54,28 +56,37 @@ call 7z a -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000 %2.zip $14_df64.tmp
 ren $14_df64.tmp $15_bzp2.tmp
 zip -Z bzip2 %2 $15_bzp2.tmp
 
-ren $15_bzp2.tmp %1
+ren $15_bzp2.tmp $16_lzma.tmp
+7z a -mx -mm=LZMA %2.zip $16_lzma.tmp
+
+ren $16_lzma.tmp $99_cryp.tmp
+zip -9 -P tralala %2 $99_cryp.tmp
+
+ren $99_cryp.tmp %1
 
 echo All! | unzipada -s tralala %2.zip
 
+echo Checking decompressed outputs:
 pause
 
-fc /B %1 $00store.tmp
-fc /B %1 $01redu1.tmp
-fc /B %1 $02redu2.tmp
-fc /B %1 $03redu3.tmp
-fc /B %1 $04redu4.tmp
-fc /B %1 $05shri1.tmp
-fc /B %1 $06impl1.tmp
-fc /B %1 $07impl2.tmp
-fc /B %1 $08defl1.tmp
-fc /B %1 $09defl2.tmp
-fc /B %1 $10defl3.tmp
-fc /B %1 $11defl4.tmp
-fc /B %1 $12defl5.tmp
-fc /B %1 $13_kzip.tmp
-fc /B %1 $14_df64.tmp
-fc /B %1 $15_bzp2.tmp
+if exist $00store.tmp fc /B %1 $00store.tmp
+if exist $01redu1.tmp fc /B %1 $01redu1.tmp
+if exist $02redu2.tmp fc /B %1 $02redu2.tmp
+if exist $03redu3.tmp fc /B %1 $03redu3.tmp
+if exist $04redu4.tmp fc /B %1 $04redu4.tmp
+if exist $05shri1.tmp fc /B %1 $05shri1.tmp
+if exist $06impl1.tmp fc /B %1 $06impl1.tmp
+if exist $07impl2.tmp fc /B %1 $07impl2.tmp
+if exist $08defl1.tmp fc /B %1 $08defl1.tmp
+if exist $09defl2.tmp fc /B %1 $09defl2.tmp
+if exist $10defl3.tmp fc /B %1 $10defl3.tmp
+if exist $11defl4.tmp fc /B %1 $11defl4.tmp
+if exist $12defl5.tmp fc /B %1 $12defl5.tmp
+if exist $13_kzip.tmp fc /B %1 $13_kzip.tmp
+if exist $14_df64.tmp fc /B %1 $14_df64.tmp
+if exist $15_bzp2.tmp fc /B %1 $15_bzp2.tmp
+if exist $16_lzma.tmp fc /B %1 $16_lzma.tmp
+if exist $99_cryp.tmp fc /B %1 $99_cryp.tmp
 
 pause
 
@@ -83,7 +94,7 @@ goto fin
 
 :vide
 echo test_1 compresses a file with various Zip compressors into a single
-echo archive with several names and checks the decompressed outputs
+echo archive with several names and then checks the decompressed outputs
 echo of Zip-Ada against that file.
 echo.
 echo Please start test_uza for a sample test (binary, text)

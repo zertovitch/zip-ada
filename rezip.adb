@@ -3,9 +3,9 @@
 --  Description:     Recompression tool to make archives smaller.
 --                     Uses brute force and pick-and-choose among compression
 --                     tools and methods. Typically the optimal archive will
---                     contain some entries compressed with the BZip2 format,
---                     and others with the Deflate or Deflate_e ones.
---                     Compression speed doesn't matter (except extrem cases),
+--                     contain some entries compressed with the LZMA format,
+--                     and others with the Deflate, Deflate_e or BZip2.
+--                     Compression speed doesn't matter (except extreme cases),
 --                     only the final size does.
 --
 --  Date/version:    ... ; 11-Jan-2008
@@ -147,7 +147,7 @@ procedure ReZip is
     reduce_1, reduce_2, reduce_3, reduce_4,
     deflate_f,
     external_1, external_2, external_3, external_4,
-    external_5, external_6, external_7
+    external_5, external_6, external_7, external_8
   );
 
   subtype Internal is Approach
@@ -226,14 +226,14 @@ procedure ReZip is
   kzip_limit: constant:= 500_000;
 
   ext: array(External) of Zipper_specification:=
-    (
+    ( -- Zip 2.32 or later:
       (U("zip"), U("Zip"), U("http://info-zip.org/"),
          U("-9"), NN, 20, Zip.deflate, 0, False),
-       -- Zip 2.32 or later
+      -- Zip 3.0 or later
       (U("zip"), U("Zip"), U("http://info-zip.org/"),
          U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
-       -- Zip 3.0 or later
-      (U("7z"),                                      -- 7-Zip 4.64 or later
+      -- 7-Zip 4.64 or later:
+      (U("7z"),
          U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mm=deflate -mfb=258 -mpass=#RAND#(7,15) -mmc=10000"),
          NN, 20, Zip.deflate, 0, True),
@@ -241,6 +241,11 @@ procedure ReZip is
          U("7-Zip"), NN,
          U("a -tzip -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
          NN, 21, Zip.deflate_e, 0, False),
+      (U("7z"),
+         U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA -mx=9"),
+         NN, 63, Zip.lzma, 0, False),
+      -- KZip:
       (U("kzip"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
          U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit, True),
       (U("kzip"),U("KZIP"),NN,

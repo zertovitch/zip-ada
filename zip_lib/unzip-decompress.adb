@@ -1,4 +1,4 @@
-with Zip.CRC, UnZip.Decompress.Huffman, BZip2;
+with Zip.CRC, UnZip.Decompress.Huffman, BZip2, LZMA_Decoding;
 
 with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
@@ -32,7 +32,7 @@ package body UnZip.Decompress is
     ----------------------------------------------------------------------------
     -- Specifications of UnZ_* packages (remain of Info Zip's code structure) --
     ----------------------------------------------------------------------------
-    use Interfaces;
+    use Ada.Exceptions, Interfaces;
 
     package UnZ_Glob is -- Not global anymore, since local to Decompress_data :-)
       -- I/O Buffers: Sliding dictionary for unzipping, and output buffer as well
@@ -121,6 +121,7 @@ package body UnZip.Decompress is
       deflate_e_mode: Boolean:= False;
       procedure Inflate;
       procedure Bunzip2; -- Nov-2009
+      procedure LZMA_Decode; -- Jun-2014
     end UnZ_Meth;
 
     procedure Process_feedback(new_bytes: File_size_type) is
@@ -705,14 +706,13 @@ package body UnZip.Decompress is
                     "[LZW code size ->" & Integer'Image(Code_Size) & ']'
                   );
                 end if;
-                if  Code_Size > Maximum_Code_Size then
+                if Code_Size > Maximum_Code_Size then
                   raise Zip.Zip_file_Error;
                 end if;
               when Code_Clear_table =>
                 Clear_Leaf_Nodes;
               when others =>
-                Ada.Exceptions.Raise_Exception
-                 (Zip.Zip_file_Error'Identity,
+                Raise_Exception(Zip.Zip_file_Error'Identity,
                   "Wrong LZW (Shrink) special code" & Integer'Image(Incode));
             end case;
 
@@ -729,8 +729,7 @@ package body UnZip.Decompress is
                 Incode := Last_Incode;
               end if;
               while Incode > 256 loop
-                -- Test added 11-Dec-2007 for situations
-                --     happening on corrupt files:
+                -- Test added 11-Dec-2007 for situations happening on corrupt files:
                 if Stack_Ptr < Stack'First or
                    Incode > Actual_Code'Last
                 then
@@ -1688,10 +1687,7 @@ package body UnZip.Decompress is
               Repeat_length_code(11 + UnZ_IO.Bit_buffer.Read_and_dump(7));
             when others =>
               if full_trace then
-                Ada.Text_IO.Put_Line(
-                  "Illegal length code: " &
-                  Integer'Image(CTE.n)
-                );
+                Ada.Text_IO.Put_Line("Illegal length code: " & Integer'Image(CTE.n));
               end if;
           end case;
         end loop;
@@ -1780,6 +1776,7 @@ package body UnZip.Decompress is
       procedure Bunzip2 is
         type BZ_Buffer is array(Natural range <>) of Interfaces.Unsigned_8;
         procedure Read( b: out BZ_Buffer ) is
+        pragma Inline(Read);
         begin
           for i in b'Range loop
             exit when Zip_EOF;
@@ -1787,6 +1784,7 @@ package body UnZip.Decompress is
           end loop;
         end Read;
         procedure Write( b: in BZ_Buffer ) is
+        pragma Inline(Write);
         begin
           for i in b'Range loop
             UnZ_Glob.slide ( UnZ_Glob.slide_index ) := b(i);
@@ -1805,10 +1803,48 @@ package body UnZip.Decompress is
         UnZ_IO.Flush( UnZ_Glob.slide_index );
       end Bunzip2;
 
+      --------[ Method: LZMA ]--------
+
+      procedure LZMA_Decode is
+        function Read_Byte return Unsigned_8 is
+        pragma Inline(Read_Byte);
+          b: Unsigned_8;
+        begin
+          if Zip_EOF then
+            raise Zip.Zip_file_Error;
+          else
+            UnZ_IO.Read_raw_byte(b);
+            return b;
+          end if;
+        end Read_Byte;
+        procedure Write_Byte(b: Unsigned_8) is
+        pragma Inline(Write_Byte);
+        begin
+          UnZ_Glob.slide ( UnZ_Glob.slide_index ) := b;
+          UnZ_Glob.slide_index:= UnZ_Glob.slide_index + 1;
+          UnZ_IO.Flush_if_full(UnZ_Glob.slide_index);
+        end Write_Byte;
+        package My_LZMA_Decoding is new LZMA_Decoding(Read_Byte, Write_Byte);
+        b1, b2, b3, b4: Unsigned_8;
+      begin
+        UnZ_IO.Read_raw_byte(b1); -- LZMA SDK major version (e.g.: 9)
+        UnZ_IO.Read_raw_byte(b2); -- LZMA SDK minor version (e.g.: 20)
+        UnZ_IO.Read_raw_byte(b3); -- LZMA properties size low byte
+        UnZ_IO.Read_raw_byte(b4); -- LZMA properties size high byte
+        if Natural(b3) + 256 * Natural(b4) /= 5 then
+          Raise_Exception(Zip.Zip_file_Error'Identity, "Unexpected LZMA properties block size");
+        end if;
+        My_LZMA_Decoding.Decompress(
+          (has_size        => False,
+           given_size      => My_LZMA_Decoding.Data_Bytes_Count(UnZ_Glob.uncompsize),
+           marker_expected => explode_slide_8KB_LZMA_EOS)
+        );
+        UnZ_IO.Flush( UnZ_Glob.slide_index );
+      end LZMA_Decode;
+
     end UnZ_Meth;
 
-    procedure Process_descriptor(dd: out Zip.Headers.Data_descriptor)
-    is
+    procedure Process_descriptor(dd: out Zip.Headers.Data_descriptor) is
       start: Integer;
       b: Unsigned_8;
       dd_buffer: Zip.Byte_Buffer(1..30);
@@ -1900,11 +1936,10 @@ package body UnZip.Decompress is
           UnZ_Meth.deflate_e_mode:= format = deflate_e;
           UnZ_Meth.Inflate;
         when Zip.bzip2 => UnZ_Meth.Bunzip2;
+        when Zip.lzma  => UnZ_Meth.LZMA_Decode;
         when others =>
-          Ada.Exceptions.Raise_Exception
-            (Unsupported_method'Identity,
-             "Format (method) " & PKZip_method'Image(format) &
-             " is not supported for decompression");
+          Raise_Exception(Unsupported_method'Identity,
+             "Format/method " & PKZip_method'Image(format) & " not supported for decompression");
       end case;
     exception
       when others =>

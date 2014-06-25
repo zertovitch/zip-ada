@@ -332,7 +332,7 @@ begin
                 Long_Float(Summary.total_uncompressed)
               ), 4
             );
-            Put("% of all data; compression ratio: ");
+            Put("% of all data; compr.-to-decompr. ratio: ");
             IIO.Put(
               Natural(
                 (100.0 * Long_Float(Summary.compressed_per_method(m))) /

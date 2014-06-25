@@ -4,7 +4,7 @@ What is Zip-Ada ?
 Zip-Ada is a library for dealing with the Zip compressed archive
 file format. It supplies:
 
- - decompression for all sub-formats ("methods") up to BZip2
+ - decompression for all sub-formats ("methods") up to LZMA
  - decryption (v. 2.x)
  - compression (store, reduce, shrink and deflate sub-formats)
  - unconditional portability (see below a list of in-use platforms)
@@ -108,6 +108,9 @@ packages.
 
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
+
+* Changes in '47', xx-yyy-2014:
+  - LZMA method added for decompression
 
 * Changes in '46', 14-Sep-2013:
   - UnZip.Streams decompresses to input and (*new*) to output streams
@@ -425,13 +428,7 @@ To do
 To do further
 =============
   - Make a public access to UnZip.Decompress, as a zlib proxy
-  - Zip.Compress with a strong compression - see next item...
-  - Support other recent formats incorporated into the .zip format
-      (see appnote.txt) 
-      - LZMA: 7z / 7-Zip sources and SDK: C/LzmaDec.c
-              Pascal version: http://www.birtles.org.uk/programming/
-      - PPMd (but there are incompatiblities between different
-	          existing tools)
+  - Zip.Compress with a strong compression - LZMA best candidate
 
 Note on portability
 ===================
