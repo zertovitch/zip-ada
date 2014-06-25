@@ -241,10 +241,8 @@ procedure ReZip is
          U("7-Zip"), NN,
          U("a -tzip -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
          NN, 21, Zip.deflate_e, 0, False),
-      (U("7z"),
-         U("7-Zip"), NN,
-         U("a -tzip -mm=LZMA -mx=9"),
-         NN, 63, Zip.lzma, 0, False),
+      (U("7z"), U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma, 0, False),
       -- KZip:
       (U("kzip"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
          U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit, True),
@@ -487,7 +485,7 @@ procedure ReZip is
     type Approach_Filtering is array(Approach) of Boolean;
     always_consider: Approach_Filtering;
     Is_fast_decomp_method: constant array(Zip.PKZip_method) of Boolean:=
-      (Zip.store .. Zip.deflate_e => True,
+      (Zip.store .. Zip.deflate_e | Zip.lzma => True,
        Zip.bzip2 => False,
        others => False);
     --

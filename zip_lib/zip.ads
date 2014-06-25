@@ -98,8 +98,8 @@ package Zip is
 
   -- Compression methods or formats in the "official" PKWARE Zip format.
   -- Details in appnote.txt, part V.J
-  --   C: supported for compressing
-  --   D: supported for decompressing
+  --   C: supported by Zip-Ada for compressing
+  --   D: supported by Zip-Ada for decompressing
 
   type PKZip_method is
    ( store,     -- C,D
@@ -110,10 +110,10 @@ package Zip is
      reduce_4,  -- C,D
      implode,   --   D
      tokenize,
-     deflate,   --   D
+     deflate,   -- C,D
      deflate_e, --   D - Enhanced deflate
      bzip2,     --   D
-     lzma,
+     lzma,      --   D
      ppmd,
      unknown
    );

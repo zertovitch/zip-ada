@@ -4,7 +4,8 @@ What is Zip-Ada ?
 Zip-Ada is a library for dealing with the Zip compressed archive
 file format. It supplies:
 
- - decompression for all sub-formats ("methods") up to LZMA
+ - decompression for the following sub-formats ("methods"):
+     Store, Reduce, Shrink (LZW), Implode, Deflate, BZip2 and LZMA
  - decryption (v. 2.x)
  - compression (store, reduce, shrink and deflate sub-formats)
  - unconditional portability (see below a list of in-use platforms)
@@ -64,10 +65,13 @@ Contents
   - Comp_Zip.adb         : tool for comparing two Zip archives
   - Find_Zip.adb         : tool for searching a string across an archive
   - ReZip.adb            : tool for recompressing Zip archives and make them smaller
-  - ZipTest.adb          : test for Zip archive creation with various stream types
   - Demo_csv_into_zip.adb: demo showing how to produce many files directly
                              into a Zip file, with only 1 temp file
-  - bunzip               : a decompressor for BZip2 files (.bz2)
+  In the test subdirectory, there is
+  - ZipTest.adb          : test for Zip archive creation with various stream types
+  In the extras subdirectory, there is
+  - bunzip               : a standalone decompressor for BZip2 files (.bz2)
+  - lzma_dec             : a standalone decompressor for LZMA files (.lzma)
 
   These demos can be built as main programs. 
   Some are using Ada 2005's Ada.Directories for directory creation (UnZipAda)
@@ -406,15 +410,15 @@ Open bugs (as of v.45)
       but unzip <=5.12 and WinZip accept them all
   - UnZip.Decompress rejects many "enhanced deflate" (=deflate64)
         files made by WinZip (sometimes CRC errors, or:
-	unzip-decompress.adb:1711 Huffman tree errors: huft_incomplete
-	unzip-decompress.adb:1542 Inflate_Stored block length check fails
-	unzip-decompress.adb:1469 Inflate_codes E = invalid
-	unzip-decompress.adb:1809 Inflate_Block block type 3
+    unzip-decompress.adb:1711 Huffman tree errors: huft_incomplete
+    unzip-decompress.adb:1542 Inflate_Stored block length check fails
+    unzip-decompress.adb:1469 Inflate_codes E = invalid
+    unzip-decompress.adb:1809 Inflate_Block block type 3
     )...
     but accepts all archives with the same contents and compression
     method from 7-Zip (7z -mm=deflate64)! Since 7-Zip compresses a lot
     better also with that "enhanced deflate" format, a workaround is
-	just to use 7-Zip and not WinZip...
+    just to use 7-Zip and not WinZip...
     
 To do
 =====
@@ -423,54 +427,54 @@ To do
       the whole decoded data in a buffer (this exercise may be difficult!)
   - a Freshen_Zip tool that freshen files from an archive, or files
       to an archive, or both (i.e. like "zip -f" and/or "unzip -f" combined);
-	  possible with Zip.Create's Add_Compressed_Stream.
+      possible with Zip.Create's Add_Compressed_Stream.
 
 To do further
 =============
   - Make a public access to UnZip.Decompress, as a zlib proxy
-  - Zip.Compress with a strong compression - LZMA best candidate
+  - Zip.Compress with a strong compression - LZMA for instance ?
 
 Note on portability
 ===================
 
 Portability is unconditional and unrestricted!
 If you still have doubts, here is a list of OS/CPU/Compiler
-combinations where Zip-Ada was reported to be in use:
+combinations where Zip-Ada has been reported to be in use:
 
-OS		    		        CPU			        Compiler
+OS                          CPU                 Compiler
 ----------------------------------------------------------------------------
 
-OpenVMS                     Itanium (64 bit)   	GNU - GNAT
+OpenVMS                     Itanium (64 bit)    GNU - GNAT
 AIX                         Power7 (64 bit)
 MS Windows 95,98;
-           NT,2K,XP,7   	Intel x86 (32 bit)
-MS Windows x64			    Intel x64 (64 bit)
-Linux			        	Intel x86 (32 bit)
+           NT,2K,XP,7       Intel x86 (32 bit)
+MS Windows x64              Intel x64 (64 bit)
+Linux                       Intel x86 (32 bit)
 Linux on Sony PS3           Cell (64 bit)
 Linux on Raspberry Pi       ARM
-Mac OS X			        PowerPC (64 bit)
-Mac OS X    			    Intel x64 (64 bit)
-Solaris	    		    	SPARC (32 or 64 bit)
-Solaris		        		Intel x64 (64 bit)
-MS-DOS, DR-DOS (Novell)		Intel x86 (16/32 bit)
-OpenBSD     				(one of several)
-FreeBSD		        		Intel x86 (32 bit)
-FreeBSD				        Intel x64 (64 bit)
-Android 2.3+		        ARM
+Mac OS X                    PowerPC (64 bit)
+Mac OS X                    Intel x64 (64 bit)
+Solaris                     SPARC (32 or 64 bit)
+Solaris                     Intel x64 (64 bit)
+MS-DOS, DR-DOS (Novell)     Intel x86 (16/32 bit)
+OpenBSD                     (one of several)
+FreeBSD                     Intel x86 (32 bit)
+FreeBSD                     Intel x64 (64 bit)
+Android 2.3+                ARM
 
 MS Windows 95,98;
-           NT,2K,XP         Intel x86 (32 bit)	Aonix - ObjectAda
+           NT,2K,XP         Intel x86 (32 bit)  Atego - ObjectAda
 
 MS Windows 95,98;
-           NT,2K,XP     	Intel x86 (32 bit)	RR Software - Janus/Ada
+           NT,2K,XP         Intel x86 (32 bit)  RR Software - Janus/Ada
 
-MS Windows NT+			    Intel x86 (32 bit)	SofCheck - AdaMagic
-MS Windows NT+			    Intel x64 (64 bit)
-Linux   				    Intel x86 (32 bit)
-Mac OS X          			PowerPC (64 bit)
-Mac OS X	        		Intel x64 (64 bit)
-Solaris			        	SPARC (32 or 64 bit)
-Solaris				        Intel x64 (64 bit)
+MS Windows NT+              Intel x86 (32 bit)  SofCheck - AdaMagic
+MS Windows NT+              Intel x64 (64 bit)
+Linux                       Intel x86 (32 bit)
+Mac OS X                    PowerPC (64 bit)
+Mac OS X                    Intel x64 (64 bit)
+Solaris                     SPARC (32 or 64 bit)
+Solaris                     Intel x64 (64 bit)
 ----------------------------------------------------------------------------
 
 Enjoy!
