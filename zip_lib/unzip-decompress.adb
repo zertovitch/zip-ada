@@ -21,14 +21,12 @@ package body UnZip.Decompress is
     hint                       : in out Zip.Headers.Local_File_Header
   )
   is
-    -- Disable AdaControl rule for detecting global variables,
-    -- they have become local here.
+    -- Disable AdaControl rule for detecting global variables, they have become local here.
     --## RULE OFF Directly_Accessed_Globals
     --
-    -- I/O Buffers sizes
-    --  Size of input buffer
+    --  I/O Buffers: Size of input buffer
     inbuf_size: constant:= 16#8000#;  -- (orig: 16#1000# B =  4 KB)
-    --  Size of sliding dictionary and output buffer
+    --  I/O Buffers: Size of sliding dictionary and output buffer
     wsize     : constant:= 16#10000#; -- (orig: 16#8000# B = 32 KB)
 
     ----------------------------------------------------------------------------
@@ -37,11 +35,10 @@ package body UnZip.Decompress is
     use Interfaces;
 
     package UnZ_Glob is -- Not global anymore, since local to Decompress_data :-)
-      -- I/O Buffers
-      -- > Sliding dictionary for unzipping, and output buffer as well
+      -- I/O Buffers: Sliding dictionary for unzipping, and output buffer as well
       slide: Zip.Byte_Buffer( 0..wsize );
       slide_index: Integer:= 0; -- Current Position in slide
-      -- > Input buffer
+      -- I/O Buffers: Input buffer
       inbuf: Zip.Byte_Buffer( 0 .. inbuf_size - 1 );
       inpos, readpos: Integer;  -- pos. in input buffer, pos. read from file
       compsize,            -- compressed size of file
@@ -97,14 +94,12 @@ package body UnZip.Decompress is
       procedure Flush ( x: Natural ); -- directly from slide to output stream
 
       procedure Flush_if_full(W: in out Integer; unflushed: in out Boolean);
-        pragma Inline(Flush_if_full);
+      pragma Inline(Flush_if_full);
 
       procedure Flush_if_full(W: in out Integer);
-        pragma Inline(Flush_if_full);
+      pragma Inline(Flush_if_full);
 
-      procedure Copy(
-        distance, length:        Natural;
-        index           : in out Natural );
+      procedure Copy(distance, length: Natural; index: in out Natural);
       pragma Inline(Copy);
 
       procedure Copy_or_zero(
@@ -159,8 +154,6 @@ package body UnZip.Decompress is
     ------------------------------
     package body UnZ_IO is
 
-      -- Centralize buffer initialisations - 29-Jun-2001
-
       procedure Init_Buffers is
       begin
         UnZ_Glob.inpos   :=  0;  -- Input buffer position
@@ -193,20 +186,16 @@ package body UnZip.Decompress is
             );
           exception
             when others => -- I/O error
-              UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
-              -- Simulates reading -> CRC error
-              Zip_EOF := True;
+              UnZ_Glob.readpos := 0; -- Trigger next error...
           end;
           if UnZ_Glob.readpos = 0 then
-            UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
-            -- Simulates reading -> CRC error
+            UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;  -- Simulates reading -> CRC error
             Zip_EOF := True;
           end if;
 
           UnZ_Glob.reachedsize:=
             UnZ_Glob.reachedsize + UnZip.File_size_type(UnZ_Glob.readpos);
-          UnZ_Glob.readpos:= UnZ_Glob.readpos - 1;
-            -- Reason: index of inbuf starts at 0
+          UnZ_Glob.readpos:= UnZ_Glob.readpos - 1; -- Reason: index of inbuf starts at 0
         end if;
         UnZ_Glob.inpos:= 0;
         if full_trace then
@@ -224,9 +213,7 @@ package body UnZip.Decompress is
         UnZ_Glob.inpos := UnZ_Glob.inpos + 1;
       end Read_byte_no_decrypt;
 
-      -- 27-Jun-2001: Decryption - algorithm in Appnote.txt
-
-      package body Decryption is
+      package body Decryption is -- 27-Jun-2001: Algorithm in Appnote.txt
 
         type Decrypt_keys is array( 0..2 ) of Unsigned_32;
         keys     : Decrypt_keys;
@@ -266,37 +253,27 @@ package body UnZip.Decompress is
           t: Unsigned_32;
         begin
           -- Step 1 - Initializing the encryption keys
-
-          keys:= (
-            0 => 305419896,
-            1 => 591751049,
-            2 => 878082192
-          );
-
+          keys:= ( 305419896, 591751049, 878082192 );
           for i in password'Range loop
             Update_keys( Character'Pos(password(i)) );
           end loop;
-
           -- Step 2 - Decrypting the encryption header
-
           for i in buffer'Range loop
             Read_byte_no_decrypt( c );
             c:= c xor Decrypt_byte;
             Update_keys(c);
             buffer(i):= c;
           end loop;
-
           t:= Zip_Streams.Calendar.Convert(hint.file_timedate);
           if c /= Zip.Byte(Shift_Right( crc_check, 24 )) and not
             -- Dec. 2012. This is a feature of Info-Zip (crypt.c).
             -- Since CRC is only known at the end of a one-way stream
             -- compression, and cannot be written back, they are using a byte of
-            -- the time stamp instead. This is not documented in appnote.txt v.6.3.3.
+            -- the time stamp instead. This is NOT documented in appnote.txt v.6.3.3.
             ( data_descriptor_after_data and c = Zip.Byte(Shift_Right(t, 8) and 16#FF#) )
           then
             raise UnZip.Wrong_password;
           end if;
-
         end Init;
 
         procedure Decode( b: in out Zip.Byte ) is
@@ -483,8 +460,7 @@ package body UnZip.Decompress is
             );
             -- ...times the range source..index-1
           end if;
-          -- if source >= index, the effect of copy is
-          -- just like the non-overlapping case
+          -- if source >= index, the effect of copy is just like the non-overlapping case
           for count in reverse 1..amount loop
             UnZ_Glob.slide(index):= UnZ_Glob.slide(source);
             index := index  + 1;
@@ -503,11 +479,8 @@ package body UnZip.Decompress is
 
       -- The copying routines:
 
-      procedure Copy(
-          distance, length:        Natural;
-          index           : in out Natural )
-      is
-        source,part,remain: Integer;
+      procedure Copy(distance, length: Natural; index: in out Natural ) is
+        source, part, remain: Integer;
       begin
         if full_trace or (some_trace and then distance > 32768+3) then
           Ada.Text_IO.Put(
@@ -1705,18 +1678,14 @@ package body UnZip.Decompress is
               current_length:= CTE.n;
               Ll (defined) := current_length;
               defined:= defined + 1;
-
             when 16 =>          -- repeat last length 3 to 6 times
               Repeat_length_code(3 + UnZ_IO.Bit_buffer.Read_and_dump(2));
-
             when 17 =>          -- 3 to 10 zero length codes
               current_length:= 0;
               Repeat_length_code(3 + UnZ_IO.Bit_buffer.Read_and_dump(3));
-
             when 18 =>          -- 11 to 138 zero length codes
               current_length:= 0;
               Repeat_length_code(11 + UnZ_IO.Bit_buffer.Read_and_dump(7));
-
             when others =>
               if full_trace then
                 Ada.Text_IO.Put_Line(
@@ -1724,10 +1693,8 @@ package body UnZip.Decompress is
                   Integer'Image(CTE.n)
                 );
               end if;
-
           end case;
         end loop;
-
         HufT_free ( Tl );        -- free decoding table for trees
 
         -- Build the decoding tables for literal/length codes
@@ -1766,8 +1733,7 @@ package body UnZip.Decompress is
             raise Zip.Zip_file_Error;
         end;
 
-        -- Decompress until an end-of-block code
-
+        -- Decompress the block, until an end-of-block code
         Inflate_Codes ( Tl, Td, Bl, Bd );
         HufT_free ( Tl );
         HufT_free ( Td );
