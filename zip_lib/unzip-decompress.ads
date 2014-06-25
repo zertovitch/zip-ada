@@ -5,11 +5,13 @@
 -- Created 9-Mar-2007
 --
 -- This package includes the decompression algorithms for methods
--- store, reduce, shrink (LZW), implode and inflate.
--- It contains the packages UnZ_IO, UnZ_Glob, UnZ_Infl, UnZ_Olds, UnZ_Misc
--- of previous versions of Zip-Ada.
--- They become local packages inside the Decompress_Data procedure ->
--- previously global variables are now local, one copy per concurrent call.
+-- Store, Reduce, Shrink (LZW), Implode, Deflate, BZip2 and LZMA.
+--
+-- The package body contains the packages UnZ_IO, UnZ_Glob, UnZ_Infl,
+-- UnZ_Olds and UnZ_Misc that were separate in previous versions of Zip-Ada.
+-- They became local packages inside the Decompress_Data procedure.
+-- Previously global variables are since then local and task-safe
+-- with one copy per concurrent call.
 
 with Zip.Headers;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
@@ -28,7 +30,7 @@ private package UnZip.Decompress is
     output_stream_access       : p_Stream;                   -- \ = write_to_stream
     feedback                   : Zip.Feedback_proc;
     explode_literal_tree       : Boolean; -- relevant for the "explode" format
-    explode_slide_8KB          : Boolean; -- relevant for the "explode" format
+    explode_slide_8KB_LZMA_EOS : Boolean; -- relevant for the "explode" format
     data_descriptor_after_data : Boolean;
     encrypted                  : Boolean;
     password                   : in out Unbounded_String;

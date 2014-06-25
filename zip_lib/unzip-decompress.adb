@@ -13,7 +13,7 @@ package body UnZip.Decompress is
     output_stream_access       : p_Stream;                   -- \ = write_to_stream
     feedback                   : Zip.Feedback_proc;
     explode_literal_tree       : Boolean;
-    explode_slide_8KB          : Boolean;
+    explode_slide_8KB_LZMA_EOS : Boolean;
     data_descriptor_after_data : Boolean;
     encrypted                  : Boolean;
     password                   : in out Unbounded_String;
@@ -1891,12 +1891,9 @@ package body UnZip.Decompress is
     end case;
 
     UnZ_Glob.compsize  := hint.dd.compressed_size;
-    -- 2008: from TT's version:
-    -- Avoid wraparound in read_buffer, when File_size_type'Last is given
-    -- as hint.compressed_size (unknown size)
-    if UnZ_Glob.compsize > File_size_type'Last - 2 then
-      UnZ_Glob.compsize:= File_size_type'Last - 2;
-    end if;
+    if UnZ_Glob.compsize > File_size_type'Last - 2 then -- This means: unknown size
+      UnZ_Glob.compsize:= File_size_type'Last - 2;      -- Avoid wraparound in read_buffer
+    end if;                                             -- From TT's version, 2008
     UnZ_Glob.uncompsize:= hint.dd.uncompressed_size;
     UnZ_IO.Init_Buffers;
     UnZ_IO.Decryption.Set_mode( encrypted );
@@ -1932,7 +1929,7 @@ package body UnZip.Decompress is
         when shrink  => Unshrink;
         when reduce  => Unreduce(1 + reduce'Pos(format) - reduce'Pos(reduce_1));
         when implode =>
-          UnZ_Meth.Explode( explode_literal_tree, explode_slide_8KB );
+          UnZ_Meth.Explode( explode_literal_tree, explode_slide_8KB_LZMA_EOS );
         when deflate | deflate_e =>
           UnZ_Meth.deflate_e_mode:= format = deflate_e;
           UnZ_Meth.Inflate;
