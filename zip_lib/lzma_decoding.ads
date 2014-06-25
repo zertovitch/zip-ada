@@ -2,7 +2,7 @@
 -- Based on a translation of LzmaSpec.cpp, the LZMA Reference Decoder, by Igor Pavlov.
 -- Public domain.
 
-with Ada.Direct_IO, Ada.Finalization, Interfaces, System;
+with Ada.Direct_IO, Interfaces, System;
 
 generic
   -- Input:
@@ -17,40 +17,49 @@ package LZMA_Decoding is
     LZMA_finished_without_marker
   );
 
-  ---------------------------------------------------------------------------------
-  -- Usage 1 : parameterless procedure, if you care only about the decompression --
-  ---------------------------------------------------------------------------------
-
-  procedure Decompress;
-
-  -------------------------------------------------------
-  -- Usage 2 : object-oriented, with technical details --
-  -------------------------------------------------------
-
-  type CLzmaDecoder is limited private;
-  procedure Decode(o: in out CLzmaDecoder; res: out LZMA_Result);
-
-  -- The technical details:
-  function Literal_context_bits(o: CLzmaDecoder) return Natural; 
-  function Literal_pos_bits(o: CLzmaDecoder) return Natural; 
-  function Pos_bits(o: CLzmaDecoder) return Natural; 
-
   package BIO is new Ada.Direct_IO(Interfaces.Unsigned_8); -- BIO is only there for the Count type
   subtype Data_Bytes_Count is BIO.Count;
 
-  function Unpack_size_defined(o: CLzmaDecoder) return Boolean;
-  function Unpack_size_as_defined(o: CLzmaDecoder) return  Data_Bytes_Count;
-  function Dictionary_size(o: CLzmaDecoder) return Interfaces.Unsigned_32;
-  function Dictionary_size_in_properties(o: CLzmaDecoder) return Interfaces.Unsigned_32;
-  function Range_decoder_corrupted(o: CLzmaDecoder) return Boolean;
+  dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
+
+  type LZMA_Hints is record
+    has_size   : Boolean;           -- Is size is part of header data ?
+    given_size : Data_Bytes_Count;  -- If has_size = False, we use given_size.
+    marker_expected : Boolean;      -- Is an End-Of-Stream marker expected ?
+  end record;
+
+  ------------------------------------------------------------------------------
+  -- Usage 1 : objectless procedure, if you care only about the decompression --
+  ------------------------------------------------------------------------------
+
+  procedure Decompress(hints: LZMA_Hints);
+
+  ------------------------------------------------------------------------
+  -- Usage 2 : object-oriented, with stored technical details as output --
+  ------------------------------------------------------------------------
+
+  type LZMA_Decoder_Info is limited private;
+  procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result);
+
+  -- The technical details:
+  function Literal_context_bits(o: LZMA_Decoder_Info) return Natural; 
+  function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural; 
+  function Pos_bits(o: LZMA_Decoder_Info) return Natural; 
+
+  function Unpack_size_defined(o: LZMA_Decoder_Info) return Boolean;
+  function Unpack_size_as_defined(o: LZMA_Decoder_Info) return  Data_Bytes_Count;
+  function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean;
 
   ------------------------------------------------------------------------------------------
   -- Usage 3 : Decode in three steps: Decode_Header, Create_Large_Arrays, Decode_Contents --
   ------------------------------------------------------------------------------------------
 
-  procedure Decode_Header(o: in out CLzmaDecoder);
-  procedure Create_Large_Arrays(o: in out CLzmaDecoder);
-  procedure Decode_Contents(o: in out CLzmaDecoder; res: out LZMA_Result);
+  procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints);
+  procedure Create_Large_Arrays(o: in out LZMA_Decoder_Info);
+  procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result);
+  procedure Finalize_Manually(o: in out LZMA_Decoder_Info);
 
 private
 
@@ -123,7 +132,11 @@ private
   subtype LP_range is Integer range 0..4;
   subtype PB_range is Integer range 0..4;
 
-  type CLzmaDecoder is new Ada.Finalization.Limited_Controlled with record
+  -- Ideally we extend Ada.Finalization.Limited_Controlled, but then the instanciation
+  -- this package (LZMA_Decoding) cannot be done locally within a subprogram in Ada 95.
+  -- Ada 2005+ is OK.
+
+  type LZMA_Decoder_Info is record
     RangeDec             : CRangeDecoder;
     OutWindow            : COutWindow;
     markerIsMandatory    : Boolean;
@@ -150,8 +163,6 @@ private
     unpackSize_as_defined: Data_Bytes_Count;
     unpackSizeDefined    : Boolean;
   end record;
-
-  procedure Finalize(o: in out CLzmaDecoder);
 
   LZMA_Error: exception;
   

@@ -208,15 +208,15 @@ package body LZMA_Decoding is
 
   LZMA_DIC_MIN : constant := 2 ** 12;
 
-  procedure Finalize(o: in out CLzmaDecoder) is
+  procedure Finalize_Manually(o: in out LZMA_Decoder_Info) is
     procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
     procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
   begin
     Dispose(o.LitProbs);
     Dispose(o.OutWindow.Buf);
-  end Finalize;
+  end;
 
-  procedure DecodeProperties(o: in out CLzmaDecoder; b: Byte_buffer) is
+  procedure Decode_Properties(o: in out LZMA_Decoder_Info; b: Byte_buffer) is
     d: Unsigned := Unsigned(b(b'First));
   begin
     if d >= 9 * 5 * 5 then
@@ -238,21 +238,21 @@ package body LZMA_Decoding is
     if o.dictSize < LZMA_DIC_MIN then
       o.dictSize := LZMA_DIC_MIN;
     end if;
-  end DecodeProperties;
+  end Decode_Properties;
 
-  procedure Create_Large_Arrays(o: in out CLzmaDecoder) is
+  procedure Create_Large_Arrays(o: in out LZMA_Decoder_Info) is
     length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
   begin
     Create(o.OutWindow, o.dictSize);
     o.LitProbs := new CProb_array(0..length-1); -- Literals
   end Create_Large_Arrays;
 
-  procedure InitLiterals(o: in out CLzmaDecoder) is
+  procedure InitLiterals(o: in out LZMA_Decoder_Info) is
   begin
     o.LitProbs.all:= (others => PROB_INIT_VAL);
   end InitLiterals;
 
-  procedure DecodeLiteral(o: in out CLzmaDecoder; state: Unsigned; rep0: UInt32) is
+  procedure DecodeLiteral(o: in out LZMA_Decoder_Info; state: Unsigned; rep0: UInt32) is
     prevByte  : Byte:= 0;
     symbol    : Unsigned:= 1;
     litState  : Unsigned;
@@ -291,7 +291,7 @@ package body LZMA_Decoding is
     PutByte(o.OutWindow, Byte(symbol - 16#100#));
   end DecodeLiteral;
 
-  procedure InitDist(o: in out CLzmaDecoder) is
+  procedure InitDist(o: in out LZMA_Decoder_Info) is
   begin
     for i in o.PosSlotDecoder'Range loop
       BTD_6.Init(o.PosSlotDecoder(i));
@@ -300,7 +300,7 @@ package body LZMA_Decoding is
     o.PosDecoders:= (others => PROB_INIT_VAL);
   end InitDist;
 
-  procedure DecodeDistance(o: in out CLzmaDecoder; len: Unsigned; res: out UInt32) is
+  procedure DecodeDistance(o: in out LZMA_Decoder_Info; len: Unsigned; res: out UInt32) is
     lenState      : Unsigned := len;
     posSlot       : Unsigned;
     dist          : UInt32;
@@ -332,7 +332,7 @@ package body LZMA_Decoding is
     res:= dist;
   end DecodeDistance;
 
-  procedure Init(o: in out CLzmaDecoder) is
+  procedure Init(o: in out LZMA_Decoder_Info) is
   begin
     InitLiterals(o);
     InitDist(o);
@@ -346,7 +346,7 @@ package body LZMA_Decoding is
     Init(o.RepLenDecoder);
   end Init;
 
-  procedure Decode_Contents(o: in out CLzmaDecoder; res: out LZMA_Result) is
+  procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
     rep0, rep1, rep2, rep3 : UInt32 := 0;
     state : State_Range := 0;
     posState: State_Range;
@@ -462,7 +462,7 @@ package body LZMA_Decoding is
       res:= LZMA_finished_with_marker;
   end Decode_Contents;
 
-  procedure Decode_Header(o: in out CLzmaDecoder) is
+  procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints) is
     header: Byte_buffer(0..12);
     b: Byte;
     use type BIO.Count;
@@ -472,89 +472,94 @@ package body LZMA_Decoding is
 
     for i in header'Range loop
       header(i):= Read_Byte;
+      exit when i = 4 and not hints.has_size;
     end loop;
 
-    DecodeProperties(o, header);
+    Decode_Properties(o, header);
 
-    for i in UInt32'(0)..7 loop
-      b:= header(5 + i);
-      if b /= 16#FF# then
-        o.unpackSizeDefined := True;
-      end if;
-    end loop;
-
-    if o.unpackSizeDefined then
+    if hints.has_size then
       for i in UInt32'(0)..7 loop
         b:= header(5 + i);
         if b /= 16#FF# then
           o.unpackSizeDefined := True;
         end if;
-        if b /= 0 then
-          if 8 * (i+1) > Data_Bytes_Count'Size then
-            raise LZMA_Error; -- Overflow
-          else
-            o.unpackSize := o.unpackSize + Data_Bytes_Count(b) * 2 ** Natural(8 * i);
-          end if;
-        end if;
       end loop;
-      o.unpackSize_as_defined:= o.unpackSize;
+      if o.unpackSizeDefined then
+        for i in UInt32'(0)..7 loop
+          b:= header(5 + i);
+          if b /= 16#FF# then
+            o.unpackSizeDefined := True;
+          end if;
+          if b /= 0 then
+            if 8 * (i+1) > Data_Bytes_Count'Size then
+              raise LZMA_Error; -- Overflow
+            else
+              o.unpackSize := o.unpackSize + Data_Bytes_Count(b) * 2 ** Natural(8 * i);
+            end if;
+          end if;
+        end loop;
+        o.unpackSize_as_defined:= o.unpackSize;
+      else
+        o.unpackSize:= Data_Bytes_Count'Last;
+      end if;
     else
-      o.unpackSize:= Data_Bytes_Count'Last;
+      o.unpackSize:= hints.given_size;
+      o.unpackSizeDefined:= True;
     end if;
-
-    o.markerIsMandatory := not o.unpackSizeDefined;
+    o.markerIsMandatory := hints.marker_expected or not o.unpackSizeDefined;
   end Decode_Header;
 
-  procedure Decode(o: in out CLzmaDecoder; res: out LZMA_Result) is
+  procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result) is
   begin
-    Decode_Header(o);
+    Decode_Header(o, hints);
     Create_Large_Arrays(o);
     Decode_Contents(o, res);
+    Finalize_Manually(o);
   end Decode;
 
-  procedure Decompress is
-    o: CLzmaDecoder;
+  procedure Decompress(hints: LZMA_Hints) is
+    o: LZMA_Decoder_Info;
     res: LZMA_Result;
   begin
-    Decode(o, res);
+    Decode(o, hints, res);
   end;
 
-  function Literal_context_bits(o: CLzmaDecoder) return Natural is
+  function Literal_context_bits(o: LZMA_Decoder_Info) return Natural is
   begin
     return o.lc;
   end;
 
-  function Literal_pos_bits(o: CLzmaDecoder) return Natural is
+  function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural is
   begin
     return o.lp;
   end;
 
-  function Pos_bits(o: CLzmaDecoder) return Natural is
+  function Pos_bits(o: LZMA_Decoder_Info) return Natural is
   begin
     return o.pb;
   end;
 
-  function Unpack_size_defined(o: CLzmaDecoder) return Boolean is
+  function Unpack_size_defined(o: LZMA_Decoder_Info) return Boolean is
   begin
     return o.unpackSizeDefined;
   end;
 
-  function Unpack_size_as_defined(o: CLzmaDecoder) return Data_Bytes_Count is
+  function Unpack_size_as_defined(o: LZMA_Decoder_Info) return Data_Bytes_Count is
   begin
     return o.unpackSize_as_defined;
   end;
 
-  function Dictionary_size(o: CLzmaDecoder) return Interfaces.Unsigned_32 is
+  function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
     return o.dictSize;
   end;
 
-  function Dictionary_size_in_properties(o: CLzmaDecoder) return Interfaces.Unsigned_32 is
+  function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
     return o.dictSizeInProperties;
   end;
 
-  function Range_decoder_corrupted(o: CLzmaDecoder) return Boolean is
+  function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean is
   begin
     return o.RangeDec.Corrupted;
   end;
