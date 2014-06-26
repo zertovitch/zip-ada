@@ -6,7 +6,7 @@ echo.
 
 rem The 'timeit' tool is available e.g. with the
 rem Windows Server 2003 Resource Kit Tools
-rem http://www.microsoft.com/downloads/details.aspx?FamilyID=9D467A69-57FF-4AE7-96EE-B18C4790CFFD
+rem http://www.microsoft.com/en-us/download/details.aspx?id=17657
 
 rem Try temp directory in a RAM-disk; if not available, use normal temp dir
 set mytemp=R:\temp

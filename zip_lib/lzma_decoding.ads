@@ -106,7 +106,9 @@ private
     subtype Probs is CProb_array(0 .. 2**NumBits - 1);
     procedure Init(p: out Probs);
     procedure Decode(p: in out Probs; rc: in out CRangeDecoder; res: out Unsigned);
+      pragma Inline(Decode);
     procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32);
+      pragma Inline(ReverseDecode);
   end;
 
   subtype Probs_3_bits is CProb_array(0 .. 2**3 - 1);

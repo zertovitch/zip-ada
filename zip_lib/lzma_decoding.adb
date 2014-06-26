@@ -15,6 +15,7 @@ package body LZMA_Decoding is
   end Create;
 
   procedure PutByte(o: in out COutWindow; b: Byte) is
+  pragma Inline(PutByte);
   begin
     o.TotalPos := o.TotalPos + 1;
     o.Buf(o.Pos):= b;
@@ -27,6 +28,7 @@ package body LZMA_Decoding is
   end PutByte;
 
   function GetByte(o: COutWindow; dist: UInt32) return Byte is
+  pragma Inline(GetByte);
   begin
     if dist <= o.Pos then
       return o.Buf(o.Pos - dist);
@@ -36,18 +38,21 @@ package body LZMA_Decoding is
   end GetByte;
 
   procedure CopyMatch(o: in out COutWindow; dist: UInt32; len: Unsigned) is
+  pragma Inline(CopyMatch);
   begin
-    for i in 1..len loop
+    for count in reverse 1..len loop
       PutByte(o, GetByte(o, dist));
     end loop;
   end CopyMatch;
 
   function CheckDistance(o: COutWindow; dist: UInt32) return Boolean is
+  pragma Inline(CheckDistance);
   begin
     return dist <= o.Pos or o.IsFull;
   end CheckDistance;
 
   function IsEmpty(o: COutWindow) return Boolean is
+  pragma Inline(IsEmpty);
   begin
     return o.Pos = 0 and not o.IsFull;
   end IsEmpty;
@@ -74,6 +79,7 @@ package body LZMA_Decoding is
   end Init;
 
   function IsFinishedOK(o: CRangeDecoder) return Boolean is
+  pragma Inline(IsFinishedOK);
   begin
     return o.Code = 0;
   end;
@@ -81,6 +87,7 @@ package body LZMA_Decoding is
   kTopValue : constant := 2**24;
 
   procedure Normalize(o: in out CRangeDecoder) is
+  pragma Inline(Normalize);
   begin
     if o.RangeZ < kTopValue then
       o.RangeZ := Shift_Left(o.RangeZ, 8);
@@ -89,19 +96,20 @@ package body LZMA_Decoding is
   end Normalize;
 
   procedure DecodeDirectBits(o: in out CRangeDecoder; numBits : Natural; res: out UInt32) is
+  pragma Inline(DecodeDirectBits);
     t: UInt32;
   begin
     res := 0;
-    for count in 1..numBits loop
+    for count in reverse 1..numBits loop
       o.RangeZ := Shift_Right(o.RangeZ, 1);
       o.Code := o.Code - o.RangeZ;
-      t := 0 - Shift_Right(o.Code, 31);
+      t := - Shift_Right(o.Code, 31);
       o.Code := o.Code + (o.RangeZ and t);
       if o.Code = o.RangeZ then
         o.Corrupted := True;
       end if;
       Normalize(o);
-      res := Shift_Left(res, 1) + t + 1;
+      res := (res + res) + t + 1;
     end loop;
   end DecodeDirectBits;
 
@@ -126,13 +134,14 @@ package body LZMA_Decoding is
   end DecodeBit;
 
   procedure BitTreeReverseDecode(prob: in out CProb_array; numBits : Natural; rc: in out CRangeDecoder; symbol: out UInt32) is
+  pragma Inline(BitTreeReverseDecode);
     m: UInt32 := 1;
     bit: UInt32;
   begin
     symbol := 0;
     for i in 0..numBits-1 loop
       DecodeBit(rc, prob(Unsigned(m)+prob'First), bit);
-      m := Shift_Left(m, 1) + bit;
+      m := (m + m) + bit;
       symbol := symbol or Shift_Left(bit, i);
     end loop;
   end BitTreeReverseDecode;
@@ -148,9 +157,9 @@ package body LZMA_Decoding is
       symbol: UInt32;
       m: Unsigned:= 1;
     begin
-      for count in 1..NumBits loop
+      for count in reverse 1..NumBits loop
         DecodeBit(rc, p(m),symbol);
-        m:= m * 2 + Unsigned(symbol);
+        m:= (m + m) + Unsigned(symbol);
       end loop;
       res:= m - Unsigned(Shift_Left(UInt32'(1), NumBits));
     end Decode;
@@ -181,6 +190,7 @@ package body LZMA_Decoding is
   end Init;
 
   procedure Decode(o: in out CLenDecoder; rc: in out CRangeDecoder; posState: Unsigned; res: out Unsigned) is
+  pragma Inline(Decode);
     symbol: UInt32;
   begin
     DecodeBit(rc, o.Choice, symbol);
@@ -253,6 +263,7 @@ package body LZMA_Decoding is
   end InitLiterals;
 
   procedure DecodeLiteral(o: in out LZMA_Decoder_Info; state: Unsigned; rep0: UInt32) is
+  pragma Inline(DecodeLiteral);
     prevByte  : Byte:= 0;
     symbol    : Unsigned:= 1;
     litState  : Unsigned;
@@ -274,19 +285,18 @@ package body LZMA_Decoding is
       matchByte := UInt32(GetByte(o.OutWindow, rep0 + 1));
       loop
         matchBit  := Shift_Right(matchByte, 7) and 1;
-        matchByte := Shift_Left(matchByte, 1);
+        matchByte := matchByte + matchByte;
         DecodeBit(o.RangeDec,
           o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol),
           bit
         );
-        symbol := Unsigned(Shift_Left(UInt32(symbol), 1) or bit);
-        exit when matchBit /= bit;
-        exit when symbol >= 16#100#;
+        symbol := (symbol + symbol) or Unsigned(bit);
+        exit when (matchBit /= bit) or else (symbol >= 16#100#);
       end loop;
     end if;
     while symbol < 16#100# loop
       DecodeBit(o.RangeDec, o.LitProbs(probs_idx + symbol), bit);
-      symbol := Unsigned( Shift_Left(UInt32(symbol), 1) or bit);
+      symbol := (symbol + symbol) or Unsigned(bit);
     end loop;
     PutByte(o.OutWindow, Byte(symbol - 16#100#));
   end DecodeLiteral;
@@ -301,6 +311,7 @@ package body LZMA_Decoding is
   end InitDist;
 
   procedure DecodeDistance(o: in out LZMA_Decoder_Info; len: Unsigned; res: out UInt32) is
+  pragma Inline(DecodeDistance);
     lenState      : Unsigned := len;
     posSlot       : Unsigned;
     dist          : UInt32;
@@ -355,6 +366,7 @@ package body LZMA_Decoding is
     Marker_exit: exception;
 
     procedure Process_Litteral is
+    pragma Inline(Process_Litteral);
     begin
       if o.unpackSizeDefined and o.unpackSize = 0 then
         raise LZMA_Error;
@@ -365,6 +377,7 @@ package body LZMA_Decoding is
     end Process_Litteral;
 
     procedure Process_Distance_and_Length is
+    pragma Inline(Process_Distance_and_Length);
       len: Unsigned;
       isError: Boolean;
       dist: UInt32;
@@ -419,10 +432,9 @@ package body LZMA_Decoding is
             raise LZMA_Error;
           end if;
         end if;
-        if o.unpackSizeDefined and o.unpackSize = 0 then
-          raise LZMA_Error;
-        end if;
-        if rep0 >= o.dictSize or not CheckDistance(o.OutWindow, rep0) then
+        if (o.unpackSizeDefined and o.unpackSize = 0) or
+            rep0 >= o.dictSize or not CheckDistance(o.OutWindow, rep0)
+        then
           raise LZMA_Error;
         end if;
       end if;
