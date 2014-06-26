@@ -68,8 +68,8 @@ package body UnZip.Decompress is
           pragma Inline(Decode);
       end Decryption;
 
-      procedure Read_raw_byte ( bt : out Unsigned_8 );
-        pragma Inline(Read_raw_byte);
+      function Read_byte_decrypted return Unsigned_8;
+        pragma Inline(Read_byte_decrypted);
 
       package Bit_buffer is
         procedure Init;
@@ -287,11 +287,13 @@ package body UnZip.Decompress is
 
       end Decryption;
 
-      procedure Read_raw_byte ( bt : out Zip.Byte ) is
+      function Read_byte_decrypted return Unsigned_8 is
+        bt : Zip.Byte;
       begin
         Read_byte_no_decrypt( bt );
         Decryption.Decode(bt);
-      end Read_raw_byte;
+        return bt;
+      end Read_byte_decrypted;
 
       package body Bit_buffer is
         B : Unsigned_32;
@@ -305,11 +307,9 @@ package body UnZip.Decompress is
 
         procedure Need( n : Natural ) is
           pragma Inline(Need);
-          bt: Zip.Byte;
         begin
           while K < n loop
-            Read_raw_byte( bt );
-            B:= B or Shift_Left( Unsigned_32( bt ), K );
+            B:= B or Shift_Left( Unsigned_32( Read_byte_decrypted ), K );
             K:= K + 8;
           end loop;
         end Need;
@@ -922,20 +922,16 @@ package body UnZip.Decompress is
         I, K, J, B : Unsigned_32;
         N          : constant Unsigned_32:= L'Length;
         L_Idx      : Integer    := L'First;
-        Bytebuf    : Zip.Byte;
-
       begin
         if full_trace then
           Ada.Text_IO.Put_Line("Begin UnZ_Expl.Get_tree");
         end if;
 
-        UnZ_IO.Read_raw_byte ( Bytebuf );
-        I := Unsigned_32(Bytebuf) + 1;
+        I := Unsigned_32(UnZ_IO.Read_byte_decrypted) + 1;
         K := 0;
 
         loop
-          UnZ_IO.Read_raw_byte ( Bytebuf );
-          J := Unsigned_32(Bytebuf);
+          J := Unsigned_32(UnZ_IO.Read_byte_decrypted);
           B := ( J  and  16#0F# ) + 1;
           J := ( J  and  16#F0# ) / 16 + 1;
           if  K + J > N then
@@ -1386,7 +1382,7 @@ package body UnZip.Decompress is
           end if;
           begin
             for I in 0 .. read_in-1 loop
-              UnZ_IO.Read_raw_byte( UnZ_Glob.slide( Natural(I) ) );
+              UnZ_Glob.slide( Natural(I) ) := UnZ_IO.Read_byte_decrypted;
             end loop;
           exception
             when others=>
@@ -1780,7 +1776,7 @@ package body UnZip.Decompress is
         begin
           for i in b'Range loop
             exit when Zip_EOF;
-            UnZ_IO.Read_raw_byte(b(i));
+            b(i):= UnZ_IO.Read_byte_decrypted;
           end loop;
         end Read;
         procedure Write( b: in BZ_Buffer ) is
@@ -1808,13 +1804,11 @@ package body UnZip.Decompress is
       procedure LZMA_Decode is
         function Read_Byte return Unsigned_8 is
         pragma Inline(Read_Byte);
-          b: Unsigned_8;
         begin
           if Zip_EOF then
             raise Zip.Zip_file_Error;
           else
-            UnZ_IO.Read_raw_byte(b);
-            return b;
+            return UnZ_IO.Read_byte_decrypted;
           end if;
         end Read_Byte;
         procedure Write_Byte(b: Unsigned_8) is
@@ -1825,12 +1819,12 @@ package body UnZip.Decompress is
           UnZ_IO.Flush_if_full(UnZ_Glob.slide_index);
         end Write_Byte;
         package My_LZMA_Decoding is new LZMA_Decoding(Read_Byte, Write_Byte);
-        b1, b2, b3, b4: Unsigned_8;
+        b3, b4: Unsigned_8;
       begin
-        UnZ_IO.Read_raw_byte(b1); -- LZMA SDK major version (e.g.: 9)
-        UnZ_IO.Read_raw_byte(b2); -- LZMA SDK minor version (e.g.: 20)
-        UnZ_IO.Read_raw_byte(b3); -- LZMA properties size low byte
-        UnZ_IO.Read_raw_byte(b4); -- LZMA properties size high byte
+        b3:= UnZ_IO.Read_byte_decrypted; -- LZMA SDK major version (e.g.: 9)
+        b3:= UnZ_IO.Read_byte_decrypted; -- LZMA SDK minor version (e.g.: 20)
+        b3:= UnZ_IO.Read_byte_decrypted; -- LZMA properties size low byte
+        b4:= UnZ_IO.Read_byte_decrypted; -- LZMA properties size high byte
         if Natural(b3) + 256 * Natural(b4) /= 5 then
           Raise_Exception(Zip.Zip_file_Error'Identity, "Unexpected LZMA properties block size");
         end if;
@@ -1851,7 +1845,7 @@ package body UnZip.Decompress is
     begin
       UnZ_IO.Bit_buffer.Dump_to_byte_boundary;
       UnZ_IO.Decryption.Set_mode(False);
-      UnZ_IO.Read_raw_byte(b);
+      b:= UnZ_IO.Read_byte_decrypted;
       if b = 75 then -- 'K' ('P' is before, this is a Java/JAR bug!)
         dd_buffer(1):= 80;
         dd_buffer(2):= 75;
@@ -1861,7 +1855,7 @@ package body UnZip.Decompress is
         start:= 2;
       end if;
       for i in start..16 loop
-        UnZ_IO.Read_raw_byte( dd_buffer(i) );
+        dd_buffer(i) := UnZ_IO.Read_byte_decrypted;
       end loop;
       Zip.Headers.Copy_and_check( dd_buffer, dd );
     exception
