@@ -147,7 +147,8 @@ procedure ReZip is
     reduce_1, reduce_2, reduce_3, reduce_4,
     deflate_f,
     external_1, external_2, external_3, external_4,
-    external_5, external_6, external_7, external_8
+    external_5, external_6, external_7, external_8,
+    external_9, external_10, external_11, external_12
   );
 
   subtype Internal is Approach
@@ -229,10 +230,7 @@ procedure ReZip is
     ( -- Zip 2.32 or later:
       (U("zip"), U("Zip"), U("http://info-zip.org/"),
          U("-9"), NN, 20, Zip.deflate, 0, False),
-      -- Zip 3.0 or later
-      (U("zip"), U("Zip"), U("http://info-zip.org/"),
-         U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
-      -- 7-Zip 4.64 or later:
+      -- 7-Zip 4.64 or later; Deflate:
       (U("7z"),
          U("7-Zip"), U("http://7-zip.org/"),
          U("a -tzip -mm=deflate -mfb=258 -mpass=#RAND#(7,15) -mmc=10000"),
@@ -241,25 +239,45 @@ procedure ReZip is
          U("7-Zip"), NN,
          U("a -tzip -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
          NN, 21, Zip.deflate_e, 0, False),
-      (U("7z"), U("7-Zip"), NN,
-         U("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma, 0, False),
       -- KZip:
       (U("kzip"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
          U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit, True),
       (U("kzip"),U("KZIP"),NN,
          U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_limit, True),
       (U("kzip"),U("KZIP"),NN,
-         U("/rn /b#RAND#(128,2048)"), NN, 20, Zip.deflate, kzip_limit, True)
+         U("/rn /b#RAND#(128,2048)"), NN, 20, Zip.deflate, kzip_limit, True),
+      -- Zip 3.0 or later; BZip2:
+      (U("zip"), U("Zip"), U("http://info-zip.org/"),
+         U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
+      -- 7-Zip 9.20 or later; LZMA:
+      (U("7z"), U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma, 0, False),
+      (U("7z"), U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA:a=2:d=19:mf=bt3:fb=128:lc=0:lp=2"), NN, 63, Zip.lzma, 0, False),
+      (U("7z"), U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA:a=2:d=3424k:mf=bt4:fb=264:lc=2:lp0:pb0"), NN, 63, Zip.lzma, 0, False),
+      (U("7z"), U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7"), NN, 63, Zip.lzma, 0, False),
+      (U("7z"), U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False)
     );
 
   defl_opt: constant Zipper_specification:=
     (U("deflopt"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
      NN, NN, 0, Zip.deflate, 0, False);
 
-  function Img(a: Approach) return String is
+  function Img(a: Approach; html: Boolean) return String is
+    function Repl(s: String) return String is
+      t: String:= s;
+    begin
+      for i in t'Range loop
+        if html and t(i) = ':' then t(i):= ' '; end if; -- break too long lines
+      end loop;
+      return t;
+    end;
   begin
     if a in External then
-      return "External: " & S(ext(a).title) & ", " & S(ext(a).expanded_options);
+      return "External: " & S(ext(a).title) & ", " & Repl(S(ext(a).expanded_options));
     else
       declare
         s: constant String:= Approach'Image(a);
@@ -600,7 +618,7 @@ procedure ReZip is
       --
       for a in Approach loop
         if consider(a) then
-          Dual_IO.Put("              -o-> " & Img(a));
+          Dual_IO.Put("              -o-> " & Img(a, html => False));
           e.info(a).iter:= 1;
           case a is
             --
@@ -675,7 +693,7 @@ procedure ReZip is
       --
       Dual_IO.New_Line;
       Dual_IO.Put(
-        "    Phase 3:  Winner is " & Img(choice) &
+        "    Phase 3:  Winner is " & Img(choice, html => False) &
         "; gain in bytes:" & Integer_64'Image(gain) &
         "; writing data -"
       );
@@ -708,7 +726,7 @@ procedure ReZip is
         end if;
       end loop;
       -- Recall winner approach, method and size:
-      Put(summary,"<td>" & Img(choice) & "</td>");
+      Put(summary,"<td>" & Img(choice, HTML => True) & "</td>");
       Put(summary,
         "<td bgcolor=#fafa64>" &
         To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(choice).zfm))) &
@@ -842,7 +860,7 @@ procedure ReZip is
         if a in External then
           ext(a).expanded_options:= ext(a).options;
         end if;
-        Put(summary, "<td valign=top>" & Img(a) & "</td>");
+        Put(summary, "<td valign=top>" & Img(a, html => True) & "</td>");
       end if;
     end loop;
     Put_Line(summary, "</tr>");
