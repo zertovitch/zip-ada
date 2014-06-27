@@ -1,7 +1,8 @@
--- LZMA_Decoding - Ada translation of LzmaSpec.cpp, LZMA Reference Decoder
+-- LZMA_Decoding - Ada 95 translation of LzmaSpec.cpp, LZMA Reference Decoder
 -- LzmaSpec.cpp : 2013-07-28 : Igor Pavlov : Public domain
 
 with Ada.Unchecked_Deallocation;
+with Ada.Exceptions;                    use Ada.Exceptions;
 
 package body LZMA_Decoding is
 
@@ -230,7 +231,7 @@ package body LZMA_Decoding is
     d: Unsigned := Unsigned(b(b'First));
   begin
     if d >= 9 * 5 * 5 then
-      raise LZMA_Error;
+      Raise_Exception(LZMA_Error'Identity, "Incorrect LZMA properties");
       -- raise LZMA_Error with "Incorrect LZMA properties"; -- Ada 2005+
     end if;
     o.lc := LC_range(d mod 9);
@@ -369,7 +370,10 @@ package body LZMA_Decoding is
     pragma Inline(Process_Litteral);
     begin
       if o.unpackSizeDefined and o.unpackSize = 0 then
-        raise LZMA_Error;
+        Raise_Exception(
+          LZMA_Error'Identity,
+          "Decoded data will exceed expected data size (Process_Litteral)"
+        );
       end if;
       DecodeLiteral(o, state, rep0);
       state := UpdateState_Literal(state);
@@ -385,10 +389,16 @@ package body LZMA_Decoding is
       DecodeBit(o.RangeDec, o.IsRep(state), bit);
       if bit /= 0 then
         if o.unpackSizeDefined and o.unpackSize = 0 then
-          raise LZMA_Error;
+          Raise_Exception(
+            LZMA_Error'Identity,
+            "Decoded data will exceed expected data size (Process_Distance_and_Length, #1)"
+          );
         end if;
         if IsEmpty(o.OutWindow) then
-          raise LZMA_Error;
+          Raise_Exception(
+            LZMA_Error'Identity,
+            "Output window buffer is empty (Process_Distance_and_Length)"
+          );
         end if;
         DecodeBit(o.RangeDec, o.IsRepG0(state), bit);
         if bit = 0 then
@@ -429,13 +439,19 @@ package body LZMA_Decoding is
           if IsFinishedOK(o.RangeDec) then
             raise Marker_exit;
           else
-            raise LZMA_Error;
+            Raise_Exception(
+              LZMA_Error'Identity,
+              "Range decoder not finished on EOS marker (Process_Distance_and_Length)"
+            );
           end if;
         end if;
         if (o.unpackSizeDefined and o.unpackSize = 0) or
             rep0 >= o.dictSize or not CheckDistance(o.OutWindow, rep0)
         then
-          raise LZMA_Error;
+          Raise_Exception(
+            LZMA_Error'Identity,
+            "Decoded data will exceed expected data size (Process_Distance_and_Length, #2)"
+          );
         end if;
       end if;
       len := len + kMatchMinLen;
@@ -447,7 +463,10 @@ package body LZMA_Decoding is
       CopyMatch(o.OutWindow, rep0 + 1, len);
       o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       if isError then
-        raise LZMA_Error;
+        Raise_Exception(
+          LZMA_Error'Identity,
+          "Decoded data will exceed expected data size (Process_Distance_and_Length, #3)"
+        );
       end if;
     end Process_Distance_and_Length;
 
@@ -478,6 +497,7 @@ package body LZMA_Decoding is
     header: Byte_buffer(0..12);
     b: Byte;
     use type BIO.Count;
+    last_bit: Natural;
   begin
     o.unpackSize := 0;
     o.unpackSizeDefined := False;
@@ -499,12 +519,19 @@ package body LZMA_Decoding is
       if o.unpackSizeDefined then
         for i in UInt32'(0)..7 loop
           b:= header(5 + i);
-          if b /= 16#FF# then
-            o.unpackSizeDefined := True;
-          end if;
           if b /= 0 then
-            if 8 * (i+1) > Data_Bytes_Count'Size then
-              raise LZMA_Error; -- Overflow
+            for bit in 0..7 loop
+              if (b and Shift_Left(Byte'(1),bit)) /= 0 then
+                last_bit:= bit;
+              end if;
+            end loop;
+            last_bit:= last_bit + Natural(8 * i);
+            if last_bit >= Data_Bytes_Count'Size then
+              Raise_Exception(
+                LZMA_Error'Identity,
+                "Indicated size for decoded data exceeds the maximum file size: " &
+                Natural'Image(last_bit)
+              );
             else
               o.unpackSize := o.unpackSize + Data_Bytes_Count(b) * 2 ** Natural(8 * i);
             end if;

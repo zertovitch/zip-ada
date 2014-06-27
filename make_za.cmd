@@ -25,6 +25,7 @@ call make_one find_zip
 call make_one demo_zip
 call make_one demo_unzip
 call make_one bunzip
+call make_one lzma_dec
 call make_one ziptest
 call make_one demo_csv_into_zip
 call make_one zip_with_many_files
