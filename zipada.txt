@@ -113,7 +113,7 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '47', xx-yyy-2014:
+* Changes in '47', 28-Jun-2014:
   - LZMA method added for decompression
 
 * Changes in '46', 14-Sep-2013:
@@ -403,11 +403,16 @@ Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
 
 
-Open bugs (as of v.45)
+Open bugs (as of v.47)
 ======================
 
   - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's reduce_* archives,
       but unzip <=5.12 and WinZip accept them all
+  - Info-Zip's Zip: since data are stored without prior knowledge of size,
+      data is stored with a data descriptor after each entry.
+      For the "Store" method (no compression), this is problematic
+      (no End-of-Stream marker) the size would be needed from the central
+      directory for instance. PKZIP and 7-Zip are OK.
   - UnZip.Decompress rejects many "enhanced deflate" (=deflate64)
         files made by WinZip (sometimes CRC errors, or:
     unzip-decompress.adb:1711 Huffman tree errors: huft_incomplete
