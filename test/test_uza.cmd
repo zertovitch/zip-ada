@@ -10,19 +10,19 @@ echo.
 echo The test will try to call the following compressors,
 echo they should be also visible in the path:
 echo.
-echo   pkzip090.exe (or pkzip092.exe)
-echo   pkzip101.exe (or pkzip102.exe)
-echo   pkzip110.exe
-echo   pkzip193.exe
-echo   pkzip204.exe
-echo   pkzip250.exe
+echo   pkzip090.exe (or 092), from: pkz090.exe,  10.02.1989, Shrink, Reduce 1-4
+echo   pkzip101.exe (or 102), from: pkz101.exe,  21.07.1989, Implode, Shrink
+echo   pkzip110.exe,          from: pkz110.exe,  15.03.1990, Implode, Shrink
+echo   pkzip193.exe,          from: pkz193a.exe, 15.10.1991, Deflate
+echo   pkzip204.exe,          from: pkz204.exe,  25.02.1993, Deflate
+echo   pkzip250.exe           from: pkz250.exe,   1.03.1999, Deflate
 echo   7z.exe
 echo   kzip.exe
-echo   zip.exe (v.3 or later)
+echo   zip.exe (v.3 or later, with BZip2 add-on)
 echo.
 
 echo The PK compressors are renamed from "pkzip.exe" in various versions
-echo available on the Web. Read ZipAda.txt for details.
+echo available on the Web.
 
 echo *****************************************************************
 echo.

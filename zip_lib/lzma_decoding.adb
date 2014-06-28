@@ -392,13 +392,13 @@ package body LZMA_Decoding is
         if o.unpackSizeDefined and then o.unpackSize = 0 then
           Raise_Exception(
             LZMA_Error'Identity,
-            "Decoded data will exceed expected data size (Process_Distance_and_Length, #1)"
+            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #1)"
           );
         end if;
         if IsEmpty(o.OutWindow) then
           Raise_Exception(
             LZMA_Error'Identity,
-            "Output window buffer is empty (Process_Distance_and_Length)"
+            "Output window buffer is empty (in Process_Distance_and_Length)"
           );
         end if;
         DecodeBit(o.RangeDec, o.IsRepG0(state), bit);
@@ -442,7 +442,7 @@ package body LZMA_Decoding is
           else
             Raise_Exception(
               LZMA_Error'Identity,
-              "Range decoder not finished on EOS marker (Process_Distance_and_Length)"
+              "Range decoder not finished on EOS marker (in Process_Distance_and_Length)"
             );
           end if;
         end if;
@@ -451,7 +451,7 @@ package body LZMA_Decoding is
         then
           Raise_Exception(
             LZMA_Error'Identity,
-            "Decoded data will exceed expected data size (Process_Distance_and_Length, #2)"
+            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2)"
           );
         end if;
       end if;
@@ -466,7 +466,7 @@ package body LZMA_Decoding is
       if isError then
         Raise_Exception(
           LZMA_Error'Identity,
-          "Decoded data will exceed expected data size (Process_Distance_and_Length, #3)"
+          "Decoded data will exceed expected data size (in Process_Distance_and_Length, #3)"
         );
       end if;
     end Process_Distance_and_Length;
@@ -529,11 +529,13 @@ package body LZMA_Decoding is
               end if;
             end loop;
             last_bit:= last_bit + Natural(8 * i);
-            if last_bit >= Data_Bytes_Count'Size then
+            if last_bit > Data_Bytes_Count'Size - 1 then
               Raise_Exception(
                 LZMA_Error'Identity,
-                "Indicated size for decoded data exceeds the maximum file size: " &
-                Natural'Image(last_bit)
+                "Indicated size bits for decoded data," & 
+                Natural'Image(last_bit) & 
+                ", exceeds the maximum file size bits," &
+                Natural'Image(Data_Bytes_Count'Size - 1)
               );
             else
               o.unpackSize := o.unpackSize + Data_Bytes_Count(b) * 2 ** Natural(8 * i);

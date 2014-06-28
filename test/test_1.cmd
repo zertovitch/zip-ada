@@ -14,7 +14,11 @@ kzip %2 $13_kzip.tmp
 ren $13_kzip.tmp $00store.tmp
 zip -0 %2 $00store.tmp
 
-ren $00store.tmp $01redu1.tmp
+ren $00store.tmp $00_cryp.tmp
+rem zip -0 -P tralala %2 $00_cryp.tmp
+7z a -mx0 -ptralala %2.zip $00_cryp.tmp
+
+ren $00_cryp.tmp $01redu1.tmp
 pkzip090 -ea1 %2 $01redu1.tmp
 
 ren $01redu1.tmp $02redu2.tmp
@@ -48,7 +52,7 @@ ren $10defl3.tmp $11defl4.tmp
 pkzip204 -ex %2 $11defl4.tmp
 
 ren $11defl4.tmp $12defl5.tmp
-pkzip250 -exx %2 $12defl5.tmp
+pkzip250 -exx -stralala %2 $12defl5.tmp
 
 ren $12defl5.tmp $14_df64.tmp
 call 7z a -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000 %2.zip $14_df64.tmp
@@ -59,10 +63,7 @@ zip -Z bzip2 %2 $15_bzp2.tmp
 ren $15_bzp2.tmp $16_lzma.tmp
 7z a -mx -mm=LZMA %2.zip $16_lzma.tmp
 
-ren $16_lzma.tmp $99_cryp.tmp
-zip -9 -P tralala %2 $99_cryp.tmp
-
-ren $99_cryp.tmp %1
+ren $16_lzma.tmp %1
 
 echo All! | unzipada -s tralala %2.zip
 
@@ -70,6 +71,7 @@ echo Checking decompressed outputs:
 pause
 
 if exist $00store.tmp fc /B %1 $00store.tmp
+if exist $00_cryp.tmp fc /B %1 $00_cryp.tmp
 if exist $01redu1.tmp fc /B %1 $01redu1.tmp
 if exist $02redu2.tmp fc /B %1 $02redu2.tmp
 if exist $03redu3.tmp fc /B %1 $03redu3.tmp
@@ -86,7 +88,6 @@ if exist $13_kzip.tmp fc /B %1 $13_kzip.tmp
 if exist $14_df64.tmp fc /B %1 $14_df64.tmp
 if exist $15_bzp2.tmp fc /B %1 $15_bzp2.tmp
 if exist $16_lzma.tmp fc /B %1 $16_lzma.tmp
-if exist $99_cryp.tmp fc /B %1 $99_cryp.tmp
 
 pause
 
