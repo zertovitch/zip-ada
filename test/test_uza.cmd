@@ -30,7 +30,7 @@ echo 1) I will use the text files (sources etc.) in the Zip-Ada
 echo distribution as compression data
 echo.
 pause
-copy *.ad? + *.txt + *.ali + zip_lib\*.ad? + zip_lib\*.ali + *.bat $test.txt
+copy *.ad? + ..\*.ad? +..\*.txt + ..\zip_lib\*.ad? + *.cmd $test.txt
 call test_1 $test.txt tuttifru
 
 echo *****************************************************************
@@ -40,3 +40,11 @@ echo.
 pause
 copy /B *.exe $test.bin
 call test_1 $test.bin binana
+
+echo *****************************************************************
+echo.
+echo 3) Test with CSV structured data (*.csv)
+echo.
+pause
+copy *.csv $test.csv
+call test_1 $test.csv csv_data

@@ -12,49 +12,46 @@ ren %1 $13_kzip.tmp
 kzip %2 $13_kzip.tmp
 
 ren $13_kzip.tmp $00store.tmp
-zip -0 %2 $00store.tmp
+rem zip -0 -P tralala %2 $00store.tmp
+7z a -mx0 -ptralala %2.zip $00store.tmp
 
-ren $00store.tmp $00_cryp.tmp
-rem zip -0 -P tralala %2 $00_cryp.tmp
-7z a -mx0 -ptralala %2.zip $00_cryp.tmp
+ren $00store.tmp $01pk090.tmp
+pkzip090 -ea1 %2 $01pk090.tmp
 
-ren $00_cryp.tmp $01redu1.tmp
-pkzip090 -ea1 %2 $01redu1.tmp
+ren $01pk090.tmp $02pk090.tmp
+pkzip090 -ea2 %2 $02pk090.tmp
 
-ren $01redu1.tmp $02redu2.tmp
-pkzip090 -ea2 %2 $02redu2.tmp
+ren $02pk090.tmp $03pk090.tmp
+pkzip090 -ea3 %2 $03pk090.tmp
 
-ren $02redu2.tmp $03redu3.tmp
-pkzip090 -ea3 %2 $03redu3.tmp
+ren $03pk090.tmp $04pk090.tmp
+pkzip090 -ea4 %2 $04pk090.tmp
 
-ren $03redu3.tmp $04redu4.tmp
-pkzip090 -ea4 %2 $04redu4.tmp
+ren $04pk090.tmp $05pk090.tmp
+pkzip090 -eb %2 $05pk090.tmp
 
-ren $04redu4.tmp $05shri1.tmp
-pkzip090 -eb %2 $05shri1.tmp
+ren $05pk090.tmp $06pk101.tmp
+pkzip101 -ex %2 $06pk101.tmp
 
-ren $05shri1.tmp $06impl1.tmp
-pkzip101 -ex %2 $06impl1.tmp
+ren $06pk101.tmp $07pk110.tmp
+pkzip110 -ei %2 $07pk110.tmp
 
-ren $06impl1.tmp $07impl2.tmp
-pkzip110 -ei %2 $07impl2.tmp
+ren $07pk110.tmp $08pk193.tmp
+pkzip193 -es %2 $08pk193.tmp
 
-ren $07impl2.tmp $08defl1.tmp
-pkzip193 -es %2 $08defl1.tmp
+ren $08pk193.tmp $09pk193.tmp
+pkzip193 -en %2 $09pk193.tmp
 
-ren $08defl1.tmp $09defl2.tmp
-pkzip193 -en %2 $09defl2.tmp
+ren $09pk193.tmp $10pk193.tmp
+pkzip193 -ex %2 $10pk193.tmp
 
-ren $09defl2.tmp $10defl3.tmp
-pkzip193 -ex %2 $10defl3.tmp
+ren $10pk193.tmp $11pk204.tmp
+pkzip204 -ex %2 $11pk204.tmp
 
-ren $10defl3.tmp $11defl4.tmp
-pkzip204 -ex %2 $11defl4.tmp
+ren $11pk204.tmp $12pk250.tmp
+pkzip250 -exx -stralala %2 $12pk250.tmp
 
-ren $11defl4.tmp $12defl5.tmp
-pkzip250 -exx -stralala %2 $12defl5.tmp
-
-ren $12defl5.tmp $14_df64.tmp
+ren $12pk250.tmp $14_df64.tmp
 call 7z a -mx9 -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000 %2.zip $14_df64.tmp
 
 ren $14_df64.tmp $15_bzp2.tmp
@@ -72,18 +69,18 @@ pause
 
 if exist $00store.tmp fc /B %1 $00store.tmp
 if exist $00_cryp.tmp fc /B %1 $00_cryp.tmp
-if exist $01redu1.tmp fc /B %1 $01redu1.tmp
-if exist $02redu2.tmp fc /B %1 $02redu2.tmp
-if exist $03redu3.tmp fc /B %1 $03redu3.tmp
-if exist $04redu4.tmp fc /B %1 $04redu4.tmp
-if exist $05shri1.tmp fc /B %1 $05shri1.tmp
-if exist $06impl1.tmp fc /B %1 $06impl1.tmp
-if exist $07impl2.tmp fc /B %1 $07impl2.tmp
-if exist $08defl1.tmp fc /B %1 $08defl1.tmp
-if exist $09defl2.tmp fc /B %1 $09defl2.tmp
-if exist $10defl3.tmp fc /B %1 $10defl3.tmp
-if exist $11defl4.tmp fc /B %1 $11defl4.tmp
-if exist $12defl5.tmp fc /B %1 $12defl5.tmp
+if exist $01pk090.tmp fc /B %1 $01pk090.tmp
+if exist $02pk090.tmp fc /B %1 $02pk090.tmp
+if exist $03pk090.tmp fc /B %1 $03pk090.tmp
+if exist $04pk090.tmp fc /B %1 $04pk090.tmp
+if exist $05pk090.tmp fc /B %1 $05pk090.tmp
+if exist $06pk101.tmp fc /B %1 $06pk101.tmp
+if exist $07pk110.tmp fc /B %1 $07pk110.tmp
+if exist $08pk193.tmp fc /B %1 $08pk193.tmp
+if exist $09pk193.tmp fc /B %1 $09pk193.tmp
+if exist $10pk193.tmp fc /B %1 $10pk193.tmp
+if exist $11pk204.tmp fc /B %1 $11pk204.tmp
+if exist $12pk250.tmp fc /B %1 $12pk250.tmp
 if exist $13_kzip.tmp fc /B %1 $13_kzip.tmp
 if exist $14_df64.tmp fc /B %1 $14_df64.tmp
 if exist $15_bzp2.tmp fc /B %1 $15_bzp2.tmp
