@@ -100,17 +100,6 @@ private
   kEndPosModelIndex   : constant := 14;
   kNumFullDistances   : constant := 2 ** (kEndPosModelIndex / 2);
 
-  generic
-    NumBits: Positive;
-  package CBitTreeDecoder is
-    subtype Probs is CProb_array(0 .. 2**NumBits - 1);
-    procedure Init(p: out Probs);
-    procedure Decode(p: in out Probs; rc: in out CRangeDecoder; res: out Unsigned);
-      pragma Inline(Decode);
-    procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32);
-      pragma Inline(ReverseDecode);
-  end;
-
   subtype Probs_3_bits is CProb_array(0 .. 2**3 - 1);
   subtype Probs_6_bits is CProb_array(0 .. 2**6 - 1);
   subtype Probs_8_bits is CProb_array(0 .. 2**8 - 1);

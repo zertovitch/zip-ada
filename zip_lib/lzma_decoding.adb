@@ -150,6 +150,17 @@ package body LZMA_Decoding is
     end loop;
   end BitTreeReverseDecode;
 
+  generic
+    NumBits: Positive;
+  package CBitTreeDecoder is
+    subtype Probs is CProb_array(0 .. 2**NumBits - 1);
+    procedure Init(p: out Probs);
+    procedure Decode(p: in out Probs; rc: in out CRangeDecoder; res: out Unsigned);
+      pragma Inline(Decode);
+    procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32);
+      pragma Inline(ReverseDecode);
+  end;
+  
   package body CBitTreeDecoder is
 
     procedure Init(p: out Probs) is
@@ -158,14 +169,14 @@ package body LZMA_Decoding is
     end;
 
     procedure Decode(p: in out Probs; rc: in out CRangeDecoder; res: out Unsigned) is
-      symbol: UInt32;
+      bit: UInt32;
       m: Unsigned:= 1;
     begin
       for count in reverse 1..NumBits loop
-        DecodeBit(rc, p(m),symbol);
-        m:= (m + m) + Unsigned(symbol);
+        DecodeBit(rc, p(m),bit);
+        m:= (m + m) + Unsigned(bit);
       end loop;
-      res:= m - Unsigned(Shift_Left(UInt32'(1), NumBits));
+      res:= m - 2**NumBits;
     end Decode;
 
     procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32) is
@@ -195,15 +206,15 @@ package body LZMA_Decoding is
 
   procedure Decode(o: in out CLenDecoder; rc: in out CRangeDecoder; posState: Unsigned; res: out Unsigned) is
   pragma Inline(Decode);
-    symbol: UInt32;
+    bit_a, bit_b: UInt32;
   begin
-    DecodeBit(rc, o.Choice, symbol);
-    if symbol = 0 then
+    DecodeBit(rc, o.Choice, bit_a);
+    if bit_a = 0 then
       BTD_3.Decode(o.LowCoder(posState), rc, res);
       return;
     end if;
-    DecodeBit(rc, o.Choice2, symbol);
-    if symbol = 0 then
+    DecodeBit(rc, o.Choice2, bit_b);
+    if bit_b = 0 then
       BTD_3.Decode(o.MidCoder(posState), rc, res);
       res:= res + 8;
       return;
@@ -268,13 +279,13 @@ package body LZMA_Decoding is
 
   procedure DecodeLiteral(o: in out LZMA_Decoder_Info; state: Unsigned; rep0: UInt32) is
   pragma Inline(DecodeLiteral);
-    prevByte  : Byte:= 0;
-    symbol    : Unsigned:= 1;
-    litState  : Unsigned;
-    probs_idx : Unsigned;
-    matchByte : UInt32;
-    matchBit  : UInt32;
-    bit       : UInt32;
+    prevByte     : Byte:= 0;
+    symbol       : Unsigned:= 1;
+    litState     : Unsigned;
+    probs_idx    : Unsigned;
+    matchByte    : UInt32;
+    matchBit     : UInt32;
+    bit_a, bit_b : UInt32;
   begin
     if not IsEmpty(o.OutWindow) then
       prevByte := GetByte(o.OutWindow, 1);
@@ -292,15 +303,15 @@ package body LZMA_Decoding is
         matchByte := matchByte + matchByte;
         DecodeBit(o.RangeDec,
           o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol),
-          bit
+          bit_a
         );
-        symbol := (symbol + symbol) or Unsigned(bit);
-        exit when (matchBit /= bit) or else (symbol >= 16#100#);
+        symbol := (symbol + symbol) or Unsigned(bit_a);
+        exit when (matchBit /= bit_a) or else (symbol >= 16#100#);
       end loop;
     end if;
     while symbol < 16#100# loop
-      DecodeBit(o.RangeDec, o.LitProbs(probs_idx + symbol), bit);
-      symbol := (symbol + symbol) or Unsigned(bit);
+      DecodeBit(o.RangeDec, o.LitProbs(probs_idx + symbol), bit_b);
+      symbol := (symbol + symbol) or Unsigned(bit_b);
     end loop;
     PutByte(o.OutWindow, Byte(symbol - 16#100#));
   end DecodeLiteral;
@@ -385,10 +396,10 @@ package body LZMA_Decoding is
       len: Unsigned;
       isError: Boolean;
       dist: UInt32;
-      bit: UInt32;
+      bit_a, bit_b, bit_c, bit_d, bit_e: UInt32;
     begin
-      DecodeBit(o.RangeDec, o.IsRep(state), bit);
-      if bit /= 0 then
+      DecodeBit(o.RangeDec, o.IsRep(state), bit_a);
+      if bit_a /= 0 then
         if o.unpackSizeDefined and then o.unpackSize = 0 then
           Raise_Exception(
             LZMA_Error'Identity,
@@ -401,22 +412,22 @@ package body LZMA_Decoding is
             "Output window buffer is empty (in Process_Distance_and_Length)"
           );
         end if;
-        DecodeBit(o.RangeDec, o.IsRepG0(state), bit);
-        if bit = 0 then
-          DecodeBit(o.RangeDec, o.IsRep0Long(state * kNumPosBitsMax_Count + posState), bit);
-          if bit = 0 then
+        DecodeBit(o.RangeDec, o.IsRepG0(state), bit_b);
+        if bit_b = 0 then
+          DecodeBit(o.RangeDec, o.IsRep0Long(state * kNumPosBitsMax_Count + posState), bit_c);
+          if bit_c = 0 then
             state := UpdateState_ShortRep(state);
             PutByte(o.OutWindow, GetByte(o.OutWindow, rep0 + 1));
             o.unpackSize:= o.unpackSize - 1;
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
-          DecodeBit(o.RangeDec, o.IsRepG1(state), bit);
-          if bit = 0 then
+          DecodeBit(o.RangeDec, o.IsRepG1(state), bit_d);
+          if bit_d = 0 then
             dist := rep1;
           else
-            DecodeBit(o.RangeDec, o.IsRepG2(state), bit);
-            if bit = 0 then
+            DecodeBit(o.RangeDec, o.IsRepG2(state), bit_e);
+            if bit_e = 0 then
               dist := rep2;
             else
               dist := rep3;
