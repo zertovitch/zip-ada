@@ -49,13 +49,13 @@ package body LZMA_Decoding is
   function CheckDistance(o: COutWindow; dist: UInt32) return Boolean is
   pragma Inline(CheckDistance);
   begin
-    return dist <= o.Pos or else o.IsFull;
+    return dist <= o.Pos or o.IsFull;
   end;
 
   function IsEmpty(o: COutWindow) return Boolean is
   pragma Inline(IsEmpty);
   begin
-    return o.Pos = 0 and not o.IsFull;
+    return o.Pos = 0 and then not o.IsFull;
   end;
 
   kNumBitModelTotalBits : constant:= 11;
@@ -337,7 +337,7 @@ package body LZMA_Decoding is
     procedure Process_Litteral is
     pragma Inline(Process_Litteral);
     begin
-      if o.unpackSizeDefined and then o.unpackSize = 0 then
+      if o.unpackSize = 0 and then o.unpackSizeDefined then
         Raise_Exception(
           LZMA_Error'Identity,
           "Decoded data will exceed expected data size (Process_Litteral)"
@@ -357,7 +357,7 @@ package body LZMA_Decoding is
     begin
       DecodeBit(o.RangeDec, o.IsRep(state), bit_a);
       if bit_a /= 0 then
-        if o.unpackSizeDefined and then o.unpackSize = 0 then
+        if o.unpackSize = 0 and then o.unpackSizeDefined then
           Raise_Exception(
             LZMA_Error'Identity,
             "Decoded data will exceed expected data size (in Process_Distance_and_Length, #1)"
@@ -414,8 +414,8 @@ package body LZMA_Decoding is
             );
           end if;
         end if;
-        if (o.unpackSizeDefined and then o.unpackSize = 0) or else
-            rep0 >= o.dictSize or else not CheckDistance(o.OutWindow, rep0)
+        if (o.unpackSize = 0 and then o.unpackSizeDefined) or
+            rep0 >= o.dictSize or not CheckDistance(o.OutWindow, rep0)
         then
           Raise_Exception(
             LZMA_Error'Identity,
@@ -425,7 +425,7 @@ package body LZMA_Decoding is
       end if;
       len := len + kMatchMinLen;
       isError := False;
-      if o.unpackSizeDefined and then o.unpackSize < Data_Bytes_Count(len) then
+      if o.unpackSize < Data_Bytes_Count(len) and then o.unpackSizeDefined then
         len := Unsigned(o.unpackSize);
         isError := True;
       end if;
@@ -445,8 +445,9 @@ package body LZMA_Decoding is
     Init(o);
     Init(o.RangeDec);
     loop
-      if o.unpackSizeDefined and then o.unpackSize = 0
-        and then (not o.markerIsMandatory) and then IsFinishedOK(o.RangeDec)
+      if o.unpackSize = 0 
+        and then (o.unpackSizeDefined and not o.markerIsMandatory) 
+        and then IsFinishedOK(o.RangeDec)
       then
         res:= LZMA_finished_without_marker;
         return;
