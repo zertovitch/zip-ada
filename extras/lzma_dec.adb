@@ -48,7 +48,7 @@ procedure LZMA_Dec is
 
 begin
   New_Line;
-  Put_Line("LZMA_Dec, from the LZMA Reference Decoder by Igor Pavlov.");
+  Put_Line("LZMA_Dec, translated from the LZMA Reference Decoder 9.31 by Igor Pavlov.");
   if Argument_Count = 0 then
     Put_Line("Use: lzma_dec a.lzma outfile");
     return;

@@ -1,4 +1,4 @@
--- LZMA_Decoding - Ada 95 translation of LzmaSpec.cpp, LZMA Reference Decoder
+-- LZMA_Decoding - Ada 95 translation of LzmaSpec.cpp, LZMA Reference Decoder 9.31
 -- LzmaSpec.cpp : 2013-07-28 : Igor Pavlov : Public domain
 
 with Ada.Unchecked_Deallocation;
@@ -110,7 +110,7 @@ package body LZMA_Decoding is
         o.Corrupted := True;
       end if;
       Normalize(o);
-      res := (res + res) + t + 1;
+      res := res + res + t + 1;
     end loop;
   end DecodeDirectBits;
 
@@ -137,71 +137,39 @@ package body LZMA_Decoding is
     end if;
   end DecodeBit;
 
-  procedure BitTreeReverseDecode(prob: in out CProb_array; numBits : Natural; rc: in out CRangeDecoder; symbol: out UInt32) is
+  procedure BitTreeReverseDecode(prob: in out CProb_array; numBits : Natural; rc: in out CRangeDecoder; symbol: in out UInt32) is
   pragma Inline(BitTreeReverseDecode);
     m: Unsigned := 1;
     bit: Unsigned;
   begin
-    symbol := 0;
     for i in 0..numBits-1 loop
       DecodeBit(rc, prob(m+prob'First), bit);
-      m := (m + m) + bit;
+      m := m + m + bit;
       symbol := symbol or Shift_Left(UInt32(bit), i);
     end loop;
   end BitTreeReverseDecode;
 
-  generic
-    NumBits: Positive;
-  package CBitTreeDecoder is
-    subtype Probs is CProb_array(0 .. 2**NumBits - 1);
-    procedure Init(p: out Probs);
-    procedure Decode(p: in out Probs; rc: in out CRangeDecoder; res: out Unsigned);
-      pragma Inline(Decode);
-    procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32);
-      pragma Inline(ReverseDecode);
-  end;
-  
-  package body CBitTreeDecoder is
-
-    procedure Init(p: out Probs) is
-    begin
-      p:= (others => PROB_INIT_VAL);
-    end;
-
-    procedure Decode(p: in out Probs; rc: in out CRangeDecoder; res: out Unsigned) is
-      bit: Unsigned;
-      m: Unsigned:= 1;
-    begin
-      for count in reverse 1..NumBits loop
-        DecodeBit(rc, p(m),bit);
-        m:= (m + m) + bit;
-      end loop;
-      res:= m - 2**NumBits;
-    end Decode;
-
-    procedure ReverseDecode(p: in out Probs; rc: in out CRangeDecoder; res: out UInt32) is
-    begin
-      BitTreeReverseDecode(p, NumBits, rc, res);
-    end ReverseDecode;
-
-  end CBitTreeDecoder;
-
-  package BTD_3   is new CBitTreeDecoder(3);
-  package BTD_6   is new CBitTreeDecoder(6);
-  package BTD_8   is new CBitTreeDecoder(8);
-  package BTD_NAB is new CBitTreeDecoder(kNumAlignBits);
+  procedure BitTreeDecode(prob: in out CProb_array; NumBits: Positive; rc: in out CRangeDecoder; m: out Unsigned) is
+  pragma Inline(BitTreeDecode);
+    bit: Unsigned;
+  begin
+    m:= 1;
+    for count in reverse 1..NumBits loop
+      DecodeBit(rc, prob(m), bit);
+      m:= m + m + bit;
+    end loop;
+    m:= m - 2**NumBits;
+  end BitTreeDecode;
 
   kMatchMinLen        : constant := 2;
 
   procedure Init(o: in out CLenDecoder) is
   begin
-    o.Choice  := PROB_INIT_VAL;
-    o.Choice2 := PROB_INIT_VAL;
-    BTD_8.Init(o.HighCoder);
-    for i in LM_Coder_Probs'Range loop
-      BTD_3.Init(o.LowCoder(i));
-      BTD_3.Init(o.MidCoder(i));
-    end loop;
+    o.Choice    := PROB_INIT_VAL;
+    o.Choice2   := PROB_INIT_VAL;
+    o.HighCoder := (others => PROB_INIT_VAL);
+    o.LowCoder  := (others => (others => PROB_INIT_VAL));
+    o.MidCoder  := (others => (others => PROB_INIT_VAL));
   end Init;
 
   procedure Decode(o: in out CLenDecoder; rc: in out CRangeDecoder; posState: Unsigned; res: out Unsigned) is
@@ -210,16 +178,16 @@ package body LZMA_Decoding is
   begin
     DecodeBit(rc, o.Choice, bit_a);
     if bit_a = 0 then
-      BTD_3.Decode(o.LowCoder(posState), rc, res);
+      BitTreeDecode(o.LowCoder(posState), 3, rc, res);
       return;
     end if;
     DecodeBit(rc, o.Choice2, bit_b);
     if bit_b = 0 then
-      BTD_3.Decode(o.MidCoder(posState), rc, res);
+      BitTreeDecode(o.MidCoder(posState), 3, rc, res);
       res:= res + 8;
       return;
     end if;
-    BTD_8.Decode(o.HighCoder, rc, res);
+    BitTreeDecode(o.HighCoder, 8, rc, res);
     res:= res + 16;
   end Decode;
 
@@ -272,11 +240,6 @@ package body LZMA_Decoding is
     o.LitProbs := new CProb_array(0..length-1); -- Literals
   end Create_Large_Arrays;
 
-  procedure InitLiterals(o: in out LZMA_Decoder_Info) is
-  begin
-    o.LitProbs.all:= (others => PROB_INIT_VAL);
-  end InitLiterals;
-
   procedure DecodeLiteral(o: in out LZMA_Decoder_Info; state: Unsigned; rep0: UInt32) is
   pragma Inline(DecodeLiteral);
     prevByte     : Byte:= 0;
@@ -316,29 +279,19 @@ package body LZMA_Decoding is
     PutByte(o.OutWindow, Byte(symbol - 16#100#));
   end DecodeLiteral;
 
-  procedure InitDist(o: in out LZMA_Decoder_Info) is
-  begin
-    for i in o.PosSlotDecoder'Range loop
-      BTD_6.Init(o.PosSlotDecoder(i));
-    end loop;
-    BTD_NAB.Init(o.AlignDecoder);
-    o.PosDecoders:= (others => PROB_INIT_VAL);
-  end InitDist;
-
-  procedure DecodeDistance(o: in out LZMA_Decoder_Info; len: Unsigned; res: out UInt32) is
+  procedure DecodeDistance(o: in out LZMA_Decoder_Info; len: Unsigned; dist: out UInt32) is
   pragma Inline(DecodeDistance);
     lenState      : Unsigned := len;
     posSlot       : Unsigned;
-    dist          : UInt32;
     numDirectBits : Natural;
     deco          : UInt32;
   begin
     if lenState > kNumLenToPosStates - 1 then
       lenState := kNumLenToPosStates - 1;
     end if;
-    BTD_6.Decode(o.PosSlotDecoder(lenState), o.RangeDec, posSlot);
+    BitTreeDecode(o.PosSlotDecoder(lenState), 6, o.RangeDec, posSlot);
     if posSlot < 4 then
-      res:= UInt32(posSlot);
+      dist:= UInt32(posSlot);
       return;
     end if;
     numDirectBits := Natural(Shift_Right(UInt32(posSlot), 1) - 1);
@@ -346,20 +299,24 @@ package body LZMA_Decoding is
     if posSlot < kEndPosModelIndex then
       BitTreeReverseDecode(
         o.PosDecoders(Unsigned(dist) - posSlot .. Last_PosDecoders),
-        numDirectBits, o.RangeDec, deco
+        numDirectBits, o.RangeDec, dist
       );
     else
       DecodeDirectBits(o.RangeDec, numDirectBits - kNumAlignBits, deco);
       dist:= dist + Shift_Left(deco, kNumAlignBits);
-      BTD_NAB.ReverseDecode(o.AlignDecoder, o.RangeDec, deco);
+      BitTreeReverseDecode(o.AlignDecoder, kNumAlignBits, o.RangeDec, dist);
     end if;
-    res:= dist + deco;
   end DecodeDistance;
 
   procedure Init(o: in out LZMA_Decoder_Info) is
   begin
-    InitLiterals(o);
-    InitDist(o);
+    -- Literals:
+    o.LitProbs.all := (others => PROB_INIT_VAL);
+    -- Distances:
+    o.PosSlotDecoder := (others => (others => PROB_INIT_VAL));
+    o.AlignDecoder   := (others => PROB_INIT_VAL);
+    o.PosDecoders    := (others => PROB_INIT_VAL);
+    --
     o.IsMatch    := (others => PROB_INIT_VAL);
     o.IsRep      := (others => PROB_INIT_VAL);
     o.IsRepG0    := (others => PROB_INIT_VAL);
@@ -488,7 +445,7 @@ package body LZMA_Decoding is
     Init(o);
     Init(o.RangeDec);
     loop
-      if o.unpackSizeDefined and then o.unpackSize = 0 
+      if o.unpackSizeDefined and then o.unpackSize = 0
         and then (not o.markerIsMandatory) and then IsFinishedOK(o.RangeDec)
       then
         res:= LZMA_finished_without_marker;
@@ -543,8 +500,8 @@ package body LZMA_Decoding is
             if last_bit > Data_Bytes_Count'Size - 1 then
               Raise_Exception(
                 LZMA_Error'Identity,
-                "Indicated size bits for decoded data," & 
-                Natural'Image(last_bit) & 
+                "Indicated size bits for decoded data," &
+                Natural'Image(last_bit) &
                 ", exceeds the maximum file size bits," &
                 Natural'Image(Data_Bytes_Count'Size - 1)
               );
