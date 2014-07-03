@@ -42,9 +42,9 @@ package LZMA_Decoding is
   procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result);
 
   -- The technical details:
-  function Literal_context_bits(o: LZMA_Decoder_Info) return Natural; 
-  function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural; 
-  function Pos_bits(o: LZMA_Decoder_Info) return Natural; 
+  function Literal_context_bits(o: LZMA_Decoder_Info) return Natural;
+  function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural;
+  function Pos_bits(o: LZMA_Decoder_Info) return Natural;
 
   function Unpack_size_defined(o: LZMA_Decoder_Info) return Boolean;
   function Unpack_size_as_defined(o: LZMA_Decoder_Info) return  Data_Bytes_Count;
@@ -73,18 +73,18 @@ private
     type Byte_buffer is array(UInt32 range <>) of Byte;
   type p_Byte_buffer is access Byte_buffer;
 
-  type COutWindow is record
-    Buf      : p_Byte_buffer:= null;
-    Pos      : UInt32;
-    Size     : UInt32;
-    IsFull   : Boolean;
-    TotalPos : Unsigned;
+  type Out_Window is record
+    buf       : p_Byte_buffer:= null;
+    pos       : UInt32;
+    size      : UInt32;
+    is_full   : Boolean;
+    total_pos : Unsigned;
   end record;
 
-  type CRangeDecoder is record
-    RangeZ    : UInt32;
-    Code      : UInt32;
-    Corrupted : Boolean;
+  type Range_Decoder is record
+    range_z   : UInt32;
+    code      : UInt32;
+    corrupted : Boolean;
   end record;
 
   type CProb is new UInt16;
@@ -104,15 +104,15 @@ private
   subtype Probs_6_bits is CProb_array(0 .. 2**6 - 1);
   subtype Probs_8_bits is CProb_array(0 .. 2**8 - 1);
   subtype Probs_NAB_bits is CProb_array(0 .. 2**kNumAlignBits - 1);
-  
+
   type LM_Coder_Probs is array(Unsigned'(0) .. kNumPosBitsMax_Count - 1) of Probs_3_bits;
 
-  type CLenDecoder is record
-    Choice    : CProb;
-    Choice2   : CProb;
-    LowCoder  : LM_Coder_Probs;
-    MidCoder  : LM_Coder_Probs;
-    HighCoder : Probs_8_bits;
+  type Length_Decoder is record
+    choice     : CProb;
+    choice_2   : CProb;
+    low_coder  : LM_Coder_Probs;
+    mid_coder  : LM_Coder_Probs;
+    high_coder : Probs_8_bits;
   end record;
 
   type Slot_Coder_Probs is array(Unsigned'(0) .. kNumLenToPosStates - 1) of Probs_6_bits;
@@ -128,8 +128,8 @@ private
   -- Ada 2005+ is OK.
 
   type LZMA_Decoder_Info is record
-    RangeDec             : CRangeDecoder;
-    OutWindow            : COutWindow;
+    range_dec            : Range_Decoder;
+    out_win            : Out_Window;
     markerIsMandatory    : Boolean;
     lc                   : LC_range; -- the number of "literal context" bits
     lp                   : LP_range; -- the number of "literal pos" bits
@@ -148,13 +148,13 @@ private
     IsRepG0              : CProb_array(0..kNumStates - 1);
     IsRepG1              : CProb_array(0..kNumStates - 1);
     IsRepG2              : CProb_array(0..kNumStates - 1);
-    LenDecoder           : CLenDecoder;
-    RepLenDecoder        : CLenDecoder;
+    len_decoder          : Length_Decoder;
+    rep_len_decoder      : Length_Decoder;
     unpackSize           : Data_Bytes_Count;
     unpackSize_as_defined: Data_Bytes_Count;
     unpackSizeDefined    : Boolean;
   end record;
 
   LZMA_Error: exception;
-  
+
 end LZMA_Decoding;
