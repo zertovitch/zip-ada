@@ -58,10 +58,11 @@ package body LZMA_Decoding is
     return o.pos = 0 and then not o.is_full;
   end;
 
-  kNumBitModelTotalBits : constant:= 11;
-  kNumMoveBits          : constant:= 5;
-
-  PROB_INIT_VAL : constant := (2 ** kNumBitModelTotalBits) / 2;
+  type Range_Decoder is record
+    range_z   : UInt32;
+    code      : UInt32;
+    corrupted : Boolean;
+  end record;
 
   procedure Init(o: in out Range_Decoder) is
   begin
@@ -114,45 +115,28 @@ package body LZMA_Decoding is
     end loop;
   end Decode_Direct_Bits;
 
-  kNumBitModel_Count: constant:= 2 ** kNumBitModelTotalBits;
+  kNumBitModelTotalBits : constant:= 11;
+  kNumMoveBits          : constant:= 5;
+  kNumBitModel_Count    : constant:= 2 ** kNumBitModelTotalBits;
 
   procedure Decode_Bit(o: in out Range_Decoder; prob: in out CProb; symbol: out Unsigned) is
   pragma Inline(Decode_Bit);
-    v: UInt32 := UInt32(prob); -- unsigned in the C++ code
-    bound: constant UInt32:= Shift_Right(o.range_z, kNumBitModelTotalBits) * v;
+    prob_l: constant CProb:= prob; -- Local copy
+    bound: constant UInt32:= Shift_Right(o.range_z, kNumBitModelTotalBits) * prob_l;
   begin
     if o.code < bound then
-      v:= v + Shift_Right(kNumBitModel_Count - v, kNumMoveBits);
+      prob:= prob_l + Shift_Right(kNumBitModel_Count - prob_l, kNumMoveBits);
       o.range_z := bound;
-      prob := CProb(v);
       Normalize(o);
       symbol := 0;
     else
-      v:= v - Shift_Right(v, kNumMoveBits);
+      prob:= prob_l - Shift_Right(prob_l, kNumMoveBits);
       o.code := o.code - bound;
       o.range_z := o.range_z - bound;
-      prob := CProb(v);
       Normalize(o);
       symbol := 1;
     end if;
   end Decode_Bit;
-
-  procedure Bit_Tree_Reverse_Decode(
-    prob     : in out CProb_array;
-    num_bits : in     Natural;
-    rc       : in out Range_Decoder;
-    symbol   : in out UInt32)
-  is
-  pragma Inline(Bit_Tree_Reverse_Decode);
-    m: Unsigned := 1;
-    bit: Unsigned;
-  begin
-    for i in 0..num_bits-1 loop
-      Decode_Bit(rc, prob(m + prob'First), bit);
-      m := m + m + bit;
-      symbol := symbol or Shift_Left(UInt32(bit), i);
-    end loop;
-  end Bit_Tree_Reverse_Decode;
 
   procedure Bit_Tree_Decode(
     prob     : in out CProb_array;
@@ -170,6 +154,8 @@ package body LZMA_Decoding is
     end loop;
     m:= m - 2**num_bits;
   end Bit_Tree_Decode;
+
+  PROB_INIT_VAL : constant := (2 ** kNumBitModelTotalBits) / 2;
 
   procedure Init(o: in out Length_Decoder) is
   begin
@@ -232,9 +218,7 @@ package body LZMA_Decoding is
     o.lc := LC_range(d mod 9);
     d := d / 9;
     o.lp := LP_range(d mod 5);
-    o.literal_pos_mask:= 2 ** o.lp - 1;
     o.pb := PB_range(d / 5);
-    o.pos_bits_mask:= 2 ** o.pb - 1;
     o.dictSizeInProperties := 0;
     for i in 0..3 loop
       o.dictSizeInProperties := o.dictSizeInProperties +
@@ -252,74 +236,6 @@ package body LZMA_Decoding is
     Create(o.out_win, o.dictSize);
     o.LitProbs := new CProb_array(0..length-1); -- Literals
   end Create_Large_Arrays;
-
-  procedure DecodeLiteral(o: in out LZMA_Decoder_Info; state: Unsigned; rep0: UInt32) is
-  pragma Inline(DecodeLiteral);
-    prevByte     : Byte:= 0;
-    symbol       : Unsigned:= 1;
-    lit_state    : Unsigned;
-    probs_idx    : Unsigned;
-    matchByte    : UInt32;
-    matchBit     : UInt32;
-    bit_a, bit_b : Unsigned;
-  begin
-    if not Is_Empty(o.out_win) then
-      prevByte := Get_Byte(o.out_win, 1);
-    end if;
-    lit_state :=
-      Unsigned(
-        Shift_Left(UInt32(o.out_win.total_pos) and o.literal_pos_mask, o.lc) +
-        Shift_Right(UInt32(prevByte), 8 - o.lc)
-      );
-    probs_idx:= 16#300# * lit_state;
-    if state >= 7 then
-      matchByte := UInt32(Get_Byte(o.out_win, rep0 + 1));
-      loop
-        matchBit  := Shift_Right(matchByte, 7) and 1;
-        matchByte := matchByte + matchByte;
-        Decode_Bit(o.range_dec,
-          o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol),
-          bit_a
-        );
-        symbol := (symbol + symbol) or bit_a;
-        exit when (Unsigned(matchBit) /= bit_a) or else (symbol >= 16#100#);
-      end loop;
-    end if;
-    while symbol < 16#100# loop
-      Decode_Bit(o.range_dec, o.LitProbs(probs_idx + symbol), bit_b);
-      symbol := (symbol + symbol) or bit_b;
-    end loop;
-    Put_Byte(o.out_win, Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
-  end DecodeLiteral;
-
-  procedure DecodeDistance(o: in out LZMA_Decoder_Info; len: Unsigned; dist: out UInt32) is
-  pragma Inline(DecodeDistance);
-    lenState      : Unsigned := len;
-    posSlot       : Unsigned;
-    numDirectBits : Natural;
-    deco          : UInt32;
-  begin
-    if lenState > kNumLenToPosStates - 1 then
-      lenState := kNumLenToPosStates - 1;
-    end if;
-    Bit_Tree_Decode(o.PosSlotDecoder(lenState), 6, o.range_dec, posSlot);
-    if posSlot < 4 then
-      dist:= UInt32(posSlot);
-      return;
-    end if;
-    numDirectBits := Natural(Shift_Right(UInt32(posSlot), 1) - 1);
-    dist := Shift_Left(2 or (UInt32(posSlot) and 1), numDirectBits);
-    if posSlot < kEndPosModelIndex then
-      Bit_Tree_Reverse_Decode(
-        o.PosDecoders(Unsigned(dist) - posSlot .. Last_PosDecoders),
-        numDirectBits, o.range_dec, dist
-      );
-    else
-      Decode_Direct_Bits(o.range_dec, numDirectBits - kNumAlignBits, deco);
-      dist:= dist + Shift_Left(deco, kNumAlignBits);
-      Bit_Tree_Reverse_Decode(o.AlignDecoder, kNumAlignBits, o.range_dec, dist);
-    end if;
-  end DecodeDistance;
 
   procedure Init(o: in out LZMA_Decoder_Info) is
   begin
@@ -341,37 +257,157 @@ package body LZMA_Decoding is
   end Init;
 
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
-    rep0, rep1, rep2, rep3 : UInt32 := 0;
     state : State_range := 0;
+    rep0, rep1, rep2, rep3 : UInt32 := 0;
     pos_state: State_range;
+    -- Local copies of invariant properties.
+    unpack_size_def: constant Boolean:= o.unpackSizeDefined;
+    literal_pos_mask: constant UInt32:= 2 ** o.lp - 1;
+    lc: constant LC_range:= o.lc;
+    --
     use type BIO.Count;
     Marker_exit: exception;
+    -- Local range decoder
+    loc_range_dec: Range_Decoder;
+    --
+    procedure Normalize_Q is
+    pragma Inline(Normalize_Q);
+    begin
+      if loc_range_dec.range_z < kTopValue then
+        loc_range_dec.range_z := Shift_Left(loc_range_dec.range_z, 8);
+        loc_range_dec.code  := Shift_Left(loc_range_dec.code, 8) or UInt32(Read_Byte);
+      end if;
+    end Normalize_Q;
+
+    procedure Decode_Bit_Q(prob: in out CProb; symbol: out Unsigned) is
+    pragma Inline(Decode_Bit_Q);
+      prob_l: constant CProb:= prob; -- Local copy
+      bound: constant UInt32:= Shift_Right(loc_range_dec.range_z, kNumBitModelTotalBits) * prob_l;
+    begin
+      if loc_range_dec.code < bound then
+        prob:= prob_l + Shift_Right(kNumBitModel_Count - prob_l, kNumMoveBits);
+        loc_range_dec.range_z := bound;
+        Normalize_Q;
+        symbol := 0;
+      else
+        prob:= prob_l - Shift_Right(prob_l, kNumMoveBits);
+        loc_range_dec.code := loc_range_dec.code - bound;
+        loc_range_dec.range_z := loc_range_dec.range_z - bound;
+        Normalize_Q;
+        symbol := 1;
+      end if;
+    end Decode_Bit_Q;
 
     procedure Process_Litteral is
     pragma Inline(Process_Litteral);
+      prevByte     : Byte:= 0;
+      symbol       : Unsigned:= 1;
+      lit_state    : Unsigned;
+      probs_idx    : Unsigned;
+      matchByte    : UInt32;
+      matchBit     : UInt32;
+      bit_a, bit_b : Unsigned;
     begin
-      if o.unpackSize = 0 and then o.unpackSizeDefined then
+      if o.unpackSize = 0 and then unpack_size_def then
         Raise_Exception(
           LZMA_Error'Identity,
           "Decoded data will exceed expected data size (Process_Litteral)"
         );
       end if;
-      DecodeLiteral(o, state, rep0);
+      --
+      if not Is_Empty(o.out_win) then
+        prevByte := Get_Byte(o.out_win, 1);
+      end if;
+      lit_state :=
+        Unsigned(
+          Shift_Left(UInt32(o.out_win.total_pos) and literal_pos_mask, lc) +
+          Shift_Right(UInt32(prevByte), 8 - lc)
+        );
+      probs_idx:= 16#300# * lit_state;
+      if state >= 7 then
+        matchByte := UInt32(Get_Byte(o.out_win, rep0 + 1));
+        loop
+          matchBit  := Shift_Right(matchByte, 7) and 1;
+          matchByte := matchByte + matchByte;
+          Decode_Bit_Q(
+            o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol),
+            bit_a
+          );
+          symbol := (symbol + symbol) or bit_a;
+          exit when (Unsigned(matchBit) /= bit_a) or else (symbol >= 16#100#);
+        end loop;
+      end if;
+      while symbol < 16#100# loop
+        Decode_Bit_Q(o.LitProbs(probs_idx + symbol), bit_b);
+        symbol := (symbol + symbol) or bit_b;
+      end loop;
+      Put_Byte(o.out_win, Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
+      --
       state := Update_State_Literal(state);
       o.unpackSize:= o.unpackSize - 1;
     end Process_Litteral;
 
+    dict_size : constant UInt32:= o.dictSize;
+
     procedure Process_Distance_and_Length is
     pragma Inline(Process_Distance_and_Length);
       len: Unsigned;
+      --
+      procedure Decode_Distance(dist: out UInt32) is
+      pragma Inline(Decode_Distance);
+        --
+        procedure Bit_Tree_Reverse_Decode(
+          prob     : in out CProb_array;
+          num_bits : in     Natural)
+        is
+        pragma Inline(Bit_Tree_Reverse_Decode);
+          m: Unsigned := 1;
+          bit: Unsigned;
+        begin
+          for i in 0..num_bits-1 loop
+            Decode_Bit_Q(prob(m + prob'First), bit);
+            m := m + m + bit;
+            dist := dist or Shift_Left(UInt32(bit), i);
+          end loop;
+        end Bit_Tree_Reverse_Decode;
+        --
+        len_state     : Unsigned := len;
+        posSlot       : Unsigned;
+        numDirectBits : Natural;
+        deco          : UInt32;
+        --
+      begin -- Decode_Distance
+        if len_state > kNumLenToPosStates - 1 then
+          len_state := kNumLenToPosStates - 1;
+        end if;
+        Bit_Tree_Decode(o.PosSlotDecoder(len_state), 6, loc_range_dec, posSlot);
+        if posSlot < 4 then
+          dist:= UInt32(posSlot);
+          return;
+        end if;
+        numDirectBits := Natural(Shift_Right(UInt32(posSlot), 1) - 1);
+        dist := Shift_Left(2 or (UInt32(posSlot) and 1), numDirectBits);
+        if posSlot < kEndPosModelIndex then
+          Bit_Tree_Reverse_Decode(
+            o.PosDecoders(Unsigned(dist) - posSlot .. Last_PosDecoders),
+            numDirectBits
+          );
+        else
+          Decode_Direct_Bits(loc_range_dec, numDirectBits - kNumAlignBits, deco);
+          dist:= dist + Shift_Left(deco, kNumAlignBits);
+          Bit_Tree_Reverse_Decode(o.AlignDecoder, kNumAlignBits);
+        end if;
+      end Decode_Distance;
+      --
       isError: Boolean;
       dist: UInt32;
       bit_a, bit_b, bit_c, bit_d, bit_e: Unsigned;
       kMatchMinLen : constant := 2;
-    begin
-      Decode_Bit(o.range_dec, o.IsRep(state), bit_a);
+      --
+    begin -- Process_Distance_and_Length
+      Decode_Bit_Q(o.IsRep(state), bit_a);
       if bit_a /= 0 then
-        if o.unpackSize = 0 and then o.unpackSizeDefined then
+        if o.unpackSize = 0 and then unpack_size_def then
           Raise_Exception(
             LZMA_Error'Identity,
             "Decoded data will exceed expected data size (in Process_Distance_and_Length, #1)"
@@ -383,9 +419,9 @@ package body LZMA_Decoding is
             "Output window buffer is empty (in Process_Distance_and_Length)"
           );
         end if;
-        Decode_Bit(o.range_dec, o.IsRepG0(state), bit_b);
+        Decode_Bit_Q(o.IsRepG0(state), bit_b);
         if bit_b = 0 then
-          Decode_Bit(o.range_dec, o.IsRep0Long(state * kNumPosBitsMax_Count + pos_state), bit_c);
+          Decode_Bit_Q(o.IsRep0Long(state * kNumPosBitsMax_Count + pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
             Put_Byte(o.out_win, Get_Byte(o.out_win, rep0 + 1));
@@ -393,11 +429,11 @@ package body LZMA_Decoding is
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
-          Decode_Bit(o.range_dec, o.IsRepG1(state), bit_d);
+          Decode_Bit_Q(o.IsRepG1(state), bit_d);
           if bit_d = 0 then
             dist := rep1;
           else
-            Decode_Bit(o.range_dec, o.IsRepG2(state), bit_e);
+            Decode_Bit_Q(o.IsRepG2(state), bit_e);
             if bit_e = 0 then
               dist := rep2;
             else
@@ -409,17 +445,17 @@ package body LZMA_Decoding is
           rep1 := rep0;
           rep0 := dist;
         end if;
-        Decode(o.rep_len_decoder, o.range_dec, pos_state, len);
+        Decode(o.rep_len_decoder, loc_range_dec, pos_state, len);
         state := Update_State_Rep(state);
       else
         rep3 := rep2;
         rep2 := rep1;
         rep1 := rep0;
-        Decode(o.len_decoder, o.range_dec, pos_state, len);
+        Decode(o.len_decoder, loc_range_dec, pos_state, len);
         state := Update_State_Match(state);
-        DecodeDistance(o, len, rep0);
+        Decode_Distance(dist => rep0);
         if rep0 = 16#FFFF_FFFF# then
-          if Is_Finished_OK(o.range_dec) then
+          if Is_Finished_OK(loc_range_dec) then
             raise Marker_exit;
           else
             Raise_Exception(
@@ -428,8 +464,8 @@ package body LZMA_Decoding is
             );
           end if;
         end if;
-        if (o.unpackSize = 0 and then o.unpackSizeDefined) or
-            rep0 >= o.dictSize or not Check_Distance(o.out_win, rep0)
+        if (o.unpackSize = 0 and then unpack_size_def) or
+            rep0 >= dict_size or not Check_Distance(o.out_win, rep0)
         then
           Raise_Exception(
             LZMA_Error'Identity,
@@ -439,7 +475,7 @@ package body LZMA_Decoding is
       end if;
       len := len + kMatchMinLen;
       isError := False;
-      if o.unpackSize < Data_Bytes_Count(len) and then o.unpackSizeDefined then
+      if o.unpackSize < Data_Bytes_Count(len) and then unpack_size_def then
         len := Unsigned(o.unpackSize);
         isError := True;
       end if;
@@ -454,20 +490,24 @@ package body LZMA_Decoding is
     end Process_Distance_and_Length;
 
     bit_choice: Unsigned;
+    pos_bits_mask : constant UInt32 := 2 ** o.pb - 1;
+    size_defined_and_marker_not_mandatory: constant Boolean:=
+      unpack_size_def and not o.markerIsMandatory;
 
   begin
     Init(o);
-    Init(o.range_dec);
+    Init(loc_range_dec);
     loop
       if o.unpackSize = 0
-        and then (o.unpackSizeDefined and not o.markerIsMandatory)
-        and then Is_Finished_OK(o.range_dec)
+        and then size_defined_and_marker_not_mandatory
+        and then Is_Finished_OK(loc_range_dec)
       then
         res:= LZMA_finished_without_marker;
         return;
       end if;
-      pos_state := State_range(UInt32(o.out_win.total_pos) and o.pos_bits_mask);
-      Decode_Bit(o.range_dec, o.IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
+      pos_state := State_range(UInt32(o.out_win.total_pos) and pos_bits_mask);
+      Decode_Bit(loc_range_dec, o.IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
+      -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
         Process_Litteral;
       else
@@ -588,7 +628,7 @@ package body LZMA_Decoding is
 
   function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean is
   begin
-    return o.range_dec.corrupted;
+    return o.range_dec_corrupted;
   end;
 
 end LZMA_Decoding;

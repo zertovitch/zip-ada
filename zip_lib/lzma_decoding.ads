@@ -81,13 +81,7 @@ private
     total_pos : Unsigned;
   end record;
 
-  type Range_Decoder is record
-    range_z   : UInt32;
-    code      : UInt32;
-    corrupted : Boolean;
-  end record;
-
-  type CProb is new UInt16;
+  subtype CProb is UInt32;
   type CProb_array is array(Unsigned range <>) of CProb;
   type p_CProb_array is access CProb_array;
 
@@ -128,16 +122,7 @@ private
   -- Ada 2005+ is OK.
 
   type LZMA_Decoder_Info is record
-    range_dec            : Range_Decoder;
-    out_win            : Out_Window;
-    markerIsMandatory    : Boolean;
-    lc                   : LC_range; -- the number of "literal context" bits
-    lp                   : LP_range; -- the number of "literal pos" bits
-    pb                   : PB_range; -- the number of "pos" bits
-    literal_pos_mask     : UInt32;
-    pos_bits_mask        : UInt32;
-    dictSize             : UInt32;
-    dictSizeInProperties : UInt32;
+    out_win              : Out_Window;
     LitProbs             : p_CProb_array;
     PosSlotDecoder       : Slot_Coder_Probs;
     AlignDecoder         : Probs_NAB_bits;
@@ -153,6 +138,13 @@ private
     unpackSize           : Data_Bytes_Count;
     unpackSize_as_defined: Data_Bytes_Count;
     unpackSizeDefined    : Boolean;
+    markerIsMandatory    : Boolean;
+    dictSize             : UInt32;
+    dictSizeInProperties : UInt32;
+    lc                   : LC_range; -- the number of "literal context" bits
+    lp                   : LP_range; -- the number of "literal pos" bits
+    pb                   : PB_range; -- the number of "pos" bits
+    range_dec_corrupted  : Boolean;
   end record;
 
   LZMA_Error: exception;
