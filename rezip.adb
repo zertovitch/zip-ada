@@ -732,6 +732,11 @@ procedure ReZip is
         To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(choice).zfm))) &
         "</td>"
       );
+      Put(summary,
+        "<td>" &
+        To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(original).zfm))) &
+        "</td>"
+      );
       Winner_color;
       Put(summary, Zip.File_size_type'Image(e.info(choice).size));
       Put(summary,"</b></td><td>");
@@ -759,9 +764,9 @@ procedure ReZip is
       -- Write winning data:
       --
       e.head.short_info.extra_field_length:= 0; -- We choose to ignore it...
-      -- No data descriptor after data:
+      -- No data descriptor after data (bit 3); no EOS for LZMA (bit 1):
       e.head.short_info.bit_flag:=
-        e.head.short_info.bit_flag and (16#FFFF# - 8);
+        e.head.short_info.bit_flag and (2#1111_1111_1111_0101#);
       -- Set or adjust the pre-data data descriptor:
       -- NB: even if missing pre-data, CRC will have been computed
       --     at least with one internal method
@@ -872,7 +877,7 @@ procedure ReZip is
       if always_consider(a) then
         case a is
           when original =>
-            Put(summary, "<td align=right bgcolor=#dddd00>Approach's<br>method/<br>format</td>");
+            Put(summary, "<td align=right bgcolor=#dddd00>Approach's<br>method/<br>format &rarr;</td>");
           when Internal =>
             Put(summary, "<td bgcolor=#fafa64>" & To_Lower( Zip.Compress.Compression_Method'Image(Approach_to_Method(a))) & "</td>");
             -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
@@ -882,7 +887,10 @@ procedure ReZip is
       end if;
     end loop;
     Put_Line(summary,
-      "<td><b>Choice</b></td><td bgcolor=#dddd00>Choice's<br>method/<br>format</td><td>Smallest<br>size</td>" &
+      "<td><b>Choice</b></td>"&
+      "<td bgcolor=#dddd00>Choice's<br>method/<br>format</td>"&
+      "<td>Original<br>method/<br>format</td>"&
+      "<td>Smallest<br>size</td>" &
       "<td>% of<br>original</td><td>% of<br>uncompressed</td><td>Iterations</td></tr>"
     );
     --
@@ -948,7 +956,7 @@ procedure ReZip is
       end if;
     end loop;
     Put(summary,
-      "<td></td><td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.size) &
+      "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.size) &
       "</b></td><td>"
     );
     if total(original).size > 0 then
@@ -978,7 +986,7 @@ procedure ReZip is
       end if;
     end loop;
     Put(summary,
-      "<td></td><td></td><td bgcolor=lightgreen><b>" & Integer'Image(total_choice.count) &
+      "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Integer'Image(total_choice.count) &
       "</b></td>" &
       "<td>"
     );
@@ -994,7 +1002,7 @@ procedure ReZip is
       end if;
     end loop;
     Put(summary,
-      "<td></td><td></td><td bgcolor=lightgreen><b>" & Integer_64'Image(total_choice.saved) &
+      "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Integer_64'Image(total_choice.saved) &
       "</b></td>" &
       "<td>"
     );

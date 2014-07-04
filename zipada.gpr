@@ -78,7 +78,7 @@ project ZipAda is
             for Default_Switches ("ada") use ("-gnat05", "-O2", "-gnatpn", "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", "-ffunction-sections", "-gnatec../za_elim.pra");
 
          when "Profiling" =>
-            for Default_Switches ("ada") use ("-gnat05", "-O2", "-gnatp",  "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", "-g", "-pg");
+            for Default_Switches ("ada") use ("-gnat05", "-O2", "-gnatp",  "-fno-inline", "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", "-g", "-pg");
       end case;
    end Compiler;
 
