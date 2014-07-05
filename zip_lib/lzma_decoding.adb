@@ -119,25 +119,6 @@ package body LZMA_Decoding is
   kNumMoveBits          : constant:= 5;
   kNumBitModel_Count    : constant:= 2 ** kNumBitModelTotalBits;
 
-  procedure Decode_Bit(o: in out Range_Decoder; prob: in out CProb; symbol: out Unsigned) is
-  pragma Inline(Decode_Bit);
-    prob_l: constant CProb:= prob; -- Local copy
-    bound: constant UInt32:= Shift_Right(o.range_z, kNumBitModelTotalBits) * prob_l;
-  begin
-    if o.code < bound then
-      prob:= prob_l + Shift_Right(kNumBitModel_Count - prob_l, kNumMoveBits);
-      o.range_z := bound;
-      Normalize(o);
-      symbol := 0;
-    else
-      prob:= prob_l - Shift_Right(prob_l, kNumMoveBits);
-      o.code := o.code - bound;
-      o.range_z := o.range_z - bound;
-      Normalize(o);
-      symbol := 1;
-    end if;
-  end Decode_Bit;
-
   PROB_INIT_VAL : constant := (2 ** kNumBitModelTotalBits) / 2;
 
   procedure Init(o: in out Length_Decoder) is
@@ -501,7 +482,7 @@ package body LZMA_Decoding is
         return;
       end if;
       pos_state := State_range(UInt32(o.out_win.total_pos) and pos_bits_mask);
-      Decode_Bit(loc_range_dec, o.IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
+      Decode_Bit_Q(o.IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
         Process_Litteral;
