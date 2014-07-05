@@ -138,23 +138,6 @@ package body LZMA_Decoding is
     end if;
   end Decode_Bit;
 
-  procedure Bit_Tree_Decode(
-    prob     : in out CProb_array;
-    num_bits :        Positive;
-    rc       : in out Range_Decoder;
-    m        :    out Unsigned)
-  is
-  pragma Inline(Bit_Tree_Decode);
-    bit: Unsigned;
-  begin
-    m:= 1;
-    for count in reverse 1..num_bits loop
-      Decode_Bit(rc, prob(m + prob'First), bit);
-      m:= m + m + bit;
-    end loop;
-    m:= m - 2**num_bits;
-  end Bit_Tree_Decode;
-
   PROB_INIT_VAL : constant := (2 ** kNumBitModelTotalBits) / 2;
 
   procedure Init(o: in out Length_Decoder) is
@@ -327,6 +310,23 @@ package body LZMA_Decoding is
 
     procedure Process_Distance_and_Length is
     pragma Inline(Process_Distance_and_Length);
+      --
+      procedure Bit_Tree_Decode(
+        prob     : in out CProb_array;
+        num_bits :        Positive;
+        m        :    out Unsigned)
+      is
+      pragma Inline(Bit_Tree_Decode);
+        bit: Unsigned;
+      begin
+        m:= 1;
+        for count in reverse 1..num_bits loop
+          Decode_Bit_Q(prob(m + prob'First), bit);
+          m:= m + m + bit;
+        end loop;
+        m:= m - 2**num_bits;
+      end Bit_Tree_Decode;
+      --
       len: Unsigned;
       --
       procedure Decode_Distance(dist: out UInt32) is
@@ -356,7 +356,7 @@ package body LZMA_Decoding is
         if len_state > kNumLenToPosStates - 1 then
           len_state := kNumLenToPosStates - 1;
         end if;
-        Bit_Tree_Decode(o.PosSlotDecoder(len_state), 6, loc_range_dec, posSlot);
+        Bit_Tree_Decode(o.PosSlotDecoder(len_state), 6, posSlot);
         if posSlot < 4 then
           dist:= UInt32(posSlot);
           return;
@@ -381,16 +381,16 @@ package body LZMA_Decoding is
       begin
         Decode_Bit_Q(o.choice, bit_a);
         if bit_a = 0 then
-          Bit_Tree_Decode(o.low_coder(pos_state), 3, loc_range_dec, len);
+          Bit_Tree_Decode(o.low_coder(pos_state), 3, len);
           return;
         end if;
         Decode_Bit_Q(o.choice_2, bit_b);
         if bit_b = 0 then
-          Bit_Tree_Decode(o.mid_coder(pos_state), 3, loc_range_dec, len);
+          Bit_Tree_Decode(o.mid_coder(pos_state), 3, len);
           len:= len + 8;
           return;
         end if;
-        Bit_Tree_Decode(o.high_coder, 8, loc_range_dec, len);
+        Bit_Tree_Decode(o.high_coder, 8, len);
         len:= len + 16;
       end Decode_Length;
       --
