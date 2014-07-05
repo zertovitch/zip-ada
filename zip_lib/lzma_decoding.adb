@@ -297,6 +297,14 @@ package body LZMA_Decoding is
       --
       len: Unsigned;
       --
+      procedure Copy_Match_Q(dist: UInt32) is
+      pragma Inline(Copy_Match_Q);
+      begin
+        for count in reverse 1..len loop
+          Put_Byte_Q(Get_Byte_Q(dist));
+        end loop;
+      end Copy_Match_Q;
+      --
       procedure Decode_Distance(dist: out UInt32) is
       pragma Inline(Decode_Distance);
         --
@@ -464,7 +472,9 @@ package body LZMA_Decoding is
         len := Unsigned(o.unpackSize);
         isError := True;
       end if;
-      Copy_Match(out_win, rep0 + 1, len); -- The LZ distance/length copy happens here.
+      -- The LZ distance/length copy happens here.
+      Copy_Match(out_win, rep0 + 1, len); 
+      -- Copy_Match_Q(rep0 + 1); 
       o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       if isError then
         Raise_Exception(
