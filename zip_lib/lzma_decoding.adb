@@ -166,30 +166,6 @@ package body LZMA_Decoding is
     o.mid_coder  := (others => (others => PROB_INIT_VAL));
   end Init;
 
-  procedure Decode(
-    o          : in out Length_Decoder;
-    rc         : in out Range_Decoder;
-    pos_state  :        Unsigned;
-    res        :    out Unsigned)
-  is
-  pragma Inline(Decode);
-    bit_a, bit_b: Unsigned;
-  begin
-    Decode_Bit(rc, o.choice, bit_a);
-    if bit_a = 0 then
-      Bit_Tree_Decode(o.low_coder(pos_state), 3, rc, res);
-      return;
-    end if;
-    Decode_Bit(rc, o.choice_2, bit_b);
-    if bit_b = 0 then
-      Bit_Tree_Decode(o.mid_coder(pos_state), 3, rc, res);
-      res:= res + 8;
-      return;
-    end if;
-    Bit_Tree_Decode(o.high_coder, 8, rc, res);
-    res:= res + 16;
-  end Decode;
-
   subtype State_range is Unsigned range 0..kNumStates-1;
   type Transition is array(State_range) of State_range;
 
@@ -399,6 +375,25 @@ package body LZMA_Decoding is
         end if;
       end Decode_Distance;
       --
+      procedure Decode_Length(o: in out Length_Decoder) is
+      pragma Inline(Decode_Length);
+        bit_a, bit_b: Unsigned;
+      begin
+        Decode_Bit_Q(o.choice, bit_a);
+        if bit_a = 0 then
+          Bit_Tree_Decode(o.low_coder(pos_state), 3, loc_range_dec, len);
+          return;
+        end if;
+        Decode_Bit_Q(o.choice_2, bit_b);
+        if bit_b = 0 then
+          Bit_Tree_Decode(o.mid_coder(pos_state), 3, loc_range_dec, len);
+          len:= len + 8;
+          return;
+        end if;
+        Bit_Tree_Decode(o.high_coder, 8, loc_range_dec, len);
+        len:= len + 16;
+      end Decode_Length;
+      --
       isError: Boolean;
       dist: UInt32;
       bit_a, bit_b, bit_c, bit_d, bit_e: Unsigned;
@@ -445,13 +440,13 @@ package body LZMA_Decoding is
           rep1 := rep0;
           rep0 := dist;
         end if;
-        Decode(o.rep_len_decoder, loc_range_dec, pos_state, len);
+        Decode_Length(o.rep_len_decoder);
         state := Update_State_Rep(state);
       else
         rep3 := rep2;
         rep2 := rep1;
         rep1 := rep0;
-        Decode(o.len_decoder, loc_range_dec, pos_state, len);
+        Decode_Length(o.len_decoder);
         state := Update_State_Match(state);
         Decode_Distance(dist => rep0);
         if rep0 = 16#FFFF_FFFF# then
