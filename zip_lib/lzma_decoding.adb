@@ -46,18 +46,6 @@ package body LZMA_Decoding is
     end loop;
   end Copy_Match;
 
-  function Check_Distance(o: Out_Window; dist: UInt32) return Boolean is
-  pragma Inline(Check_Distance);
-  begin
-    return dist <= o.pos or o.is_full;
-  end;
-
-  function Is_Empty(o: Out_Window) return Boolean is
-  pragma Inline(Is_Empty);
-  begin
-    return o.pos = 0 and then not o.is_full;
-  end;
-
   type Range_Decoder is record
     range_z   : UInt32;
     code      : UInt32;
@@ -79,12 +67,6 @@ package body LZMA_Decoding is
       o.corrupted := True;
     end if;
   end Init;
-
-  function Is_Finished_OK(o: Range_Decoder) return Boolean is
-  pragma Inline(Is_Finished_OK);
-  begin
-    return o.code = 0;
-  end;
 
   kNumBitModelTotalBits : constant:= 11;
   kNumMoveBits          : constant:= 5;
@@ -208,6 +190,12 @@ package body LZMA_Decoding is
       end if;
     end Decode_Bit_Q;
 
+    function Is_Empty return Boolean is
+    pragma Inline(Is_Empty);
+    begin
+      return out_win.pos = 0 and then not out_win.is_full;
+    end;
+
     procedure Process_Litteral is
     pragma Inline(Process_Litteral);
       prevByte     : Byte:= 0;
@@ -225,7 +213,7 @@ package body LZMA_Decoding is
         );
       end if;
       --
-      if not Is_Empty(out_win) then
+      if not Is_Empty then
         prevByte := Get_Byte(out_win, 1);
       end if;
       lit_state :=
@@ -258,6 +246,12 @@ package body LZMA_Decoding is
     end Process_Litteral;
 
     dict_size : constant UInt32:= o.dictSize;
+
+    function Is_Finished_OK return Boolean is
+    pragma Inline(Is_Finished_OK);
+    begin
+      return loc_range_dec.code = 0;
+    end;
 
     procedure Process_Distance_and_Length is
     pragma Inline(Process_Distance_and_Length);
@@ -361,6 +355,12 @@ package body LZMA_Decoding is
         len:= len + 16;
       end Decode_Length;
       --
+      function Check_Distance return Boolean is
+      pragma Inline(Check_Distance);
+      begin
+        return rep0 <= out_win.pos or out_win.is_full;
+      end;
+      --
       isError: Boolean;
       dist: UInt32;
       bit_a, bit_b, bit_c, bit_d, bit_e: Unsigned;
@@ -375,7 +375,7 @@ package body LZMA_Decoding is
             "Decoded data will exceed expected data size (in Process_Distance_and_Length, #1)"
           );
         end if;
-        if Is_Empty(out_win) then
+        if Is_Empty then
           Raise_Exception(
             LZMA_Error'Identity,
             "Output window buffer is empty (in Process_Distance_and_Length)"
@@ -417,7 +417,7 @@ package body LZMA_Decoding is
         state := Update_State_Match(state);
         Decode_Distance(dist => rep0);
         if rep0 = 16#FFFF_FFFF# then
-          if Is_Finished_OK(loc_range_dec) then
+          if Is_Finished_OK then
             raise Marker_exit;
           else
             Raise_Exception(
@@ -427,7 +427,7 @@ package body LZMA_Decoding is
           end if;
         end if;
         if (o.unpackSize = 0 and then unpack_size_def) or
-            rep0 >= dict_size or not Check_Distance(out_win, rep0)
+            rep0 >= dict_size or not Check_Distance
         then
           Raise_Exception(
             LZMA_Error'Identity,
@@ -463,8 +463,8 @@ package body LZMA_Decoding is
     Init(loc_range_dec);
     loop
       if o.unpackSize = 0
+        and then Is_Finished_OK
         and then size_defined_and_marker_not_mandatory
-        and then Is_Finished_OK(loc_range_dec)
       then
         res:= LZMA_finished_without_marker;
         Dispose(out_win.buf);
