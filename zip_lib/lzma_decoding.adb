@@ -86,35 +86,6 @@ package body LZMA_Decoding is
     return o.code = 0;
   end;
 
-  kTopValue : constant := 2**24;
-
-  procedure Normalize(o: in out Range_Decoder) is
-  pragma Inline(Normalize);
-  begin
-    if o.range_z < kTopValue then
-      o.range_z := Shift_Left(o.range_z, 8);
-      o.code  := Shift_Left(o.code, 8) or UInt32(Read_Byte);
-    end if;
-  end Normalize;
-
-  procedure Decode_Direct_Bits(o: in out Range_Decoder; num_bits : Natural; res: out UInt32) is
-  pragma Inline(Decode_Direct_Bits);
-    t: UInt32;
-  begin
-    res := 0;
-    for count in reverse 1..num_bits loop
-      o.range_z := Shift_Right(o.range_z, 1);
-      o.code := o.code - o.range_z;
-      t := - Shift_Right(o.code, 31);
-      o.code := o.code + (o.range_z and t);
-      if o.code = o.range_z then
-        o.corrupted := True;
-      end if;
-      Normalize(o);
-      res := res + res + t + 1;
-    end loop;
-  end Decode_Direct_Bits;
-
   kNumBitModelTotalBits : constant:= 11;
   kNumMoveBits          : constant:= 5;
   kNumBitModel_Count    : constant:= 2 ** kNumBitModelTotalBits;
@@ -129,14 +100,6 @@ package body LZMA_Decoding is
     o.low_coder  := (others => (others => PROB_INIT_VAL));
     o.mid_coder  := (others => (others => PROB_INIT_VAL));
   end Init;
-
-  subtype State_range is Unsigned range 0..kNumStates-1;
-  type Transition is array(State_range) of State_range;
-
-  Update_State_Literal  : constant Transition:= (0, 0, 0, 0, 1, 2, 3, 4,  5,  6,   4, 5);
-  Update_State_Match    : constant Transition:= (7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10);
-  Update_State_Rep      : constant Transition:= (8, 8, 8, 8, 8, 8, 8, 11, 11, 11, 11, 11);
-  Update_State_ShortRep : constant Transition:= (9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11);
 
   LZMA_DIC_MIN : constant := 2 ** 12;
 
@@ -197,6 +160,7 @@ package body LZMA_Decoding is
   end Init;
 
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
+    subtype State_range is Unsigned range 0..kNumStates-1;
     state : State_range := 0;
     rep0, rep1, rep2, rep3 : UInt32 := 0;
     pos_state: State_range;
@@ -210,8 +174,16 @@ package body LZMA_Decoding is
     -- Local range decoder
     loc_range_dec: Range_Decoder;
     --
+    type Transition is array(State_range) of State_range;
+
+    Update_State_Literal  : constant Transition:= (0, 0, 0, 0, 1, 2, 3,  4,  5,  6,  4,  5);
+    Update_State_Match    : constant Transition:= (7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10);
+    Update_State_Rep      : constant Transition:= (8, 8, 8, 8, 8, 8, 8, 11, 11, 11, 11, 11);
+    Update_State_ShortRep : constant Transition:= (9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11);
+    --
     procedure Normalize_Q is
     pragma Inline(Normalize_Q);
+      kTopValue : constant := 2**24;
     begin
       if loc_range_dec.range_z < kTopValue then
         loc_range_dec.range_z := Shift_Left(loc_range_dec.range_z, 8);
@@ -313,10 +285,27 @@ package body LZMA_Decoding is
       procedure Decode_Distance(dist: out UInt32) is
       pragma Inline(Decode_Distance);
         --
-        procedure Bit_Tree_Reverse_Decode(
-          prob     : in out CProb_array;
-          num_bits : in     Natural)
-        is
+        decode_direct: UInt32;
+        --
+        procedure Decode_Direct_Bits(num_bits : Natural) is
+        pragma Inline(Decode_Direct_Bits);
+          t: UInt32;
+        begin
+          decode_direct := 0;
+          for count in reverse 1..num_bits loop
+            loc_range_dec.range_z := Shift_Right(loc_range_dec.range_z, 1);
+            loc_range_dec.code := loc_range_dec.code - loc_range_dec.range_z;
+            t := - Shift_Right(loc_range_dec.code, 31);
+            loc_range_dec.code := loc_range_dec.code + (loc_range_dec.range_z and t);
+            if loc_range_dec.code = loc_range_dec.range_z then
+              loc_range_dec.corrupted := True;
+            end if;
+            Normalize_Q;
+            decode_direct := decode_direct + decode_direct + t + 1;
+          end loop;
+        end Decode_Direct_Bits;
+        --
+        procedure Bit_Tree_Reverse_Decode(prob: in out CProb_array; num_bits: in Natural) is
         pragma Inline(Bit_Tree_Reverse_Decode);
           m: Unsigned := 1;
           bit: Unsigned;
@@ -331,7 +320,6 @@ package body LZMA_Decoding is
         len_state     : Unsigned := len;
         posSlot       : Unsigned;
         numDirectBits : Natural;
-        deco          : UInt32;
         --
       begin -- Decode_Distance
         if len_state > kNumLenToPosStates - 1 then
@@ -350,8 +338,8 @@ package body LZMA_Decoding is
             numDirectBits
           );
         else
-          Decode_Direct_Bits(loc_range_dec, numDirectBits - kNumAlignBits, deco);
-          dist:= dist + Shift_Left(deco, kNumAlignBits);
+          Decode_Direct_Bits(numDirectBits - kNumAlignBits);
+          dist:= dist + Shift_Left(decode_direct, kNumAlignBits);
           Bit_Tree_Reverse_Decode(o.AlignDecoder, kNumAlignBits);
         end if;
       end Decode_Distance;
