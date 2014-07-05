@@ -77,7 +77,6 @@ begin
   end if;
   New_Line;
 
-  Create_Large_Arrays(lzmaDecoder);
   Decode_Contents(lzmaDecoder, res);
   
   Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in) - 1));

@@ -56,6 +56,7 @@ package body LZMA_Decoding is
       Put_Byte(o, Get_Byte(o, dist));
     end loop;
   end Copy_Match;
+  pragma Unreferenced (Copy_Match);
 
   type Range_Decoder is record
     range_z   : UInt32;
@@ -343,14 +344,44 @@ package body LZMA_Decoding is
       --
       len: Unsigned;
       --
-      procedure Copy_Match_Q(dist: UInt32) is
-      pragma Inline(Copy_Match_Q);
+      procedure Copy_Match_Q2(dist: UInt32) is
+        pragma Inline(Copy_Match_Q2);
+        b: Byte;
+        len32: constant UInt32:= UInt32(len);
       begin
-        for count in reverse 1..len loop
-          Put_Byte_Q(Get_Byte_Q(dist));
-        end loop;
-      end Copy_Match_Q;
-      pragma Unreferenced (Copy_Match_Q);
+        out_win.is_full:= out_win.is_full or out_win.Pos + len32 >= out_win.Size;
+        out_win.total_pos := out_win.total_pos + len;
+        if dist <= out_win.Pos and out_win.Pos + len32 < out_win.Size then 
+          -- The easy case: src and dest within circular buffer bounds. May overlap (len32 > dist).
+          for i in out_win.Pos - dist .. out_win.Pos - dist + len32 - 1 loop
+            b:= out_win.Buf(i);
+            out_win.Buf(i + dist):= b;
+            Write_Byte(b);
+          end loop;
+          out_win.Pos := out_win.Pos + len32;
+        else
+          -- src starts below 0 or dest goes beyond size-1
+          for count in reverse 1..len loop
+            if dist <= out_win.Pos then
+              b:= out_win.Buf(out_win.Pos - dist);
+              out_win.Buf(out_win.Pos):= b;
+              out_win.Pos := out_win.Pos + 1;
+              if out_win.Pos = out_win.Size then
+                out_win.Pos := 0;
+              end if;
+              Write_Byte(b);
+            else
+              b:= out_win.Buf(out_win.Size - dist + out_win.Pos);
+              out_win.Buf(out_win.Pos):= b;
+              out_win.Pos := out_win.Pos + 1;
+              if out_win.Pos = out_win.Size then
+                out_win.Pos := 0;
+              end if;
+              Write_Byte(b);
+            end if;
+          end loop;
+        end if;
+      end Copy_Match_Q2;
       --
       procedure Decode_Distance(dist: out UInt32) is
       pragma Inline(Decode_Distance);
@@ -520,8 +551,8 @@ package body LZMA_Decoding is
         isError := True;
       end if;
       -- The LZ distance/length copy happens here.
-      Copy_Match(out_win, rep0 + 1, len); 
-      -- Copy_Match_Q(rep0 + 1); 
+      -- Copy_Match(out_win, rep0 + 1, len); 
+      Copy_Match_Q2(rep0 + 1); 
       o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       if isError then
         Raise_Exception(
