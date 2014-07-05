@@ -274,7 +274,7 @@ package body LZMA_Decoding is
       probs_idx    : Unsigned;
       matchByte    : UInt32;
       matchBit     : UInt32;
-      bit_a, bit_b : Unsigned;
+      bit_a, bit_b, bit_c : Unsigned;
     begin
       if o.unpackSize = 0 and then unpack_size_def then
         Raise_Exception(
@@ -292,7 +292,12 @@ package body LZMA_Decoding is
           Shift_Right(UInt32(prevByte), 8 - lc)
         );
       probs_idx:= 16#300# * lit_state;
-      if state >= 7 then
+      if state < 7 then
+        for count in reverse 1..8 loop
+          Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_c);
+          symbol := (symbol + symbol) or bit_c;
+        end loop;
+      else
         matchByte := UInt32(Get_Byte_Q(rep0 + 1));
         loop
           matchBit  := Shift_Right(matchByte, 7) and 1;
@@ -302,13 +307,16 @@ package body LZMA_Decoding is
             bit_a
           );
           symbol := (symbol + symbol) or bit_a;
-          exit when (Unsigned(matchBit) /= bit_a) or else (symbol >= 16#100#);
+          exit when symbol >= 16#100#;
+          if Unsigned(matchBit) /= bit_a then
+            while symbol < 16#100# loop
+              Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
+              symbol := (symbol + symbol) or bit_b;
+            end loop;
+            exit;
+          end if;
         end loop;
       end if;
-      while symbol < 16#100# loop
-        Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
-        symbol := (symbol + symbol) or bit_b;
-      end loop;
       Put_Byte_Q(Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
       --
       state := Update_State_Literal(state);
@@ -346,38 +354,39 @@ package body LZMA_Decoding is
       --
       procedure Copy_Match_Q2(dist: UInt32) is
         pragma Inline(Copy_Match_Q2);
-        b: Byte;
+        b1, b2, b3: Byte;
         len32: constant UInt32:= UInt32(len);
+        will_fill: constant Boolean:= out_win.Pos + len32 >= out_win.Size;
       begin
-        out_win.is_full:= out_win.is_full or out_win.Pos + len32 >= out_win.Size;
+        out_win.is_full := will_fill or else out_win.is_full;
         out_win.total_pos := out_win.total_pos + len;
-        if dist <= out_win.Pos and out_win.Pos + len32 < out_win.Size then 
+        if dist <= out_win.Pos and not will_fill then 
           -- The easy case: src and dest within circular buffer bounds. May overlap (len32 > dist).
           for i in out_win.Pos - dist .. out_win.Pos - dist + len32 - 1 loop
-            b:= out_win.Buf(i);
-            out_win.Buf(i + dist):= b;
-            Write_Byte(b);
+            b1:= out_win.Buf(i);
+            out_win.Buf(i + dist):= b1;
+            Write_Byte(b1);
           end loop;
           out_win.Pos := out_win.Pos + len32;
         else
           -- src starts below 0 or dest goes beyond size-1
           for count in reverse 1..len loop
             if dist <= out_win.Pos then
-              b:= out_win.Buf(out_win.Pos - dist);
-              out_win.Buf(out_win.Pos):= b;
+              b2:= out_win.Buf(out_win.Pos - dist);
+              out_win.Buf(out_win.Pos):= b2;
               out_win.Pos := out_win.Pos + 1;
               if out_win.Pos = out_win.Size then
                 out_win.Pos := 0;
               end if;
-              Write_Byte(b);
+              Write_Byte(b2);
             else
-              b:= out_win.Buf(out_win.Size - dist + out_win.Pos);
-              out_win.Buf(out_win.Pos):= b;
+              b3:= out_win.Buf(out_win.Size - dist + out_win.Pos);
+              out_win.Buf(out_win.Pos):= b3;
               out_win.Pos := out_win.Pos + 1;
               if out_win.Pos = out_win.Size then
                 out_win.Pos := 0;
               end if;
-              Write_Byte(b);
+              Write_Byte(b3);
             end if;
           end loop;
         end if;
