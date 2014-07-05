@@ -196,6 +196,29 @@ package body LZMA_Decoding is
       return out_win.pos = 0 and then not out_win.is_full;
     end;
 
+    procedure Put_Byte_Q(b: Byte) is
+    pragma Inline(Put_Byte_Q);
+    begin
+      out_win.total_pos := out_win.total_pos + 1;
+      out_win.buf(out_win.pos):= b;
+      out_win.pos := out_win.pos + 1;
+      if out_win.pos = out_win.size then
+        out_win.pos := 0;
+        out_win.is_full := True;
+      end if;
+      Write_Byte(b);
+    end Put_Byte_Q;
+
+    function Get_Byte_Q(dist: UInt32) return Byte is
+    pragma Inline(Get_Byte_Q);
+    begin
+      if dist <= out_win.pos then
+        return out_win.buf(out_win.pos - dist);
+      else
+        return out_win.buf(out_win.size - dist + out_win.pos);
+      end if;
+    end Get_Byte_Q;
+  
     procedure Process_Litteral is
     pragma Inline(Process_Litteral);
       prevByte     : Byte:= 0;
@@ -214,7 +237,7 @@ package body LZMA_Decoding is
       end if;
       --
       if not Is_Empty then
-        prevByte := Get_Byte(out_win, 1);
+        prevByte := Get_Byte_Q(1);
       end if;
       lit_state :=
         Unsigned(
@@ -223,7 +246,7 @@ package body LZMA_Decoding is
         );
       probs_idx:= 16#300# * lit_state;
       if state >= 7 then
-        matchByte := UInt32(Get_Byte(out_win, rep0 + 1));
+        matchByte := UInt32(Get_Byte_Q(rep0 + 1));
         loop
           matchBit  := Shift_Right(matchByte, 7) and 1;
           matchByte := matchByte + matchByte;
@@ -239,7 +262,7 @@ package body LZMA_Decoding is
         Decode_Bit_Q(o.LitProbs(probs_idx + symbol), bit_b);
         symbol := (symbol + symbol) or bit_b;
       end loop;
-      Put_Byte(out_win, Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
+      Put_Byte_Q(Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
       --
       state := Update_State_Literal(state);
       o.unpackSize:= o.unpackSize - 1;
@@ -386,7 +409,7 @@ package body LZMA_Decoding is
           Decode_Bit_Q(o.IsRep0Long(state * kNumPosBitsMax_Count + pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
-            Put_Byte(out_win, Get_Byte(out_win, rep0 + 1));
+            Put_Byte_Q(Get_Byte_Q(rep0 + 1));
             o.unpackSize:= o.unpackSize - 1;
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
