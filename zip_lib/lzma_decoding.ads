@@ -52,14 +52,12 @@ package LZMA_Decoding is
   function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
   function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean;
 
-  ------------------------------------------------------------------------------------------
-  -- Usage 3 : Decode in three steps: Decode_Header, Create_Large_Arrays, Decode_Contents --
-  ------------------------------------------------------------------------------------------
+  -------------------------------------------------------------------
+  -- Usage 3 : Decode in two steps: Decode_Header, Decode_Contents --
+  -------------------------------------------------------------------
 
   procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints);
-  procedure Create_Large_Arrays(o: in out LZMA_Decoder_Info);
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result);
-  procedure Finalize_Manually(o: in out LZMA_Decoder_Info);
 
 private
 
@@ -116,10 +114,6 @@ private
   subtype LC_range is Integer range 0..8;
   subtype LP_range is Integer range 0..4;
   subtype PB_range is Integer range 0..4;
-
-  -- Ideally we extend Ada.Finalization.Limited_Controlled, but then the instanciation
-  -- this package (LZMA_Decoding) cannot be done locally within a subprogram in Ada 95.
-  -- Ada 2005+ is OK.
 
   type LZMA_Decoder_Info is record
     LitProbs             : p_CProb_array;

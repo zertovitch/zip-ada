@@ -85,12 +85,6 @@ package body LZMA_Decoding is
 
   LZMA_DIC_MIN : constant := 2 ** 12;
 
-  procedure Finalize_Manually(o: in out LZMA_Decoder_Info) is
-    procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
-  begin
-    Dispose(o.LitProbs);
-  end;
-
   procedure Decode_Properties(o: in out LZMA_Decoder_Info; b: Byte_buffer) is
     d: Unsigned := Unsigned(b(b'First));
   begin
@@ -113,15 +107,11 @@ package body LZMA_Decoding is
     end if;
   end Decode_Properties;
 
-  procedure Create_Large_Arrays(o: in out LZMA_Decoder_Info) is
+  procedure Init(o: in out LZMA_Decoder_Info) is
     length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
   begin
-    o.LitProbs := new CProb_array(0..length-1); -- Literals
-  end Create_Large_Arrays;
-
-  procedure Init(o: in out LZMA_Decoder_Info) is
-  begin
     -- Literals:
+    o.LitProbs := new CProb_array(0..length-1);
     o.LitProbs.all := (others => PROB_INIT_VAL);
     -- Distances:
     o.PosSlotDecoder := (others => (others => PROB_INIT_VAL));
@@ -489,6 +479,7 @@ package body LZMA_Decoding is
     size_defined_and_marker_not_mandatory: constant Boolean:=
       unpack_size_def and not o.markerIsMandatory;
     procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
+    procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
 
   begin
     Create(out_win, o.dictSize);
@@ -501,6 +492,7 @@ package body LZMA_Decoding is
       then
         res:= LZMA_finished_without_marker;
         Dispose(out_win.buf);
+        Dispose(o.LitProbs);
         return;
       end if;
       pos_state := State_range(UInt32(out_win.total_pos) and pos_bits_mask);
@@ -516,6 +508,7 @@ package body LZMA_Decoding is
     when Marker_exit =>
       res:= LZMA_finished_with_marker;
       Dispose(out_win.buf);
+      Dispose(o.LitProbs);
   end Decode_Contents;
 
   procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints) is
@@ -578,9 +571,7 @@ package body LZMA_Decoding is
   procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result) is
   begin
     Decode_Header(o, hints);
-    Create_Large_Arrays(o);
     Decode_Contents(o, res);
-    Finalize_Manually(o);
   end Decode;
 
   procedure Decompress(hints: LZMA_Hints) is
