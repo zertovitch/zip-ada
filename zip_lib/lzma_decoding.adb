@@ -105,10 +105,8 @@ package body LZMA_Decoding is
 
   procedure Finalize_Manually(o: in out LZMA_Decoder_Info) is
     procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
-    procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
   begin
     Dispose(o.LitProbs);
-    Dispose(o.out_win.buf);
   end;
 
   procedure Decode_Properties(o: in out LZMA_Decoder_Info; b: Byte_buffer) is
@@ -136,7 +134,6 @@ package body LZMA_Decoding is
   procedure Create_Large_Arrays(o: in out LZMA_Decoder_Info) is
     length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
   begin
-    Create(o.out_win, o.dictSize);
     o.LitProbs := new CProb_array(0..length-1); -- Literals
   end Create_Large_Arrays;
 
@@ -171,6 +168,7 @@ package body LZMA_Decoding is
     --
     use type BIO.Count;
     Marker_exit: exception;
+    out_win : Out_Window;
     -- Local range decoder
     loc_range_dec: Range_Decoder;
     --
@@ -227,17 +225,17 @@ package body LZMA_Decoding is
         );
       end if;
       --
-      if not Is_Empty(o.out_win) then
-        prevByte := Get_Byte(o.out_win, 1);
+      if not Is_Empty(out_win) then
+        prevByte := Get_Byte(out_win, 1);
       end if;
       lit_state :=
         Unsigned(
-          Shift_Left(UInt32(o.out_win.total_pos) and literal_pos_mask, lc) +
+          Shift_Left(UInt32(out_win.total_pos) and literal_pos_mask, lc) +
           Shift_Right(UInt32(prevByte), 8 - lc)
         );
       probs_idx:= 16#300# * lit_state;
       if state >= 7 then
-        matchByte := UInt32(Get_Byte(o.out_win, rep0 + 1));
+        matchByte := UInt32(Get_Byte(out_win, rep0 + 1));
         loop
           matchBit  := Shift_Right(matchByte, 7) and 1;
           matchByte := matchByte + matchByte;
@@ -253,7 +251,7 @@ package body LZMA_Decoding is
         Decode_Bit_Q(o.LitProbs(probs_idx + symbol), bit_b);
         symbol := (symbol + symbol) or bit_b;
       end loop;
-      Put_Byte(o.out_win, Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
+      Put_Byte(out_win, Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
       --
       state := Update_State_Literal(state);
       o.unpackSize:= o.unpackSize - 1;
@@ -377,7 +375,7 @@ package body LZMA_Decoding is
             "Decoded data will exceed expected data size (in Process_Distance_and_Length, #1)"
           );
         end if;
-        if Is_Empty(o.out_win) then
+        if Is_Empty(out_win) then
           Raise_Exception(
             LZMA_Error'Identity,
             "Output window buffer is empty (in Process_Distance_and_Length)"
@@ -388,7 +386,7 @@ package body LZMA_Decoding is
           Decode_Bit_Q(o.IsRep0Long(state * kNumPosBitsMax_Count + pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
-            Put_Byte(o.out_win, Get_Byte(o.out_win, rep0 + 1));
+            Put_Byte(out_win, Get_Byte(out_win, rep0 + 1));
             o.unpackSize:= o.unpackSize - 1;
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
@@ -429,7 +427,7 @@ package body LZMA_Decoding is
           end if;
         end if;
         if (o.unpackSize = 0 and then unpack_size_def) or
-            rep0 >= dict_size or not Check_Distance(o.out_win, rep0)
+            rep0 >= dict_size or not Check_Distance(out_win, rep0)
         then
           Raise_Exception(
             LZMA_Error'Identity,
@@ -443,7 +441,7 @@ package body LZMA_Decoding is
         len := Unsigned(o.unpackSize);
         isError := True;
       end if;
-      Copy_Match(o.out_win, rep0 + 1, len); -- The LZ distance/length copy happens here.
+      Copy_Match(out_win, rep0 + 1, len); -- The LZ distance/length copy happens here.
       o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       if isError then
         Raise_Exception(
@@ -457,8 +455,10 @@ package body LZMA_Decoding is
     pos_bits_mask : constant UInt32 := 2 ** o.pb - 1;
     size_defined_and_marker_not_mandatory: constant Boolean:=
       unpack_size_def and not o.markerIsMandatory;
+    procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
 
   begin
+    Create(out_win, o.dictSize);
     Init(o);
     Init(loc_range_dec);
     loop
@@ -467,9 +467,10 @@ package body LZMA_Decoding is
         and then Is_Finished_OK(loc_range_dec)
       then
         res:= LZMA_finished_without_marker;
+        Dispose(out_win.buf);
         return;
       end if;
-      pos_state := State_range(UInt32(o.out_win.total_pos) and pos_bits_mask);
+      pos_state := State_range(UInt32(out_win.total_pos) and pos_bits_mask);
       Decode_Bit_Q(o.IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
@@ -481,6 +482,7 @@ package body LZMA_Decoding is
   exception
     when Marker_exit =>
       res:= LZMA_finished_with_marker;
+      Dispose(out_win.buf);
   end Decode_Contents;
 
   procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints) is

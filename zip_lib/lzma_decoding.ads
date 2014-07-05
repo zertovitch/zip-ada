@@ -122,7 +122,6 @@ private
   -- Ada 2005+ is OK.
 
   type LZMA_Decoder_Info is record
-    out_win              : Out_Window;
     LitProbs             : p_CProb_array;
     PosSlotDecoder       : Slot_Coder_Probs;
     AlignDecoder         : Probs_NAB_bits;
