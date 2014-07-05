@@ -6,6 +6,17 @@ with Ada.Exceptions;                    use Ada.Exceptions;
 
 package body LZMA_Decoding is
 
+  type Byte_buffer is array(UInt32 range <>) of Byte;
+  type p_Byte_buffer is access Byte_buffer;
+
+  type Out_Window is record
+    buf       : p_Byte_buffer:= null;
+    pos       : UInt32;
+    size      : UInt32;
+    is_full   : Boolean;
+    total_pos : Unsigned;
+  end record;
+
   procedure Create(o: in out Out_Window; dictSize: UInt32) is
   begin
     o.buf       := new Byte_buffer(0..dictSize-1);
@@ -74,6 +85,43 @@ package body LZMA_Decoding is
 
   PROB_INIT_VAL : constant := (2 ** kNumBitModelTotalBits) / 2;
 
+  subtype CProb is UInt32;
+  type CProb_array is array(Unsigned range <>) of CProb;
+  type p_CProb_array is access CProb_array;
+
+  kNumPosBitsMax : constant := 4;
+  kNumPosBitsMax_Count : constant := 2**kNumPosBitsMax;
+
+  kNumStates          : constant := 12;
+  kNumLenToPosStates  : constant := 4;
+  kNumAlignBits       : constant := 4;
+  kEndPosModelIndex   : constant := 14;
+  kNumFullDistances   : constant := 2 ** (kEndPosModelIndex / 2);
+
+  subtype Bits_3_range is Unsigned range 0 .. 2**3 - 1;
+  subtype Bits_6_range is Unsigned range 0 .. 2**6 - 1;
+  subtype Bits_8_range is Unsigned range 0 .. 2**8 - 1;
+  subtype Bits_NAB_range is Unsigned range 0 .. 2**kNumAlignBits - 1;
+
+  subtype Probs_3_bits is CProb_array(Bits_3_range);
+  subtype Probs_6_bits is CProb_array(Bits_6_range);
+  subtype Probs_8_bits is CProb_array(Bits_8_range);
+  subtype Probs_NAB_bits is CProb_array(Bits_NAB_range);
+
+  subtype LM_coder_range is Unsigned range 0 .. kNumPosBitsMax_Count - 1;
+  type LM_Coder_Probs is array(LM_coder_range) of Probs_3_bits;
+
+  type Length_Decoder is record
+    choice     : CProb;
+    choice_2   : CProb;
+    low_coder  : LM_Coder_Probs;
+    mid_coder  : LM_Coder_Probs;
+    high_coder : Probs_8_bits;
+  end record;
+
+  subtype Slot_coder_range is Unsigned range 0 .. kNumLenToPosStates - 1;
+  type Slot_Coder_Probs is array(Slot_coder_range) of Probs_6_bits;
+
   procedure Init(o: in out Length_Decoder) is
   begin
     o.choice     := PROB_INIT_VAL;
@@ -107,27 +155,6 @@ package body LZMA_Decoding is
     end if;
   end Decode_Properties;
 
-  procedure Init(o: in out LZMA_Decoder_Info) is
-    length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
-  begin
-    -- Literals:
-    o.LitProbs := new CProb_array(0..length-1);
-    o.LitProbs.all := (others => PROB_INIT_VAL);
-    -- Distances:
-    o.PosSlotDecoder := (others => (others => PROB_INIT_VAL));
-    o.AlignDecoder   := (others => PROB_INIT_VAL);
-    o.PosDecoders    := (others => PROB_INIT_VAL);
-    --
-    o.IsMatch    := (others => PROB_INIT_VAL);
-    o.IsRep      := (others => PROB_INIT_VAL);
-    o.IsRepG0    := (others => PROB_INIT_VAL);
-    o.IsRepG1    := (others => PROB_INIT_VAL);
-    o.IsRepG2    := (others => PROB_INIT_VAL);
-    o.IsRep0Long := (others => PROB_INIT_VAL);
-    Init(o.len_decoder);
-    Init(o.rep_len_decoder);
-  end Init;
-
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
     subtype State_range is Unsigned range 0..kNumStates-1;
     state : State_range := 0;
@@ -150,6 +177,35 @@ package body LZMA_Decoding is
     Update_State_Match    : constant Transition:= (7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10);
     Update_State_Rep      : constant Transition:= (8, 8, 8, 8, 8, 8, 8, 11, 11, 11, 11, 11);
     Update_State_ShortRep : constant Transition:= (9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11);
+    --
+    subtype Pos_dec_range is Unsigned range 0..kNumFullDistances - kEndPosModelIndex;
+    subtype Long_range is Unsigned range 0..kNumStates * kNumPosBitsMax_Count - 1;
+    -- Literals:
+    LitProbs             : p_CProb_array;
+    -- Distances:
+    PosSlotDecoder       : Slot_Coder_Probs := (others => (others => PROB_INIT_VAL));
+    AlignDecoder         : Probs_NAB_bits:= (others => PROB_INIT_VAL);
+    PosDecoders          : CProb_array(Pos_dec_range):= (others => PROB_INIT_VAL);
+    --
+    IsRep                : CProb_array(State_range):= (others => PROB_INIT_VAL);
+    IsRepG0              : CProb_array(State_range):= (others => PROB_INIT_VAL);
+    IsRepG1              : CProb_array(State_range):= (others => PROB_INIT_VAL);
+    IsRepG2              : CProb_array(State_range):= (others => PROB_INIT_VAL);
+    IsRep0Long           : CProb_array(Long_range):= (others => PROB_INIT_VAL);
+    IsMatch              : CProb_array(Long_range):= (others => PROB_INIT_VAL);
+    len_decoder          : Length_Decoder;
+    rep_len_decoder      : Length_Decoder;
+    --
+    procedure Init_Probs is
+      length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
+    begin
+      -- Literals:
+      LitProbs := new CProb_array(0..length-1);
+      LitProbs.all := (others => PROB_INIT_VAL);
+      --
+      Init(len_decoder);
+      Init(rep_len_decoder);
+    end Init_Probs;
     --
     procedure Normalize_Q is
     pragma Inline(Normalize_Q);
@@ -241,7 +297,7 @@ package body LZMA_Decoding is
           matchBit  := Shift_Right(matchByte, 7) and 1;
           matchByte := matchByte + matchByte;
           Decode_Bit_Q(
-            o.LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol),
+            LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol),
             bit_a
           );
           symbol := (symbol + symbol) or bit_a;
@@ -249,7 +305,7 @@ package body LZMA_Decoding is
         end loop;
       end if;
       while symbol < 16#100# loop
-        Decode_Bit_Q(o.LitProbs(probs_idx + symbol), bit_b);
+        Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
         symbol := (symbol + symbol) or bit_b;
       end loop;
       Put_Byte_Q(Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
@@ -294,6 +350,7 @@ package body LZMA_Decoding is
           Put_Byte_Q(Get_Byte_Q(dist));
         end loop;
       end Copy_Match_Q;
+      pragma Unreferenced (Copy_Match_Q);
       --
       procedure Decode_Distance(dist: out UInt32) is
       pragma Inline(Decode_Distance);
@@ -338,7 +395,7 @@ package body LZMA_Decoding is
         if len_state > kNumLenToPosStates - 1 then
           len_state := kNumLenToPosStates - 1;
         end if;
-        Bit_Tree_Decode(o.PosSlotDecoder(len_state), 6, posSlot);
+        Bit_Tree_Decode(PosSlotDecoder(len_state), 6, posSlot);
         if posSlot < 4 then
           dist:= UInt32(posSlot);
           return;
@@ -347,13 +404,13 @@ package body LZMA_Decoding is
         dist := Shift_Left(2 or (UInt32(posSlot) and 1), numDirectBits);
         if posSlot < kEndPosModelIndex then
           Bit_Tree_Reverse_Decode(
-            o.PosDecoders(Unsigned(dist) - posSlot .. Last_PosDecoders),
+            PosDecoders(Unsigned(dist) - posSlot .. Pos_dec_range'Last),
             numDirectBits
           );
         else
           Decode_Direct_Bits(numDirectBits - kNumAlignBits);
           dist:= dist + Shift_Left(decode_direct, kNumAlignBits);
-          Bit_Tree_Reverse_Decode(o.AlignDecoder, kNumAlignBits);
+          Bit_Tree_Reverse_Decode(AlignDecoder, kNumAlignBits);
         end if;
       end Decode_Distance;
       --
@@ -388,7 +445,7 @@ package body LZMA_Decoding is
       kMatchMinLen : constant := 2;
       --
     begin -- Process_Distance_and_Length
-      Decode_Bit_Q(o.IsRep(state), bit_a);
+      Decode_Bit_Q(IsRep(state), bit_a);
       if bit_a /= 0 then
         if o.unpackSize = 0 and then unpack_size_def then
           Raise_Exception(
@@ -402,9 +459,9 @@ package body LZMA_Decoding is
             "Output window buffer is empty (in Process_Distance_and_Length)"
           );
         end if;
-        Decode_Bit_Q(o.IsRepG0(state), bit_b);
+        Decode_Bit_Q(IsRepG0(state), bit_b);
         if bit_b = 0 then
-          Decode_Bit_Q(o.IsRep0Long(state * kNumPosBitsMax_Count + pos_state), bit_c);
+          Decode_Bit_Q(IsRep0Long(state * kNumPosBitsMax_Count + pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
             Put_Byte_Q(Get_Byte_Q(rep0 + 1));
@@ -412,11 +469,11 @@ package body LZMA_Decoding is
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
-          Decode_Bit_Q(o.IsRepG1(state), bit_d);
+          Decode_Bit_Q(IsRepG1(state), bit_d);
           if bit_d = 0 then
             dist := rep1;
           else
-            Decode_Bit_Q(o.IsRepG2(state), bit_e);
+            Decode_Bit_Q(IsRepG2(state), bit_e);
             if bit_e = 0 then
               dist := rep2;
             else
@@ -428,13 +485,13 @@ package body LZMA_Decoding is
           rep1 := rep0;
           rep0 := dist;
         end if;
-        Decode_Length(o.rep_len_decoder);
+        Decode_Length(rep_len_decoder);
         state := Update_State_Rep(state);
       else
         rep3 := rep2;
         rep2 := rep1;
         rep1 := rep0;
-        Decode_Length(o.len_decoder);
+        Decode_Length(len_decoder);
         state := Update_State_Match(state);
         Decode_Distance(dist => rep0);
         if rep0 = 16#FFFF_FFFF# then
@@ -483,7 +540,7 @@ package body LZMA_Decoding is
 
   begin
     Create(out_win, o.dictSize);
-    Init(o);
+    Init_Probs;
     Init(loc_range_dec);
     loop
       if o.unpackSize = 0
@@ -492,11 +549,11 @@ package body LZMA_Decoding is
       then
         res:= LZMA_finished_without_marker;
         Dispose(out_win.buf);
-        Dispose(o.LitProbs);
+        Dispose(LitProbs);
         return;
       end if;
       pos_state := State_range(UInt32(out_win.total_pos) and pos_bits_mask);
-      Decode_Bit_Q(o.IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
+      Decode_Bit_Q(IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
         Process_Litteral;
@@ -508,7 +565,7 @@ package body LZMA_Decoding is
     when Marker_exit =>
       res:= LZMA_finished_with_marker;
       Dispose(out_win.buf);
-      Dispose(o.LitProbs);
+      Dispose(LitProbs);
   end Decode_Contents;
 
   procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints) is

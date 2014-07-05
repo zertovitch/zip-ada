@@ -68,66 +68,11 @@ private
   subtype UInt32 is Unsigned_32;
   type Unsigned is mod 2 ** System.Word_Size;
 
-    type Byte_buffer is array(UInt32 range <>) of Byte;
-  type p_Byte_buffer is access Byte_buffer;
-
-  type Out_Window is record
-    buf       : p_Byte_buffer:= null;
-    pos       : UInt32;
-    size      : UInt32;
-    is_full   : Boolean;
-    total_pos : Unsigned;
-  end record;
-
-  subtype CProb is UInt32;
-  type CProb_array is array(Unsigned range <>) of CProb;
-  type p_CProb_array is access CProb_array;
-
-  kNumPosBitsMax : constant := 4;
-  kNumPosBitsMax_Count : constant := 2**kNumPosBitsMax;
-
-  kNumStates          : constant := 12;
-  kNumLenToPosStates  : constant := 4;
-  kNumAlignBits       : constant := 4;
-  kEndPosModelIndex   : constant := 14;
-  kNumFullDistances   : constant := 2 ** (kEndPosModelIndex / 2);
-
-  subtype Probs_3_bits is CProb_array(0 .. 2**3 - 1);
-  subtype Probs_6_bits is CProb_array(0 .. 2**6 - 1);
-  subtype Probs_8_bits is CProb_array(0 .. 2**8 - 1);
-  subtype Probs_NAB_bits is CProb_array(0 .. 2**kNumAlignBits - 1);
-
-  type LM_Coder_Probs is array(Unsigned'(0) .. kNumPosBitsMax_Count - 1) of Probs_3_bits;
-
-  type Length_Decoder is record
-    choice     : CProb;
-    choice_2   : CProb;
-    low_coder  : LM_Coder_Probs;
-    mid_coder  : LM_Coder_Probs;
-    high_coder : Probs_8_bits;
-  end record;
-
-  type Slot_Coder_Probs is array(Unsigned'(0) .. kNumLenToPosStates - 1) of Probs_6_bits;
-
-  Last_PosDecoders: constant := kNumFullDistances - kEndPosModelIndex;
-
   subtype LC_range is Integer range 0..8;
   subtype LP_range is Integer range 0..4;
   subtype PB_range is Integer range 0..4;
 
   type LZMA_Decoder_Info is record
-    LitProbs             : p_CProb_array;
-    PosSlotDecoder       : Slot_Coder_Probs;
-    AlignDecoder         : Probs_NAB_bits;
-    PosDecoders          : CProb_array(0..Last_PosDecoders);
-    IsMatch              : CProb_array(0..kNumStates * kNumPosBitsMax_Count - 1);
-    IsRep0Long           : CProb_array(0..kNumStates * kNumPosBitsMax_Count - 1);
-    IsRep                : CProb_array(0..kNumStates - 1);
-    IsRepG0              : CProb_array(0..kNumStates - 1);
-    IsRepG1              : CProb_array(0..kNumStates - 1);
-    IsRepG2              : CProb_array(0..kNumStates - 1);
-    len_decoder          : Length_Decoder;
-    rep_len_decoder      : Length_Decoder;
     unpackSize           : Data_Bytes_Count;
     unpackSize_as_defined: Data_Bytes_Count;
     unpackSizeDefined    : Boolean;
