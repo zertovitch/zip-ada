@@ -10,75 +10,37 @@ package body LZMA_Decoding is
   type p_Byte_buffer is access Byte_buffer;
 
   type Out_Window is record
-    buf       : p_Byte_buffer:= null;
-    pos       : UInt32;
+    buf       : p_Byte_buffer := null;
+    pos       : UInt32        := 0;
     size      : UInt32;
-    is_full   : Boolean;
-    total_pos : Unsigned;
+    is_full   : Boolean       := False;
+    total_pos : Unsigned      := 0;
   end record;
 
   procedure Create(o: in out Out_Window; dictSize: UInt32) is
   begin
-    o.buf       := new Byte_buffer(0..dictSize-1);
-    o.pos       := 0;
-    o.size      := dictSize;
-    o.is_full   := False;
-    o.total_pos := 0;
+    o.buf  := new Byte_buffer(0..dictSize-1);
+    o.size := dictSize;
   end Create;
 
-  procedure Put_Byte(o: in out Out_Window; b: Byte) is
-  pragma Inline(Put_Byte);
-  begin
-    o.total_pos := o.total_pos + 1;
-    o.buf(o.pos):= b;
-    o.pos := o.pos + 1;
-    if o.pos = o.size then
-      o.pos := 0;
-      o.is_full := True;
-    end if;
-    Write_Byte(b);
-  end Put_Byte;
-
-  function Get_Byte(o: Out_Window; dist: UInt32) return Byte is
-  pragma Inline(Get_Byte);
-  begin
-    if dist <= o.pos then
-      return o.buf(o.pos - dist);
-    else
-      return o.buf(o.size - dist + o.pos);
-    end if;
-  end Get_Byte;
-
-  procedure Copy_Match(o: in out Out_Window; dist: UInt32; len: Unsigned) is
-  pragma Inline(Copy_Match);
-  begin
-    for count in reverse 1..len loop
-      Put_Byte(o, Get_Byte(o, dist));
-    end loop;
-  end Copy_Match;
-  pragma Unreferenced (Copy_Match);
-
   type Range_Decoder is record
-    range_z   : UInt32;
-    code      : UInt32;
-    corrupted : Boolean;
+    range_z   : UInt32  := 16#FFFF_FFFF#;
+    code      : UInt32  := 0;
+    corrupted : Boolean := False;
   end record;
 
-  procedure Init(o: in out Range_Decoder) is
+  procedure Init_Range_Decoder(o: in out Range_Decoder) is
   begin
-    o.corrupted := False;
     if Read_Byte /= 0 then
       o.corrupted := True;
     end if;
-    o.range_z := 16#FFFF_FFFF#;
-    o.code    := 0;
     for i in 0..3 loop
       o.code := Shift_Left(o.code, 8) or UInt32(Read_Byte);
     end loop;
     if o.code = o.range_z then
       o.corrupted := True;
     end if;
-  end Init;
+  end Init_Range_Decoder;
 
   kNumBitModelTotalBits : constant:= 11;
   kNumMoveBits          : constant:= 5;
@@ -262,7 +224,7 @@ package body LZMA_Decoding is
       if dist <= out_win.pos then
         return out_win.buf(out_win.pos - dist);
       else
-        return out_win.buf(out_win.size - dist + out_win.pos);
+        return out_win.buf(out_win.pos - dist + out_win.size);
       end if;
     end Get_Byte_Q;
   
@@ -581,7 +543,7 @@ package body LZMA_Decoding is
   begin
     Create(out_win, o.dictSize);
     Init_Probs;
-    Init(loc_range_dec);
+    Init_Range_Decoder(loc_range_dec);
     loop
       if o.unpackSize = 0
         and then Is_Finished_OK
