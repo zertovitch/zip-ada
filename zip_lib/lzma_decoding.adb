@@ -253,9 +253,10 @@ package body LZMA_Decoding is
         );
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
-        for count in reverse 1..8 loop
+        loop
           Decode_Bit_Q(LitProbs(probs_idx + symbol), bit);
           symbol := (symbol + symbol) or bit;
+          exit when symbol >= 16#100#;
         end loop;
       else
         declare
@@ -264,20 +265,24 @@ package body LZMA_Decoding is
           --  that the current litteral sequence resembles to the last
           --  distance-length copied sequence.
           --
-          match_byte    : UInt32 := UInt32(Get_Byte_Q(rep0 + 1));
-          match_bit     : UInt32;
-          bit_a, bit_b  : Unsigned;
+          match_byte     : UInt32 := UInt32(Get_Byte_Q(rep0 + 1));
+          match_bit      : UInt32;    -- either 0 or 16#100#
+          prob_idx_match : Unsigned;  -- either 0 (normal case without match), 16#100# or 16#200#
+          bit, bit_b     : Unsigned;
         begin
           loop
             match_byte := match_byte + match_byte;
             match_bit  := match_byte and 16#100#;
-            Decode_Bit_Q(LitProbs(probs_idx + Unsigned(16#100# + match_bit) + symbol), bit_a);
-            symbol := (symbol + symbol) or bit_a;
+            prob_idx_match:= Unsigned(16#100# + match_bit);
+            Decode_Bit_Q(LitProbs(probs_idx + prob_idx_match + symbol), bit);
+            symbol := (symbol + symbol) or bit;
             exit when symbol >= 16#100#;
-            if match_bit /= Shift_Left(UInt32(bit_a), 8) then
-              while symbol < 16#100# loop
+            if match_bit /= Shift_Left(UInt32(bit), 8) then
+              -- No bit match, then give up byte match 
+              loop
                 Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
                 symbol := (symbol + symbol) or bit_b;
+                exit when symbol >= 16#100#;
               end loop;
               exit;
             end if;
