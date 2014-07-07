@@ -234,9 +234,7 @@ package body LZMA_Decoding is
       symbol       : Unsigned:= 1;
       lit_state    : Unsigned;
       probs_idx    : Unsigned;
-      matchByte    : UInt32;
-      matchBit     : UInt32;
-      bit_a, bit_b, bit_c : Unsigned;
+      bit          : Unsigned;
     begin
       if o.unpackSize = 0 and then unpack_size_def then
         Raise_Exception(
@@ -256,28 +254,35 @@ package body LZMA_Decoding is
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
         for count in reverse 1..8 loop
-          Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_c);
-          symbol := (symbol + symbol) or bit_c;
+          Decode_Bit_Q(LitProbs(probs_idx + symbol), bit);
+          symbol := (symbol + symbol) or bit;
         end loop;
       else
-        matchByte := UInt32(Get_Byte_Q(rep0 + 1));
-        loop
-          matchBit  := Shift_Right(matchByte, 7) and 1;
-          matchByte := matchByte + matchByte;
-          Decode_Bit_Q(
-            LitProbs(probs_idx + Unsigned(Shift_Left(1 + matchBit, 8)) + symbol),
-            bit_a
-          );
-          symbol := (symbol + symbol) or bit_a;
-          exit when symbol >= 16#100#;
-          if Unsigned(matchBit) /= bit_a then
-            while symbol < 16#100# loop
-              Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
-              symbol := (symbol + symbol) or bit_b;
-            end loop;
-            exit;
-          end if;
-        end loop;
+        declare
+          --
+          --  The probabilities used for decoding this literal assume
+          --  that the current litteral sequence resembles to the last
+          --  distance-length copied sequence.
+          --
+          match_byte    : UInt32 := UInt32(Get_Byte_Q(rep0 + 1));
+          match_bit     : UInt32;
+          bit_a, bit_b  : Unsigned;
+        begin
+          loop
+            match_byte := match_byte + match_byte;
+            match_bit  := match_byte and 16#100#;
+            Decode_Bit_Q(LitProbs(probs_idx + Unsigned(16#100# + match_bit) + symbol), bit_a);
+            symbol := (symbol + symbol) or bit_a;
+            exit when symbol >= 16#100#;
+            if match_bit /= Shift_Left(UInt32(bit_a), 8) then
+              while symbol < 16#100# loop
+                Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
+                symbol := (symbol + symbol) or bit_b;
+              end loop;
+              exit;
+            end if;
+          end loop;
+        end;
       end if;
       Put_Byte_Q(Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
       --
