@@ -340,6 +340,9 @@ package body LZMA_Decoding is
           for i in from .. to loop
             b1:= out_win.Buf(i);
             out_win.Buf(i + dist):= b1;
+          end loop;
+          for i in from .. to loop
+            b1:= out_win.Buf(i);
             Write_Byte(b1);
           end loop;
           out_win.Pos := out_win.Pos + len32;
