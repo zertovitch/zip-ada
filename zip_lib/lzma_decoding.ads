@@ -23,19 +23,22 @@ package LZMA_Decoding is
   dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
 
   type LZMA_Hints is record
-    has_size   : Boolean;           -- Is size is part of header data ?
-    given_size : Data_Bytes_Count;  -- If has_size = False, we use given_size.
-    marker_expected : Boolean;      -- Is an End-Of-Stream marker expected ?
+    has_size               : Boolean;           -- Is size is part of header data ?
+    given_size             : Data_Bytes_Count;  -- If has_size = False, we use given_size.
+    marker_expected        : Boolean;           -- Is an End-Of-Stream marker expected ?
+    fail_on_bad_range_code : Boolean;           -- Raise exception if range decoder corrupted ?
+    -- The LZMA specification is a bit ambiguous on this point: a decoder has to ignore
+    -- corruption cases, but an encoder is required to avoid them...
   end record;
 
-  ------------------------------------------------------------------------------
-  -- Usage 1 : objectless procedure, if you care only about the decompression --
-  ------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+  -- Usage 1 : Object-less procedure, if you care only about the decompression --
+  -------------------------------------------------------------------------------
 
   procedure Decompress(hints: LZMA_Hints);
 
   ------------------------------------------------------------------------
-  -- Usage 2 : object-oriented, with stored technical details as output --
+  -- Usage 2 : Object-oriented, with stored technical details as output --
   ------------------------------------------------------------------------
 
   type LZMA_Decoder_Info is limited private;
@@ -52,12 +55,7 @@ package LZMA_Decoding is
   function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
   function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean;
 
-  -------------------------------------------------------------------
-  -- Usage 3 : Decode in two steps: Decode_Header, Decode_Contents --
-  -------------------------------------------------------------------
-
-  procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints);
-  procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result);
+  LZMA_Error: exception;
 
 private
 
@@ -84,7 +82,5 @@ private
     pb                   : PB_range; -- the number of "pos" bits
     range_dec_corrupted  : Boolean;
   end record;
-
-  LZMA_Error: exception;
 
 end LZMA_Decoding;

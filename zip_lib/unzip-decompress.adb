@@ -1829,11 +1829,15 @@ package body UnZip.Decompress is
           Raise_Exception(Zip.Zip_file_Error'Identity, "Unexpected LZMA properties block size");
         end if;
         My_LZMA_Decoding.Decompress(
-          (has_size        => False,
-           given_size      => My_LZMA_Decoding.Data_Bytes_Count(UnZ_Glob.uncompsize),
-           marker_expected => explode_slide_8KB_LZMA_EOS)
+          (has_size               => False,
+           given_size             => My_LZMA_Decoding.Data_Bytes_Count(UnZ_Glob.uncompsize),
+           marker_expected        => explode_slide_8KB_LZMA_EOS,
+           fail_on_bad_range_code => True)
         );
         UnZ_IO.Flush( UnZ_Glob.slide_index );
+      exception
+        when E: My_LZMA_Decoding.LZMA_Error =>
+          Raise_Exception(Zip.Zip_file_Error'Identity, "LZMA error: " & Exception_Message(E));
       end LZMA_Decode;
 
     end UnZ_Meth;

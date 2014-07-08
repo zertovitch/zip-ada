@@ -659,6 +659,9 @@ package body LZMA_Decoding is
   begin
     Decode_Header(o, hints);
     Decode_Contents(o, res);
+    if hints.fail_on_bad_range_code and o.range_dec_corrupted then
+      Raise_Exception(LZMA_Error'Identity, "Range decoder had a corrupted value (code = range)");
+    end if;
   end Decode;
 
   procedure Decompress(hints: LZMA_Hints) is

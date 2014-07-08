@@ -41,7 +41,7 @@ procedure LZMA_Dec is
     New_Line;
   end Print_Data_Bytes_Count;
 
-  lzmaDecoder: LZMA_Decoder_Info;
+  lzma_decoder: LZMA_Decoder_Info;
   res: LZMA_Result;
 
   use type BIO.Count; 
@@ -59,25 +59,30 @@ begin
   Open(f_in, In_File, Argument(1));
   Create(f_out,Out_File, Argument(2));
   
-  Decode_Header(lzmaDecoder, (has_size => True, given_size => dummy_size, marker_expected => False));
+  Decode(
+    lzma_decoder, 
+    ( has_size               => True, 
+      given_size             => dummy_size, 
+      marker_expected        => False, 
+      fail_on_bad_range_code => False),
+    res
+  );
 
   Put_Line(
-    "lc="   & Natural'Image(Literal_context_bits(lzmaDecoder)) & 
-    ", lp=" & Natural'Image(Literal_pos_bits(lzmaDecoder)) &
-    ", pb=" & Natural'Image(Pos_bits(lzmaDecoder)) 
+    "lc="   & Natural'Image(Literal_context_bits(lzma_decoder)) & 
+    ", lp=" & Natural'Image(Literal_pos_bits(lzma_decoder)) &
+    ", pb=" & Natural'Image(Pos_bits(lzma_decoder)) 
   );
-  Put_Line("Dictionary size in properties =" & Unsigned_32'Image(Dictionary_size_in_properties(lzmaDecoder)));
-  Put_Line("Dictionary size for decoding  =" & Unsigned_32'Image(Dictionary_size(lzmaDecoder)));
+  Put_Line("Dictionary size in properties =" & Unsigned_32'Image(Dictionary_size_in_properties(lzma_decoder)));
+  Put_Line("Dictionary size for decoding  =" & Unsigned_32'Image(Dictionary_size(lzma_decoder)));
   New_Line;
 
-  if Unpack_size_defined(lzmaDecoder) then
-    Print_Data_Bytes_Count("Uncompressed size", Unpack_size_as_defined(lzmaDecoder));
+  if Unpack_size_defined(lzma_decoder) then
+    Print_Data_Bytes_Count("Uncompressed size", Unpack_size_as_defined(lzma_decoder));
   else
     Put_Line("Uncompressed size not defined, end marker is expected.");
   end if;
   New_Line;
-
-  Decode_Contents(lzmaDecoder, res);
   
   Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in) - 1));
   Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out) - 1));
@@ -85,15 +90,15 @@ begin
     when LZMA_finished_without_marker =>
        Put_Line("Finished without end marker");
     when LZMA_finished_with_marker =>
-       if Unpack_size_defined(lzmaDecoder) then
-         if Data_Bytes_Count(Index(f_out) - 1) /= Unpack_size_as_defined(lzmaDecoder) then
+       if Unpack_size_defined(lzma_decoder) then
+         if Data_Bytes_Count(Index(f_out) - 1) /= Unpack_size_as_defined(lzma_decoder) then
            Put_Line("Warning: finished with end marker before than specified size");
          end if;
        end if;
        Put_Line("Finished with end marker");
   end case;
 
-  if Range_decoder_corrupted(lzmaDecoder) then
+  if Range_decoder_corrupted(lzma_decoder) then
     Put_Line("Warning: LZMA stream is corrupted");
   end if;
   
