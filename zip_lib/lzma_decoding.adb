@@ -329,24 +329,23 @@ package body LZMA_Decoding is
         b1, b2, b3: Byte;
         len32: constant UInt32:= UInt32(len);
         will_fill: constant Boolean:= out_win.Pos + len32 >= out_win.Size;
-        from, to: UInt32;
-      begin
-        out_win.is_full := will_fill or else out_win.is_full;
-        out_win.total_pos := out_win.total_pos + len;
-        if dist <= out_win.Pos and not will_fill then 
-          -- The easy case: src and dest within circular buffer bounds. May overlap (len32 > dist).
+        procedure Easy_case is
+        pragma Inline(Easy_case);
+          from, to: UInt32;
+        begin
+          -- src and dest within circular buffer bounds. May overlap (len32 > dist).
           from := out_win.Pos - dist;
           to   := out_win.Pos - dist + len32 - 1;
           for i in from .. to loop
             b1:= out_win.Buf(i);
             out_win.Buf(i + dist):= b1;
-          end loop;
-          for i in from .. to loop
-            b1:= out_win.Buf(i);
             Write_Byte(b1);
           end loop;
           out_win.Pos := out_win.Pos + len32;
-        else
+        end Easy_case;
+        procedure Modulo_case is
+        pragma Inline(Modulo_case);
+        begin
           -- src starts below 0 or dest goes beyond size-1
           for count in reverse 1..len loop
             if dist <= out_win.Pos then
@@ -367,6 +366,14 @@ package body LZMA_Decoding is
               Write_Byte(b3);
             end if;
           end loop;
+        end Modulo_case;
+      begin
+        out_win.is_full := will_fill or else out_win.is_full;
+        out_win.total_pos := out_win.total_pos + len;
+        if dist <= out_win.Pos and not will_fill then 
+          Easy_case;
+        else
+          Modulo_case;
         end if;
       end Copy_Match_Q2;
       --
