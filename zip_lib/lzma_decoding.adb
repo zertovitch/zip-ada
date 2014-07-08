@@ -329,12 +329,15 @@ package body LZMA_Decoding is
         b1, b2, b3: Byte;
         len32: constant UInt32:= UInt32(len);
         will_fill: constant Boolean:= out_win.Pos + len32 >= out_win.Size;
+        from, to: UInt32;
       begin
         out_win.is_full := will_fill or else out_win.is_full;
         out_win.total_pos := out_win.total_pos + len;
         if dist <= out_win.Pos and not will_fill then 
           -- The easy case: src and dest within circular buffer bounds. May overlap (len32 > dist).
-          for i in out_win.Pos - dist .. out_win.Pos - dist + len32 - 1 loop
+          from := out_win.Pos - dist;
+          to   := out_win.Pos - dist + len32 - 1;
+          for i in from .. to loop
             b1:= out_win.Buf(i);
             out_win.Buf(i + dist):= b1;
             Write_Byte(b1);
@@ -547,8 +550,15 @@ package body LZMA_Decoding is
     pos_bits_mask : constant UInt32 := 2 ** o.pb - 1;
     size_defined_and_marker_not_mandatory: constant Boolean:=
       unpack_size_def and not o.markerIsMandatory;
-    procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
-    procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
+      
+    procedure Finalize is
+      procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
+      procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
+    begin
+      Dispose(out_win.buf);
+      Dispose(LitProbs);
+      o.range_dec_corrupted:= loc_range_dec.corrupted;
+    end;      
 
   begin
     Create(out_win, o.dictSize);
@@ -560,8 +570,7 @@ package body LZMA_Decoding is
         and then size_defined_and_marker_not_mandatory
       then
         res:= LZMA_finished_without_marker;
-        Dispose(out_win.buf);
-        Dispose(LitProbs);
+        Finalize;
         return;
       end if;
       pos_state := State_range(UInt32(out_win.total_pos) and pos_bits_mask);
@@ -576,8 +585,7 @@ package body LZMA_Decoding is
   exception
     when Marker_exit =>
       res:= LZMA_finished_with_marker;
-      Dispose(out_win.buf);
-      Dispose(LitProbs);
+      Finalize;
   end Decode_Contents;
 
   procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints) is
