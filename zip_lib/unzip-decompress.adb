@@ -68,8 +68,8 @@ package body UnZip.Decompress is
           pragma Inline(Decode);
       end Decryption;
 
-      function Read_byte_decrypted return Unsigned_8;
-        pragma Inline(Read_byte_decrypted);
+      function Read_byte_decrypted return Unsigned_8; -- NB: reading goes on even if Zip_EOF
+        pragma Inline(Read_byte_decrypted);           -- is set (just gives garbage).
 
       package Bit_buffer is
         procedure Init;
@@ -204,8 +204,8 @@ package body UnZip.Decompress is
         end if;
       end Read_buffer;
 
-      procedure Read_byte_no_decrypt( bt : out Zip.Byte ) is
-        pragma Inline( Read_byte_no_decrypt );
+      procedure Read_byte_no_decrypt( bt : out Zip.Byte ) is -- NB: reading goes on even if Zip_EOF
+        pragma Inline( Read_byte_no_decrypt );               -- is set (just gives garbage).
       begin
         if UnZ_Glob.inpos > UnZ_Glob.readpos then
           Read_buffer;
@@ -1802,15 +1802,7 @@ package body UnZip.Decompress is
       --------[ Method: LZMA ]--------
 
       procedure LZMA_Decode is
-        function Read_Byte return Unsigned_8 is
-        pragma Inline(Read_Byte);
-        begin
-          if Zip_EOF then
-            raise Zip.Zip_file_Error;
-          else
-            return UnZ_IO.Read_byte_decrypted;
-          end if;
-        end Read_Byte;
+        --
         procedure Write_Byte(b: Unsigned_8) is
         pragma Inline(Write_Byte);
         begin
@@ -1818,7 +1810,8 @@ package body UnZip.Decompress is
           UnZ_Glob.slide_index:= UnZ_Glob.slide_index + 1;
           UnZ_IO.Flush_if_full(UnZ_Glob.slide_index);
         end Write_Byte;
-        package My_LZMA_Decoding is new LZMA_Decoding(Read_Byte, Write_Byte);
+        --
+        package My_LZMA_Decoding is new LZMA_Decoding(UnZ_IO.Read_byte_decrypted, Write_Byte);
         b3, b4: Unsigned_8;
       begin
         b3:= UnZ_IO.Read_byte_decrypted; -- LZMA SDK major version (e.g.: 9)

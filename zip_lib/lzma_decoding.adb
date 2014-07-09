@@ -140,16 +140,16 @@ package body LZMA_Decoding is
     Update_State_Match    : constant Transition:= (7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10);
     Update_State_Rep      : constant Transition:= (8, 8, 8, 8, 8, 8, 8, 11, 11, 11, 11, 11);
     Update_State_ShortRep : constant Transition:= (9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11);
-    --
-    subtype Pos_dec_range is Unsigned range 0..kNumFullDistances - kEndPosModelIndex;
-    subtype Long_range is Unsigned range 0..kNumStates * kNumPosBitsMax_Count - 1;
     -- Literals:
-    LitProbs             : p_CProb_array;
+    subtype Lit_range is Unsigned range 0 .. 16#300# * 2 ** (o.lc + o.lp) - 1;  -- max 3,145,727
+    LitProbs             : CProb_array(Lit_range):= (others => PROB_INIT_VAL);
     -- Distances:
+    subtype Pos_dec_range is Unsigned range 0..kNumFullDistances - kEndPosModelIndex;
     PosSlotDecoder       : Slot_Coder_Probs := (others => (others => PROB_INIT_VAL));
     AlignDecoder         : Probs_NAB_bits:= (others => PROB_INIT_VAL);
     PosDecoders          : CProb_array(Pos_dec_range):= (others => PROB_INIT_VAL);
     --
+    subtype Long_range is Unsigned range 0..kNumStates * kNumPosBitsMax_Count - 1;
     IsRep                : CProb_array(State_range):= (others => PROB_INIT_VAL);
     IsRepG0              : CProb_array(State_range):= (others => PROB_INIT_VAL);
     IsRepG1              : CProb_array(State_range):= (others => PROB_INIT_VAL);
@@ -158,17 +158,6 @@ package body LZMA_Decoding is
     IsMatch              : CProb_array(Long_range):= (others => PROB_INIT_VAL);
     len_decoder          : Length_Decoder;
     rep_len_decoder      : Length_Decoder;
-    --
-    procedure Init_Probs is
-      length: constant Unsigned:= 16#300# * 2 ** (o.lc + o.lp);
-    begin
-      -- Literals:
-      LitProbs := new CProb_array(0..length-1);
-      LitProbs.all := (others => PROB_INIT_VAL);
-      --
-      Init(len_decoder);
-      Init(rep_len_decoder);
-    end Init_Probs;
     --
     procedure Normalize_Q is
     pragma Inline(Normalize_Q);
@@ -563,16 +552,15 @@ package body LZMA_Decoding is
       
     procedure Finalize is
       procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
-      procedure Dispose is new Ada.Unchecked_Deallocation(CProb_array, p_CProb_array);
     begin
       Dispose(out_win.buf);
-      Dispose(LitProbs);
       o.range_dec_corrupted:= loc_range_dec.corrupted;
     end;      
 
   begin
     Create(out_win, o.dictSize);
-    Init_Probs;
+    Init(len_decoder);
+    Init(rep_len_decoder);
     Init_Range_Decoder(loc_range_dec);
     loop
       if o.unpackSize = 0
