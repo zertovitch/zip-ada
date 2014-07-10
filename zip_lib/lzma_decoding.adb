@@ -50,7 +50,6 @@ package body LZMA_Decoding is
 
   subtype CProb is UInt32;
   type CProb_array is array(Unsigned range <>) of CProb;
-  type p_CProb_array is access CProb_array;
 
   kNumPosBitsMax : constant := 4;
   kNumPosBitsMax_Count : constant := 2**kNumPosBitsMax;
@@ -315,23 +314,33 @@ package body LZMA_Decoding is
       --
       procedure Copy_Match_Q2(dist: UInt32) is
         pragma Inline(Copy_Match_Q2);
-        b1, b2, b3: Byte;
+        b2, b3: Byte;
         len32: constant UInt32:= UInt32(len);
-        will_fill: constant Boolean:= out_win.Pos + len32 >= out_win.Size;
+        will_fill: constant Boolean:= out_win.pos + len32 >= out_win.size;
+        --
         procedure Easy_case is
         pragma Inline(Easy_case);
-          from, to: UInt32;
+          src_from, src_to: UInt32;
+          b: Byte;
         begin
           -- src and dest within circular buffer bounds. May overlap (len32 > dist).
-          from := out_win.Pos - dist;
-          to   := out_win.Pos - dist + len32 - 1;
-          for i in from .. to loop
-            b1:= out_win.Buf(i);
-            out_win.Buf(i + dist):= b1;
-            Write_Byte(b1);
-          end loop;
-          out_win.Pos := out_win.Pos + len32;
+          src_from := out_win.pos - dist;
+          src_to   := out_win.pos - dist + len32 - 1;
+          if len32 <= dist then -- No overlap: src_to < out_win.pos
+            out_win.buf(out_win.pos .. out_win.pos + len32 - 1):= out_win.buf(src_from .. src_to);
+            for i in src_from .. src_to loop
+              Write_Byte(out_win.buf(i));
+            end loop;
+          else -- Overlap: to >= out_win.pos . Need to copy in forward order.
+            for i in src_from .. src_to loop
+              b:= out_win.buf(i);
+              out_win.buf(i + dist):= b;
+              Write_Byte(b);
+            end loop;
+          end if;
+          out_win.pos := out_win.pos + len32;
         end Easy_case;
+        --
         procedure Modulo_case is
         pragma Inline(Modulo_case);
         begin
