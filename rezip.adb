@@ -252,13 +252,14 @@ procedure ReZip is
       -- 7-Zip 9.20 or later; LZMA:
       (U("7z"), U("7-Zip"), NN,
          U("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma, 0, False),
-      (U("7z"), U("7-Zip"), NN,
+      (U("7z"), U("7-Zip"), NN, -- dictionary size 2**19 = 512 KB
          U("a -tzip -mm=LZMA:a=2:d=19:mf=bt3:fb=128:lc=0:lp=2"), NN, 63, Zip.lzma, 0, False),
       (U("7z"), U("7-Zip"), NN,
-         U("a -tzip -mm=LZMA:a=2:d=3424k:mf=bt4:fb=264:lc=2:lp0:pb0"), NN, 63, Zip.lzma, 0, False),
-      (U("7z"), U("7-Zip"), NN,
+         U("a -tzip -mm=LZMA:a=2:d=#RAND#(3200,3700)k:mf=bt4:fb=#RAND#(255,273):lc=2:lp0:pb0"),
+         NN, 63, Zip.lzma, 0, True),
+      (U("7z"), U("7-Zip"), NN, -- dictionary size 2**25 = 32 MB
          U("a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7"), NN, 63, Zip.lzma, 0, False),
-      (U("7z"), U("7-Zip"), NN,
+      (U("7z"), U("7-Zip"), NN, -- dictionary size 2**26 = 64 MB
          U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False)
     );
 
@@ -321,13 +322,14 @@ procedure ReZip is
   begin
     expand:= U(options);
     for t in Token loop
-      declare
-        tok: constant String:= '#' & Token'Image(t) & '#';
-        idx: constant Natural:= Index(expand, tok);
-        par: constant Natural:= Index(expand, ")");
-        replace: Unbounded_String;
-      begin
-        if idx > 0 then
+      loop
+        declare
+          tok: constant String:= '#' & Token'Image(t) & '#';
+          idx: constant Natural:= Index(expand, tok);
+          par: constant Natural:= Index(expand, ")");
+          replace: Unbounded_String;
+        begin
+          exit when idx = 0;  --  No more of token t to replace
           declare
             opt: constant String:= S(expand); -- partially processed option string
             curr: constant String:= opt(idx+1..opt'Last); -- current option
@@ -356,8 +358,8 @@ procedure ReZip is
             end case;
             Replace_Slice(expand, idx, par, S(replace));
           end;
-        end if;
-      end;
+        end;
+      end loop;
     end loop;
     Call_external(packer, S(expand) & ' ' & other_args);
   end Call_external_expanded;
