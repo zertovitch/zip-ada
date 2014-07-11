@@ -68,8 +68,8 @@ package body UnZip.Decompress is
           pragma Inline(Decode);
       end Decryption;
 
-      function Read_byte_decrypted return Unsigned_8; -- NB: reading goes on even if Zip_EOF
-        pragma Inline(Read_byte_decrypted);           -- is set (just gives garbage).
+      function Read_byte_decrypted return Unsigned_8; -- NB: reading goes on a while even if
+        pragma Inline(Read_byte_decrypted);           -- Zip_EOF is set: just gives garbage
 
       package Bit_buffer is
         procedure Init;
@@ -168,6 +168,20 @@ package body UnZip.Decompress is
         Bit_buffer.Init;
       end Init_Buffers;
 
+      procedure Process_compressed_end_reached is
+      begin
+        if Zip_EOF then -- We came already here once
+          Raise_Exception(Zip.Zip_file_Error'Identity,
+            "Decoding went past compressed data size plus one buffer length");
+          -- Avoid infinite loop on data with exactly buffer's length and no end marker
+        else
+          UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
+          -- Simulates reading -> no blocking.
+          -- The buffer is full of "random" data and we hope for a wrong code or a CRC error
+          Zip_EOF := True;
+        end if;
+      end Process_compressed_end_reached;
+      
       procedure Read_buffer is
       begin
         if full_trace then
@@ -175,9 +189,7 @@ package body UnZip.Decompress is
         end if;
         if UnZ_Glob.reachedsize > UnZ_Glob.compsize + 2 then
           -- +2: last code is smaller than requested!
-          UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
-          -- Simulates reading -> no blocking
-          Zip_EOF := True;
+          Process_compressed_end_reached;
         else
           begin
             Zip.BlockRead(
@@ -187,13 +199,11 @@ package body UnZip.Decompress is
             );
           exception
             when others => -- I/O error
-              UnZ_Glob.readpos := 0; -- Trigger next error...
+              Process_compressed_end_reached;
           end;
-          if UnZ_Glob.readpos = 0 then
-            UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;  -- Simulates reading -> CRC error
-            Zip_EOF := True;
+          if UnZ_Glob.readpos = 0 then -- No byte at all was read
+            Process_compressed_end_reached;
           end if;
-
           UnZ_Glob.reachedsize:=
             UnZ_Glob.reachedsize + UnZip.File_size_type(UnZ_Glob.readpos);
           UnZ_Glob.readpos:= UnZ_Glob.readpos - 1; -- Reason: index of inbuf starts at 0
@@ -204,8 +214,8 @@ package body UnZip.Decompress is
         end if;
       end Read_buffer;
 
-      procedure Read_byte_no_decrypt( bt : out Zip.Byte ) is -- NB: reading goes on even if Zip_EOF
-        pragma Inline( Read_byte_no_decrypt );               -- is set (just gives garbage).
+      procedure Read_byte_no_decrypt( bt : out Zip.Byte ) is
+        pragma Inline( Read_byte_no_decrypt );
       begin
         if UnZ_Glob.inpos > UnZ_Glob.readpos then
           Read_buffer;
@@ -1534,6 +1544,9 @@ package body UnZip.Decompress is
 
       max_dist: Integer:= 29; -- changed to 31 for deflate_e
 
+      length_list_for_fixed_block_literals: constant Length_array( 0..287 ):=
+          ( 0..143=> 8, 144..255=> 9, 256..279=> 7, 280..287=> 8);
+
       procedure Inflate_fixed_block is
         Tl,                        -- literal/length code table
           Td : p_Table_list;            -- distance code table
@@ -1541,8 +1554,6 @@ package body UnZip.Decompress is
         huft_incomplete : Boolean;
 
         -- length list for HufT_build (literal table)
-        L: constant Length_array( 0..287 ):=
-          ( 0..143=> 8, 144..255=> 9, 256..279=> 7, 280..287=> 8);
 
       begin
         if some_trace then
@@ -1552,8 +1563,8 @@ package body UnZip.Decompress is
         -- make a complete, but wrong code set
         Bl := 7;
         HufT_build(
-          L, 257, copy_lengths_literal, extra_bits_literal,
-          Tl, Bl, huft_incomplete
+          length_list_for_fixed_block_literals, 257, copy_lengths_literal,
+          extra_bits_literal, Tl, Bl, huft_incomplete
         );
 
         -- Make an incomplete code set
@@ -1588,9 +1599,10 @@ package body UnZip.Decompress is
         end if;
       end Inflate_fixed_block;
 
-      procedure Inflate_dynamic_block is
-        bit_order : constant array ( 0..18 ) of Natural :=
+      bit_order_for_dynamic_block : constant array ( 0..18 ) of Natural :=
          ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
+         
+      procedure Inflate_dynamic_block is
 
         Lbits : constant:= 9;
         Dbits : constant:= 6;
@@ -1641,7 +1653,7 @@ package body UnZip.Decompress is
         -- Read in bit-length-code lengths.
         -- The rest, Ll( Bit_Order( Nb .. 18 ) ), is already = 0
         for J in  0 .. Nb - 1  loop
-          Ll ( bit_order( J ) ) := UnZ_IO.Bit_buffer.Read_and_dump(3);
+          Ll ( bit_order_for_dynamic_block( J ) ) := UnZ_IO.Bit_buffer.Read_and_dump(3);
         end loop;
 
         -- Build decoding table for trees--single level, 7 bit lookup
@@ -1775,7 +1787,6 @@ package body UnZip.Decompress is
         pragma Inline(Read);
         begin
           for i in b'Range loop
-            exit when Zip_EOF;
             b(i):= UnZ_IO.Read_byte_decrypted;
           end loop;
         end Read;
