@@ -251,15 +251,14 @@ package body UnZip.Decompress is
           );
         end Update_keys;
 
-        function Decrypt_byte return Zip.Byte is
+        function Crypto_code return Zip.Byte is -- Pseudo-random byte to be XOR'ed
           temp: Unsigned_16;
         begin
           temp:= Unsigned_16(keys(2) and 16#ffff#) or 2;
           return Zip.Byte(Shift_Right(temp * (temp xor 1), 8));
-        end Decrypt_byte;
+        end Crypto_code;
 
         procedure Init( password: String; crc_check: Unsigned_32) is
-          buffer: array( 0..11 ) of Zip.Byte;
           c: Zip.Byte;
           t: Unsigned_32;
         begin
@@ -268,14 +267,15 @@ package body UnZip.Decompress is
           for i in password'Range loop
             Update_keys( Character'Pos(password(i)) );
           end loop;
-          -- Step 2 - Decrypting the encryption header
-          for i in buffer'Range loop
+          -- Step 2 - Decrypting the encryption header. 11 bytes are random,
+          --          just to shuffle the keys, 1 byte is from the CRC value.
+          for i in 1..12 loop
             Read_byte_no_decrypt( c );
-            c:= c xor Decrypt_byte;
-            Update_keys(c);
-            buffer(i):= c;
+            c:= c xor Crypto_code;
+            Update_keys(c); -- Keys are updated with the unencrypted byte
           end loop;
           t:= Zip_Streams.Calendar.Convert(hint.file_timedate);
+          -- Last byte used to check password; 1/256 probability of success with any password!
           if c /= Zip.Byte(Shift_Right( crc_check, 24 )) and not
             -- Dec. 2012. This is a feature of Info-Zip (crypt.c).
             -- Since CRC is only known at the end of a one-way stream
@@ -290,8 +290,8 @@ package body UnZip.Decompress is
         procedure Decode( b: in out Zip.Byte ) is
         begin
           if decrypt_mode then
-            b:= b xor Decrypt_byte;
-            Update_keys(b);
+            b:= b xor Crypto_code;
+            Update_keys(b); -- Keys are updated with the unencrypted byte
           end if;
         end Decode;
 
@@ -1852,7 +1852,7 @@ package body UnZip.Decompress is
       dd_buffer: Zip.Byte_Buffer(1..30);
     begin
       UnZ_IO.Bit_buffer.Dump_to_byte_boundary;
-      UnZ_IO.Decryption.Set_mode(False);
+      UnZ_IO.Decryption.Set_mode(False); -- We are after compressed data, switch off decryption.
       b:= UnZ_IO.Read_byte_decrypted;
       if b = 75 then -- 'K' ('P' is before, this is a Java/JAR bug!)
         dd_buffer(1):= 80;
