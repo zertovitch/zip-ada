@@ -8,7 +8,7 @@
 --  7-Feb-2009: GdM: added a cache for LZ77 output to make 2nd phase faster
 
 with Interfaces; use Interfaces;
-with Zip.LZ77, Zip.CRC;
+with Zip.LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
 
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -405,7 +405,7 @@ is
       b:= InBuf(InBufIdx);
       InBufIdx:= InBufIdx + 1;
       if phase = stats then
-        Zip.CRC.Update(CRC, (1=> b));
+        Zip.CRC_Crypto.Update(CRC, (1=> b));
       end if;
       Bytes_in:= Bytes_in + 1;
       if feedback /= null then

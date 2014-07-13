@@ -15,7 +15,7 @@
 -- 17-Feb-2011: Created.
 
 with Interfaces; use Interfaces;
-with Zip.LZ77, Zip.CRC;
+with Zip.LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
 
 -- with Ada.Text_IO;                       use Ada.Text_IO;
@@ -151,7 +151,7 @@ is
     begin
       b:= InBuf(InBufIdx);
       InBufIdx:= InBufIdx + 1;
-      Zip.CRC.Update(CRC, (1=> b));
+      Zip.CRC_Crypto.Update(CRC, (1=> b));
       Bytes_in:= Bytes_in + 1;
       if feedback /= null then
         if Bytes_in = 1 then

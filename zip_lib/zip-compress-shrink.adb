@@ -1,7 +1,7 @@
 with Ada.Unchecked_Deallocation;
 
 with Interfaces; use Interfaces;
-with Zip.CRC;
+with Zip.CRC_Crypto;
 
 procedure Zip.Compress.Shrink
  (input,
@@ -444,7 +444,7 @@ is
           exit;
         end if;
       end loop;
-      Zip.CRC.Update(CRC, Source(Source'First .. Last_processed));
+      Zip.CRC_Crypto.Update(CRC, Source(Source'First .. Last_processed));
     end if;
   end Process_Input;
 

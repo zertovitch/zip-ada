@@ -19,7 +19,7 @@
 -- This package is only a portable one, and doesn't claim
 -- to be the best or the fastest
 
-with Zip.CRC,
+with Zip.CRC_Crypto,
      Zip.Compress.Shrink,
      Zip.Compress.Reduce,
      Zip.Compress.Deflate;
@@ -72,7 +72,7 @@ package body Zip.Compress is
           counted:= counted + File_size_type (Last_Read);
           Write (output, Buffer (1 .. Last_Read));
           for I in 1 .. Last_Read loop
-            Zip.CRC.Update(CRC, (1 => Byte (Buffer (I))));
+            Zip.CRC_Crypto.Update(CRC, (1 => Byte (Buffer (I))));
           end loop;
         end;
         -- Feedback
@@ -103,7 +103,7 @@ package body Zip.Compress is
     end Store_data;
     --
   begin
-    Zip.CRC.Init(CRC);
+    Zip.CRC_Crypto.Init(CRC);
     case method is
       --
       when Store =>
@@ -138,7 +138,7 @@ package body Zip.Compress is
         );
         zip_type:= 8;
     end case;
-    CRC:= Zip.CRC.Final(CRC);
+    CRC:= Zip.CRC_Crypto.Final(CRC);
     --
     -- Handle case where compression has been unefficient:
     -- data to be compressed is too "random"; then compressed data
@@ -148,9 +148,9 @@ package body Zip.Compress is
       -- Go back to the beginning and just store the data
       Set_Index(input, idx_in);
       Set_Index(output, idx_out);
-      Zip.CRC.Init(CRC);
+      Zip.CRC_Crypto.Init(CRC);
       Store_data;
-      CRC:= Zip.CRC.Final(CRC);
+      CRC:= Zip.CRC_Crypto.Final(CRC);
     end if;
   end Compress_data;
 

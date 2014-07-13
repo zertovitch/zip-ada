@@ -32,7 +32,7 @@ private package UnZip.Decompress is
     explode_literal_tree       : Boolean; -- relevant for the "explode" format
     explode_slide_8KB_LZMA_EOS : Boolean; -- relevant for the "explode" format
     data_descriptor_after_data : Boolean;
-    encrypted                  : Boolean;
+    is_encrypted               : Boolean;
     password                   : in out Unbounded_String;
     get_new_password           : Get_password_proc; -- if null, initial pwd must fit
     hint                       : in out Zip.Headers.Local_File_Header
