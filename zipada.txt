@@ -55,21 +55,27 @@ Contents
   The back-end packages are set as private. You don't need to (and cannot)
   refer to them, even to care of them...
 
-* In the main directory, you have the following command-line demo
+* In the demo subdirectory, you have the following command-line demo
   procedures for testing Zip-Ada:
 
   - Demo_Zip.adb         : tiny demo for Zip.Create
   - Demo_UnZip.adb       : tiny demo for UnZip and UnZip.Streams
+  - Demo_csv_into_zip.adb: demo showing how to produce many files directly
+                             into a Zip file, with only 1 temp file
+  - Zip_with_many_files.adb
+
+* In the tools subdirectory, you have the following command-line tools
+  using the Zip-Ada library:
   - ZipAda.adb           : minimal standalone zipping tool
   - UnZipAda.adb         : minimal standalone unzipping tool
   - Comp_Zip.adb         : tool for comparing two Zip archives
   - Find_Zip.adb         : tool for searching a string across an archive
   - ReZip.adb            : tool for recompressing Zip archives and make them smaller
-  - Demo_csv_into_zip.adb: demo showing how to produce many files directly
-                             into a Zip file, with only 1 temp file
-  In the test subdirectory, there is
+  
+*  In the test subdirectory, there is
   - ZipTest.adb          : test for Zip archive creation with various stream types
-  In the extras subdirectory, there is
+
+*  In the extras subdirectory, there is
   - bunzip               : a standalone decompressor for BZip2 files (.bz2)
   - lzma_dec             : a standalone decompressor for LZMA files (.lzma)
 
@@ -113,6 +119,9 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '48', xx-yyy-2014:
+  - LZMA decompression significantly faster
+  
 * Changes in '47', 28-Jun-2014:
   - LZMA method added for decompression
 

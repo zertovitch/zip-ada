@@ -1,4 +1,4 @@
--gnat05 -gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -Iextras -aOobj_dbg
+-gnat05 -gnatf -gnatwal -gnatVa -gnatyebfhkanp -gnatecdebug.pra -Izip_lib -Iextras -Idemo -Itest -Itools -aOobj_dbg
 -C -aOobj_dbg
 
 
@@ -48,7 +48,7 @@ release all_warnings true
 release build_in_place true
 -- End compiler switches
 -- Begin Release mode commands
--gnatf -gnatwab -fpeel-loops -funswitch-loops -ftracer -fweb -frename-registers -ffunction-sections -gnatyebfhkanp -Izip_lib -Iextras -aOobj_opt
+-gnatf -gnatwab -fpeel-loops -funswitch-loops -ftracer -fweb -frename-registers -ffunction-sections -gnatyebfhkanp -Izip_lib -Iextras -Idemo -Itest -Itools -aOobj_opt
 -C -aOobj_opt
 
 

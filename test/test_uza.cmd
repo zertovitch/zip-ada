@@ -43,8 +43,12 @@ call test_1 $test.bin binana
 
 echo *****************************************************************
 echo.
-echo 3) Test with structured data (*.csv, *.xls, *.mdb)
+echo 3) Tests with structured data (*.csv, *.xls, *.mdb)
 echo.
 pause
-copy /B *.csv + *.xls + *.mdb $test.struct
-call test_1 $test.struct struct_data
+copy /B *.csv $tst_csv
+call test_1 $tst_csv stct_csv
+copy /B *.xls $tst_xls
+call test_1 $tst_xls stct_xls
+copy /B *.mdb $tst_mdb
+call test_1 $tst_mdb stct_mdb

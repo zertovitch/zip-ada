@@ -7,7 +7,7 @@ project ZipAda is
    type Build_Mode_Type is
       ("Debug", "Optimize", "Profiling");
    Build_Mode : Build_Mode_Type := external ("Build_Mode", "Debug");
-   for Source_Dirs use (".", "zip_lib", "test", "extras");
+   for Source_Dirs use (".", "zip_lib", "test", "extras", "tools", "demo");
    for Exec_Dir use ".";
    for Main use (
      "zipada.adb", "comp_zip.adb", "find_zip.adb",
