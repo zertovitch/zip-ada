@@ -1101,9 +1101,14 @@ begin
         Insert(fix,fix'First, S(p.name));
         Ada.Text_IO.Put_Line(" Executable:  " & fix & " URL: " & S(p.URL));
       end Display;
+      name_is_new: Boolean;
     begin
       for e in External loop
-        if e = External'First or else ext(e).name /= ext(External'Pred(e)).name then
+        name_is_new:= True;
+        for ee in External'First .. External'Pred(e) loop
+          name_is_new:= name_is_new and ext(e).name /= ext(ee).name;
+        end loop;
+        if name_is_new then
           Display(ext(e));
         end if;
       end loop;
