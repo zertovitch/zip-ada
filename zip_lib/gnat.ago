@@ -1,4 +1,4 @@
--gnatf -gnatwal -gnatVa -gnatyebfhkanpr -gnat95 -gnatec../debug.pra -aO../obj_dbg
+-gnatf -gnatwal -gnatVa -gnatybfhkanpr -gnat95 -gnatec../debug.pra -I../obj_dbg
 -i -I..\obj_dbg
 
 
@@ -48,7 +48,7 @@ release all_warnings true
 release build_in_place false
 -- End compiler switches
 -- Begin Release mode commands
--aO..\obj_opt
+-I..\obj_opt
 -i -I..\obj_opt
 
 

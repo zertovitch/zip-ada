@@ -215,7 +215,7 @@ package body LZMA_Decoding is
         return out_win.buf(out_win.pos - dist + out_win.size);
       end if;
     end Get_Byte_Q;
-  
+
     procedure Process_Litteral is
     pragma Inline(Process_Litteral);
       prevByte     : Byte:= 0;
@@ -266,7 +266,7 @@ package body LZMA_Decoding is
             symbol := (symbol + symbol) or bit;
             exit when symbol >= 16#100#;
             if match_bit /= Shift_Left(UInt32(bit), 8) then
-              -- No bit match, then give up byte match 
+              -- No bit match, then give up byte match
               loop
                 Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
                 symbol := (symbol + symbol) or bit_b;
@@ -346,20 +346,20 @@ package body LZMA_Decoding is
         begin
           -- src starts below 0 or dest goes beyond size-1
           for count in reverse 1..len loop
-            if dist <= out_win.Pos then
-              b2:= out_win.Buf(out_win.Pos - dist);
-              out_win.Buf(out_win.Pos):= b2;
-              out_win.Pos := out_win.Pos + 1;
-              if out_win.Pos = out_win.Size then
-                out_win.Pos := 0;
+            if dist <= out_win.pos then
+              b2:= out_win.buf(out_win.pos - dist);
+              out_win.buf(out_win.pos):= b2;
+              out_win.pos := out_win.pos + 1;
+              if out_win.pos = out_win.size then
+                out_win.pos := 0;
               end if;
               Write_Byte(b2);
             else
-              b3:= out_win.Buf(out_win.Size - dist + out_win.Pos);
-              out_win.Buf(out_win.Pos):= b3;
-              out_win.Pos := out_win.Pos + 1;
-              if out_win.Pos = out_win.Size then
-                out_win.Pos := 0;
+              b3:= out_win.buf(out_win.size - dist + out_win.pos);
+              out_win.buf(out_win.pos):= b3;
+              out_win.pos := out_win.pos + 1;
+              if out_win.pos = out_win.size then
+                out_win.pos := 0;
               end if;
               Write_Byte(b3);
             end if;
@@ -368,7 +368,7 @@ package body LZMA_Decoding is
       begin
         out_win.is_full := will_fill or else out_win.is_full;
         out_win.total_pos := out_win.total_pos + len;
-        if dist <= out_win.Pos and not will_fill then 
+        if dist <= out_win.pos and not will_fill then
           Easy_case;
         else
           Modulo_case;
@@ -543,8 +543,8 @@ package body LZMA_Decoding is
         isError := True;
       end if;
       -- The LZ distance/length copy happens here.
-      -- Copy_Match(out_win, rep0 + 1, len); 
-      Copy_Match_Q2(rep0 + 1); 
+      -- Copy_Match(out_win, rep0 + 1, len);
+      Copy_Match_Q2(rep0 + 1);
       o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       if isError then
         Raise_Exception(
@@ -558,13 +558,13 @@ package body LZMA_Decoding is
     pos_bits_mask : constant UInt32 := 2 ** o.pb - 1;
     size_defined_and_marker_not_mandatory: constant Boolean:=
       unpack_size_def and not o.markerIsMandatory;
-      
+
     procedure Finalize is
       procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
     begin
       Dispose(out_win.buf);
       o.range_dec_corrupted:= loc_range_dec.corrupted;
-    end;      
+    end;
 
   begin
     Create(out_win, o.dictSize);

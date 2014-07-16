@@ -205,7 +205,7 @@ package body UnZip.Decompress is
           Zip_EOF := True;
         end if;
       end Process_compressed_end_reached;
-      
+
       procedure Read_buffer is
       begin
         if full_trace then
@@ -350,7 +350,7 @@ package body UnZip.Decompress is
             raise UnZip.Write_Error;
         end;
         Zip.CRC_Crypto.Update( UnZ_Glob.crc32val, UnZ_Glob.slide( 0..x-1 ) );
-        Process_Feedback(File_size_type(x));
+        Process_feedback(File_size_type(x));
         if full_trace then
           Ada.Text_IO.Put_Line("finished]");
         end if;
@@ -1552,7 +1552,7 @@ package body UnZip.Decompress is
 
       bit_order_for_dynamic_block : constant array ( 0..18 ) of Natural :=
          ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
-         
+
       procedure Inflate_dynamic_block is
 
         Lbits : constant:= 9;
@@ -1819,7 +1819,7 @@ package body UnZip.Decompress is
       end loop;
       Zip.Headers.Copy_and_check( dd_buffer, dd );
     exception
-      when Zip.Headers.Bad_data_descriptor =>
+      when Zip.Headers.bad_data_descriptor =>
         raise Zip.Zip_file_Error;
     end Process_descriptor;
 
