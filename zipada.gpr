@@ -72,7 +72,7 @@ project ZipAda is
       case Build_Mode is
 
          when "Debug" =>
-            for Default_Switches ("ada") use ("-gnat05", "-gnatf", "-gnato", "-fstack-check", "-g", "-gnatwa", "-gnatVa", "-gnatec../debug.pra");
+            for Default_Switches ("ada") use ("-gnat05", "-gnatf", "-gnato", "-fstack-check", "-g", "-gnatwa", "-gnatVa", "-gnatyhiknp", "-gnatec../debug.pra");
 
          when "Optimize" =>
             for Default_Switches ("ada") use ("-gnat05", "-O2", "-gnatpn", "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", "-ffunction-sections", "-gnatec../za_elim.pra");

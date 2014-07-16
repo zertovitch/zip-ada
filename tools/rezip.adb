@@ -541,7 +541,8 @@ procedure ReZip is
       if unique_name = "" or else
         (   unique_name(unique_name'Last)='\'
          or unique_name(unique_name'Last)='/'
-        ) then
+        )
+      then
         return; -- directories are useless entries!
       end if;
       total_choice.count:= total_choice.count + 1;

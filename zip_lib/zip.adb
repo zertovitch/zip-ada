@@ -559,7 +559,8 @@ package body Zip is
         );
         -- Now the whole i_th central directory entry is behind
         if Normalize(this_name,case_sensitive) =
-           Normalize(name,case_sensitive) then
+           Normalize(name,case_sensitive)
+        then
           -- Name found in central directory !
           file_index := Zip_Streams.ZS_Index_Type (1 + header.local_header_offset + the_end.offset_shifting);
           comp_size  := File_size_type(header.short_info.dd.compressed_size);
