@@ -240,7 +240,8 @@ is
 
     procedure Prepare_Huffman_codes is
     begin
-      if method = Deflate_Fixed then
+      case method is
+       when Deflate_Fixed =>
         -- > Litteral, EOB and Length codes tree:
         --  * Litterals for bytes:
         for i in 0 .. 143 loop
@@ -270,10 +271,7 @@ is
         for i in 0 .. 29 loop
           descr_dis(i):= (length => 5, code => i);
         end loop;
-      else
-        raise Program_Error;
-        -- only code for fixed block has been done so far !!
-      end if;
+      end case;
       -- Invert bit order for output:
       Invert(descr_lit_len);
       Invert(descr_dis);
@@ -421,17 +419,22 @@ is
     else
       X_Percent := 0;
     end if;
-    if method = Deflate_Fixed then
+    case method is
+     when Deflate_Fixed =>
       -- We have only one compressed data block,
       -- then it is already the last one.
       Put_code(code => 1, code_size => 1); -- signals last block
       -- Fixed (predefined) compression structure
       Put_code(code => 1, code_size => 2); -- signals a fixed block
-    end if;
+    end case;
+    ------------------------------------------------
+    --  The whole compression is happenning here: --
+    ------------------------------------------------
     My_LZ77;
-    if method = Deflate_Fixed then
+    case method is
+     when Deflate_Fixed =>
       Put_code(descr_lit_len(256)); -- signals end of block (EOB)
-    end if;
+    end case;
   end Encode;
 
 begin
