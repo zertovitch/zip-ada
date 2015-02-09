@@ -21,7 +21,8 @@ project ZipAda is
      "za_gnat.ads", 
      "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
      "lz",       --  A simple LZ-Huffman coder/decoder
-     "lzma_dec"  --  The LZMA Reference Decoder
+     "lzma_dec", --  The LZMA Reference Decoder
+     "test_lz_scramble"
      -- "demo_csv_gnat.ads",
      -- "unzipada.adb", "uza_gnat.ads"
    );
