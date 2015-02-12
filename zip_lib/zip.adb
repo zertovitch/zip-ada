@@ -570,7 +570,7 @@ package body Zip is
         end if;
       end;
     end loop;
-    raise File_name_not_found;
+    Ada.Exceptions.Raise_Exception(File_name_not_found'Identity, "Entry: [" & name & ']');
   end Find_offset;
 
   -- Internal: find offset of a zipped file using the zip_info tree 8-)

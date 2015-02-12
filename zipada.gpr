@@ -84,7 +84,7 @@ project ZipAda is
    end Compiler;
 
    package Builder is
-      for Default_Switches ("ada") use ("-j2", "-C");
+      for Default_Switches ("ada") use ("-j4", "-C");
    end Builder;
 
    package Ide is

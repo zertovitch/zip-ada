@@ -14,8 +14,9 @@ begin
   for i in res'Range loop
     res(i):= Random(cg);
   end loop;
+  Reset(fg);
+  delay Duration(0.001 * (1.0+Random(fg)));
   for redo in 1..3 loop
-    Reset(fg);
     for i in res'Range loop
       if Random(fg) > 0.8 then
         d:= Integer((Random(fg)-0.5)*Float(length));

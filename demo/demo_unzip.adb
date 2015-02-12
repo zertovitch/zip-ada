@@ -7,14 +7,14 @@ procedure Demo_UnZip is
   s: Stream_Access;
   c: Character;
 begin
-  Demo_Zip; -- Make sure we have the Zip file...
+  --  Make sure we have the Zip file for the demo...
+  Demo_Zip;
   --
-  Extract("mini_zip.zip", "demo_unzip.adb", "demo_unzip_$unzipped$.adb");
+  Extract("mini_zip.zip", "demo/demo_unzip.adb", "demo_unzip_$unzipped$.adb");
   --
-  -- Testing UnZip.Streams:
-  -- We just output the contents of file to standard output
+  --  Testing UnZip.Streams: we just output the contents of an entry to standard output
   --
-  Open(f, "mini_zip.zip", "demo_unzip.adb");
+  Open(f, "mini_zip.zip", "demo/demo_unzip.adb");
   s:= Stream(f);
   while not End_of_file(f) loop
     Character'Read(s,c);

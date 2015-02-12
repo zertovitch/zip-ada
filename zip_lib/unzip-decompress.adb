@@ -1,4 +1,5 @@
 with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2, LZMA_Decoding;
+use Zip.CRC_Crypto.Crypto;
 
 with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
@@ -145,21 +146,20 @@ package body UnZip.Decompress is
       end if;
     end Process_feedback;
 
-    package Local_crypto is new Zip.CRC_Crypto.Crypto;
+    local_crypto_pack: Zip.CRC_Crypto.Crypto.Crypto_pack;
 
     procedure Init_Decryption( password: String; crc_check: Unsigned_32) is
       c: Zip.Byte;
       t: Unsigned_32;
-      use Local_crypto;
     begin
       -- Step 1 - Initializing the encryption keys
-      Init_keys(password);
+      Init_keys(local_crypto_pack, password);
       -- Step 2 - Decrypting the encryption header. 11 bytes are random,
       --          just to shuffle the keys, 1 byte is from the CRC value.
-      Set_mode(encrypted);
+      Set_mode(local_crypto_pack, encrypted);
       for i in 1..12 loop
         UnZ_IO.Read_byte_no_decrypt( c );
-        Local_crypto.Decode(c);
+        Decode(local_crypto_pack, c);
       end loop;
       t:= Zip_Streams.Calendar.Convert(hint.file_timedate);
       -- Last byte used to check password; 1/256 probability of success with any password!
@@ -251,7 +251,7 @@ package body UnZip.Decompress is
         bt : Zip.Byte;
       begin
         Read_byte_no_decrypt( bt );
-        Local_crypto.Decode(bt);
+        Decode(local_crypto_pack, bt);
         return bt;
       end Read_byte_decrypted;
 
@@ -1330,10 +1330,9 @@ package body UnZip.Decompress is
       procedure Copy_stored is
         size: constant UnZip.File_size_type:= UnZ_Glob.compsize;
         read_in, absorbed : UnZip.File_size_type;
-        use Local_crypto;
       begin
         absorbed:= 0;
-        if Get_mode = encrypted then
+        if Get_mode(local_crypto_pack) = encrypted then
           absorbed:= 12;
         end if;
         while absorbed < size loop
@@ -1801,10 +1800,9 @@ package body UnZip.Decompress is
       start: Integer;
       b: Unsigned_8;
       dd_buffer: Zip.Byte_Buffer(1..30);
-      use Local_crypto;
     begin
       UnZ_IO.Bit_buffer.Dump_to_byte_boundary;
-      Set_mode(clear); -- We are after compressed data, switch off decryption.
+      Set_mode(local_crypto_pack, clear); -- We are after compressed data, switch off decryption.
       b:= UnZ_IO.Read_byte_decrypted;
       if b = 75 then -- 'K' ('P' is before, this is a Java/JAR bug!)
         dd_buffer(1):= 80;
@@ -1824,7 +1822,7 @@ package body UnZip.Decompress is
     end Process_descriptor;
 
     work_index: Zip_Streams.ZS_Index_Type;
-    use Zip, UnZ_Meth, Local_crypto;
+    use Zip, UnZ_Meth;
 
   begin -- Decompress_Data
     output_memory_access:= null;
@@ -1853,7 +1851,7 @@ package body UnZip.Decompress is
     UnZ_Glob.uncompsize:= hint.dd.uncompressed_size;
     UnZ_IO.Init_Buffers;
     if is_encrypted then
-      Set_mode( encrypted );
+      Set_mode(local_crypto_pack, encrypted);
       work_index := Zip_Streams.Index(zip_file);
       password_passes: for pass in 1..tolerance_wrong_password loop
         begin
@@ -1877,7 +1875,7 @@ package body UnZip.Decompress is
         UnZ_IO.Init_Buffers;
       end loop password_passes;
     else
-      Set_mode( clear );
+      Set_mode(local_crypto_pack, clear);
     end if;
 
     -- UnZip correct type
