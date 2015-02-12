@@ -23,8 +23,9 @@ package Zip.CRC_Crypto is
     --
     procedure Init_keys(obj: in out Crypto_pack; password: String);
     --
-    procedure Encode(obj: in out Crypto_pack; b: in out Unsigned_8);
+    procedure Encode(obj: in out Crypto_pack; buf: in out Zip.Byte_Buffer);
       pragma Inline(Encode);
+    --
     procedure Decode(obj: in out Crypto_pack; b: in out Unsigned_8);
       pragma Inline(Decode);
   private

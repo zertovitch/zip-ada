@@ -74,7 +74,9 @@ package body Zip.CRC_Crypto is
       );
     end Update_keys;
 
-    function Crypto_code(obj: Crypto_pack) return Zip.Byte is -- Pseudo-random byte to be XOR'ed
+    --  Crypto_code: Pseudo-random byte to be XOR'ed with.
+    function Crypto_code(obj: Crypto_pack) return Zip.Byte is
+    pragma Inline(Crypto_code);
       temp: Unsigned_16;
     begin
       temp:= Unsigned_16(obj.keys(2) and 16#ffff#) or 2;
@@ -89,12 +91,15 @@ package body Zip.CRC_Crypto is
       end loop;
     end Init_keys;
 
-    procedure Encode(obj: in out Crypto_pack; b: in out Unsigned_8) is
-      bu: constant Zip.Byte:= b;
+    procedure Encode(obj: in out Crypto_pack; buf: in out Zip.Byte_Buffer) is
+      bc: Zip.Byte;
     begin
       if obj.current_mode = encrypted then
-        b:= b xor Crypto_code(obj);
-        Update_keys(obj, bu);   -- Keys are updated with the unencrypted byte
+        for i in buf'Range loop
+          bc:= buf(i);
+          buf(i):= bc xor Crypto_code(obj);
+          Update_keys(obj, bc);  -- Keys are updated with the unencrypted byte
+        end loop;
       end if;
     end Encode;
 
@@ -102,7 +107,7 @@ package body Zip.CRC_Crypto is
     begin
       if obj.current_mode = encrypted then
         b:= b xor Crypto_code(obj);
-        Update_keys(obj, b);    -- Keys are updated with the unencrypted byte
+        Update_keys(obj, b);     -- Keys are updated with the unencrypted byte
       end if;
     end Decode;
 
