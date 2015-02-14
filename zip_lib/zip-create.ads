@@ -4,6 +4,7 @@
 -- Change log:
 -- ==========
 --
+-- 14-Feb-2015: GdM: Added "Is_Created" function
 -- 13-Feb-2015: GdM: Added "Password" parameter
 -- 30-Oct-2012: GdM: Removed all profiles using Zip_Streams' objects
 --                      with accesses (cf 25-Oct's modifications)
@@ -35,6 +36,8 @@ package Zip.Create is
                     Z_Stream    : in Zipstream_Class_Access;
                     Name        : String;
                     Compress    : Zip.Compress.Compression_Method:= Zip.Compress.Shrink);
+
+   function Is_Created(Info: Zip_Create_info) return Boolean;
 
    -- Set a new compression format for the next data to be added to the archive.
    -- Can be useful if data are known to be already compressed - or not.

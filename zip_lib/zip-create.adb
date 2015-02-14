@@ -25,6 +25,11 @@ package body Zip.Create is
       Info.Creation_time:= Convert(Ada.Calendar.Clock);
    end Create;
 
+   function Is_Created(Info: Zip_Create_info) return Boolean is
+   begin
+      return Info.Stream /= null;
+   end Is_Created;
+
    procedure Set(Info       : out Zip_Create_info;
                  New_Method : Zip.Compress.Compression_Method)
    is

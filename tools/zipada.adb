@@ -2,11 +2,12 @@
 --  File:            ZipAda.adb
 --  Description:     A minimal standalone command-line zip archiving utility
 --                     using the Zip-Ada library.
---  Date/version:    17-Nov-2011; 19-Oct-2009; ... ; Dec-2007
+--  Date/version:    14-Feb-2014; 17-Nov-2011; 19-Oct-2009; ... ; Dec-2007
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 -- Important changes:
 --
+-- ZA v. 49: password can be set
 -- ZA v. 28: uses Zip.Create
 -- ZA v. 26: modified for new Zip_Stream
 
@@ -16,10 +17,11 @@ with Ada.Directories;                   use Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
+with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 
 with Zip_Streams;                       use Zip_Streams;
-with Zip.Compress, Zip.Create;
+with Zip.Compress, Zip.Create;          use Zip.Create;
 
 with My_feedback;
 
@@ -49,7 +51,8 @@ procedure ZipAda is
 
   --  Final zipfile stream
   MyStream: aliased File_Zipstream;
-  Info: Zip.Create.Zip_Create_info;
+  Info: Zip_Create_info;
+  password: Unbounded_String;
 
   procedure Add_1_Stream(Stream : in out Root_Zipstream_Type'Class) is
     Compressed_Size: Zip.File_size_type;
@@ -63,8 +66,8 @@ procedure ZipAda is
       Put( cut & (1 + maxlen - cut'Length) * ' ');
     end;
     --
-    Zip.Create.Add_Stream(
-      Info, Stream, My_feedback'Access, "", Compressed_Size, Final_Method
+    Add_Stream(
+      Info, Stream, My_feedback'Access, To_String(password), Compressed_Size, Final_Method
     );
     --
     if Size(Stream) = 0 then
@@ -167,73 +170,84 @@ procedure ZipAda is
   type Scan_mode is (files_only, files_and_dirs, files_and_dirs_recursive);
   scan: Scan_mode:= files_only;
 
-begin
-  Blurb;
-  for I in 1..Argument_Count loop
-    declare
-      arg    : constant String:= Argument(I);
-      arg_zip: constant String:= Add_zip_ext(arg);
-      answer : Character;
-    begin
-      if arg(arg'First) = '-' or arg(arg'First) = '/' then
-        -- Options
-        declare
-          opt: constant String:= arg(arg'First+1..arg'Last) & "    ";
-        begin
-          if opt(opt'First..opt'First+1) = "er" then
-            case opt(opt'First+2) is
-              when '1'    => method:= reduce_1;
-              when '2'    => method:= reduce_2;
-              when '3'    => method:= reduce_3;
-              when others => method:= reduce_4;
-            end case;
-          elsif opt(opt'First..opt'First+1) = "es" then
-            method:= shrink;
-          elsif opt(opt'First..opt'First+3) = "edf " then
-            method:= deflate_fixed;
-          elsif opt(opt'First..opt'First+3) = "dir " then
-            scan:= Scan_mode'Max(scan, files_and_dirs);
-          elsif opt(opt'First..opt'First+1) = "r " then
-            scan:= files_and_dirs_recursive;
-          end if;
-        end;
-      elsif not zip_name_set then
-        zip_name_set:= True;
-        if Zip.Exists(arg_zip) then
-          Put("Archive " & arg_zip & " already exists! Overwrite (y/n) ?");
-          Get_Immediate(answer);
-          answer:= To_Upper(answer);
-          Put_Line(" -> " & answer);
-          if answer/='Y' then
-            Put_Line("Stopped.");
-            return;
-          end if;
-        end if;
-        Put_Line("Creating archive " & arg_zip);
-        T0:= Clock;
-        Zip.Create.Create(Info, MyStream'Unchecked_Access, arg_zip, method);
-      else -- First real argument has already been used for archive's name
-        if To_Upper(arg) = To_Upper(Zip.Create.Name(Info)) then
-          Put_Line("  ** Warning: skipping archive's name as entry: " & arg);
-          -- avoid zipping the archive itself!
-          -- NB: case insensitive
-        elsif Zip.Exists(arg) then
-          case scan is
-            when files_only =>
-              Zip_a_file(arg);
-            when files_and_dirs =>
-              Walk (arg, "*", 0, False);
-            when files_and_dirs_recursive =>
-              Walk (arg, "*", 0, True);
+  next_arg_is_pwd: Boolean:= False;
+
+  procedure Process_argument(i: Positive) is
+    arg    : constant String:= Argument(i);
+    arg_zip: constant String:= Add_zip_ext(arg);
+    answer : Character;
+  begin
+    if next_arg_is_pwd then
+      password:= To_Unbounded_String(arg);
+      next_arg_is_pwd:= False;
+      return;
+    end if;
+    if arg(arg'First) = '-' or arg(arg'First) = '/' then
+      -- Options
+      declare
+        opt: constant String:= arg(arg'First+1..arg'Last) & "    ";
+      begin
+        if opt(opt'First..opt'First+1) = "er" then
+          case opt(opt'First+2) is
+            when '1'    => method:= reduce_1;
+            when '2'    => method:= reduce_2;
+            when '3'    => method:= reduce_3;
+            when others => method:= reduce_4;
           end case;
-        else
-          Put_Line("  ** Warning: name not matched: " & arg);
+        elsif opt(opt'First..opt'First+1) = "es" then
+          method:= shrink;
+        elsif opt(opt'First..opt'First+3) = "edf " then
+          method:= deflate_fixed;
+        elsif opt(opt'First..opt'First+3) = "dir " then
+          scan:= Scan_mode'Max(scan, files_and_dirs);
+        elsif opt(opt'First..opt'First+1) = "r " then
+          scan:= files_and_dirs_recursive;
+        elsif opt(opt'First..opt'First+1) = "s " then
+          next_arg_is_pwd:= True;
+        end if;
+      end;
+    elsif not zip_name_set then
+      zip_name_set:= True;
+      if Zip.Exists(arg_zip) then
+        Put("Archive " & arg_zip & " already exists! Overwrite (y/n) ?");
+        Get_Immediate(answer);
+        answer:= To_Upper(answer);
+        Put_Line(" -> " & answer);
+        if answer/='Y' then
+          Put_Line("Stopped.");
+          return;
         end if;
       end if;
-    end;
+      Put_Line("Creating archive " & arg_zip);
+      T0:= Clock;
+      Create(Info, MyStream'Unchecked_Access, arg_zip, method);
+    else -- First real argument has already been used for archive's name
+      if To_Upper(arg) = To_Upper(Name(Info)) then
+        Put_Line("  ** Warning: skipping archive's name as entry: " & arg);
+        -- avoid zipping the archive itself!
+        -- NB: case insensitive
+      elsif Zip.Exists(arg) then
+        case scan is
+          when files_only =>
+            Zip_a_file(arg);
+          when files_and_dirs =>
+            Walk (arg, "*", 0, False);
+          when files_and_dirs_recursive =>
+            Walk (arg, "*", 0, True);
+        end case;
+      else
+        Put_Line("  ** Warning: name not matched: " & arg);
+      end if;
+    end if;
+  end Process_argument;
+
+begin
+  Blurb;
+  for i in 1..Argument_Count loop
+    Process_Argument(i);
   end loop;
-  if Argument_Count > 1 then
-    Zip.Create.Finish (Info);
+  if Is_Created (Info) then
+    Finish (Info);
     T1:= Clock;
     seconds:= T1-T0;
     Put("Time elapsed : ");
@@ -243,10 +257,11 @@ begin
     Put_Line("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
-    Put_Line("          -es    : ""shrink"" (LZW algorithm)");
+    Put_Line("          -es    : ""shrink"" (LZW algorithm, default)");
     Put_Line("          -edf   : ""deflate"", with one fixed block");
     Put_Line("          -dir   : name(s) may be also directories,");
     Put_Line("                      whose contents will be archived");
     Put_Line("          -r     : same as ""-dir"", but recursive");
+    Put_Line("          -s X   : set password X");
   end if;
 end ZipAda;
