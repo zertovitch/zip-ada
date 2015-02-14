@@ -97,12 +97,13 @@ package Zip.Headers is
   -- PKZIP local file header, in front of every file in archive - PK34 --
   -----------------------------------------------------------------------
 
+  Encryption_Flag_Bit        : constant := 2** 0;
   Language_Encoding_Flag_Bit : constant := 2**11;
 
   type Local_File_Header is record
     -- PK34                                --  1.. 4
     needed_extract_version : Unsigned_16;  --  5.. 6
-    bit_flag,
+    bit_flag               : Unsigned_16;  --  Appnote: 4.4.4 general purpose bit flag
     zip_type               : Unsigned_16;
     file_timedate          : Time;
     dd                     : Data_descriptor;

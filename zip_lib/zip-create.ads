@@ -4,6 +4,7 @@
 -- Change log:
 -- ==========
 --
+-- 13-Feb-2015: GdM: Added "Password" parameter
 -- 30-Oct-2012: GdM: Removed all profiles using Zip_Streams' objects
 --                      with accesses (cf 25-Oct's modifications)
 -- 26-Oct-2012: GdM: Added Add_Compressed_Stream
@@ -45,12 +46,14 @@ package Zip.Create is
 
    -- Add a new entry to a Zip archive, from a general Zipstream
 
-   procedure Add_Stream (Info   : in out Zip_Create_info;
-                         Stream : in out Root_Zipstream_Type'Class);
+   procedure Add_Stream (Info     : in out Zip_Create_info;
+                         Stream   : in out Root_Zipstream_Type'Class;
+                         Password : in     String:= "");
 
    procedure Add_Stream (Info           : in out Zip_Create_info;
                          Stream         : in out Root_Zipstream_Type'Class;
                          Feedback       : in     Feedback_proc;
+                         Password       : in     String:= "";
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural);
 
@@ -66,7 +69,8 @@ package Zip.Create is
                        Name_encoding     : Zip_name_encoding:= IBM_437;
                        Modification_time : Time:= default_time;
                        Is_read_only      : Boolean:= False;
-                       Feedback          : Feedback_proc:= null
+                       Feedback          : Feedback_proc:= null;
+                       Password          : String:= ""
    );
 
    -- Add a new entry to a Zip archive, from a buffer stored in a string
@@ -74,15 +78,17 @@ package Zip.Create is
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : String;
                          Name_in_archive   : String;
-                         Name_UTF_8_encoded: Boolean:= False
+                         Name_UTF_8_encoded: Boolean:= False;
                          -- True if Name is actually UTF-8 encoded (Unicode)
+                         Password          : String:= ""
    );
 
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : Unbounded_String;
                          Name_in_archive   : String;
-                         Name_UTF_8_encoded: Boolean:= False
+                         Name_UTF_8_encoded: Boolean:= False;
                          -- True if Name is actually UTF-8 encoded (Unicode)
+                         Password          : String:= ""
    );
 
    -- Add a new entry to a Zip archive, copied from another Zip archive.

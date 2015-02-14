@@ -81,7 +81,7 @@ package body UnZip.Streams is
       end if;
     end if;
 
-    encrypted:= (local_header.bit_flag and 1) /= 0;
+    encrypted:= (local_header.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0;
 
     begin
       Zip_Streams.Set_Index ( zip_stream, work_index ); -- eventually skips the file name

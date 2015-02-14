@@ -93,18 +93,20 @@ package body Zip.Create is
       end;
    end Add_catalogue_entry;
 
-   procedure Add_Stream (Info   : in out Zip_Create_info;
-                         Stream : in out Root_Zipstream_Type'Class)
+   procedure Add_Stream (Info     : in out Zip_Create_info;
+                         Stream   : in out Root_Zipstream_Type'Class;
+                         Password : in     String:= "")
    is
      Compressed_Size: Zip.File_size_type; -- dummy
      Final_Method   : Natural;            -- dummy
    begin
-     Add_Stream(Info, Stream, null, Compressed_Size, Final_Method);
+     Add_Stream(Info, Stream, null, Password, Compressed_Size, Final_Method);
    end Add_Stream;
 
    procedure Add_Stream (Info           : in out Zip_Create_info;
                          Stream         : in out Root_Zipstream_Type'Class;
                          Feedback       : in     Feedback_proc;
+                         Password       : in     String:= "";
                          Compressed_Size:    out Zip.File_size_type;
                          Final_Method   :    out Natural)
    is
@@ -113,8 +115,7 @@ package body Zip.Create is
       Last: Positive;
    begin
       -- Appnote.txt, V. J. :
-      -- " All slashes should be forward slashes '/' as
-      -- opposed to backwards slashes '\' "
+      --   " All slashes should be forward slashes '/' as opposed to backwards slashes '\' "
       for i in entry_name'Range loop
         if entry_name(i) = '\' then
           entry_name(i):= '/';
@@ -125,25 +126,28 @@ package body Zip.Create is
       Last:= Info.Last_entry;
       declare
         cfh: Central_File_Header renames Info.Contains(Last).head;
+        shi: Local_File_Header renames cfh.short_info;
       begin
         --  Administration - continued
         if Zip_Streams.Is_Unicode_Name (Stream) then
-          cfh.short_info.bit_flag
-            := cfh.short_info.bit_flag or Zip.Headers.Language_Encoding_Flag_Bit;
+          shi.bit_flag := shi.bit_flag or Zip.Headers.Language_Encoding_Flag_Bit;
+        end if;
+        if Password /= "" then
+          shi.bit_flag := shi.bit_flag or Zip.Headers.Encryption_Flag_Bit;
         end if;
         if Is_Read_Only(Stream) then
           cfh.external_attributes:= cfh.external_attributes or 1;
         end if;
-        cfh.short_info.file_timedate        := Get_Time (Stream);
-        cfh.short_info.dd.uncompressed_size := Unsigned_32 (Size (Stream));
-        cfh.short_info.filename_length      := entry_name'Length;
+        shi.file_timedate        := Get_Time (Stream);
+        shi.dd.uncompressed_size := Unsigned_32 (Size (Stream));
+        shi.filename_length      := entry_name'Length;
         Info.Contains (Last).name           := new String'(entry_name);
-        cfh.short_info.extra_field_length   := 0;
+        shi.extra_field_length   := 0;
 
         mem1 := Index (Info.Stream.all);
         cfh.local_header_offset := Unsigned_32 (mem1) - 1;
         --  Write the local header with incomplete informations
-        Zip.Headers.Write (Info.Stream.all, cfh.short_info);
+        Zip.Headers.Write (Info.Stream.all, shi);
 
         String'Write(Info.Stream, entry_name);
 
@@ -152,23 +156,24 @@ package body Zip.Create is
           (input            => Stream,
            output           => Info.Stream.all,
            input_size_known => True,
-           input_size       => cfh.short_info.dd.uncompressed_size,
+           input_size       => shi.dd.uncompressed_size,
            method           => Info.Compress,
            feedback         => Feedback,
-           CRC              => cfh.short_info.dd.crc_32,
-           output_size      => cfh.short_info.dd.compressed_size,
-           zip_type         => cfh.short_info.zip_type
+           password         => Password,
+           CRC              => shi.dd.crc_32,
+           output_size      => shi.dd.compressed_size,
+           zip_type         => shi.zip_type
           );
         mem2 := Index (Info.Stream.all);
         --  Go back to the local header to rewrite it
         --  with complete informations
         Set_Index (Info.Stream.all, mem1);
-        Zip.Headers.Write (Info.Stream.all, cfh.short_info);
+        Zip.Headers.Write (Info.Stream.all, shi);
         --  Return to momentaneous end of file
         Set_Index (Info.Stream.all, mem2);
         --
-        Compressed_Size:= cfh.short_info.dd.compressed_size;
-        Final_Method   := Natural(cfh.short_info.zip_type);
+        Compressed_Size:= shi.dd.compressed_size;
+        Final_Method   := Natural(shi.zip_type);
       end;
    end Add_Stream;
 
@@ -182,7 +187,8 @@ package body Zip.Create is
                        Name_encoding     : Zip_name_encoding:= IBM_437;
                        Modification_time : Time:= default_time;
                        Is_read_only      : Boolean:= False;
-                       Feedback          : Feedback_proc:= null
+                       Feedback          : Feedback_proc:= null;
+                       Password          : String:= ""
    )
    is
       temp_zip_stream     : aliased File_Zipstream;
@@ -202,7 +208,7 @@ package body Zip.Create is
      Set_Read_Only_Flag(temp_zip_stream, Is_read_only);
      Set_Time(temp_zip_stream, Modification_time);
      -- Stuff into the .zip archive:
-     Add_Stream (Info, temp_zip_stream, Feedback, Compressed_Size, Final_Method);
+     Add_Stream (Info, temp_zip_stream, Feedback, Password, Compressed_Size, Final_Method);
      Close(temp_zip_stream);
      if Delete_file_after then
         Open(fd, In_File, Name);
@@ -219,19 +225,21 @@ package body Zip.Create is
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : String;
                          Name_in_archive   : String;
-                         Name_UTF_8_encoded: Boolean:= False
-                         -- True if Name is actually UTF-8 encoded
+                         Name_UTF_8_encoded: Boolean:= False;
+                         -- True if Name is actually UTF-8 encoded (Unicode)
+                         Password          : String:= ""
    )
    is
    begin
-     Add_String(Info, To_Unbounded_String(Contents), Name_in_archive, Name_UTF_8_encoded);
+     Add_String(Info, To_Unbounded_String(Contents), Name_in_archive, Name_UTF_8_encoded, Password);
    end Add_String;
 
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : Unbounded_String;
                          Name_in_archive   : String;
-                         Name_UTF_8_encoded: Boolean:= False
-                         -- True if Name is actually UTF-8 encoded
+                         Name_UTF_8_encoded: Boolean:= False;
+                         -- True if Name is actually UTF-8 encoded (Unicode)
+                         Password          : String:= ""
    )
    is
      temp_zip_stream     : aliased Memory_Zipstream;
@@ -240,7 +248,7 @@ package body Zip.Create is
      Set_Name(temp_zip_stream, Name_in_archive);
      Set_Time(temp_zip_stream, Info.Creation_time);
      Set_Unicode_Name_Flag(temp_zip_stream, Name_UTF_8_encoded);
-     Add_Stream (Info, temp_zip_stream);
+     Add_Stream (Info, temp_zip_stream, Password);
    end Add_String;
 
    procedure Add_Compressed_Stream (

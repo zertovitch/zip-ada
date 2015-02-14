@@ -261,7 +261,7 @@ package body Zip is
                     Zip.Headers.Language_Encoding_Flag_Bit) /= 0),
                 read_only   => header.made_by_version / 256 = 0 and -- DOS-like
                                (header.external_attributes and 1) = 1,
-                encrypted_2_x => (header.short_info.bit_flag and 1) /= 0,
+                encrypted_2_x => (header.short_info.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0,
                 node        => p );
         -- Since the files are usually well ordered, the tree as inserted
         -- is very unbalanced; we need to rebalance it from time to time

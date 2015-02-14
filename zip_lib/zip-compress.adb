@@ -12,7 +12,7 @@
 -- This package facilitates the storage or compression of data.
 --
 -- Note that unlike decompression where the decoding is unique,
--- there are an undefinite number of ways of compressing data into
+-- there are an indefinite number of ways of compressing data into
 -- formats which include compression structures, like Deflate.
 -- As a result, you may want to use your own way (e.g. interfacing
 -- with zlib).
@@ -24,9 +24,11 @@ with Zip.CRC_Crypto,
      Zip.Compress.Reduce,
      Zip.Compress.Deflate;
 
+with Ada.Numerics.Discrete_Random;
+
 package body Zip.Compress is
 
-  use Zip_Streams;
+  use Zip_Streams, Zip.CRC_Crypto;
 
   -------------------
   -- Compress_data --
@@ -39,6 +41,7 @@ package body Zip.Compress is
     input_size      : File_size_type;
     method          : Compression_Method;
     feedback        : Feedback_proc;
+    password        : String;
     CRC             : out Interfaces.Unsigned_32;
     output_size     : out File_size_type;
     zip_type        : out Interfaces.Unsigned_16
@@ -52,7 +55,18 @@ package body Zip.Compress is
     compression_ok: Boolean;
     first_feedback: Boolean:= True;
     --
-    procedure Store_data is
+    is_encrypted: constant Boolean:= password /= "";
+    encrypt_pack, mem_encrypt_pack: Crypto_pack;
+    encrypt_header: Byte_Buffer(1..12);
+    package Byte_soup is new Ada.Numerics.Discrete_Random(Byte);
+    use Byte_soup;
+    cg: Byte_soup.Generator;
+    --
+    --  Store data as is, or, if do_write = False, juste compute CRC (this is for encryption).
+    --
+    procedure Store_data(do_write: Boolean) is
+      Buffer      : Byte_Buffer (1 .. buffer_size);
+      Last_Read   : Natural;
     begin
       zip_type:= 0; -- "Store" method
       counted:= 0;
@@ -61,20 +75,13 @@ package body Zip.Compress is
           exit;
         end if;
         -- Copy data
-        declare
-          -- The usage of Stream_Element_Array instead of Byte_Buffer is
-          -- a workaround for the severe xxx'Read xxx'Write performance
-          -- problems in the GNAT and ObjectAda compilers (as in 2009)
-          Buffer      : Ada.Streams.Stream_Element_Array (1 .. buffer_size);
-          Last_Read   : Ada.Streams.Stream_Element_Offset;
-        begin
-          Read (input, Buffer, Last_Read);
-          counted:= counted + File_size_type (Last_Read);
-          Write (output, Buffer (1 .. Last_Read));
-          for I in 1 .. Last_Read loop
-            Zip.CRC_Crypto.Update(CRC, (1 => Byte (Buffer (I))));
-          end loop;
-        end;
+        BlockRead (input, Buffer, Last_Read);
+        counted:= counted + File_size_type (Last_Read);
+        Update(CRC, Buffer (1 .. Last_Read));
+        if do_write then
+          Encode(encrypt_pack, Buffer (1 .. Last_Read));
+          BlockWrite(output, Buffer (1 .. Last_Read));
+        end if;
         -- Feedback
         if feedback /= null and then
           (first_feedback or (counted mod (2**16)=0) or
@@ -103,16 +110,41 @@ package body Zip.Compress is
     end Store_data;
     --
   begin
-    Zip.CRC_Crypto.Init(CRC);
+    Init(CRC);
+    if is_encrypted then
+      Init_keys(encrypt_pack, password);
+      Set_mode(encrypt_pack, encrypted);
+      --  A bit dumb from Zip spec: we need to know the final CRC in order to set up
+      --  the last byte of the encryption header, that allows for detecting if a password
+      --  is OK - this, with 255/256 probability of correct detection of a wrong password!
+      --  Result: 1st scan of the whole input stream with CRC calculation:
+      Store_data(do_write => False);
+      Reset(cg);
+      for i in 1..11 loop
+        encrypt_header(i):= Random(cg);
+      end loop;
+      encrypt_header(12):= Byte(Shift_Right( Final(CRC), 24 ));
+      Set_Index(input, idx_in);
+      Init(CRC);
+      Encode(encrypt_pack, encrypt_header);
+      BlockWrite(output, encrypt_header);
+      --
+      --  We need to remember at this point the encryption keys in case we need
+      --  to rewrite from here (compression failed, store data).
+      --
+      mem_encrypt_pack:= encrypt_pack;
+    else
+      Set_mode(encrypt_pack, clear);
+    end if;
     case method is
       --
       when Store =>
-        Store_data;
+        Store_data(do_write => True);
       --
       when Shrink =>
         Zip.Compress.Shrink(
           input, output, input_size_known, input_size, feedback,
-          CRC, output_size, compression_ok
+          CRC, encrypt_pack, output_size, compression_ok
         );
         zip_type:= 1; -- "Shrink" method
       --
@@ -120,9 +152,7 @@ package body Zip.Compress is
         Zip.Compress.Reduce(
           input, output, input_size_known, input_size, feedback,
           method,
-          CRC,
-          output_size,
-          compression_ok
+          CRC, encrypt_pack, output_size, compression_ok
         );
         zip_type:= 2 + Unsigned_16(
           Compression_Method'Pos(method) -
@@ -132,13 +162,11 @@ package body Zip.Compress is
         Zip.Compress.Deflate(
           input, output, input_size_known, input_size, feedback,
           method,
-          CRC,
-          output_size,
-          compression_ok
+          CRC, encrypt_pack, output_size, compression_ok
         );
         zip_type:= 8;
     end case;
-    CRC:= Zip.CRC_Crypto.Final(CRC);
+    CRC:= Final(CRC);
     --
     -- Handle case where compression has been unefficient:
     -- data to be compressed is too "random"; then compressed data
@@ -147,10 +175,19 @@ package body Zip.Compress is
     if not compression_ok then
       -- Go back to the beginning and just store the data
       Set_Index(input, idx_in);
-      Set_Index(output, idx_out);
-      Zip.CRC_Crypto.Init(CRC);
-      Store_data;
-      CRC:= Zip.CRC_Crypto.Final(CRC);
+      if is_encrypted then
+        Set_Index(output, idx_out + 12);
+        encrypt_pack:= mem_encrypt_pack;
+        -- ^ Restore the encryption keys to their state just after the encryption header
+      else
+        Set_Index(output, idx_out);
+      end if;
+      Init(CRC);
+      Store_data(do_write => True);
+      CRC:= Final(CRC);
+    end if;
+    if is_encrypted then
+      output_size:= output_size + 12;
     end if;
   end Compress_data;
 

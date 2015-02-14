@@ -28,6 +28,7 @@ procedure Zip.Compress.Deflate
   feedback        : Feedback_proc;
   method          : Deflation_Method;
   CRC             : in out Interfaces.Unsigned_32; -- only updated here
+  crypto          : in out Crypto_pack;
   output_size     : out File_size_type;
   compression_ok  : out Boolean -- indicates compressed < uncompressed
 )
@@ -74,6 +75,7 @@ is
       -- uncompressed size.
       raise Compression_unefficient;
     end if;
+    Encode(crypto, OutBuf(1 .. amount));
     Zip.BlockWrite(output, OutBuf(1 .. amount));
     OutBufIdx := 1;
   end Write_Block;

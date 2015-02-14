@@ -6,7 +6,7 @@ procedure Demo_zip is
   archive : Zip_Create_info;
 begin
   Create (archive, zip_file'Unchecked_Access, "mini_zip.zip" );
-  Add_File(archive, "demo/demo_zip.adb");
+  Add_File(archive, "demo/demo_zip.adb", Password => "1234");
   Add_File(archive, "demo/demo_unzip.adb");
   Add_String(archive,
     "==== Hello world! ====" & ASCII.LF &

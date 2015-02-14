@@ -1,5 +1,4 @@
 with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2, LZMA_Decoding;
-use Zip.CRC_Crypto.Crypto;
 
 with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
@@ -146,7 +145,8 @@ package body UnZip.Decompress is
       end if;
     end Process_feedback;
 
-    local_crypto_pack: Zip.CRC_Crypto.Crypto.Crypto_pack;
+    use Zip.CRC_Crypto;
+    local_crypto_pack: Crypto_pack;
 
     procedure Init_Decryption( password: String; crc_check: Unsigned_32) is
       c: Zip.Byte;

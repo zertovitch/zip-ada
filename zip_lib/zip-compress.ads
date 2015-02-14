@@ -14,10 +14,10 @@
 -- Note that unlike decompression where the decoding is unique,
 -- there are an undefinite number of ways of compressing data into
 -- formats which include compression structures, like Deflate.
--- As a result, you may want to use your own way (e.g. interfacing
--- with zlib).
+-- As a result, you may want to use your own way for compressing data,
+-- e.g. interfacing with zlib.
 -- This package is only a portable one, and doesn't claim
--- to be the best or the fastest
+-- to be the best or the fastest.
 
 with Zip_Streams;
 
@@ -27,7 +27,7 @@ package Zip.Compress is
   -- data, not only the final compression format called "method" in
   -- Zip specifications. In future versions, there might be
   -- enumeration items like "Deflate_zlib_like",
-  -- "Deflate_64KB_brute_force", or "PPMd_variant_x".
+  -- "Deflate_64KB_brute_force", "PPMd_variant_x", or "LZMA_variant_x"...
 
   type Compression_Method is
     (Store,
@@ -45,15 +45,17 @@ package Zip.Compress is
   User_abort: exception;
 
   -- Compress data from an input stream to an output stream until
-  -- End_Of_File(input) = True, or number of input bytes = input_size
+  -- End_Of_File(input) = True, or number of input bytes = input_size .
+  -- If password /= "", an encryption header is written.
 
   procedure Compress_data(
     input,
     output          : in out Zip_Streams.Root_Zipstream_Type'Class;
     input_size_known: Boolean;
-    input_size      : File_size_type; -- ignored if unknown
+    input_size      : File_size_type; -- ignored if input_size_known = False
     method          : Compression_Method;
     feedback        : Feedback_proc;
+    password        : String;
     CRC             : out Interfaces.Unsigned_32;
     output_size     : out File_size_type;
     zip_type        : out Interfaces.Unsigned_16

@@ -256,7 +256,7 @@ package body UnZip is
       actual_feedback:= feedback; -- use the given feedback procedure
     end if;
 
-    encrypted:= (local_header.bit_flag and 1) /= 0;
+    encrypted:= (local_header.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0;
 
     -- 13-Dec-2002
     true_packed_size:= File_size_type(local_header.dd.compressed_size);

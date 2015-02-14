@@ -644,6 +644,7 @@ procedure ReZip is
                 input_size       => e.head.short_info.dd.uncompressed_size,
                 method           => Approach_to_Method(a),
                 feedback         => My_Feedback'Access,
+                password         => "",
                 CRC              => e.head.short_info.dd.crc_32,
                 -- we take the occasion to compute the CRC if not
                 -- yet available (e.g. JAR)
