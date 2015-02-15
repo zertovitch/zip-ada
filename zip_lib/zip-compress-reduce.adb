@@ -471,6 +471,7 @@ is
         --
         when stats =>
           markov_d(last_b, curr_b):= markov_d(last_b, curr_b) + 1;
+          -- We also feed the cache which will be read at the 2nd phase:
           LZ_cache.buf(LZ_cache.nxt):= b;
           LZ_cache.nxt:= LZ_cache.nxt + 1;
           LZ_cache.cnt:= Natural'Min(LZ_cache_size, LZ_cache.cnt + 1);
@@ -492,11 +493,16 @@ is
       if phase = compress and then
          using_LZ77 and then
          (lz77_size - lz77_pos) < File_size_type(LZ_cache.cnt)
-        -- We have entered the zone covered by the cache.
+        -- We have entered the zone covered by the cache, so no need
+        -- to continue the LZ77 compression effort: the results are
+        -- already stored.
       then
         raise Derail_LZ77;
       end if;
     end Write_raw_byte;
+
+    -- The following procedures, Write_normal_byte and Write_DL_code,
+    -- are called by the LZ77 compressor
 
     -- Write a normal, "clear-text", character
     procedure Write_normal_byte( b: Byte ) is
@@ -511,6 +517,7 @@ is
       R:= (R+1) mod String_buffer_size;
     end Write_normal_byte;
 
+    -- Write a Distance-Length code
     procedure Write_DL_code( distance, length: Integer ) is
       Copy_start: constant Natural:= (R - distance) mod String_buffer_size;
       len: constant Integer:= length - 3;

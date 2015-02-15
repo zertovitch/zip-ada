@@ -496,6 +496,24 @@ Solaris                     SPARC (32 or 64 bit)
 Solaris                     Intel x64 (64 bit)
 ----------------------------------------------------------------------------
 
+Note on encryption
+==================
+
+1) Passwords should be "strong" to avoid attacks by software that are trying
+   many password combinations.
+2) A software using Zip-Ada could concatenate a complicated or pseudo-random
+   string to a human-entered password, in order to have stronger passwords.
+3) Ideally the same password should not be used twice: a Zip archive can
+   have a different password for each entry.
+4) Data that don't need to by encrypted should not be encrypted.
+5) The portable Zip 2.0 encryption scheme is vulnerable to attacks of type
+   "known plaintext". See for instance the PKCrack software which relies on
+   a pair of compressed data: one encrypted, one not.
+   Using randomized headers on data to be zipped should prevent the obtention
+   of the "plaintext" compressed data (see extras/lz_scramble.ad*).
+   Even if password or keys are cracked, point 3) may prevent the decryption
+   of other data.
+
 Enjoy!
 
 Gautier de Montmollin
