@@ -24,6 +24,7 @@ with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress, Zip.Create;          use Zip.Create;
 
 with My_feedback;
+with Zip;
 
 procedure ZipAda is
 
@@ -52,7 +53,7 @@ procedure ZipAda is
   --  Final zipfile stream
   MyStream: aliased File_Zipstream;
   Info: Zip_Create_info;
-  password: Unbounded_String;
+  password, password_confirm: Unbounded_String;
 
   procedure Add_1_Stream(Stream : in out Root_Zipstream_Type'Class) is
     Compressed_Size: Zip.File_size_type;
@@ -170,18 +171,24 @@ procedure ZipAda is
   type Scan_mode is (files_only, files_and_dirs, files_and_dirs_recursive);
   scan: Scan_mode:= files_only;
 
-  next_arg_is_pwd: Boolean:= False;
+  procedure Enter_password(title: String; pwd: out Unbounded_String) is
+    c: Character;
+  begin
+    Put_Line(title);
+    loop
+      Get_Immediate(c);
+      exit when c < ' ';
+      pwd:= pwd & c;
+    end loop;
+  end Enter_password;
+
+  Wrong_password, Overwrite_disallowed: exception;
 
   procedure Process_argument(i: Positive) is
     arg    : constant String:= Argument(i);
     arg_zip: constant String:= Add_zip_ext(arg);
     answer : Character;
   begin
-    if next_arg_is_pwd then
-      password:= To_Unbounded_String(arg);
-      next_arg_is_pwd:= False;
-      return;
-    end if;
     if arg(arg'First) = '-' or arg(arg'First) = '/' then
       -- Options
       declare
@@ -202,8 +209,17 @@ procedure ZipAda is
           scan:= Scan_mode'Max(scan, files_and_dirs);
         elsif opt(opt'First..opt'First+1) = "r " then
           scan:= files_and_dirs_recursive;
-        elsif opt(opt'First..opt'First+1) = "s " then
-          next_arg_is_pwd:= True;
+        elsif opt(opt'First) = 's' then
+          if arg'Length > 2 then  --  Password is appended to the option
+            password:= To_Unbounded_String(arg(arg'First+2..arg'Last));
+          else
+            Enter_password("Enter password", password);
+            Enter_password("Confirm password", password_confirm);
+            if password /= password_confirm then
+              Put_Line("Password mismatch.");
+              raise Wrong_password;
+            end if;
+          end if;
         end if;
       end;
     elsif not zip_name_set then
@@ -213,9 +229,9 @@ procedure ZipAda is
         Get_Immediate(answer);
         answer:= To_Upper(answer);
         Put_Line(" -> " & answer);
-        if answer/='Y' then
+        if answer /= 'Y' then
           Put_Line("Stopped.");
-          return;
+          raise Overwrite_disallowed;
         end if;
       end if;
       Put_Line("Creating archive " & arg_zip);
@@ -262,6 +278,6 @@ begin
     Put_Line("          -dir   : name(s) may be also directories,");
     Put_Line("                      whose contents will be archived");
     Put_Line("          -r     : same as ""-dir"", but recursive");
-    Put_Line("          -s X   : set password X");
+    Put_Line("          -s[X]  : set password X");
   end if;
 end ZipAda;
