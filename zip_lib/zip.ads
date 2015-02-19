@@ -343,6 +343,8 @@ package Zip is
     last_char: in out Character -- track line-ending characters between writes
   );
 
+  function Hexadecimal(x: Interfaces.Unsigned_32) return String;
+
   --------------------------------------------------------------
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------

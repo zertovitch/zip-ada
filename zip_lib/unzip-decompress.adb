@@ -1919,7 +1919,9 @@ package body UnZip.Decompress is
 
     if hint.dd.crc_32 /= UnZ_Glob.crc32val then
       UnZ_IO.Delete_output;
-      raise CRC_Error;
+      Raise_Exception(CRC_Error'Identity,
+        "Stored CRC: " & Hexadecimal(hint.dd.crc_32) &
+        "; computed CRC: " & Hexadecimal(UnZ_Glob.crc32val));
     end if;
 
     case mode is

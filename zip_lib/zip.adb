@@ -955,4 +955,14 @@ package body Zip is
     end loop;
   end Write_as_text;
 
+  function Hexadecimal(x: Interfaces.Unsigned_32) return String
+  is
+    package MIO is new Ada.Text_IO.Modular_IO(Interfaces.Unsigned_32);
+    str: String(1..12);
+    use Ada.Strings.Fixed;
+  begin
+    MIO.Put(str, x, 16);
+    return str(Index(str,"#")+1..11);
+  end Hexadecimal;
+
 end Zip;
