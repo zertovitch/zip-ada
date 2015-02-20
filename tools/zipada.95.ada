@@ -55,7 +55,7 @@ procedure ZipAda95 is
 
   --  Final zipfile stream
   MyStream : aliased File_Zipstream;
-  Info: Zip.Create.Zip_Create_info;
+  Info: Zip_Create_info;
   password, password_confirm: Unbounded_String;
 
   procedure Add_1_Stream(Stream : in out Root_Zipstream_Type'Class) is
@@ -70,7 +70,7 @@ procedure ZipAda95 is
       Put( cut & (1 + maxlen - cut'Length) * ' ');
     end;
     --
-    Zip.Create.Add_Stream(
+    Add_Stream(
       Info, Stream, My_feedback'Access, To_String(password), Compressed_Size, Final_Method
     );
     --
@@ -155,7 +155,7 @@ procedure ZipAda95 is
           end case;
         elsif opt(opt'First..opt'First+1) = "es" then
           method:= shrink;
-        elsif opt(opt'First..opt'First+2) = "edf" then
+        elsif opt(opt'First..opt'First+3) = "edf " then
           method:= deflate_fixed;
         elsif opt(opt'First) = 's' then
           if arg'Length > 2 then  --  Password is appended to the option
@@ -184,9 +184,9 @@ procedure ZipAda95 is
       end if;
       Put_Line("Creating archive " & arg_zip);
       T0:= Clock;
-      Zip.Create.Create(Info, MyStream'Unchecked_Access, arg_zip, method);
+      Create(Info, MyStream'Unchecked_Access, arg_zip, method);
     else -- First real argument has already been used for archive's name
-      if To_Upper(arg) = To_Upper(Zip.Create.Name(Info)) then
+      if To_Upper(arg) = To_Upper(Name(Info)) then
         Put_Line("  ** Warning: skipping archive's name as entry: " & arg);
         -- avoid zipping the archive itself!
         -- NB: case insensitive
@@ -204,17 +204,17 @@ begin
     Process_Argument(i);
   end loop;
   if Is_Created (Info) then
-    Zip.Create.Finish (Info);
+    Finish (Info);
     T1:= Clock;
     seconds:= T1-T0;
     Put("Time elapsed : ");
     Put( Float( seconds ), 4, 2, 0 );
     Put_Line( " sec");
   else
-    Put_Line("Usage: zipada [options] archive[.zip] file(s)");
+    Put_Line("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
-    Put_Line("          -es    : ""shrink"" (LZW algorithm)");
+    Put_Line("          -es    : ""shrink"" (LZW algorithm, default)");
     Put_Line("          -edf   : ""deflate"", with one fixed block");
     Put_Line("          -s[X]  : set password X");
   end if;
