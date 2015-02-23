@@ -68,7 +68,13 @@ procedure UnZipAda95 is
     end if;
   end Add_extract_directory;
 
-  function Compose_File_Name(File_Name : String) return String is
+  function Compose_File_Name(
+    File_Name     : String;
+    Name_encoding : Zip.Zip_name_encoding
+  )
+  return String
+  is
+  pragma Unreferenced (Name_encoding);
     fn1: String:= File_Name;
   begin
     if lower_case then

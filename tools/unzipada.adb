@@ -15,7 +15,8 @@ with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Interfaces;                        use Interfaces;
 
 with Ada.Directories; -- Ada 2005
-with Ada_Directories_Extensions; -- Ada 201X items absent in Ada 2005...
+with Ada_Directories_Extensions;
+-- ^Non-standard; Ada 20XX items absent in Ada 2012...
 
 with Zip, UnZip;
 
@@ -27,14 +28,19 @@ with Summary;
 
 procedure UnZipAda is
 
-  ------------------------------------------------------
-  -- Potential Ada 201X items, needs the non-standard --
-  -- Ada_Directories_Extensions                       --
-  ------------------------------------------------------
-  Set_Time_Stamp: constant UnZip.Set_Time_Stamp_proc:=
-    Ada_Directories_Extensions.Set_Modification_Time'Access;
+  procedure Set_Modification_Time_B (Name : in String;
+                                     To   : in Ada.Calendar.Time) is
+  begin
+    Ada_Directories_Extensions.Set_Modification_Time(Name, To);
     -- alt.: null;
-  -------------------------------------------
+  exception
+    when others =>
+      null; -- !! utf-8 or ascii names with characters > pos 127 fail
+  end Set_Modification_Time_B;
+
+  Set_Time_Stamp: constant UnZip.Set_Time_Stamp_proc:=
+    Set_Modification_Time_B'Unrestricted_Access;
+  -- alt.: null;
 
   use UnZip;
 
