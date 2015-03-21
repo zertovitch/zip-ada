@@ -120,7 +120,7 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '49', xx-yyy-2015:
+* Changes in '49', 21-Mar-2015:
   - encryption implemented (portable Zip 2.0 encryption scheme)
 
 * Changes in '48', 20-Jul-2014:
