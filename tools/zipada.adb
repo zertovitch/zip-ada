@@ -24,6 +24,7 @@ with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress, Zip.Create;          use Zip.Create;
 
 with My_feedback;
+with Zip;
 
 procedure ZipAda is
 

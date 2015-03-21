@@ -3,9 +3,6 @@ echo.
 echo Testing the ReZip tool with Comp_Zip
 echo.
 
-copy /b ..\zipada.exe .
-copy /b ..\rezip.exe .
-
 if exist test_rz.zip del test_rz.zip
 
 zipada test_rz *.ad* *.txt *.cmd

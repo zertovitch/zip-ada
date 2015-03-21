@@ -24,8 +24,6 @@ echo.
 echo The PK compressors are renamed from "pkzip.exe" in various versions
 echo available on the Web.
 
-copy /b ..\unzipada.exe .
-
 echo *****************************************************************
 echo.
 echo 1) I will use the text files (sources etc.) in the Zip-Ada
