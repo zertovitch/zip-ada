@@ -24,7 +24,6 @@ with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress, Zip.Create;          use Zip.Create;
 
 with My_feedback;
-with Zip;
 
 procedure ZipAda is
 
@@ -104,7 +103,7 @@ procedure ZipAda is
 
   use Zip.Compress;
 
-  method: Compression_Method:= shrink;
+  method: Compression_Method:= Shrink;
   zip_name_set: Boolean:= False;
 
   procedure Zip_a_file(arg: String) is
@@ -163,7 +162,7 @@ procedure ZipAda is
     end if;
   exception
     when Ada.Directories.Name_Error => -- "unknown directory" -> probably a file.
-      if level = 0 then
+      if Level = 0 then
         Zip_a_file(Name);
       end if;
   end Walk;
@@ -196,15 +195,15 @@ procedure ZipAda is
       begin
         if opt(opt'First..opt'First+1) = "er" then
           case opt(opt'First+2) is
-            when '1'    => method:= reduce_1;
-            when '2'    => method:= reduce_2;
-            when '3'    => method:= reduce_3;
-            when others => method:= reduce_4;
+            when '1'    => method:= Reduce_1;
+            when '2'    => method:= Reduce_2;
+            when '3'    => method:= Reduce_3;
+            when others => method:= Reduce_4;
           end case;
         elsif opt(opt'First..opt'First+1) = "es" then
-          method:= shrink;
+          method:= Shrink;
         elsif opt(opt'First..opt'First+3) = "edf " then
-          method:= deflate_fixed;
+          method:= Deflate_Fixed;
         elsif opt(opt'First..opt'First+3) = "dir " then
           scan:= Scan_mode'Max(scan, files_and_dirs);
         elsif opt(opt'First..opt'First+1) = "r " then
@@ -260,7 +259,7 @@ procedure ZipAda is
 begin
   Blurb;
   for i in 1..Argument_Count loop
-    Process_Argument(i);
+    Process_argument(i);
   end loop;
   if Is_Created (Info) then
     Finish (Info);

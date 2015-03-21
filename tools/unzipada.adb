@@ -44,16 +44,16 @@ procedure UnZipAda is
 
   use UnZip;
 
-  z_options : UnZip.option_set:= UnZip.no_option;
+  z_options : UnZip.Option_set:= UnZip.no_option;
   quiet     : Boolean:= False;
   verbose   : Boolean:= False;
   lower_case: Boolean:= False;
   comment   : Boolean:= False;
 
-  fda:          Zip.feedback_proc     := My_feedback'Access;
-  rca:          resolve_conflict_proc := My_resolve_conflict'Access;
-  tda:          tell_data_proc        := My_tell_data'Access;
-  gpw: constant get_password_proc     := My_get_password'Access;
+  fda:          Zip.Feedback_proc     := My_feedback'Access;
+  rca:          Resolve_conflict_proc := My_resolve_conflict'Access;
+  tda:          Tell_data_proc        := My_tell_data'Access;
+  gpw: constant Get_password_proc     := My_get_password'Access;
 
   last_option: Natural:= 0;
 
@@ -287,7 +287,7 @@ begin
           Put("Dictionary tree: entries=");
           IIO.Put(total,0);
           Put(" as log_2:");
-          Put(log(Float(total)) / log(2.0), 0, 1, 0);
+          Put(Log(Float(total)) / Log(2.0), 0, 1, 0);
           Put("; max depth=");
           IIO.Put(max_depth,0);
           Put("; avg depth=");

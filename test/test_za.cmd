@@ -5,12 +5,13 @@ echo.
 
 if exist test_z???.zip del test_z???.zip
 
+copy /b ..\zipada.exe .
+copy /b ..\random_data.exe .
+
 rem Have a badly compressible file
-zip -9 $random$.zip *.ads
+random_data 1000
 
-copy /b ..\z*.exe .
-
-set files=*.ad* *.txt *.exe *.cmd *.bmp $random$.zip
+set files=*.ad* *.txt *.exe *.cmd *.bmp random.bin
 
 zipada -esh test_zash %files%
 zipada -er1 test_zar1 %files%
