@@ -202,8 +202,8 @@ is
     ------------------------------------------------------
 
     type Length_code_pair is record
-      length: Natural;
-      code  : Natural;
+      length: Natural;  --  Huffman code length
+      code  : Natural;  --  The code itself
     end record;
 
     procedure Invert(lc: in out Length_code_pair) is
@@ -243,43 +243,44 @@ is
     procedure Prepare_Huffman_codes is
     begin
       case method is
-       when Deflate_Fixed =>
-        -- > Litteral, EOB and Length codes tree:
-        --  * Litterals for bytes:
-        for i in 0 .. 143 loop
-          descr_lit_len(i):= (length => 8, code => 16#30#+i);
-          -- Defines codes from 2#00_110000# to 2#10_111111#
-          -- i.e. codes beginning with "00", "01" or "10"; from the codes
-          -- beginning with "00" we take only those followed by "11".
-          -- "00_00", "00_01", "00_10" are covered by the 3rd group below.
-        end loop;
-        for i in 144 .. 255 loop -- 144 = 16#90#
-          descr_lit_len(i):= (length => 9, code => 16#190#+(i-144));
-          -- Defines codes from 2#11_001_0000# to 2#11_111_1111#
-          -- i.e. codes beginning with "11" except those followed
-          -- by "000", which are defined in the 4th group below.
-        end loop;
-        --  * Special codes: End-Of-Block (256), and length codes
-        for i in 256 .. 279 loop
-          descr_lit_len(i):= (length => 7, code => i-256);
-          -- Defines codes from 2#00_00_000# to 2#00_10_111#
-        end loop;
-        for i in 280 .. 287 loop
-          descr_lit_len(i):= (length => 8, code => 16#C0#+(i-280));
-          -- Defines codes from 2#11_000_000# to 2#11_000_111#
-          -- i.e. all codes beginning with "11_000"
-        end loop;
-        -- > Distance codes tree:
-        for i in 0 .. 29 loop
-          descr_dis(i):= (length => 5, code => i);
-        end loop;
+        when Deflate_Fixed =>
+          -- > Litteral, EOB and Length codes tree:
+          --  * Litterals for bytes:
+          for i in 0 .. 143 loop
+            descr_lit_len(i):= (length => 8, code => 16#30#+i);
+            -- Defines codes from 2#00_110000# to 2#10_111111#
+            -- i.e. codes beginning with "00", "01" or "10"; from the codes
+            -- beginning with "00" we take only those followed by "11".
+            -- "00_00", "00_01", "00_10" are covered by the 3rd group below.
+          end loop;
+          for i in 144 .. 255 loop -- 144 = 16#90#
+            descr_lit_len(i):= (length => 9, code => 16#190#+(i-144));
+            -- Defines codes from 2#11_001_0000# to 2#11_111_1111#
+            -- i.e. codes beginning with "11" except those followed
+            -- by "000", which are defined in the 4th group below.
+          end loop;
+          --  * Special codes: End-Of-Block (256), and length codes
+          for i in 256 .. 279 loop
+            descr_lit_len(i):= (length => 7, code => i-256);
+            -- Defines codes from 2#00_00_000# to 2#00_10_111#
+          end loop;
+          for i in 280 .. 287 loop
+            descr_lit_len(i):= (length => 8, code => 16#C0#+(i-280));
+            -- Defines codes from 2#11_000_000# to 2#11_000_111#
+            -- i.e. all codes beginning with "11_000"
+          end loop;
+          -- > Distance codes tree:
+          for i in 0 .. 29 loop
+            descr_dis(i):= (length => 5, code => i);
+          end loop;
       end case;
       -- Invert bit order for output:
       Invert(descr_lit_len);
       Invert(descr_dis);
     end Prepare_Huffman_codes;
 
-    -- Write a normal, "clear-text", 8-bit character (litteral)
+    -- Write a normal, "clear-text" (clear for LZ, encoded with Huffman),
+    -- 8-bit character (litteral)
     procedure Write_normal_byte( b: Byte ) is
     begin
       Put_code( descr_lit_len(Integer(b)) );
@@ -422,20 +423,21 @@ is
       X_Percent := 0;
     end if;
     case method is
-     when Deflate_Fixed =>
-      -- We have only one compressed data block,
-      -- then it is already the last one.
-      Put_code(code => 1, code_size => 1); -- signals last block
-      -- Fixed (predefined) compression structure
-      Put_code(code => 1, code_size => 2); -- signals a fixed block
+      when Deflate_Fixed =>
+        -- We have only one compressed data block,
+        -- then it is already the last one.
+        Put_code(code => 1, code_size => 1); -- signals last block
+        -- Fixed (predefined) compression structure
+        Put_code(code => 1, code_size => 2); -- signals a fixed block
     end case;
     ------------------------------------------------
     --  The whole compression is happenning here: --
     ------------------------------------------------
     My_LZ77;
+    -- Done. Send the code signalling the end of compressed data block:
     case method is
-     when Deflate_Fixed =>
-      Put_code(descr_lit_len(256)); -- signals end of block (EOB)
+      when Deflate_Fixed =>
+        Put_code(descr_lit_len(256)); -- signals end of block (EOB)
     end case;
   end Encode;
 
