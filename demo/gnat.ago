@@ -1,5 +1,5 @@
--gnat05 -gnatf -gnatwal -gnatVa -gnatybfhkanp -gnatec../debug.pra -I../zip_lib -I../extras -I../demo -I../test -I../tools -I../obj_dbg
--C -I../obj_dbg
+
+-ws -c -u -P..\zipada.gpr -XBuild_Mode=Debug
 
 
 WINDOWS_TARGET
@@ -31,7 +31,7 @@ debug strip_all_symbols false
 debug profiling false
 debug verbose_details true
 debug all_warnings true
-debug build_in_place true
+debug build_in_place false
 release o2 true
 release inlining true
 release unroll_loops true

@@ -384,62 +384,71 @@ package body Zip is
 
   -- Traverse a whole Zip_info directory in sorted order, giving the
   -- name for each entry to an user-defined "Action" procedure.
-  -- Added 29-Nov-2002
-  procedure Traverse( z: Zip_info ) is
+
+  generic
+    with procedure Action_private( dn: in out Dir_node );
+    -- Dir_node is private: only known to us, contents subject to change
+  procedure Traverse_private( z: Zip_info );
+
+  procedure Traverse_private( z: Zip_info ) is
 
     procedure Traverse( p: p_Dir_node ) is
     begin
       if p /= null then
         Traverse(p.left);
-        Action(p.file_name);
+        Action_private(p.all);
         Traverse(p.right);
       end if;
     end Traverse;
 
   begin
     Traverse(z.dir_binary_tree);
+  end Traverse_private;
+
+  -----------------------
+  --  Public versions  --
+  -----------------------
+
+  procedure Traverse( z: Zip_info ) is
+    procedure My_Action_private( dn: in out Dir_node ) is
+    begin
+      Action(dn.file_name);
+    end;
+    procedure My_Traverse_private is new Traverse_private(My_Action_private);
+  begin
+    My_Traverse_private(z);
   end Traverse;
 
   procedure Traverse_Unicode( z: Zip_info ) is
-
-    procedure Traverse( p: p_Dir_node ) is
+    procedure My_Action_private( dn: in out Dir_node ) is
     begin
-      if p /= null then
-        Traverse(p.left);
-        Action(p.file_name, p.name_encoding);
-        Traverse(p.right);
-      end if;
-    end Traverse;
-
+      Action(dn.file_name, dn.name_encoding);
+    end;
+    procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
-    Traverse(z.dir_binary_tree);
+    My_Traverse_private(z);
   end Traverse_Unicode;
 
   procedure Traverse_verbose( z: Zip_info ) is
-
-    procedure Traverse( p: p_Dir_node ) is
+    procedure My_Action_private( dn: in out Dir_node ) is
     begin
-      if p /= null then
-        Traverse(p.left);
-        Action(
-          p.file_name,
-          p.file_index,
-          p.comp_size,
-          p.uncomp_size,
-          p.crc_32,
-          p.date_time,
-          p.method,
-          p.name_encoding,
-          p.read_only,
-          p.encrypted_2_x,
-          p.user_code
-        );
-        Traverse(p.right);
-      end if;
-    end Traverse;
-
+      Action(
+        dn.file_name,
+        dn.file_index,
+        dn.comp_size,
+        dn.uncomp_size,
+        dn.crc_32,
+        dn.date_time,
+        dn.method,
+        dn.name_encoding,
+        dn.read_only,
+        dn.encrypted_2_x,
+        dn.user_code
+      );
+    end;
+    procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
-    Traverse(z.dir_binary_tree);
+    My_Traverse_private(z);
   end Traverse_verbose;
 
   procedure Tree_stat(
