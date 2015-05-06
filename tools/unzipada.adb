@@ -129,6 +129,26 @@ procedure UnZipAda is
     Put_Line("          -v     : verbose, technical mode");
   end Help;
 
+  procedure Show_tree_stats(name: String) is
+    zi: Zip.Zip_info;
+    total    : Natural;
+    max_depth: Natural;
+    avg_depth: Float;
+  begin
+    Zip.Load( zi, name );
+    Zip.Tree_stat(zi, total, max_depth, avg_depth);
+    Zip.Delete( zi );
+    New_Line(2);
+    Put("Dictionary tree: entries=");
+    IIO.Put(total,0);
+    Put(" as log_2:");
+    Put(Log(Float(total)) / Log(2.0), 0, 1, 0);
+    Put("; max depth=");
+    IIO.Put(max_depth,0);
+    Put("; avg depth=");
+    Put(avg_depth, 0, 2, 0);
+  end Show_tree_stats;
+
   zi: Zip.Zip_info;
 
 begin
@@ -267,35 +287,19 @@ begin
         My_FS_routines
       );
     else
-      declare
-        total    : Natural;
-        max_depth: Natural;
-        avg_depth: Float;
-      begin
-        Zip.Load( zi, Archive );
-        for i in last_option+2 .. Argument_Count loop
-          Extract( zi, Argument(i),
-            fda, rca, tda, gpw,
-            z_options,
-            password( 1..pass_len ),
-            My_FS_routines
-          );
-        end loop;
-        if verbose then
-          Zip.Tree_stat(zi, total, max_depth, avg_depth);
-          New_Line;
-          Put("Dictionary tree: entries=");
-          IIO.Put(total,0);
-          Put(" as log_2:");
-          Put(Log(Float(total)) / Log(2.0), 0, 1, 0);
-          Put("; max depth=");
-          IIO.Put(max_depth,0);
-          Put("; avg depth=");
-          Put(avg_depth, 0, 2, 0);
-        end if;
-        Zip.Delete( zi );
-      end;
-
+      Zip.Load( zi, Archive );
+      for i in last_option+2 .. Argument_Count loop
+        Extract( zi, Argument(i),
+          fda, rca, tda, gpw,
+          z_options,
+          password( 1..pass_len ),
+          My_FS_routines
+        );
+      end loop;
+      Zip.Delete( zi );
+    end if;
+    if verbose then
+      Show_tree_stats(Archive);
     end if;
     T1:= Clock;
   end;

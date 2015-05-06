@@ -411,6 +411,7 @@ package body Zip is
 
   procedure Traverse( z: Zip_info ) is
     procedure My_Action_private( dn: in out Dir_node ) is
+    pragma Inline(My_Action_private);
     begin
       Action(dn.file_name);
     end;
@@ -421,6 +422,7 @@ package body Zip is
 
   procedure Traverse_Unicode( z: Zip_info ) is
     procedure My_Action_private( dn: in out Dir_node ) is
+    pragma Inline(My_Action_private);
     begin
       Action(dn.file_name, dn.name_encoding);
     end;
@@ -431,6 +433,7 @@ package body Zip is
 
   procedure Traverse_verbose( z: Zip_info ) is
     procedure My_Action_private( dn: in out Dir_node ) is
+    pragma Inline(My_Action_private);
     begin
       Action(
         dn.file_name,
