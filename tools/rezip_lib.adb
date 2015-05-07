@@ -465,7 +465,7 @@ package body Rezip_lib is
       seconds: Duration;
       --
       type Approach_Filtering is array(Approach) of Boolean;
-      always_consider: Approach_Filtering;
+      consider_a_priori: Approach_Filtering;
       --
       lightred: constant String:= "#f43048";
 
@@ -495,7 +495,7 @@ package body Rezip_lib is
         end Winner_color;
         --
       begin
-        consider:= always_consider;
+        consider:= consider_a_priori;
         if unique_name = "" or else
           (   unique_name(unique_name'Last)='\'
            or unique_name(unique_name'Last)='/'
@@ -557,21 +557,25 @@ package body Rezip_lib is
           uncomp_size    => uncomp_size
         );
         Dual_IO.Put_Line(" done");
+        --
+        --  Apply limitations: skip some methods if certain conditions are met.
+        --  For instance:
+        --    Shrink may in rare cases be better for tiny files;
+        --    KZip is excellent but really too slow on large files
+        --
         for a in Approach loop
-          if consider(a) then
-            --
-            -- Apply limitations
-            --
-            if a = shrink and then uncomp_size > 5000 then
-              -- Shrink (LZW) is sometimes better for tiny files, but only them.
-              consider(a):= False;
-            elsif a in External and then
-              ext(a).limit /= 0 and then
-              uncomp_size > ext(a).limit
-            then
-              consider(a):= False;
-            end if;
-          end if;
+          case a is
+            when original =>
+              null;
+            when shrink =>
+              consider(a):= consider(a) and uncomp_size <= 5000;
+            when reduce_1 .. reduce_4 =>
+              consider(a):= consider(a) and uncomp_size <= 8000;
+            when deflate_f =>
+              consider(a):= consider(a) and uncomp_size <= 2000;
+            when External =>
+              consider(a):= consider(a) and (ext(a).limit = 0 or uncomp_size <= ext(a).limit);
+          end case;
         end loop;
         Dual_IO.Put_Line("    Phase 2:  try different tactics...");
         --
@@ -664,7 +668,7 @@ package body Rezip_lib is
           "</td>" &
           "<td bgcolor=lightgrey><tt>" & unique_name & "</tt></td>");
         for a in Approach loop
-          if always_consider(a) then
+          if consider_a_priori(a) then
             if not consider(a) then
               Put(summary,"<td bgcolor=lightgray>skipped");
             elsif a = choice then
@@ -775,12 +779,12 @@ package body Rezip_lib is
       for a in Approach loop
         case a is
           when original =>
-            always_consider(a):= True;
+            consider_a_priori(a):= True;
           when Internal =>
-            always_consider(a):= format_choice(Zip.Compress.Method_to_Format(Approach_to_Method(a)))
+            consider_a_priori(a):= format_choice(Zip.Compress.Method_to_Format(Approach_to_Method(a)))
               and a not in reduce_1..reduce_3;
           when External =>
-            always_consider(a):= format_choice(ext(a).pkzm);
+            consider_a_priori(a):= format_choice(ext(a).pkzm);
         end case;
       end loop;
       Set_Name (MyStream, orig_name);
@@ -815,7 +819,7 @@ package body Rezip_lib is
         "<td align=right valign=top><b>Approach:</b></td>"
       );
       for a in Approach loop
-        if always_consider(a) then
+        if consider_a_priori(a) then
           if a in External then
             ext(a).expanded_options:= ext(a).options;
           end if;
@@ -828,7 +832,7 @@ package body Rezip_lib is
         "<td bgcolor=lightgrey valign=bottom><b>File name:</b></td>"
       );
       for a in Approach loop
-        if always_consider(a) then
+        if consider_a_priori(a) then
           case a is
             when original =>
               Put(summary, "<td align=right bgcolor=#dddd00>Approach's<br>method/<br>format &rarr;</td>");
@@ -890,7 +894,7 @@ package body Rezip_lib is
       -- Cleanup
       --
       for a in Approach loop
-        if always_consider(a) then
+        if consider_a_priori(a) then
           if Exists(Temp_name(True,a)) then
             Delete_File( Temp_name(True,a) );
           end if;
@@ -902,7 +906,7 @@ package body Rezip_lib is
       -- Report total bytes
       Put(summary,"<tr><td></td><td><b>T<small>OTAL BYTES</small></b></td>");
       for a in Approach loop
-        if always_consider(a) then
+        if consider_a_priori(a) then
           Put(summary,
             "<td bgcolor=#" & Webcolor(a) & ">" &
             Zip.File_size_type'Image(total(a).size) & "</td>"
@@ -932,7 +936,7 @@ package body Rezip_lib is
       -- Report total files per approach
       Put(summary,"<tr><td></td><td><b>T<small>OTAL FILES</small></b></td>");
       for a in Approach loop
-        if always_consider(a) then
+        if consider_a_priori(a) then
           Put(summary,
             "<td bgcolor=#" & Webcolor(a) & ">" &
             Integer'Image(total(a).count) & "</td>"
@@ -948,7 +952,7 @@ package body Rezip_lib is
       -- Report total saved bytes per approach
       Put(summary,"<tr><td></td><td><b>T<small>OTAL SAVED BYTES</small></b></td>");
       for a in Approach loop
-        if always_consider(a) then
+        if consider_a_priori(a) then
           Put(summary,
             "<td bgcolor=#" & Webcolor(a) & ">" &
             Integer_64'Image(total(a).saved) & "</td>"
