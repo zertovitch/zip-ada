@@ -71,7 +71,8 @@ package body Rezip_lib is
     deflate_f,
     external_1, external_2, external_3, external_4,
     external_5, external_6, external_7, external_8,
-    external_9, external_10, external_11, external_12
+    external_9, external_10, external_11, external_12,
+    external_13
   );
 
   subtype Internal is Approach
@@ -113,7 +114,10 @@ package body Rezip_lib is
       (U("7z"), U("7-Zip"), NN, -- dictionary size 2**25 = 32 MB
          U("a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7"), NN, 63, Zip.lzma, 0, False),
       (U("7z"), U("7-Zip"), NN, -- dictionary size 2**26 = 64 MB
-         U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False)
+         U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False),
+      -- AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
+      (U("advzip"), U("AdvZip"), U("http://advancemame.sourceforge.net/comp-readme.html"),
+         U("-a -4"), NN, 20, Zip.deflate, 0, False)
     );
 
   defl_opt: constant Zipper_specification:=
@@ -796,8 +800,11 @@ package body Rezip_lib is
       Create(summary, Out_File, html_report_name);
       Put_Line(summary,
         "<html><head><title>ReZip summary for file "
-         & orig_name & "</title></head><body>"
+         & orig_name & "</title></head>"
       );
+      Put_Line(summary, "<style>.container { overflow-y: auto; height: 87%; }");
+      Put_Line(summary, "td_approach { width:115px; }");
+      Put_Line(summary, "</style><body>");
       Put_Line(summary,
         "<h2><a target=_blank href=" & Zip.web &
         ">ReZip</a> summary for file " & orig_name & "</h2>"
@@ -813,7 +820,7 @@ package body Rezip_lib is
           "result(s) may be sub-optimal.</b></td></tr></table><br>"
         );
       end if;
-      Put_Line(summary, "<table border=1 cellpadding=1 cellspacing=1>");
+      Put_Line(summary, "<div class=""container""><table border=1 cellpadding=1 cellspacing=1>");
       Put(summary,
         "<tr bgcolor=lightyellow><td></td>"&
         "<td align=right valign=top><b>Approach:</b></td>"
@@ -823,7 +830,7 @@ package body Rezip_lib is
           if a in External then
             ext(a).expanded_options:= ext(a).options;
           end if;
-          Put(summary, "<td valign=top>" & Img(a, html => True) & "</td>");
+          Put(summary, "<td valign=top class=""td_approach"">" & Img(a, html => True) & "</td>");
         end if;
       end loop;
       Put_Line(summary, "</tr>");
@@ -835,7 +842,7 @@ package body Rezip_lib is
         if consider_a_priori(a) then
           case a is
             when original =>
-              Put(summary, "<td align=right bgcolor=#dddd00>Approach's<br>method/<br>format &rarr;</td>");
+              Put(summary, "<td align=right bgcolor=#dddd00 class=""td_approach"">Approach's<br>method/<br>format &rarr;</td>");
             when Internal =>
               Put(summary, "<td bgcolor=#fafa64>" & To_Lower( Zip.Compress.Compression_Method'Image(Approach_to_Method(a))) & "</td>");
               -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
@@ -979,7 +986,7 @@ package body Rezip_lib is
         );
         Put(summary,"%");
       end if;
-      Put_Line(summary, "</td></tr></table><br>");
+      Put_Line(summary, "</td></tr></table></div><br>");
       T1:= Clock;
       seconds:= T1-T0;
       Put(summary, "Time elapsed : ");
