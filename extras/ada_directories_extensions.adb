@@ -243,7 +243,7 @@ package body Ada_Directories_Extensions is
               tm_wday  => Win32.INT (GNAT.Calendar.Day_Name'Pos
                                         (GNAT.Calendar.Day_Of_Week (From))),
               tm_yday  => Win32.INT (GNAT.Calendar.Day_In_Year (From)),
-              tm_isdst => 0);  -- Don't care for this package
+              tm_isdst => -1); 
    end To_tm;
 
    --------------
