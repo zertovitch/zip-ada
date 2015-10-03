@@ -18,7 +18,10 @@ project ZipAda is
      "test_stream_performance.adb",
      "test_extract.adb", 
      "test_extract_tb.ads",
+     --  Trace-Back-enabled version of some tools
      "za_gnat.ads", 
+     "rz_gnat.ads", 
+     --  Misc.
      "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
      "lz",       --  A simple LZ-Huffman coder/decoder
      "lzma_dec", --  The LZMA Reference Decoder

@@ -361,6 +361,7 @@ package body Rezip_lib is
       size: Zip.File_size_type:= 0;
       zfm: Unsigned_16;
       attempt: Positive:= 1;
+      dummy_exp_opt: Unbounded_String;
     begin
       -- We jump into the TEMP directory, to avoid putting pathes into the
       -- temporary zip file.
@@ -375,6 +376,10 @@ package body Rezip_lib is
           temp_zip & ' ' & data_name,
           info.expanded_options
         );
+        if (not Exists(temp_zip)) and then Ada.Directories.Size(data_name) = 0 then
+          -- ADVZip 1.19 doesn't create a zip file for an empty entry...
+          Call_external_expanded("zip", "", temp_zip & ' ' & data_name, dummy_exp_opt);
+        end if;
         -- Post processing of "deflated" entries with DeflOpt:
         Call_external(S(defl_opt.name), temp_zip);
         -- Now, rip
