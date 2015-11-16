@@ -12,7 +12,7 @@
 --     we cache the last n=LZ_cache_size bytes compressed by LZ77.
 --     The result is optimal within the constraints of that format
 --     (one block, poor encoding of compressed data and of the
---     compression structure, the Markov matrix itself).
+--     compression structure, the Markov matrix, itself).
 --
 -- Author: G. de Montmollin, January 2009
 --

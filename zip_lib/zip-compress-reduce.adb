@@ -186,7 +186,7 @@ is
   markov_d: array(Symbol_range, Symbol_range) of Count:=
     (others=> (others=> 0));
 
-  -- Build probability of transition from ymbol i to symbol j:
+  -- Build probability of transition from symbol i to symbol j:
   --
   -- markov(i,j) = P(symbol i is followed by j)
   --             = markov_d(i,j) / sum_k( markov_d(i,k))
@@ -214,13 +214,13 @@ is
       Symbol_range range Character'Pos('a')..Character'Pos('i');
     sk, min, max: Symbol_range;
   begin
-     if ordered then
-       min:= Follower_range'First;
-       max:= Follower_range'Last;
-     else
-       min:= subrange'First;
-       max:= subrange'Last;
-     end if;
+    if ordered then
+      min:= Follower_range'First;
+      max:= Follower_range'Last;
+    else
+      min:= subrange'First;
+      max:= subrange'Last;
+    end if;
     New_Line;
     for si in subrange loop
       Show_symbol(si);
@@ -369,8 +369,6 @@ is
 
   LZ_cache: LZ_cache_type;
   lz77_pos, lz77_size: File_size_type:= 0;
-  using_LZ77: Boolean;
-  Derail_LZ77: exception;
 
   -- Possible ranges for LZ distance and length encoding
   -- in the Zip-Reduce format:
@@ -394,7 +392,8 @@ is
   procedure Encode;
 
   procedure Encode is
-
+    using_LZ77: Boolean;
+    Derail_LZ77: exception;
     X_Percent: Natural;
     Bytes_in   : Natural;   --  Count of input file bytes processed
     user_aborting: Boolean;
@@ -498,6 +497,8 @@ is
         -- already stored.
       then
         raise Derail_LZ77;
+        --  We interrupt the LZ77 compression: data is already cached
+        --  on first pass (phase = stats)
       end if;
     end Write_raw_byte;
 
@@ -578,7 +579,7 @@ is
     using_LZ77:= True;
     My_LZ77;
   exception
-    when Derail_LZ77 =>
+    when Derail_LZ77 =>  --  LZ77 compression interrupted because compressed data already cached
       using_LZ77:= False;
       Finish_Cache;
       if feedback /= null then
