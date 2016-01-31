@@ -17,9 +17,7 @@ private package UnZip.Decompress.Huffman is
 
   invalid: constant:= 99; -- invalid value for extra bits
 
-  type HufT_table is array( Integer range <> ) of aliased HufT;
-
-  type p_HufT is access all HufT;
+  type HufT_table is array( Natural range <> ) of HufT;
 
   -- Linked list just for destroying Huffman tables
 

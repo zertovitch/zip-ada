@@ -1363,7 +1363,8 @@ package body UnZip.Decompress is
       --------[ Method: Inflate ]--------
 
       procedure Inflate_Codes ( Tl, Td: p_Table_list; Bl, Bd: Integer ) is
-        CTE    : p_HufT;       -- current table element
+        CT     : p_HufT_table;       -- current table
+        CT_idx : Natural;            -- current table's index
         length : Natural;
         E      : Integer;      -- table entry flag/number of extra bits
         W      : Integer:= UnZ_Glob.slide_index;
@@ -1376,26 +1377,27 @@ package body UnZip.Decompress is
         -- inflate the coded data
         main_loop:
         while not Zip_EOF loop
-          CTE:= Tl.table( UnZ_IO.Bit_buffer.Read(Bl) )'Access;
-
+          CT:= Tl.table;
+          CT_idx:= UnZ_IO.Bit_buffer.Read(Bl);
           loop
-            E := CTE.extra_bits;
+            E := CT(CT_idx).extra_bits;
             exit when E <= 16;
             if E = invalid then
               raise Zip.Zip_file_Error;
             end if;
 
             -- then it's a literal
-            UnZ_IO.Bit_buffer.Dump( CTE.bits );
+            UnZ_IO.Bit_buffer.Dump( CT(CT_idx).bits );
             E:= E - 16;
-            CTE := CTE.next_table( UnZ_IO.Bit_buffer.Read(E) )'Access;
+            CT:= CT(CT_idx).next_table;
+            CT_idx := UnZ_IO.Bit_buffer.Read(E);
           end loop;
 
-          UnZ_IO.Bit_buffer.Dump ( CTE.bits );
+          UnZ_IO.Bit_buffer.Dump ( CT(CT_idx).bits );
 
           case E is
             when 16 =>     -- CTE.N is a Litteral
-              UnZ_Glob.slide ( W ) :=  Zip.Byte( CTE.n );
+              UnZ_Glob.slide ( W ) :=  Zip.Byte( CT(CT_idx).n );
               W:= W + 1;
               UnZ_IO.Flush_if_full(W);
 
@@ -1408,23 +1410,25 @@ package body UnZip.Decompress is
             when others => -- We have a length/distance
 
               -- Get length of block to copy:
-              length:= CTE.n + UnZ_IO.Bit_buffer.Read_and_dump(E);
+              length:= CT(CT_idx).n + UnZ_IO.Bit_buffer.Read_and_dump(E);
 
               -- Decode distance of block to copy:
-              CTE := Td.table( UnZ_IO.Bit_buffer.Read(Bd) )'Access;
+              CT:= Td.table;
+              CT_idx:= UnZ_IO.Bit_buffer.Read(Bd);
               loop
-                E := CTE.extra_bits;
+                E := CT(CT_idx).extra_bits;
                 exit when E <= 16;
                 if E = invalid then
                   raise Zip.Zip_file_Error;
                 end if;
-                UnZ_IO.Bit_buffer.Dump( CTE.bits );
+                UnZ_IO.Bit_buffer.Dump( CT(CT_idx).bits );
                 E:= E - 16;
-                CTE := CTE.next_table( UnZ_IO.Bit_buffer.Read(E) )'Access;
+                CT:= CT(CT_idx).next_table;
+                CT_idx:= UnZ_IO.Bit_buffer.Read(E);
               end loop;
-              UnZ_IO.Bit_buffer.Dump( CTE.bits );
+              UnZ_IO.Bit_buffer.Dump( CT(CT_idx).bits );
               UnZ_IO.Copy(
-                distance => CTE.n + UnZ_IO.Bit_buffer.Read_and_dump(E),
+                distance => CT(CT_idx).n + UnZ_IO.Bit_buffer.Read_and_dump(E),
                 length   => length,
                 index    => W
               );
@@ -1563,7 +1567,8 @@ package body UnZip.Decompress is
         Tl,                             -- literal/length code tables
           Td : p_Table_list;            -- distance code tables
 
-        CTE : p_HufT;  -- current table element
+        CT     : p_HufT_table;       -- current table
+        CT_idx : Natural;            -- current table's index
 
         Bl, Bd : Integer;                  -- lookup bits for tl/bd
         Nb : Natural;  -- number of bit length codes
@@ -1627,12 +1632,13 @@ package body UnZip.Decompress is
         current_length := 0;
 
         while  defined < number_of_lengths  loop
-          CTE:= Tl.table( UnZ_IO.Bit_buffer.Read(Bl) )'Access;
-          UnZ_IO.Bit_buffer.Dump( CTE.bits );
+          CT:= Tl.table;
+          CT_idx:= UnZ_IO.Bit_buffer.Read(Bl);
+          UnZ_IO.Bit_buffer.Dump( CT(CT_idx).bits );
 
-          case CTE.n is
+          case CT(CT_idx).n is
             when 0..15 =>       -- length of code in bits (0..15)
-              current_length:= CTE.n;
+              current_length:= CT(CT_idx).n;
               Ll (defined) := current_length;
               defined:= defined + 1;
             when 16 =>          -- repeat last length 3 to 6 times
@@ -1645,7 +1651,7 @@ package body UnZip.Decompress is
               Repeat_length_code(11 + UnZ_IO.Bit_buffer.Read_and_dump(7));
             when others =>
               if full_trace then
-                Ada.Text_IO.Put_Line("Illegal length code: " & Integer'Image(CTE.n));
+                Ada.Text_IO.Put_Line("Illegal length code: " & Integer'Image(CT(CT_idx).n));
               end if;
           end case;
         end loop;

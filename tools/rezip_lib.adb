@@ -116,7 +116,7 @@ package body Rezip_lib is
       (U("7z"), U("7-Zip"), NN, -- dictionary size 2**26 = 64 MB
          U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False),
       -- AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
-      (U("advzip"), U("AdvZip"), U("http://advancemame.sourceforge.net/comp-readme.html"),
+      (U("advzip"), U("AdvZip"), U("http://advancemame.sf.net/comp-readme.html"),
          U("-a -4"), NN, 20, Zip.deflate, 0, False)
     );
 

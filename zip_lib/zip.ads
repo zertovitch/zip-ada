@@ -15,7 +15,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 1999..2015 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2016 Gautier de Montmollin
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal
@@ -349,8 +349,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "50 preview 1";
-  reference : constant String:= "xx-yyy-2015";
+  version   : constant String:= "50 preview 2";
+  reference : constant String:= "xx-yyy-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
