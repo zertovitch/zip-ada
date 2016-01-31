@@ -30,7 +30,7 @@ is
     1 + Compression_Method'Pos(method) - Compression_Method'Pos(Reduce_1);
   use Zip_Streams;
 
-  DLE_code: constant:= 144;
+  DLE_code: constant:= 144;  --  "Escape" character, leading to a Distance - Length code.
   subtype Symbol_range is Integer range 0..255;
   subtype Follower_range is Symbol_range range 0..31;
   -- PKWARE appnote.txt limits to 32 followers.
@@ -481,6 +481,8 @@ is
           else
             follo:= has_follower(last_b,curr_b);
             Put_code(1-Boolean'Pos(follo), 1);
+            --  ^ Certainly a weakness of this format is that each byte is preceded by
+            --    a flag signalling "clear text" or compressed.
             if follo then
               Put_code(Byte(follower_pos(last_b,curr_b)), B_Table( Slen(last_b) ));
             else
@@ -603,10 +605,10 @@ begin
   -- Pass 2: actual compression
   Save_byte := 0; --  Initialize output bit buffer
   Bits_used := 0;
-  Save_Followers;
+  Save_Followers;  --  Emit the compression structure before the compressed message
   lz77_size:= lz77_pos;
   lz77_pos:= 0;
-  Compress;
+  Compress;  --  Emit the compressed message
   Flush_output;
   compression_ok:= True;
 exception

@@ -10,9 +10,9 @@
 --     serving to compute the exact optimal Markov matrix for the whole
 --     data to be compressed. Hence, it is slow. However,
 --     we cache the last n=LZ_cache_size bytes compressed by LZ77.
---     The result is optimal within the constraints of that format
---     (one block, poor encoding of compressed data and of the
---     compression structure, the Markov matrix, itself).
+--     The resulting compression is optimal within the constraints of the
+--     "Reduce" format (one block, poor encoding of compressed data and of the
+--     compression structure itself (the Markov matrix)).
 --
 -- Author: G. de Montmollin, January 2009
 --
