@@ -62,7 +62,7 @@ package body Rezip_lib is
 
   NN: constant Unbounded_String:= Null_Unbounded_String;
 
-  kzip_limit: constant:= 500_000;
+  kzip_limit: constant:= 3_100_000;
 
   type Approach is (
     original,
@@ -810,6 +810,7 @@ package body Rezip_lib is
       Put_Line(summary, "<style>.container { overflow-y: auto; height: 87%; }");
       Put_Line(summary, "td_approach { width:115px; }");
       Put_Line(summary, "</style><body>");
+      Put_Line(summary, "<font face=""Calibri, Arial, Tahoma""> <!-- Set font for the whole page !-->");
       Put_Line(summary,
         "<h2><a target=_blank href=" & Zip.web &
         ">ReZip</a> summary for file " & orig_name & "</h2>"
@@ -1010,7 +1011,7 @@ package body Rezip_lib is
       Put(summary,  Float( seconds ) / 60.0, 4, 2, 0 );
       Put(summary,  " minutes, or");
       Put(summary,  Float( seconds ) / 3600.0, 4, 2, 0 );
-      Put_Line(summary,  " hours.</body></html>");
+      Put_Line(summary,  " hours.</font></body></html>");
       Close(summary);
       Dual_IO.Put("Time elapsed : ");
       DFIO.Put( Float( seconds ), 4, 2, 0 );
