@@ -700,6 +700,7 @@ package body Zip is
       File_name_not_found'Identity,
       "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
     );
+    return 0;  --  Fake, since exception has been raised just before. Removes an OA warning.
   end User_code;
 
   procedure Get_sizes(

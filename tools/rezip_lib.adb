@@ -1031,7 +1031,7 @@ package body Rezip_lib is
       Ada.Text_IO.Put("  " & fix);
       fix:= (others => ' ');
       Insert(fix,fix'First, S(p.name));
-      Ada.Text_IO.Put_Line(" Executable:  " & fix & " URL: " & S(p.URL));
+      Ada.Text_IO.Put_Line(" Executable: " & fix & " URL: " & S(p.URL));
     end Display;
     name_is_new: Boolean;
   begin

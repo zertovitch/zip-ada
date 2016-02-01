@@ -310,7 +310,7 @@ package body LZMA_Decoding is
         m:= m - 2**num_bits;
       end Bit_Tree_Decode;
       --
-      len: Unsigned;
+      len: Unsigned:= 0;
       --
       procedure Copy_Match_Q2(dist: UInt32) is
         pragma Inline(Copy_Match_Q2);
@@ -410,7 +410,7 @@ package body LZMA_Decoding is
           end loop;
         end Bit_Tree_Reverse_Decode;
         --
-        len_state     : Unsigned := len;
+        len_state     : Unsigned := len;  --  len has been set up by Decode_Length previously
         posSlot       : Unsigned;
         numDirectBits : Natural;
         --

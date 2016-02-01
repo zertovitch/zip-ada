@@ -148,32 +148,6 @@ package body UnZip.Decompress is
     use Zip.CRC_Crypto;
     local_crypto_pack: Crypto_pack;
 
-    procedure Init_Decryption( password: String; crc_check: Unsigned_32) is
-      c: Zip.Byte;
-      t: Unsigned_32;
-    begin
-      -- Step 1 - Initializing the encryption keys
-      Init_keys(local_crypto_pack, password);
-      -- Step 2 - Decrypting the encryption header. 11 bytes are random,
-      --          just to shuffle the keys, 1 byte is from the CRC value.
-      Set_mode(local_crypto_pack, encrypted);
-      for i in 1..12 loop
-        UnZ_IO.Read_byte_no_decrypt( c );
-        Decode(local_crypto_pack, c);
-      end loop;
-      t:= Zip_Streams.Calendar.Convert(hint.file_timedate);
-      -- Last byte used to check password; 1/256 probability of success with any password!
-      if c /= Zip.Byte(Shift_Right( crc_check, 24 )) and not
-        -- Dec. 2012. This is a feature of Info-Zip (crypt.c).
-        -- Since CRC is only known at the end of a one-way stream
-        -- compression, and cannot be written back, they are using a byte of
-        -- the time stamp instead. This is NOT documented in appnote.txt v.6.3.3.
-        ( data_descriptor_after_data and c = Zip.Byte(Shift_Right(t, 8) and 16#FF#) )
-      then
-        raise UnZip.Wrong_password;
-      end if;
-    end Init_Decryption;
-
     ------------------------------
     -- Bodies of UnZ_* packages --
     ------------------------------
@@ -497,6 +471,32 @@ package body UnZip.Decompress is
       end Delete_output;
 
     end UnZ_IO;
+
+    procedure Init_Decryption( password: String; crc_check: Unsigned_32) is
+      c: Zip.Byte:= 0;
+      t: Unsigned_32;
+    begin
+      -- Step 1 - Initializing the encryption keys
+      Init_keys(local_crypto_pack, password);
+      -- Step 2 - Decrypting the encryption header. 11 bytes are random,
+      --          just to shuffle the keys, 1 byte is from the CRC value.
+      Set_mode(local_crypto_pack, encrypted);
+      for i in 1..12 loop
+        UnZ_IO.Read_byte_no_decrypt( c );
+        Decode(local_crypto_pack, c);
+      end loop;
+      t:= Zip_Streams.Calendar.Convert(hint.file_timedate);
+      -- Last byte used to check password; 1/256 probability of success with any password!
+      if c /= Zip.Byte(Shift_Right( crc_check, 24 )) and not
+        -- Dec. 2012. This is a feature of Info-Zip (crypt.c).
+        -- Since CRC is only known at the end of a one-way stream
+        -- compression, and cannot be written back, they are using a byte of
+        -- the time stamp instead. This is NOT documented in appnote.txt v.6.3.3.
+        ( data_descriptor_after_data and c = Zip.Byte(Shift_Right(t, 8) and 16#FF#) )
+      then
+        raise UnZip.Wrong_password;
+      end if;
+    end Init_Decryption;
 
     package body UnZ_Meth is
 

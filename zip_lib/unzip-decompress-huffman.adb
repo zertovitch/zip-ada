@@ -18,12 +18,11 @@ package body UnZip.Decompress.Huffman is
       Ada.Unchecked_Deallocation( Table_list, p_Table_list );
 
     current: p_Table_list;
-    tcount : Natural; -- just a stat. Idea: replace table_list with an array
+    tcount : Natural:= 0; -- just a stat. Idea: replace table_list with an array
 
   begin
     if full_trace then
       Ada.Text_IO.Put("[HufT_Free... ");
-      tcount:= 0;
     end if;
     while tl /= null loop
       Dispose( tl.table ); -- destroy the Huffman table
