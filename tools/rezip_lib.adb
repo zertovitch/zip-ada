@@ -816,7 +816,7 @@ package body Rezip_lib is
         ">ReZip</a> summary for file " & orig_name & "</h2>"
       );
       Put_Line(summary,
-        "Library version " & Zip.version & " dated " & Zip.reference
+        "ReZip - Zip-Ada Library version " & Zip.version & " dated " & Zip.reference
       );
       if format_choice /= all_formats then
         Put_Line(summary,
