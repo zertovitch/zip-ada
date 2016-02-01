@@ -822,7 +822,7 @@ package body Rezip_lib is
           "<br><table border=0 cellpadding=0 cellspacing=0>" &
           "<tr bgcolor=" & lightred &
           "><td><b>An option that filters methods is on, " &
-          "result(s) may be sub-optimal.</b></td></tr></table><br>"
+          "result(s) may be sub-optimal - see details at bottom.</b></td></tr></table><br>"
         );
       end if;
       Put_Line(summary, "<div class=""container""><table border=1 cellpadding=1 cellspacing=1>");
@@ -946,7 +946,7 @@ package body Rezip_lib is
       end if;
       Put_Line(summary, "</td></tr>");
       -- Report total files per approach
-      Put(summary,"<tr><td></td><td><b>T<small>OTAL FILES</small></b></td>");
+      Put(summary,"<tr><td></td><td><b>T<small>OTAL FILES (when optimal)</small></b></td>");
       for a in Approach loop
         if consider_a_priori(a) then
           Put(summary,
@@ -962,7 +962,7 @@ package body Rezip_lib is
       );
       Put_Line(summary, "</td></tr>");
       -- Report total saved bytes per approach
-      Put(summary,"<tr><td></td><td><b>T<small>OTAL SAVED BYTES</small></b></td>");
+      Put(summary,"<tr><td></td><td><b>T<small>OTAL SAVED BYTES (when optimal)</small></b></td>");
       for a in Approach loop
         if consider_a_priori(a) then
           Put(summary,
@@ -991,7 +991,17 @@ package body Rezip_lib is
         );
         Put(summary,"%");
       end if;
-      Put_Line(summary, "</td></tr></table></div><br>");
+      Put_Line(summary, "</td></tr></table></div><br><br>");
+      Put_Line(summary, "<dt>Options used for ReZip</dt>");
+      Put_Line(summary, "<dd>Randomized_stable =" & Integer'Image(randomized_stable) & "<br>");
+      Put_Line(summary, "    Formats allowed:<br><table border=1 cellpadding=1 cellspacing=1>");
+      for f in format_choice'Range loop
+        Put_Line(summary,
+          "      <tr><td>" & Zip.PKZip_method'Image(f) & "</td><td>" &
+          Boolean'Image(format_choice(f)) & "</td></tr>");
+      end loop;
+      Put_Line(summary, "    </table>");
+      Put_Line(summary, "</dd>");
       T1:= Clock;
       seconds:= T1-T0;
       Put(summary, "Time elapsed : ");
