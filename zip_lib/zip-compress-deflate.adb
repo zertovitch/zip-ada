@@ -5,7 +5,7 @@
 --
 -- To do:
 --  - dynamic compression structures
---  - compute cost/benefit of each DLE encoding (versus string of litterals)
+--  - compute cost/benefit of each DLE encoding (versus string of literals)
 --
 -- Change log:
 --
@@ -191,7 +191,7 @@ is
     Threshold          : constant := 3;
 
     -- if the DLE coding doesn't fit the format constraints, we
-    -- need to decode it as a simple sequence of litterals
+    -- need to decode it as a simple sequence of literals
 
     type Text_Buffer is array ( 0..String_buffer_size+Look_Ahead-1 ) of Byte;
     Text_Buf: Text_Buffer;
@@ -226,15 +226,20 @@ is
       end loop;
     end Invert;
 
+    type Deflate_Huff_descriptors is record
+      -- Tree descriptor for Literal, EOB or Length encoding
+      lit_len: Huff_descriptor(0..287);
+      -- Tree descriptor for Distance encoding
+      dis: Huff_descriptor(0..29);
+    end record;
+
+    -- Current tree descriptors
+    descr: Deflate_Huff_descriptors;
+
     procedure Put_code(lc: Length_code_pair) is
     begin
       Put_code(U32(lc.code), lc.length);
     end Put_code;
-
-    -- Current tree descriptor for Litteral, EOB or Length encoding
-    descr_lit_len: Huff_descriptor(0..287);
-    -- Current tree descriptor for Distances
-    descr_dis: Huff_descriptor(0..29);
 
     -------------------------------------------------------
     -- Deflate with fixed (pre-defined) Huffman encoding --
@@ -244,30 +249,30 @@ is
     begin
       case method is
         when Deflate_Fixed =>
-          --------------------------------------------
-          -- > Litteral, EOB and Length codes tree: --
-          --------------------------------------------
-          --  * Litterals for bytes:
+          -------------------------------------------
+          -- > Literal, EOB and Length codes tree: --
+          -------------------------------------------
+          --  * Literals for bytes:
           for i in 0 .. 143 loop
-            descr_lit_len(i):= (length => 8, code => 2#00_110000# + i);
+            descr.lit_len(i):= (length => 8, code => 2#00_110000# + i);
             -- Defines codes from 2#00_110000# to 2#10_111111#
             -- i.e. codes beginning with "00", "01" or "10"; from the codes
             -- beginning with "00" we take only those followed by "11".
             -- "00_00", "00_01", "00_10" are covered by the 3rd group below.
           end loop;
           for i in 144 .. 255 loop
-            descr_lit_len(i):= (length => 9, code => 2#11_001_0000# + (i-144));
+            descr.lit_len(i):= (length => 9, code => 2#11_001_0000# + (i-144));
             -- Defines codes from 2#11_001_0000# to 2#11_111_1111#
             -- i.e. codes beginning with "11" except those followed
             -- by "000", which are defined in the 4th group below.
           end loop;
           --  * Special codes: End-Of-Block (256), then length codes
           for i in 256 .. 279 loop
-            descr_lit_len(i):= (length => 7, code => i-256);
+            descr.lit_len(i):= (length => 7, code => i-256);
             -- Defines codes from 2#00_00_000# to 2#00_10_111#
           end loop;
           for i in 280 .. 287 loop
-            descr_lit_len(i):= (length => 8, code => 2#11_000_000# + (i-280));
+            descr.lit_len(i):= (length => 8, code => 2#11_000_000# + (i-280));
             -- Defines codes from 2#11_000_000# to 2#11_000_111#
             -- i.e. all codes beginning with "11_000"
           end loop;
@@ -275,18 +280,18 @@ is
           -- > Distance codes tree: --
           ----------------------------
           for i in 0 .. 29 loop
-            descr_dis(i):= (length => 5, code => i);
+            descr.dis(i):= (length => 5, code => i);
           end loop;
       end case;
       -- Invert bit order for output:
-      Invert(descr_lit_len);
-      Invert(descr_dis);
+      Invert(descr.lit_len);
+      Invert(descr.dis);
     end Prepare_Huffman_codes;
 
     --  Write a normal, "clear-text" (post LZ, pre Huffman), 8-bit character (literal)
     procedure Put_literal_byte( b: Byte ) is
     begin
-      Put_code( descr_lit_len(Integer(b)) );
+      Put_code( descr.lit_len(Integer(b)) );
       -- put("{"&character'val(b)&"}");
       Text_Buf(R):= b;
       R:= (R+1) mod String_buffer_size;
@@ -324,26 +329,29 @@ is
       --  263   0     9     271   2   27-30    279   4   99-114
       --  264   0    10     272   2   31-34    280   4  115-130
       --
+      --  Example: the code # 266 means the LZ length (# of message bytes to be copied)
+      --           shall be 13 or 14, depending on the extra bit value.
+      --
       case Length_range(length) is
         when 3..10 => -- Codes 257..264, with no extra bit
-          Put_code( descr_lit_len( 257 + length-3 ) );
+          Put_code( descr.lit_len( 257 + length-3 ) );
         when 11..18 => -- Codes 265..268, with 1 extra bit
-          Put_code( descr_lit_len( 265 + (length-11) / 2 ) );
+          Put_code( descr.lit_len( 265 + (length-11) / 2 ) );
           Put_code( U32((length-11) mod 2), 1 );
         when 19..34 => -- Codes 269..272, with 2 extra bits
-          Put_code( descr_lit_len( 269 + (length-19) / 4 ) );
+          Put_code( descr.lit_len( 269 + (length-19) / 4 ) );
           Put_code( U32((length-19) mod 4), 2 );
         when 35..66 => -- Codes 273..276, with 3 extra bits
-          Put_code( descr_lit_len( 273 + (length-35) / 8 ) );
+          Put_code( descr.lit_len( 273 + (length-35) / 8 ) );
           Put_code( U32((length-35) mod 8), 3 );
         when 67..130 => -- Codes 277..280, with 4 extra bits
-          Put_code( descr_lit_len( 277 + (length-67) / 16 ) );
+          Put_code( descr.lit_len( 277 + (length-67) / 16 ) );
           Put_code( U32((length-67) mod 16), 4 );
         when 131..257 => -- Codes 281..284, with 5 extra bits
-          Put_code( descr_lit_len( 281 + (length-131) / 32 ) );
+          Put_code( descr.lit_len( 281 + (length-131) / 32 ) );
           Put_code( U32((length-131) mod 32), 5 );
         when 258 => -- Code 285, with no extra bit
-          Put_code( descr_lit_len( 285 ) );
+          Put_code( descr.lit_len( 285 ) );
       end case;
       --                            Distance Codes
       --                            --------------
@@ -359,47 +367,51 @@ is
       --   6   2   9-12   14   6  129-192   22   10 2049-3072
       --   7   2  13-16   15   6  193-256   23   10 3073-4096
       --
+      --
+      --  Example: the code # 10 means the LZ distance (# positions back in the circular
+      --           message buffer for starting the copy) shall be 33, plus the value given
+      --           by the 4 extra bits (between 0 and 15).
       case Distance_range(distance) is
         when 1..4 => -- Codes 0..3, with no extra bit
-          Put_code( descr_dis(distance-1) );
+          Put_code( descr.dis(distance-1) );
         when 5..8 => -- Codes 4..5, with 1 extra bit
-          Put_code( descr_dis( 4 + (distance-5) / 2 ) );
+          Put_code( descr.dis( 4 + (distance-5) / 2 ) );
           Put_code( U32((distance-5) mod 2), 1 );
         when 9..16 => -- Codes 6..7, with 2 extra bits
-          Put_code( descr_dis( 6 + (distance-9) / 4 ) );
+          Put_code( descr.dis( 6 + (distance-9) / 4 ) );
           Put_code( U32((distance-9) mod 4), 2 );
         when 17..32 => -- Codes 8..9, with 3 extra bits
-          Put_code( descr_dis( 8 + (distance-17) / 8 ) );
+          Put_code( descr.dis( 8 + (distance-17) / 8 ) );
           Put_code( U32((distance-17) mod 8), 3 );
         when 33..64 => -- Codes 10..11, with 4 extra bits
-          Put_code( descr_dis( 10 + (distance-33) / 16 ) );
+          Put_code( descr.dis( 10 + (distance-33) / 16 ) );
           Put_code( U32((distance-33) mod 16), 4 );
         when 65..128 => -- Codes 12..13, with 5 extra bits
-          Put_code( descr_dis( 12 + (distance-65) / 32 ) );
+          Put_code( descr.dis( 12 + (distance-65) / 32 ) );
           Put_code( U32((distance-65) mod 32), 5 );
         when 129..256 => -- Codes 14..15, with 6 extra bits
-          Put_code( descr_dis( 14 + (distance-129) / 64 ) );
+          Put_code( descr.dis( 14 + (distance-129) / 64 ) );
           Put_code( U32((distance-129) mod 64), 6 );
         when 257..512 => -- Codes 16..17, with 7 extra bits
-          Put_code( descr_dis( 16 + (distance-257) / 128 ) );
+          Put_code( descr.dis( 16 + (distance-257) / 128 ) );
           Put_code( U32((distance-257) mod 128), 7 );
         when 513..1024 => -- Codes 18..19, with 8 extra bits
-          Put_code( descr_dis( 18 + (distance-513) / 256 ) );
+          Put_code( descr.dis( 18 + (distance-513) / 256 ) );
           Put_code( U32((distance-513) mod 256), 8 );
         when 1025..2048 => -- Codes 20..21, with 9 extra bits
-          Put_code( descr_dis( 20 + (distance-1025) / 512 ) );
+          Put_code( descr.dis( 20 + (distance-1025) / 512 ) );
           Put_code( U32((distance-1025) mod 512), 9 );
         when 2049..4096 => -- Codes 22..23, with 10 extra bits
-          Put_code( descr_dis( 22 + (distance-2049) / 1024 ) );
+          Put_code( descr.dis( 22 + (distance-2049) / 1024 ) );
           Put_code( U32((distance-2049) mod 1024), 10 );
         when 4097..8192 => -- Codes 24..25, with 11 extra bits
-          Put_code( descr_dis( 24 + (distance-4097) / 2048 ) );
+          Put_code( descr.dis( 24 + (distance-4097) / 2048 ) );
           Put_code( U32((distance-4097) mod 2048), 11 );
         when 8193..16384 => -- Codes 26..27, with 12 extra bits
-          Put_code( descr_dis( 26 + (distance-8193) / 4096 ) );
+          Put_code( descr.dis( 26 + (distance-8193) / 4096 ) );
           Put_code( U32((distance-8193) mod 4096), 12 );
         when 16385..32768 => -- Codes 28..29, with 13 extra bits
-          Put_code( descr_dis( 28 + (distance-16385) / 8192 ) );
+          Put_code( descr.dis( 28 + (distance-16385) / 8192 ) );
           Put_code( U32((distance-16385) mod 8192), 13 );
       end case;
     end Put_DL_code;
@@ -465,7 +477,7 @@ is
     -- Done. Send the code signalling the end of compressed data block:
     case method is
       when Deflate_Fixed =>
-        Put_code(descr_lit_len(End_Of_Block));
+        Put_code(descr.lit_len(End_Of_Block));
     end case;
   end Encode;
 

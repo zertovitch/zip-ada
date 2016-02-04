@@ -216,8 +216,8 @@ package body LZMA_Decoding is
       end if;
     end Get_Byte_Q;
 
-    procedure Process_Litteral is
-    pragma Inline(Process_Litteral);
+    procedure Process_Literal is
+    pragma Inline(Process_Literal);
       prevByte     : Byte:= 0;
       symbol       : Unsigned:= 1;
       lit_state    : Unsigned;
@@ -227,7 +227,7 @@ package body LZMA_Decoding is
       if o.unpackSize = 0 and then unpack_size_def then
         Raise_Exception(
           LZMA_Error'Identity,
-          "Decoded data will exceed expected data size (Process_Litteral)"
+          "Decoded data will exceed expected data size (Process_Literal)"
         );
       end if;
       --
@@ -250,7 +250,7 @@ package body LZMA_Decoding is
         declare
           --
           --  The probabilities used for decoding this literal assume
-          --  that the current litteral sequence resembles to the last
+          --  that the current literal sequence resembles to the last
           --  distance-length copied sequence.
           --
           match_byte     : UInt32 := UInt32(Get_Byte_Q(rep0 + 1));
@@ -281,7 +281,7 @@ package body LZMA_Decoding is
       --
       state := Update_State_Literal(state);
       o.unpackSize:= o.unpackSize - 1;
-    end Process_Litteral;
+    end Process_Literal;
 
     dict_size : constant UInt32:= o.dictSize;
 
@@ -584,7 +584,7 @@ package body LZMA_Decoding is
       Decode_Bit_Q(IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
-        Process_Litteral;
+        Process_Literal;
       else
         Process_Distance_and_Length;
       end if;

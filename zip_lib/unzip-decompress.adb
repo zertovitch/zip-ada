@@ -942,7 +942,7 @@ package body UnZip.Decompress is
 
         S := UnZ_Glob.uncompsize;
         while  S > 0  and  not Zip_EOF  loop
-          if UnZ_IO.Bit_buffer.Read_and_dump(1) /= 0 then  -- 1: Litteral
+          if UnZ_IO.Bit_buffer.Read_and_dump(1) /= 0 then  -- 1: Literal
             S:= S - 1;
             Ct:= Tb.table;
             Ci:= UnZ_IO.Bit_buffer.Read_inverted(Bb);
@@ -1054,7 +1054,7 @@ package body UnZip.Decompress is
         UnZ_IO.Bit_buffer.Init;
         S := UnZ_Glob.uncompsize;
         while  S > 0  and not Zip_EOF  loop
-          if UnZ_IO.Bit_buffer.Read_and_dump(1) /= 0 then  -- 1: Litteral
+          if UnZ_IO.Bit_buffer.Read_and_dump(1) /= 0 then  -- 1: Literal
             S:= S - 1;
             UnZ_Glob.slide ( W ):=
               Zip.Byte(UnZ_IO.Bit_buffer.Read_and_dump(8));
@@ -1396,7 +1396,7 @@ package body UnZip.Decompress is
           UnZ_IO.Bit_buffer.Dump ( CT(CT_idx).bits );
 
           case E is
-            when 16 =>     -- CTE.N is a Litteral
+            when 16 =>     -- CT(CT_idx).N is a Literal
               UnZ_Glob.slide ( W ) :=  Zip.Byte( CT(CT_idx).n );
               W:= W + 1;
               UnZ_IO.Flush_if_full(W);

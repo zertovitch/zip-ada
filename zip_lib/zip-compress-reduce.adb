@@ -451,7 +451,7 @@ is
     Threshold          : constant := 3;
 
     -- if the DLE coding doesn't fit the format constraints, we
-    -- need to decode it as a simple sequence of litterals
+    -- need to decode it as a simple sequence of literals
     -- before the probabilistic reduction
 
     type Text_Buffer is array ( 0..String_buffer_size+Look_Ahead-1 ) of Byte;
