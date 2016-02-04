@@ -201,9 +201,13 @@ is
     -- Deflate, post LZ encoding, with Huffman encoding --
     ------------------------------------------------------
 
+    invalid: constant:= -1;
+
+    subtype Huffman_code_range is Integer range invalid .. Integer'Last;
+
     type Length_code_pair is record
-      length: Natural;  --  Huffman code length
-      code  : Natural;  --  The code itself
+      length : Natural;                       --  Huffman code length, in bits
+      code   : Huffman_code_range:= invalid;  --  The code itself
     end record;
 
     procedure Invert(lc: in out Length_code_pair) is
@@ -227,66 +231,79 @@ is
     end Invert;
 
     type Deflate_Huff_descriptors is record
-      -- Tree descriptor for Literal, EOB or Length encoding
+      --  Tree descriptor for Literal, EOB or Length encoding
       lit_len: Huff_descriptor(0..287);
-      -- Tree descriptor for Distance encoding
+      --  Tree descriptor for Distance encoding
       dis: Huff_descriptor(0..29);
     end record;
 
-    -- Current tree descriptors
-    descr: Deflate_Huff_descriptors;
+    --  The Huffman tree is completely determined by the bit length to be used for reaching
+    --  leaf nodes, thanks to two special rules (See RFC 1951, section 3.2.2).
+    --  The Prepare_Huffman_codes function finds the Huffman code for each value, given
+    --  the bit length imposed as input.
+
+    max_huffman_bits: constant:= 15;
+
+    function Prepare_Huffman_codes(dhd: Deflate_Huff_descriptors) return Deflate_Huff_descriptors
+    is
+      procedure Prepare_tree(hd: in out Huff_descriptor) is
+        bl_count, next_code: array(0..max_huffman_bits) of Natural:= (others => 0);
+        code: Natural:= 0;
+        bl: Natural;
+      begin
+        --  Algorithm from RFC 1951, section 3.2.2.
+        --  Step 1)
+        for i in hd'Range loop
+          bl:= hd(i).length;
+          bl_count(bl):= bl_count(bl) + 1;  --  One more code to be defined with bit length bl
+        end loop;
+        --  Step 2)
+        for bits in 1 .. max_huffman_bits loop
+          code:= (code + bl_count(bits-1)) * 2;
+          next_code(bits):= code;  --  This will be the first code for bit length "bits"
+        end loop;
+        --  Step 3)
+        for n in hd'Range loop
+          bl:= hd(n).length;
+          if bl > 0 then
+            hd(n).code:= next_code(bl);
+            next_code(bl):= next_code(bl) + 1;
+          end if;
+        end loop;
+        --  Invert bit order for output:
+        Invert(hd);
+      end Prepare_tree;
+      dhd_var: Deflate_Huff_descriptors:= dhd;
+    begin
+      Prepare_tree(dhd_var.lit_len);
+      Prepare_tree(dhd_var.dis);
+      return dhd_var;
+    end Prepare_Huffman_codes;
+
+    --  Default Huffman trees, for "fixed" blocks (no compression structures included
+    --  in the compressed data).
+    --  The actual Huffman codes are set by the Prepare_Huffman_codes function.
+
+    Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
+      Prepare_Huffman_codes(
+        ( lit_len =>
+            (   0 .. 143 => (length => 8, code => invalid),  --  Literals ("plain text" bytes)
+              144 .. 255 => (length => 9, code => invalid),  --  Literals ("plain text" bytes)
+              256 .. 279 => (length => 7, code => invalid),  --  EOB (256), then length codes
+              280 .. 287 => (length => 8, code => invalid)   --  More length codes
+             ),
+          dis =>
+            (   0 ..  29 => (length => 5, code => invalid))  --  Distance codes
+        )
+      );
+
+    --  Current tree descriptors
+    descr: constant Deflate_Huff_descriptors:= Deflate_fixed_descriptors;
 
     procedure Put_code(lc: Length_code_pair) is
     begin
       Put_code(U32(lc.code), lc.length);
     end Put_code;
-
-    -------------------------------------------------------
-    -- Deflate with fixed (pre-defined) Huffman encoding --
-    -------------------------------------------------------
-
-    procedure Prepare_Huffman_codes is
-    begin
-      case method is
-        when Deflate_Fixed =>
-          -------------------------------------------
-          -- > Literal, EOB and Length codes tree: --
-          -------------------------------------------
-          --  * Literals for bytes:
-          for i in 0 .. 143 loop
-            descr.lit_len(i):= (length => 8, code => 2#00_110000# + i);
-            -- Defines codes from 2#00_110000# to 2#10_111111#
-            -- i.e. codes beginning with "00", "01" or "10"; from the codes
-            -- beginning with "00" we take only those followed by "11".
-            -- "00_00", "00_01", "00_10" are covered by the 3rd group below.
-          end loop;
-          for i in 144 .. 255 loop
-            descr.lit_len(i):= (length => 9, code => 2#11_001_0000# + (i-144));
-            -- Defines codes from 2#11_001_0000# to 2#11_111_1111#
-            -- i.e. codes beginning with "11" except those followed
-            -- by "000", which are defined in the 4th group below.
-          end loop;
-          --  * Special codes: End-Of-Block (256), then length codes
-          for i in 256 .. 279 loop
-            descr.lit_len(i):= (length => 7, code => i-256);
-            -- Defines codes from 2#00_00_000# to 2#00_10_111#
-          end loop;
-          for i in 280 .. 287 loop
-            descr.lit_len(i):= (length => 8, code => 2#11_000_000# + (i-280));
-            -- Defines codes from 2#11_000_000# to 2#11_000_111#
-            -- i.e. all codes beginning with "11_000"
-          end loop;
-          ----------------------------
-          -- > Distance codes tree: --
-          ----------------------------
-          for i in 0 .. 29 loop
-            descr.dis(i):= (length => 5, code => i);
-          end loop;
-      end case;
-      -- Invert bit order for output:
-      Invert(descr.lit_len);
-      Invert(descr.dis);
-    end Prepare_Huffman_codes;
 
     --  Write a normal, "clear-text" (post LZ, pre Huffman), 8-bit character (literal)
     procedure Put_literal_byte( b: Byte ) is
@@ -453,7 +470,6 @@ is
     End_Of_Block: constant:= 256;
 
   begin -- Encode
-    Prepare_Huffman_codes;
     Read_Block;
     R:= String_buffer_size-Look_Ahead;
     Bytes_in := 0;
