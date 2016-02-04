@@ -204,6 +204,8 @@ procedure ZipAda is
           method:= Shrink;
         elsif opt(opt'First..opt'First+3) = "edf " then
           method:= Deflate_Fixed;
+        elsif opt(opt'First..opt'First+3) = "edd " then
+          method:= Deflate_One_Dynamic; -- !! Deflate_One_Dynamic is under construction !!
         elsif opt(opt'First..opt'First+3) = "dir " then
           scan:= Scan_mode'Max(scan, files_and_dirs);
         elsif opt(opt'First..opt'First+1) = "r " then

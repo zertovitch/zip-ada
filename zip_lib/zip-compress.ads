@@ -33,8 +33,10 @@ package Zip.Compress is
     (Store,
      Shrink,
      Reduce_1, Reduce_2, Reduce_3, Reduce_4,
-     Deflate_Fixed  --  compress the data in one block and with
-                    --  predefined ("fixed") compression structures.
+     Deflate_Fixed,  --  Compress the data in one block and with
+                     --  predefined ("fixed") compression structures.
+     Deflate_One_Dynamic  --  One block, but with computed compression structures.
+     -- !! Deflate_One_Dynamic is under construction !!
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;
@@ -42,7 +44,7 @@ package Zip.Compress is
 
   subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
 
-  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_Fixed;
+  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_One_Dynamic;
 
   User_abort: exception;
 
@@ -69,13 +71,14 @@ private
   buffer_size: constant:= 1024 * 1024; -- 1 MB
 
   Method_to_Format: constant Method_to_Format_type :=
-    (Store         => store,
-     Shrink        => shrink,
-     Reduce_1      => reduce_1,
-     Reduce_2      => reduce_2,
-     Reduce_3      => reduce_3,
-     Reduce_4      => reduce_4,
-     Deflate_Fixed => deflate
+    (Store               => store,
+     Shrink              => shrink,
+     Reduce_1            => reduce_1,
+     Reduce_2            => reduce_2,
+     Reduce_3            => reduce_3,
+     Reduce_4            => reduce_4,
+     Deflate_Fixed       => deflate,
+     Deflate_One_Dynamic => deflate
     );
 
 end Zip.Compress;

@@ -244,35 +244,36 @@ is
 
     max_huffman_bits: constant:= 15;
 
+    procedure Prepare_tree(hd: in out Huff_descriptor) is
+      bl_count, next_code: array(0..max_huffman_bits) of Natural:= (others => 0);
+      code: Natural:= 0;
+      bl: Natural;
+    begin
+      --  Algorithm from RFC 1951, section 3.2.2.
+      --  Step 1)
+      for i in hd'Range loop
+        bl:= hd(i).length;
+        bl_count(bl):= bl_count(bl) + 1;  --  One more code to be defined with bit length bl
+      end loop;
+      --  Step 2)
+      for bits in 1 .. max_huffman_bits loop
+        code:= (code + bl_count(bits-1)) * 2;
+        next_code(bits):= code;  --  This will be the first code for bit length "bits"
+      end loop;
+      --  Step 3)
+      for n in hd'Range loop
+        bl:= hd(n).length;
+        if bl > 0 then
+          hd(n).code:= next_code(bl);
+          next_code(bl):= next_code(bl) + 1;
+        end if;
+      end loop;
+      --  Invert bit order for output:
+      Invert(hd);
+    end Prepare_tree;
+
     function Prepare_Huffman_codes(dhd: Deflate_Huff_descriptors) return Deflate_Huff_descriptors
     is
-      procedure Prepare_tree(hd: in out Huff_descriptor) is
-        bl_count, next_code: array(0..max_huffman_bits) of Natural:= (others => 0);
-        code: Natural:= 0;
-        bl: Natural;
-      begin
-        --  Algorithm from RFC 1951, section 3.2.2.
-        --  Step 1)
-        for i in hd'Range loop
-          bl:= hd(i).length;
-          bl_count(bl):= bl_count(bl) + 1;  --  One more code to be defined with bit length bl
-        end loop;
-        --  Step 2)
-        for bits in 1 .. max_huffman_bits loop
-          code:= (code + bl_count(bits-1)) * 2;
-          next_code(bits):= code;  --  This will be the first code for bit length "bits"
-        end loop;
-        --  Step 3)
-        for n in hd'Range loop
-          bl:= hd(n).length;
-          if bl > 0 then
-            hd(n).code:= next_code(bl);
-            next_code(bl):= next_code(bl) + 1;
-          end if;
-        end loop;
-        --  Invert bit order for output:
-        Invert(hd);
-      end Prepare_tree;
       dhd_var: Deflate_Huff_descriptors:= dhd;
     begin
       Prepare_tree(dhd_var.lit_len);
@@ -297,13 +298,39 @@ is
         )
       );
 
-    --  Current tree descriptors
-    descr: constant Deflate_Huff_descriptors:= Deflate_fixed_descriptors;
-
+    --  Emit a Huffman code
     procedure Put_code(lc: Length_code_pair) is
     begin
       Put_code(U32(lc.code), lc.length);
     end Put_code;
+
+    procedure Put_compression_structure(dhd: Deflate_Huff_descriptors) is
+      truc: Huff_descriptor(0..18);
+      bit_order_for_dynamic_block : constant array ( 0..18 ) of Natural :=
+         ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
+    begin
+      --  !!  To do: send that in compressed form !!
+      Put_code(288 - 257, 5);  --  !! maximum
+      Put_code(30  -   1, 5);  --  !! maximum
+      Put_code(19  -   4, 4);  --  !! maximum
+      for i in truc'Range loop
+        truc(i).length:= 7;  --  !! maximum
+      end loop;
+      for i in truc'Range loop
+        Put_code(U32(bit_order_for_dynamic_block(truc(i).length)), 3);
+      end loop;
+      Prepare_tree(truc);
+      --  !! Uncompressed (no repeat codes):
+      for i in dhd.lit_len'Range loop
+        Put_code(truc((dhd.lit_len(i).length)));  --  .length in 0..15
+      end loop;
+      for i in dhd.dis'Range loop
+        Put_code(truc(dhd.dis(i).length));  --  .length in 0..15
+      end loop;
+    end Put_compression_structure;
+
+    --  Current tree descriptors
+    descr: constant Deflate_Huff_descriptors:= Deflate_fixed_descriptors;
 
     --  Write a normal, "clear-text" (post LZ, pre Huffman), 8-bit character (literal)
     procedure Put_literal_byte( b: Byte ) is
@@ -319,6 +346,8 @@ is
       case method is
         when Deflate_Fixed =>
           Put_literal_byte(b);
+        when Deflate_One_Dynamic =>
+          Put_literal_byte(b);  --  !! To be buffered
       end case;
     end Put_or_delay_literal_byte;
 
@@ -438,6 +467,8 @@ is
       case method is
         when Deflate_Fixed =>
           Put_DL_code(distance, length);
+        when Deflate_One_Dynamic =>
+          Put_DL_code(distance, length);  --  !! To be buffered
       end case;
     end Put_or_delay_DL_code;
 
@@ -485,6 +516,10 @@ is
         Put_code(code => 1, code_size => 1); -- signals last block
         -- Fixed (predefined) compression structure
         Put_code(code => 1, code_size => 2); -- signals a fixed block
+      when Deflate_One_Dynamic =>
+        Put_code(code => 1, code_size => 1); -- signals last block
+        Put_code(code => 2, code_size => 2); -- signals a dynamic block
+        Put_compression_structure(descr);  --  !! delayed
     end case;
     ------------------------------------------------
     --  The whole compression is happenning here: --
@@ -494,6 +529,8 @@ is
     case method is
       when Deflate_Fixed =>
         Put_code(descr.lit_len(End_Of_Block));
+      when Deflate_One_Dynamic =>
+        Put_code(descr.lit_len(End_Of_Block));  --  !! empty LZ buffer, etc.
     end case;
   end Encode;
 

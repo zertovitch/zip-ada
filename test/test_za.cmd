@@ -3,7 +3,8 @@ echo.
 echo Testing the ZipAda tool with Comp_Zip
 echo.
 
-if exist test_z???.zip del test_z???.zip
+if exist test_za??.zip del test_za??.zip
+if exist test_ifz?.zip del test_ifz?.zip
 
 copy /b ..\zipada.exe .
 copy /b ..\random_data.exe .
@@ -19,10 +20,12 @@ zipada -er2 test_zar2 %files%
 zipada -er3 test_zar3 %files%
 zipada -er4 test_zar4 %files%
 zipada -edf test_zadf %files%
-zip         test_zzip %files%
+zip    -1   test_ifz1 %files%
+zip    -6   test_ifz6 %files%
+zip    -9   test_ifz9 %files%
 
 echo.
-comp_zip test_zash test_zzip
+comp_zip test_zash test_ifz9
 comp_zip test_zash test_zar1
 comp_zip test_zash test_zar2
 comp_zip test_zash test_zar3
