@@ -20,6 +20,7 @@ zipada -er2 test_zar2 %files%
 zipada -er3 test_zar3 %files%
 zipada -er4 test_zar4 %files%
 zipada -edf test_zadf %files%
+zipada -edp test_zadp %files%
 zip    -1   test_ifz1 %files%
 zip    -6   test_ifz6 %files%
 zip    -9   test_ifz9 %files%
@@ -31,5 +32,6 @@ comp_zip test_zash test_zar2
 comp_zip test_zash test_zar3
 comp_zip test_zash test_zar4
 comp_zip test_zash test_zadf
+comp_zip test_zash test_zadp
 
 pause

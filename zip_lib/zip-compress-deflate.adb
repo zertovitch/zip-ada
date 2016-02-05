@@ -18,6 +18,7 @@ with Interfaces; use Interfaces;
 with Zip.LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
 
+with Ada.Exceptions; use Ada.Exceptions;
 -- with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure Zip.Compress.Deflate
@@ -266,6 +267,8 @@ is
         if bl > 0 then
           hd(n).code:= next_code(bl);
           next_code(bl):= next_code(bl) + 1;
+        else
+          hd(n).code:= 0;
         end if;
       end loop;
       --  Invert bit order for output:
@@ -281,26 +284,68 @@ is
       return dhd_var;
     end Prepare_Huffman_codes;
 
-    --  Default Huffman trees, for "fixed" blocks (no compression structures included
-    --  in the compressed data).
-    --  The actual Huffman codes are set by the Prepare_Huffman_codes function.
+    type Bit_length_array is array(Natural range <>) of Natural;
+    subtype Bit_length_array_lit_len is Bit_length_array(0..287);
+    subtype Bit_length_array_dis is Bit_length_array(0..29);
+
+    function Preset_descriptor(
+      bl_for_lit_len : Bit_length_array_lit_len;
+      bl_for_dis     : Bit_length_array_dis
+    )
+    return Deflate_Huff_descriptors
+    is
+      new_d: Deflate_Huff_descriptors;
+    begin
+      for i in bl_for_lit_len'Range loop
+        new_d.lit_len(i):= (length => bl_for_lit_len(i), code => invalid);
+      end loop;
+      for i in bl_for_dis'Range loop
+        new_d.dis(i):= (length => bl_for_dis(i), code => invalid);
+      end loop;
+      return Prepare_Huffman_codes(new_d);
+    end Preset_descriptor;
+
+    --  Default Huffman trees, for "fixed" blocks as defined in appnote.txt or RFC 1951
+
+    default_dis_bl: constant Bit_length_array_dis:= (others => 5);
 
     Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
-      Prepare_Huffman_codes(
-        ( lit_len =>
-            (   0 .. 143 => (length => 8, code => invalid),  --  Literals ("plain text" bytes)
-              144 .. 255 => (length => 9, code => invalid),  --  Literals ("plain text" bytes)
-              256 .. 279 => (length => 7, code => invalid),  --  EOB (256), then length codes
-              280 .. 287 => (length => 8, code => invalid)   --  More length codes
+      Preset_descriptor
+        ( bl_for_lit_len =>
+            (   0 .. 143 => 8,  --  For literals ("plain text" bytes)
+              144 .. 255 => 9,  --  For more literals ("plain text" bytes)
+              256 .. 279 => 7,  --  For EOB (256), then for length codes
+              280 .. 287 => 8   --  For more length codes
              ),
-          dis =>
-            (   0 ..  29 => (length => 5, code => invalid))  --  Distance codes
-        )
-      );
+          bl_for_dis =>
+            default_dis_bl      --  For distance codes
+        );
+
+    --  Huffman codes tuned for compressing a text like a source code...
+    source_code_lit_len_bl: constant Bit_length_array_lit_len:=
+      ( 0 .. 9 | 11 .. 31 | 33 .. 143 => 8,
+        10 | 32  => 7,
+        144 .. 255 => 9,
+        256 => 8,
+        257 .. 278 => 7,
+        279 .. 287 => 8
+       );
+
+    Deflate_custom_descriptors: constant Deflate_Huff_descriptors:=
+      Preset_descriptor
+        ( bl_for_lit_len => source_code_lit_len_bl,
+          bl_for_dis =>
+            ( 0 => 11, 1 => 9, 2 => 10, 3 => 8, 4 => 7, 5 .. 7 => 6,
+              10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 => 4,
+              others => 5 )
+        );
 
     --  Emit a Huffman code
     procedure Put_code(lc: Length_code_pair) is
     begin
+      if lc.length = 0 then
+        Raise_Exception(Constraint_Error'Identity, "Code of length 0 should not occurr");
+      end if;
       Put_code(U32(lc.code), lc.length);
     end Put_code;
 
@@ -308,16 +353,18 @@ is
       truc: Huff_descriptor(0..18);
       bit_order_for_dynamic_block : constant array ( 0..18 ) of Natural :=
          ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
+      some_complete_huffman_code : constant array ( 0..18 ) of Natural :=
+        ( 3, 0, 0, 5, 4, 4, 3, 3, 3, 3, 4, 4, 5, 0, 0, 0, 5, 6, 6 );
+        -- OK for Deflate_fixed_descriptors, but !! hard-coded
     begin
-      --  !!  To do: send that in compressed form !!
-      Put_code(288 - 257, 5);  --  !! maximum
+      Put_code(288 - 257, 5);  --  !! maximum = 288 - 257
       Put_code(30  -   1, 5);  --  !! maximum
       Put_code(19  -   4, 4);  --  !! maximum
       for i in truc'Range loop
-        truc(i).length:= 7;  --  !! maximum
+        truc(i).length:= some_complete_huffman_code(i);
       end loop;
       for i in truc'Range loop
-        Put_code(U32(bit_order_for_dynamic_block(truc(i).length)), 3);
+        Put_code(U32(truc(bit_order_for_dynamic_block(i)).length), 3);
       end loop;
       Prepare_tree(truc);
       --  !! Uncompressed (no repeat codes):
@@ -330,7 +377,7 @@ is
     end Put_compression_structure;
 
     --  Current tree descriptors
-    descr: constant Deflate_Huff_descriptors:= Deflate_fixed_descriptors;
+    descr: Deflate_Huff_descriptors:= Deflate_fixed_descriptors;
 
     --  Write a normal, "clear-text" (post LZ, pre Huffman), 8-bit character (literal)
     procedure Put_literal_byte( b: Byte ) is
@@ -344,10 +391,8 @@ is
     procedure Put_or_delay_literal_byte( b: Byte ) is
     begin
       case method is
-        when Deflate_Fixed =>
-          Put_literal_byte(b);
-        when Deflate_One_Dynamic =>
-          Put_literal_byte(b);  --  !! To be buffered
+        when Deflate_Fixed | Deflate_Preset =>
+          Put_literal_byte(b);  --  Buffering is not needed in these modes
       end case;
     end Put_or_delay_literal_byte;
 
@@ -465,10 +510,8 @@ is
     procedure Put_or_delay_DL_code( distance, length: Integer ) is
     begin
       case method is
-        when Deflate_Fixed =>
-          Put_DL_code(distance, length);
-        when Deflate_One_Dynamic =>
-          Put_DL_code(distance, length);  --  !! To be buffered
+        when Deflate_Fixed | Deflate_Preset =>
+          Put_DL_code(distance, length);  --  Buffering is not needed in these modes
       end case;
     end Put_or_delay_DL_code;
 
@@ -516,10 +559,12 @@ is
         Put_code(code => 1, code_size => 1); -- signals last block
         -- Fixed (predefined) compression structure
         Put_code(code => 1, code_size => 2); -- signals a fixed block
-      when Deflate_One_Dynamic =>
+        --  No compression structure need to be included in the compressed data.
+      when Deflate_Preset =>
         Put_code(code => 1, code_size => 1); -- signals last block
         Put_code(code => 2, code_size => 2); -- signals a dynamic block
-        Put_compression_structure(descr);  --  !! delayed
+        descr:= Deflate_custom_descriptors;
+        Put_compression_structure(descr);
     end case;
     ------------------------------------------------
     --  The whole compression is happenning here: --
@@ -527,10 +572,8 @@ is
     My_LZ77;
     -- Done. Send the code signalling the end of compressed data block:
     case method is
-      when Deflate_Fixed =>
-        Put_code(descr.lit_len(End_Of_Block));
-      when Deflate_One_Dynamic =>
-        Put_code(descr.lit_len(End_Of_Block));  --  !! empty LZ buffer, etc.
+      when Deflate_Fixed | Deflate_Preset =>
+        Put_code(descr.lit_len(End_Of_Block));  --  Immediate for these modes
     end case;
   end Encode;
 
