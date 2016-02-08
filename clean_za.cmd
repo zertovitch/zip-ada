@@ -26,6 +26,11 @@ del *.3
 del *.adt
 cd..
 
+cd test
+if exist test_za??.zip del test_za??.zip
+if exist test_ifz?.zip del test_ifz?.zip
+cd ..
+
 if not exist obj_opt\zip.ali md obj_opt
 cd obj_opt
 cleanacu

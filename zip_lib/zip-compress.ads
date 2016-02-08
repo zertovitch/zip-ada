@@ -36,6 +36,8 @@ package Zip.Compress is
      Deflate_Fixed,  --  Compress the data in one block and with
                      --  predefined ("fixed") compression structures.
      Deflate_Preset  --  One block, but with a bit smarter compression structure.
+        --  NB: Deflate_Preset may be short-lived and be replaced soon
+        --  by Deflate_Something_Else ...
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;

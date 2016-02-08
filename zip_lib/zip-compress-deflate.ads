@@ -1,4 +1,4 @@
--- The "Deflate" method combines the LZ77 compression method with some Hufman
+-- The "Deflate" method combines the LZ77 compression method with some Huffman
 -- encoding gymnastics.
 --
 -- Author: G. de Montmollin, February 2011
