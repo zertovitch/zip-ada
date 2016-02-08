@@ -20,10 +20,6 @@
 --  Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
 --  Translated to Ada by G. de Montmollin, 7-Feb-2016
---
---  Main technical differences:
---    - pointers are not used, array indices instead
---    - all structures are allocated on stack
 
 generic
   type Alphabet is (<>);  --  Any discrete type
