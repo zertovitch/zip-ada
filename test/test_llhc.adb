@@ -1,3 +1,6 @@
+--  This test builds with ObjectAda and GNAT in -gnat83 mode, so
+--  perhaps with all Ada (83, 95, 2005, ...) compilers!...
+
 with Length_limited_Huffman_code_lengths;
 
 with Text_IO; use Text_IO;
@@ -16,7 +19,7 @@ begin
     begin
       LLHCL(freq, len);
     end;
-    Put("Maximum Huffman code length:");
+    Put("Maximum Huffman code length (constraint):");
     Put(m, 3);
     Put_Line(" bits");
     Put_Line("------------------------------------");

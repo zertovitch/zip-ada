@@ -19,11 +19,12 @@
 --  "A Fast and Space-Economical Algorithm for Length-Limited Coding
 --  Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
---  Translated to Ada by G. de Montmollin, 7-Feb-2016
+--  Translated to Ada from katajainen.c by G. de Montmollin, 7-Feb-2016
 --
 --  Main technical differences to katajainen.c:
 --    - pointers are not used, array indices instead
 --    - all structures are allocated on stack
+--    - sub-programs are nested, then unneeded parameters are removed
 
 procedure Length_limited_Huffman_code_lengths(
   frequencies :     Count_Array;
@@ -164,110 +165,46 @@ is
     end loop;
   end Extract_Bit_Lengths;
 
-  -----------------------------------------------------------------------
-  -- Generic Sort (standard in Ada 2005+, but this unit is Ada 95 )
-  -- Code originally from the Charles library by Matthew J Heaney
-  -----------------------------------------------------------------------
-  generic
-     type Index_Type is (<>);
-     type Element_Type is private;
-     type Array_Type is array (Index_Type range <>) of Element_Type;
-     with function "<" (Left, Right : Element_Type) return Boolean is <>;
-  procedure Generic_Quicksort (Container : in out Array_Type);
-  --
-  procedure Generic_Quicksort (Container : in out Array_Type) is
-     function Is_Less (I, J : Index_Type) return Boolean is
-        pragma Inline (Is_Less);
-     begin
-        return Container (I) < Container (J);
-     end;
-     procedure Swap (I, J : Index_Type) is
-        pragma Inline (Swap);
-        EI : constant Element_Type := Container (I);
-     begin
-        Container (I) := Container (J);
-        Container (J) := EI;
-     end;
-     procedure Sort (First, Last : Index_Type'Base) is
-        Pivot, Lo, Mid, Hi : Index_Type;
-     begin
-        if Last <= First then
-           return;
-        end if;
-        Lo := First;
-        Hi := Last;
-        if Last = Index_Type'Succ (First) then
-           if not Is_Less (Lo, Hi) then
-              Swap (Lo, Hi);
-           end if;
-           return;
-        end if;
-        Mid := Index_Type'Val
-                 (Index_Type'Pos (Lo) +
-                  (Index_Type'Pos (Hi) - Index_Type'Pos (Lo)) / 2);
-        if Is_Less (Lo, Mid) then
-           if Is_Less (Lo, Hi) then
-              if Is_Less (Mid, Hi) then
-                 Swap (Lo, Mid);
-              else
-                 Swap (Lo, Hi);
-              end if;
-           else
-              null;  --lo is median
-           end if;
-        elsif Is_Less (Lo, Hi) then
-           null; --lo is median
-        elsif Is_Less (Mid, Hi) then
-           Swap (Lo, Hi);
-        else
-           Swap (Lo, Mid);
-        end if;
-        Pivot := Lo;
-        Outer :
-        loop
-           loop
-              exit Outer when not (Pivot < Hi);
-              if Is_Less (Hi, Pivot) then
-                 Swap (Hi, Pivot);
-                 Pivot := Hi;
-                 Lo := Index_Type'Succ (Lo);
-                 exit;
-              else
-                 Hi := Index_Type'Pred (Hi);
-              end if;
-           end loop;
-           loop
-              exit Outer when not (Lo < Pivot);
-              if Is_Less (Lo, Pivot) then
-                 Lo := Index_Type'Succ (Lo);
-              else
-                 Swap (Lo, Pivot);
-                 Pivot := Lo;
-                 Hi := Index_Type'Pred (Hi);
-                 exit;
-              end if;
-           end loop;
-        end loop Outer;
-        Sort (First, Index_Type'Pred (Pivot));
-        Sort (Index_Type'Succ (Pivot), Last);
-     end Sort;
-  begin
-     Sort (Container'First, Container'Last);
-  end Generic_Quicksort;
-
   function "<"(a, b: Leaf_Node) return Boolean is
   begin
     return a.weight < b.weight;
   end;
 
-  procedure QSort is new Generic_Quicksort(Index_type, Leaf_Node, Leaf_array, "<");
+  procedure Quick_sort (a: in out Leaf_array) is
+    n: constant Index_type:= a'Length;
+    i, j: Index_type;
+    p, t: Leaf_Node;
+  begin
+    if n < 2 then
+      return;
+    end if;
+    p := a(n / 2 + a'First);
+    i:= 0;
+    j:= n - 1;
+    loop
+      while a(i + a'First) < p loop
+        i:= i + 1;
+      end loop;
+      while p < a(j + a'First) loop
+        j:= j - 1;
+      end loop;
+      exit when i >= j;
+      t := a(i + a'First);
+      a(i + a'First) := a(j + a'First);
+      a(j + a'First) := t;
+      i:= i + 1;
+      j:= j - 1;
+    end loop;
+    Quick_sort(a(a'First .. a'First + i - 1));
+    Quick_sort(a(a'First + i .. a'Last));
+  end Quick_sort;
 
 begin
   bit_lengths:= (others => 0);
   --  Count used symbols and place them in the leaves.
-  for i in frequencies'Range loop
-    if frequencies(i) > 0 then
-      leaves(num_symbols):= (frequencies(i), i);
+  for a in Alphabet loop
+    if frequencies(a) > 0 then
+      leaves(num_symbols):= (frequencies(a), a);
       num_symbols:= num_symbols + 1;
     end if;
   end loop;
@@ -283,10 +220,10 @@ begin
     return;  --  Only one symbol, give it bit length 1, not 0. OK.
   end if;
   --  Sort the leaves from lightest to heaviest.
-  QSort(leaves(0..num_symbols-1));
+  Quick_sort(leaves(0..num_symbols-1));
   for i in 0..num_symbols-1 loop
-    if i > 0 and then leaves(i-1).weight > leaves(i).weight then
-      raise Constraint_Error;  --  Buggy sorting
+    if i > 0 and then leaves(i) < leaves(i-1) then
+      raise Program_Error;  --  Buggy sorting
     end if;
   end loop;
   Init_Lists;
