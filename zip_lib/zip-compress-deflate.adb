@@ -8,7 +8,7 @@
 --
 -- Change log:
 --
---  4-Feb-2016: "Dynamic" encoding (compression structure sent before block)
+--  4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
 -- 19-Feb-2011: All distance and length codes implemented.
 -- 18-Feb-2011: First version working with Deflate fixed and restricted
 --                distance & length codes.
@@ -285,6 +285,22 @@ is
       Prepare_tree(dhd_var.dis);
       return dhd_var;
     end Prepare_Huffman_codes;
+
+    --  We buffer the LZ codes (plain, or distance/length) to analyse them
+    --  and try to do smart things
+
+    type LZ_atom_kind is (plain_byte, distance_length);
+    type LZ_atom is record
+      kind        : LZ_atom_kind;
+      plain       : Byte;
+      lz_distance : Natural;
+      lz_length   : Natural;
+    end record;
+
+    LZ_buffer_size: constant:= 4096; -- hardcoded !!
+    type LZ_buffer_type is array ( 0 .. LZ_buffer_size-1 ) of LZ_atom;
+    lz_buffer: LZ_buffer_type;
+    lz_buffer_index, lz_buffer_defined: Natural:= 0;
 
     type Bit_length_array is array(Natural range <>) of Natural;
     subtype Bit_length_array_lit_len is Bit_length_array(0..287);
