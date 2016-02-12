@@ -35,9 +35,10 @@ package Zip.Compress is
      Reduce_1, Reduce_2, Reduce_3, Reduce_4,
      Deflate_Fixed,  --  Compress the data in one block and with
                      --  predefined ("fixed") compression structures.
-     Deflate_Preset  --  One block, but with a bit smarter compression structure.
+     Deflate_Preset, --  One block, but with a bit smarter compression structure.
         --  NB: Deflate_Preset may be short-lived and be replaced soon
         --  by Deflate_Something_Else ...
+     Deflate_Dynamic_1
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;
@@ -45,7 +46,7 @@ package Zip.Compress is
 
   subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
 
-  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_Preset;
+  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_Dynamic_1;
 
   User_abort: exception;
 
@@ -79,7 +80,8 @@ private
      Reduce_3            => reduce_3,
      Reduce_4            => reduce_4,
      Deflate_Fixed       => deflate,
-     Deflate_Preset      => deflate
+     Deflate_Preset      => deflate,
+     Deflate_Dynamic_1   => deflate
     );
 
 end Zip.Compress;

@@ -21,7 +21,7 @@ with Length_limited_Huffman_code_lengths;
 
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
--- with Ada.Text_IO;                       use Ada.Text_IO;
+--  with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure Zip.Compress.Deflate
  (input,
@@ -286,21 +286,9 @@ is
       return dhd_var;
     end Prepare_Huffman_codes;
 
-    --  We buffer the LZ codes (plain, or distance/length) to analyse them
-    --  and try to do smart things
-
-    type LZ_atom_kind is (plain_byte, distance_length);
-    type LZ_atom is record
-      kind        : LZ_atom_kind;
-      plain       : Byte;
-      lz_distance : Natural;
-      lz_length   : Natural;
-    end record;
-
-    LZ_buffer_size: constant:= 4096; -- hardcoded !!
-    type LZ_buffer_type is array ( 0 .. LZ_buffer_size-1 ) of LZ_atom;
-    lz_buffer: LZ_buffer_type;
-    lz_buffer_index, lz_buffer_defined: Natural:= 0;
+    ------------------------------
+    --  Compression structures  --
+    ------------------------------
 
     type Bit_length_array is array(Natural range <>) of Natural;
     subtype Bit_length_array_lit_len is Bit_length_array(0..287);
@@ -424,14 +412,6 @@ is
       R:= (R+1) mod String_buffer_size;
     end Put_literal_byte;
 
-    procedure Put_or_delay_literal_byte( b: Byte ) is
-    begin
-      case method is
-        when Deflate_Fixed | Deflate_Preset =>
-          Put_literal_byte(b);  --  Buffering is not needed in these modes
-      end case;
-    end Put_or_delay_literal_byte;
-
     --  Possible ranges for distance and length encoding in the Zip-Deflate format:
     subtype Length_range is Integer range 3 .. 258;
     subtype Distance_range is Integer range 1 .. 32768;
@@ -543,11 +523,84 @@ is
       end case;
     end Put_DL_code;
 
+    -----------------
+    --  LZ Buffer  --
+    -----------------
+
+    --  We buffer the LZ codes (plain, or distance/length) to analyse them
+    --  and try to do smart things
+
+    type LZ_atom_kind is (plain_byte, distance_length);
+    type LZ_atom is record
+      kind        : LZ_atom_kind;
+      plain       : Byte;
+      lz_distance : Natural;
+      lz_length   : Natural;
+    end record;
+
+    LZ_buffer_size: constant:= 2**14; -- hardcoded !!
+    type LZ_buffer_index_type is mod LZ_buffer_size;
+    type LZ_buffer_type is array (LZ_buffer_index_type) of LZ_atom;
+    lz_buffer: LZ_buffer_type;
+    lz_buffer_index: LZ_buffer_index_type:= 0;
+    lz_buffer_full: Boolean:= False;
+    --  True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
+
+    End_Of_Block: constant:= 256;
+
+    procedure Flush_from_0 is
+    begin
+      -- !! temporary
+      if lz_buffer_full then
+        Put_code(descr.lit_len(End_Of_Block));
+      end if;
+      --  put_line("*** New dyn block");
+      Put_code(code => 0, code_size => 1); -- signals block is not last
+      Put_code(code => 2, code_size => 2); -- signals a dynamic block
+      descr:= Deflate_custom_descriptors;  --  !!
+      Put_compression_structure(descr);
+      --
+      lz_buffer_full:= True;
+      --
+      --  put_line(
+      --    "*** Flush_from_0, index=" & lz_buffer_index'img &
+      --    "  range: 0 .." & LZ_buffer_index_type'image(lz_buffer_index-1));
+      for i in 0 .. lz_buffer_index-1 loop
+        case lz_buffer(i).kind is
+          when plain_byte =>
+            Put_literal_byte(lz_buffer(i).plain);
+          when distance_length =>
+            Put_DL_code(lz_buffer(i).lz_distance, lz_buffer(i).lz_length);
+        end case;
+      end loop;
+    end Flush_from_0;
+
+    procedure Push(a: LZ_atom) is
+    begin
+      lz_buffer(lz_buffer_index):= a;
+      lz_buffer_index:= lz_buffer_index + 1;
+      if lz_buffer_index = 0 then
+        Flush_from_0;
+      end if;
+    end Push;
+
+    procedure Put_or_delay_literal_byte( b: Byte ) is
+    begin
+      case method is
+        when Deflate_Fixed | Deflate_Preset =>
+          Put_literal_byte(b);  --  Buffering is not needed in these modes
+        when Deflate_Dynamic_1 =>
+          Push((plain_byte, b, 0, 0));
+      end case;
+    end Put_or_delay_literal_byte;
+
     procedure Put_or_delay_DL_code( distance, length: Integer ) is
     begin
       case method is
         when Deflate_Fixed | Deflate_Preset =>
           Put_DL_code(distance, length);  --  Buffering is not needed in these modes
+        when Deflate_Dynamic_1 =>
+          Push((distance_length, 0, distance, length));
       end case;
     end Put_or_delay_DL_code;
 
@@ -577,9 +630,7 @@ is
         Put_or_delay_literal_byte, LZ77_emits_DL_code
       );
 
-    End_Of_Block: constant:= 256;
-
-  begin -- Encode
+  begin  --  Encode
     Read_Block;
     R:= String_buffer_size-Look_Ahead;
     Bytes_in := 0;
@@ -601,6 +652,8 @@ is
         Put_code(code => 2, code_size => 2); -- signals a dynamic block
         descr:= Deflate_custom_descriptors;
         Put_compression_structure(descr);
+      when Deflate_Dynamic_1 =>
+        null;  --  No start data sent, all is delayed
     end case;
     ------------------------------------------------
     --  The whole compression is happenning here: --
@@ -609,8 +662,20 @@ is
     -- Done. Send the code signalling the end of compressed data block:
     case method is
       when Deflate_Fixed | Deflate_Preset =>
-        Put_code(descr.lit_len(End_Of_Block));  --  Immediate for these modes
+        null;
+      when Deflate_Dynamic_1 =>
+        if lz_buffer_index = 0 then
+          null;  --  Already flushed at latest Push, or empty data
+        else
+          --  new_line; put_line("last flush");
+          Flush_from_0;
+        end if;
+        Put_code(descr.lit_len(End_Of_Block));
+        Put_code(code => 1, code_size => 1); -- signals last block
+        Put_code(code => 1, code_size => 2); -- signals a fixed block
+        descr:= Deflate_fixed_descriptors;
     end case;
+    Put_code(descr.lit_len(End_Of_Block));
   end Encode;
 
 begin

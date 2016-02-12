@@ -1,5 +1,4 @@
 - comp_zip: optionally, check only CRC
-- demo for a self-extractor
 - more profiling - see prof_za.cmd and test/prof.cmd
   OK:
     2**n expanded to 
@@ -8,7 +7,3 @@
     instead of shift_left(1,n)
   25% gain un uza -t
   12% gain on za
-    
-- reduce: partial (<2**n) follower table can be worth, see pkzip090 (if only 1 or 2 times used, a single follower is a loss of bits)
-- reduce meth: perhaps mimic pkzip092: if input_size_known and then input_size < 2KB then Shrink
-- reduce: increase lz cache to...

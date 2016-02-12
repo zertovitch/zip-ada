@@ -206,6 +206,8 @@ procedure ZipAda is
           method:= Deflate_Fixed;
         elsif opt(opt'First..opt'First+3) = "edp " then
           method:= Deflate_Preset;
+        elsif opt(opt'First..opt'First+3) = "ed1 " then
+          method:= Deflate_Dynamic_1;
         elsif opt(opt'First..opt'First+3) = "dir " then
           scan:= Scan_mode'Max(scan, files_and_dirs);
         elsif opt(opt'First..opt'First+1) = "r " then
@@ -276,7 +278,7 @@ begin
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
     Put_Line("          -es    : ""shrink"" (LZW algorithm, default)");
     Put_Line("          -edf   : ""deflate"", with one fixed block");
-    Put_Line("          -edp   : ""deflate"", with one preset block");
+    Put_Line("          -ed1   : ""deflate dynamic"", strength 1");
     Put_Line("          -dir   : name(s) may be also directories,");
     Put_Line("                      whose contents will be archived");
     Put_Line("          -r     : same as ""-dir"", but recursive");
