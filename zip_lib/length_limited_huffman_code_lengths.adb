@@ -33,14 +33,14 @@ procedure Length_limited_Huffman_code_lengths(
 is
   subtype Index_type is Count_Type;
 
-  null_index: constant Count_Type:= Count_Type'Last;
+  null_index: constant Index_Type:= Index_Type'Last;
   
   --  Nodes forming chains.
   type Node is record
     weight : Count_Type;
-    count  : Count_Type;       --  Number of leaves before this chain.
-    tail   : Index_type;       --  Previous node(s) of this chain, or null_index if none.
-    in_use : Boolean:= False;  --  Tracking for garbage collection.
+    count  : Count_Type;               --  Number of leaves before this chain.
+    tail   : Index_type:= null_index;  --  Previous node(s) of this chain, or null_index if none.
+    in_use : Boolean:= False;          --  Tracking for garbage collection.
   end record;
 
   type Leaf_Node is record

@@ -313,7 +313,7 @@ is
       return Prepare_Huffman_codes(new_d);
     end Build_descriptor;
 
-    --  Default Huffman trees, for "fixed" blocks as defined in appnote.txt or RFC 1951
+    --  Default Huffman trees, for "fixed" blocks, as defined in appnote.txt or RFC 1951
 
     default_lit_len_bl: constant Bit_length_array_lit_len:=
       (  0 .. 143 => 8,  --  For literals ("plain text" bytes)
@@ -325,25 +325,6 @@ is
 
     Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
       Build_descriptor( default_lit_len_bl, default_dis_bl);
-
-    --  Huffman codes tuned for compressing a text like a source code...
-    custom_lit_len_bl: constant Bit_length_array_lit_len:=
-      ( 0 .. 9 | 11 .. 31 | 33 .. 143 => 8,
-        10 | 32  => 7,
-        144 .. 255 => 9,
-        256 => 8,
-        257 .. 278 => 7,
-        279 .. 287 => 8
-       );
-
-    Deflate_custom_descriptors: constant Deflate_Huff_descriptors:=
-      Build_descriptor
-        ( bl_for_lit_len => custom_lit_len_bl,
-          bl_for_dis =>
-            ( 0 => 11, 1 => 9, 2 => 10, 3 => 8, 4 => 7, 5 .. 7 => 6,
-              10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 => 4,
-              others => 5 )
-        );
 
     --  Emit a Huffman code
     procedure Put_code(lc: Length_code_pair) is
@@ -685,8 +666,8 @@ is
     procedure Put_or_delay_literal_byte( b: Byte ) is
     begin
       case method is
-        when Deflate_Fixed | Deflate_Preset =>
-          Put_literal_byte(b);  --  Buffering is not needed in these modes
+        when Deflate_Fixed =>
+          Put_literal_byte(b);  --  Buffering is not needed in this mode
         when Deflate_Dynamic_1 =>
           Push((plain_byte, b, 0, 0));
       end case;
@@ -695,8 +676,8 @@ is
     procedure Put_or_delay_DL_code( distance, length: Integer ) is
     begin
       case method is
-        when Deflate_Fixed | Deflate_Preset =>
-          Put_DL_code(distance, length);  --  Buffering is not needed in these modes
+        when Deflate_Fixed =>
+          Put_DL_code(distance, length);  --  Buffering is not needed in this mode
         when Deflate_Dynamic_1 =>
           Push((distance_length, 0, distance, length));
       end case;
@@ -745,11 +726,6 @@ is
         -- Fixed (predefined) compression structure
         Put_code(code => 1, code_size => 2); -- signals a fixed block
         --  No compression structure need to be included in the compressed data.
-      when Deflate_Preset =>
-        Put_code(code => 1, code_size => 1); -- signals last block
-        Put_code(code => 2, code_size => 2); -- signals a dynamic block
-        descr:= Deflate_custom_descriptors;
-        Put_compression_structure(descr);
       when Deflate_Dynamic_1 =>
         null;  --  No start data sent, all is delayed
     end case;
@@ -757,9 +733,9 @@ is
     --  The whole compression is happenning here: --
     ------------------------------------------------
     My_LZ77;
-    -- Done. Send the code signalling the end of compressed data block:
+    --  Done. Send the code signalling the end of compressed data block:
     case method is
-      when Deflate_Fixed | Deflate_Preset =>
+      when Deflate_Fixed =>
         null;
       when Deflate_Dynamic_1 =>
         if lz_buffer_index = 0 then

@@ -204,8 +204,6 @@ procedure ZipAda is
           method:= Shrink;
         elsif opt(opt'First..opt'First+3) = "edf " then
           method:= Deflate_Fixed;
-        elsif opt(opt'First..opt'First+3) = "edp " then
-          method:= Deflate_Preset;
         elsif opt(opt'First..opt'First+3) = "ed1 " then
           method:= Deflate_Dynamic_1;
         elsif opt(opt'First..opt'First+3) = "dir " then
