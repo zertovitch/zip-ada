@@ -315,22 +315,19 @@ is
 
     --  Default Huffman trees, for "fixed" blocks as defined in appnote.txt or RFC 1951
 
+    default_lit_len_bl: constant Bit_length_array_lit_len:=
+      (  0 .. 143 => 8,  --  For literals ("plain text" bytes)
+       144 .. 255 => 9,  --  For more literals ("plain text" bytes)
+       256 .. 279 => 7,  --  For EOB (256), then for length codes
+       280 .. 287 => 8   --  For more length codes
+      );
     default_dis_bl: constant Bit_length_array_dis:= (others => 5);
 
     Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
-      Build_descriptor
-        ( bl_for_lit_len =>
-            (   0 .. 143 => 8,  --  For literals ("plain text" bytes)
-              144 .. 255 => 9,  --  For more literals ("plain text" bytes)
-              256 .. 279 => 7,  --  For EOB (256), then for length codes
-              280 .. 287 => 8   --  For more length codes
-             ),
-          bl_for_dis =>
-            default_dis_bl      --  For distance codes
-        );
+      Build_descriptor( default_lit_len_bl, default_dis_bl);
 
     --  Huffman codes tuned for compressing a text like a source code...
-    source_code_lit_len_bl: constant Bit_length_array_lit_len:=
+    custom_lit_len_bl: constant Bit_length_array_lit_len:=
       ( 0 .. 9 | 11 .. 31 | 33 .. 143 => 8,
         10 | 32  => 7,
         144 .. 255 => 9,
@@ -341,7 +338,7 @@ is
 
     Deflate_custom_descriptors: constant Deflate_Huff_descriptors:=
       Build_descriptor
-        ( bl_for_lit_len => source_code_lit_len_bl,
+        ( bl_for_lit_len => custom_lit_len_bl,
           bl_for_dis =>
             ( 0 => 11, 1 => 9, 2 => 10, 3 => 8, 4 => 7, 5 .. 7 => 6,
               10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 => 4,
@@ -633,7 +630,7 @@ is
       bl_for_dis     : Bit_length_array_dis;
       default_stat: constant:= 0; -- Should be 0 (codes that never happen have 0 count)
     begin
-      -- !! temporary
+      -- !! temporary: 1 dyn block per flush
       if lz_buffer_full then
         Put_code(descr.lit_len(End_Of_Block));
       end if;
@@ -655,7 +652,19 @@ is
             stats_dis(dis):= stats_dis(dis) + 1;
         end case;
       end loop;
-      LLHCL_lit_len(stats_lit_len, bl_for_lit_len);
+      begin
+        LLHCL_lit_len(stats_lit_len, bl_for_lit_len);
+      exception
+        when others =>
+          --  New_Line;
+          --  for a in Alphabet_lit_len loop
+          --    Put_Line(a'img &
+          --      "; code length;" & bl_for_lit_len(a)'img &
+          --      "; count;" & stats_lit_len(a)'img
+          --    );
+          --  end loop;
+          bl_for_lit_len:= custom_lit_len_bl;
+      end;
       LLHCL_dis(stats_dis, bl_for_dis);
       descr:= Build_descriptor(bl_for_lit_len, bl_for_dis);
       Put_compression_structure(descr);
@@ -668,16 +677,7 @@ is
       for i in 0 .. lz_buffer_index-1 loop
         case lz_buffer(i).kind is
           when plain_byte =>
-          begin
             Put_literal_byte(lz_buffer(i).plain);
-            exception
-              when others =>
-                put("lit" & lz_buffer(i).plain'img &
-                " code length" & descr.lit_len(Alphabet_lit_len(lz_buffer(i).plain)).length'img &
-                " count" &
-                stats_lit_len(Alphabet_lit_len(lz_buffer(i).plain))'img);
-                raise;
-                end;
           when distance_length =>
             Put_DL_code(lz_buffer(i).lz_distance, lz_buffer(i).lz_length);
         end case;

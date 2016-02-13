@@ -39,6 +39,7 @@ package Zip.Compress is
         --  NB: Deflate_Preset may be short-lived and be replaced soon
         --  by Deflate_Something_Else ...
      Deflate_Dynamic_1
+        --  NB: "There be bugs" ...
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;

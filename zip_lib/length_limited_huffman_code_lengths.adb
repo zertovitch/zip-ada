@@ -57,8 +57,13 @@ is
   leaves: Leaf_array(0..frequencies'Length-1);
 
   num_symbols: Count_Type := 0;  --  Amount of symbols with frequency > 0.
-
   num_Boundary_PM_runs: Count_Type;
+
+  too_many_symbols_for_length_limit : exception;
+  zero_length_but_nonzero_frequency : exception;
+  nonzero_length_but_zero_frequency : exception;
+  length_exceeds_length_limit       : exception;
+  buggy_sorting                     : exception;
 
   procedure Init_Node(weight, count: Count_Type; tail, node: Index_type) is
   begin
@@ -210,7 +215,7 @@ begin
   end loop;
   --  Check special cases and error conditions.
   if num_symbols > 2 ** max_bits then
-    raise Constraint_Error;  --  Error, too few max_bits to represent symbols.
+    raise too_many_symbols_for_length_limit;  --  Error, too few max_bits to represent symbols.
   end if;
   if num_symbols = 0 then
     return;  --  No symbols at all. OK.
@@ -223,7 +228,7 @@ begin
   Quick_sort(leaves(0..num_symbols-1));
   for i in 0..num_symbols-1 loop
     if i > 0 and then leaves(i) < leaves(i-1) then
-      raise Program_Error;  --  Buggy sorting
+      raise buggy_sorting;
     end if;
   end loop;
   Init_Lists;
@@ -234,4 +239,17 @@ begin
     Boundary_PM(Index_Type(max_bits - 1), i = num_Boundary_PM_runs);
   end loop;
   Extract_Bit_Lengths(lists(Index_Type(max_bits - 1))(1));
+  for a in Alphabet loop
+    if frequencies(a) = 0 then
+      if bit_lengths(a) > 0 then
+        raise nonzero_length_but_zero_frequency;
+      end if;
+    else
+      if bit_lengths(a) = 0 then
+        raise zero_length_but_nonzero_frequency;
+      elsif bit_lengths(a) > max_bits then
+        raise length_exceeds_length_limit;
+      end if;
+    end if;
+  end loop;
 end Length_limited_Huffman_code_lengths;
