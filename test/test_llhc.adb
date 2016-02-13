@@ -10,17 +10,18 @@ procedure Test_LLHC is
   --
   procedure Test_1 is
     subtype Alphabet is Character range 'a'..'k';
-    type Alpha_Array is array(Alphabet) of Integer;
+    type Alpha_Array is array(Alphabet) of Natural;
     freq, len: Alpha_Array;
   begin
     freq:= (10, 30, 12, 5, 17, 20, 17, 0, 20, 0, 15);
     for m in 4..5 loop
       declare
         procedure LLHCL is new
-          Length_limited_Huffman_code_lengths(Alphabet, Integer, Alpha_Array, Alpha_Array, m);
+          Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, m);
       begin
         LLHCL(freq, len);
       end;
+      New_Line;
       Put("Maximum Huffman code length (constraint):");
       Put(m, 3);
       Put_Line(" bits");
@@ -37,14 +38,16 @@ procedure Test_LLHC is
   --
   procedure Test_2 is
     subtype Alphabet is Natural range 0..18;
-    type Alpha_Array is array(Alphabet) of Integer;
+    type Alpha_Array is array(Alphabet) of Natural;
     freq, len: Alpha_Array;
     procedure LLHCL is new
-      Length_limited_Huffman_code_lengths(Alphabet, Integer, Alpha_Array, Alpha_Array, 7);
+      Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
   begin
     --  freq:= (11, 1, 1, 1, 13, 15, 16, 23, 42, 72, 94, 33, 3, 4, 2, 3, 1, 1, 1);  --  OK with max=7
     freq:= (6, 1, 1, 2, 10, 13, 19, 33, 41, 78, 89, 25, 7, 4, 2, 3, 1, 1, 1);  --  OK after fixing LLHC
+    New_Line;
     Put_Line("Deflate alphabet for storing compression structures");
+    Put_Line("---------------------------------------------------");
     LLHCL(freq, len);
     for a in Alphabet loop
       Put("    ");
@@ -59,10 +62,10 @@ procedure Test_LLHC is
   --
   procedure Test_3 is
     subtype Alphabet is Natural range 0..287;
-    type Alpha_Array is array(Alphabet) of Integer;
+    type Alpha_Array is array(Alphabet) of Natural;
     freq, len: Alpha_Array;
     procedure LLHCL is new
-      Length_limited_Huffman_code_lengths(Alphabet, Integer, Alpha_Array, Alpha_Array, 15);
+      Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 15);
   begin
     freq:=
       (   0 => 1277,        1 => 163,         2 => 118,         3 => 152,         4 => 123,
@@ -124,7 +127,9 @@ procedure Test_LLHC is
         280 => 5,         281 => 0,         282 => 3,         283 => 3,         284 => 4,
         285 => 6,         286 => 0,         287 => 0
     );
+    New_Line;
     Put_Line("Deflate alphabet for literal & length");
+    Put_Line("-------------------------------------");
     LLHCL(freq, len);
     for a in Alphabet loop
       Put("    ");

@@ -21,7 +21,7 @@ with Length_limited_Huffman_code_lengths;
 
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
-with Ada.Text_IO;                       use Ada.Text_IO;
+--  with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure Zip.Compress.Deflate
  (input,
@@ -290,7 +290,7 @@ is
     --  Compression structures  --
     ------------------------------
 
-    type Bit_length_array is array(Integer range <>) of Integer;
+    type Bit_length_array is array(Natural range <>) of Natural;
     subtype Alphabet_lit_len is Natural range 0..287;
     subtype Bit_length_array_lit_len is Bit_length_array(Alphabet_lit_len);
     subtype Alphabet_dis is Natural range 0..29;
@@ -363,7 +363,7 @@ is
          ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
       bl: Natural;
       procedure LLHCL is new
-        Length_limited_Huffman_code_lengths(Alphabet, Integer, Alpha_Array, Alpha_Array, 7);
+        Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
     begin
       Put_code(288 - 257, 5);  --  !! maximum = 288 - 257
       Put_code(30  -   1, 5);  --  !! maximum
@@ -384,12 +384,13 @@ is
       --  Now we turn these counts into bit lengths for the local tree
       --  that helps us to store the compression structure in a more compact form.
       LLHCL(truc_freq, truc_bl);  --  Call to the magic algorithm
-      for i in Alphabet loop
-        truc(i).length:= truc_bl(i);
+      for a in Alphabet loop
+        truc(a).length:= truc_bl(a);
       end loop;
       Prepare_tree(truc);         --  Build the Huffman codes described by the bit lengths
-      for i in Alphabet loop
-        Put_code(U32(truc(bit_order_for_dynamic_block(i)).length), 3);
+      --  Save the alphabet
+      for a in Alphabet loop
+        Put_code(U32(truc(bit_order_for_dynamic_block(a)).length), 3);
       end loop;
       --  !! Not RLE compressed (no repeat codes)
       --  Emit the Huffman lengths for encoding the data, in an Huffman-encoded fashion.
@@ -400,20 +401,6 @@ is
       for i in dhd.dis'Range loop
         Put_code(truc(dhd.dis(i).length));  --  .length is in 0..15
       end loop;
-    exception
-      when others =>
-        New_Line;
-        for a in Alphabet loop
-          Put(truc_freq(a)'img & ',');
-        end loop;
-        New_Line;
-        for a in Alphabet loop
-          Put_Line(a'img &
-            "; code length;" & truc_bl(a)'img &
-            "; count;" & truc_freq(a)'img
-          );
-        end loop;
-        raise;
     end Put_compression_structure;
 
     --  Current tree descriptors
@@ -666,19 +653,7 @@ is
             stats_dis(dis):= stats_dis(dis) + 1;
         end case;
       end loop;
-      --  begin
       LLHCL_lit_len(stats_lit_len, bl_for_lit_len);
-      --  exception
-      --    when others =>
-          --  New_Line;
-          --  for a in Alphabet_lit_len loop
-          --    Put_Line(a'img &
-          --      "; code length;" & bl_for_lit_len(a)'img &
-          --      "; count;" & stats_lit_len(a)'img
-          --    );
-          --  end loop;
-      --    bl_for_lit_len:= custom_lit_len_bl;
-      --  end;
       LLHCL_dis(stats_dis, bl_for_dis);
       descr:= Build_descriptor(bl_for_lit_len, bl_for_dis);
       Put_compression_structure(descr);
