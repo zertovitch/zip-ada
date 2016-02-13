@@ -12,7 +12,7 @@ copy /b ..\random_data.exe .
 rem Have a badly compressible file
 random_data 1000
 
-set files=*.ad* *.txt *.exe *.cmd *.bmp *.csv random.bin
+set files=*.ad* *.txt *.exe *.cmd *.bmp *.csv *.pdf *.html *.mdb random.bin
 
 zipada -esh test_zash %files%
 zipada -er1 test_zar1 %files%
@@ -32,7 +32,6 @@ comp_zip test_zash test_zar2
 comp_zip test_zash test_zar3
 comp_zip test_zash test_zar4
 comp_zip test_zash test_zadf
-comp_zip test_zash test_zadp
 comp_zip test_zash test_zad1
 
 pause

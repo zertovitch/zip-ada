@@ -6,9 +6,12 @@ echo.
 copy /b ..\zipada.exe .
 copy /b ..\rezip.exe .
 
-if exist test_rz.zip del test_rz.zip
+if exist test_rz.zip          del test_rz.zip
+if exist test_rz.repacked.zip del test_rz.repacked.zip
+if exist test_rz.ReZip.html   del test_rz.ReZip.html
+if exist test_rz.ReZip.log    del test_rz.ReZip.log
 
-zipada test_rz *.ad* *.txt *.cmd
+zipada test_rz *.ad* *.txt *.cmd *.pdf *.mdb
 
 rezip test_rz
 

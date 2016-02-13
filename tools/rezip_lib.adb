@@ -68,7 +68,7 @@ package body Rezip_lib is
     original,
     shrink,
     reduce_1, reduce_2, reduce_3, reduce_4,
-    deflate_f, deflate_p,
+    deflate_f, deflate_1,
     external_1, external_2, external_3, external_4,
     external_5, external_6, external_7, external_8,
     external_9, external_10, external_11, external_12,
@@ -194,13 +194,13 @@ package body Rezip_lib is
     end Rip_data;
 
     Approach_to_Method: constant array(Internal) of Zip.Compress.Compression_Method:=
-      (shrink    => Zip.Compress.shrink,
-       reduce_1  => Zip.Compress.reduce_1,
-       reduce_2  => Zip.Compress.reduce_2,
-       reduce_3  => Zip.Compress.reduce_3,
-       reduce_4  => Zip.Compress.reduce_4,
-       deflate_f => Zip.Compress.deflate_fixed,
-       deflate_p => Zip.Compress.Deflate_Preset
+      (shrink    => Zip.Compress.Shrink,
+       reduce_1  => Zip.Compress.Reduce_1,
+       reduce_2  => Zip.Compress.Reduce_2,
+       reduce_3  => Zip.Compress.Reduce_3,
+       reduce_4  => Zip.Compress.Reduce_4,
+       deflate_f => Zip.Compress.Deflate_Fixed,
+       deflate_1 => Zip.Compress.Deflate_Dynamic_1
       );
 
     type Packer_info is record
@@ -583,7 +583,7 @@ package body Rezip_lib is
               consider(a):= consider(a) and uncomp_size <= 8000;
             when deflate_f =>
               consider(a):= consider(a) and uncomp_size <= 2000;
-            when deflate_p =>
+            when deflate_1 =>
               null;
             when External =>
               consider(a):= consider(a) and (ext(a).limit = 0 or uncomp_size <= ext(a).limit);
