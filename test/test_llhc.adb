@@ -7,16 +7,17 @@ with Text_IO; use Text_IO;
 
 procedure Test_LLHC is
   package IIO is new Integer_IO(Integer); use IIO;
+  --
   procedure Test_1 is
     subtype Alphabet is Character range 'a'..'k';
-    type Alpha_Array is array(Alphabet) of Natural;
+    type Alpha_Array is array(Alphabet) of Integer;
     freq, len: Alpha_Array;
   begin
     freq:= (10, 30, 12, 5, 17, 20, 17, 0, 20, 0, 15);
     for m in 4..5 loop
       declare
         procedure LLHCL is new
-          Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, m);
+          Length_limited_Huffman_code_lengths(Alphabet, Integer, Alpha_Array, Alpha_Array, m);
       begin
         LLHCL(freq, len);
       end;
@@ -35,12 +36,33 @@ procedure Test_LLHC is
   end Test_1;
   --
   procedure Test_2 is
-    subtype Alphabet is Natural range 0..287;
-    type Alpha_Array is array(Alphabet) of Natural;
+    subtype Alphabet is Natural range 0..18;
+    type Alpha_Array is array(Alphabet) of Integer;
     freq, len: Alpha_Array;
     procedure LLHCL is new
-      Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 16);
-    -- NB: fails with max_bits=15 !
+      Length_limited_Huffman_code_lengths(Alphabet, Integer, Alpha_Array, Alpha_Array, 7);
+  begin
+    --  freq:= (11, 1, 1, 1, 13, 15, 16, 23, 42, 72, 94, 33, 3, 4, 2, 3, 1, 1, 1);  --  OK with max=7
+    freq:= (6, 1, 1, 2, 10, 13, 19, 33, 41, 78, 89, 25, 7, 4, 2, 3, 1, 1, 1);  --  OK after fixing LLHC
+    Put_Line("Deflate alphabet for storing compression structures");
+    LLHCL(freq, len);
+    for a in Alphabet loop
+      Put("    ");
+      Put(a, 3);
+      Put(" freq =");
+      Put(freq(a), 5);
+      Put(" length =");
+      Put(len(a), 3);
+      New_Line;
+    end loop;
+  end Test_2;
+  --
+  procedure Test_3 is
+    subtype Alphabet is Natural range 0..287;
+    type Alpha_Array is array(Alphabet) of Integer;
+    freq, len: Alpha_Array;
+    procedure LLHCL is new
+      Length_limited_Huffman_code_lengths(Alphabet, Integer, Alpha_Array, Alpha_Array, 15);
   begin
     freq:=
       (   0 => 1277,        1 => 163,         2 => 118,         3 => 152,         4 => 123,
@@ -102,7 +124,7 @@ procedure Test_LLHC is
         280 => 5,         281 => 0,         282 => 3,         283 => 3,         284 => 4,
         285 => 6,         286 => 0,         287 => 0
     );
-    Put_Line("A real Deflate literal & length alphabet");
+    Put_Line("Deflate alphabet for literal & length");
     LLHCL(freq, len);
     for a in Alphabet loop
       Put("    ");
@@ -113,8 +135,9 @@ procedure Test_LLHC is
       Put(len(a), 3);
       New_Line;
     end loop;
-  end Test_2;
+  end Test_3;
 begin
   Test_1;
   Test_2;
+  Test_3;
 end Test_LLHC;

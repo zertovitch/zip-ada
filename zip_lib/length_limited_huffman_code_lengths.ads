@@ -27,7 +27,7 @@ generic
   type Count_Type is range <>;
   --  ^ An integer type large enough for counting and indexing (see algo for bounds)
   type Count_Array is array(Alphabet) of Count_Type;
-  type Length_Array is array(Alphabet) of Natural;
+  type Length_Array is array(Alphabet) of Integer;
   max_bits: Positive;  --  Length limit in Huffman codes
 
 procedure Length_limited_Huffman_code_lengths(

@@ -33,11 +33,13 @@ procedure Length_limited_Huffman_code_lengths(
 is
   subtype Index_type is Count_Type;
 
+  null_index: constant Count_Type:= Count_Type'Last;
+  
   --  Nodes forming chains.
   type Node is record
     weight : Count_Type;
     count  : Count_Type;       --  Number of leaves before this chain.
-    tail   : Index_type;       --  Previous node(s) of this chain, or 0 if none.
+    tail   : Index_type;       --  Previous node(s) of this chain, or null_index if none.
     in_use : Boolean:= False;  --  Tracking for garbage collection.
   end record;
 
@@ -80,7 +82,7 @@ is
     node: Index_type;
   begin
     loop
-      if pool_next >= pool'Last then
+      if pool_next > pool'Last then
         --  Garbage collection.
         for i in pool'Range loop
           pool(i).in_use := False;
@@ -88,7 +90,7 @@ is
         if use_lists then
           for i in 0 .. Index_type(max_bits * 2 - 1) loop
             node:= lists(i / 2)(i mod 2);
-            while node /= 0 loop
+            while node /= null_index loop
               pool(node).in_use := True;
               node := pool(node).tail;
             end loop;
@@ -127,7 +129,7 @@ is
 
     if index = 0 then
       --  New leaf node in list 0.
-      Init_Node(leaves(lastcount).weight, lastcount + 1, 0, newchain);
+      Init_Node(leaves(lastcount).weight, lastcount + 1, null_index, newchain);
     else
       sum:= pool(lists(index - 1)(0)).weight + pool(lists(index - 1)(1)).weight;
       if lastcount < num_symbols and then sum > leaves(lastcount).weight then
@@ -150,8 +152,8 @@ is
     node0: constant Index_type:= Get_Free_Node(use_lists => False);
     node1: constant Index_type:= Get_Free_Node(use_lists => False);
   begin
-    Init_Node(leaves(0).weight, 1, 0, node0);
-    Init_Node(leaves(1).weight, 2, 0, node1);
+    Init_Node(leaves(0).weight, 1, null_index, node0);
+    Init_Node(leaves(1).weight, 2, null_index, node1);
     lists:= (others => (node0, node1));
   end Init_Lists;
 
@@ -162,7 +164,7 @@ is
   procedure Extract_Bit_Lengths(chain: Index_type) is
     node: Index_type:= chain;
   begin
-    while node /= 0 loop
+    while node /= null_index loop
       for i in 0 .. pool(node).count - 1 loop
         bit_lengths(leaves(i).symbol):= bit_lengths(leaves(i).symbol) + 1;
       end loop;
