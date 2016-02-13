@@ -14,6 +14,7 @@ random_data 1000
 
 set files=*.ad* *.txt *.exe *.cmd *.bmp random.bin
 
+zipada -ed1 test_zad1 %files%
 zipada -esh test_zash %files%
 zipada -er1 test_zar1 %files%
 zipada -er2 test_zar2 %files%
@@ -21,7 +22,6 @@ zipada -er3 test_zar3 %files%
 zipada -er4 test_zar4 %files%
 zipada -edf test_zadf %files%
 zipada -edp test_zadp %files%
-zipada -ed1 test_zad1 %files%
 zip    -1   test_ifz1 %files%
 zip    -6   test_ifz6 %files%
 zip    -9   test_ifz9 %files%

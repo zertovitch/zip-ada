@@ -42,8 +42,8 @@ is
   end record;
 
   type Leaf_Node is record
-    weight: Count_Type;
-    symbol: Alphabet;
+    weight : Count_Type;
+    symbol : Alphabet;
   end record;
 
   --  Memory pool for nodes.

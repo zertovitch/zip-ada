@@ -21,7 +21,7 @@ with Length_limited_Huffman_code_lengths;
 
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
-with Ada.Text_IO;                       use Ada.Text_IO;
+--  with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure Zip.Compress.Deflate
  (input,
@@ -652,10 +652,10 @@ is
             stats_dis(dis):= stats_dis(dis) + 1;
         end case;
       end loop;
-      begin
-        LLHCL_lit_len(stats_lit_len, bl_for_lit_len);
-      exception
-        when others =>
+      --  begin
+      LLHCL_lit_len(stats_lit_len, bl_for_lit_len);
+      --  exception
+      --    when others =>
           --  New_Line;
           --  for a in Alphabet_lit_len loop
           --    Put_Line(a'img &
@@ -663,8 +663,8 @@ is
           --      "; count;" & stats_lit_len(a)'img
           --    );
           --  end loop;
-          bl_for_lit_len:= custom_lit_len_bl;
-      end;
+      --    bl_for_lit_len:= custom_lit_len_bl;
+      --  end;
       LLHCL_dis(stats_dis, bl_for_dis);
       descr:= Build_descriptor(bl_for_lit_len, bl_for_dis);
       Put_compression_structure(descr);
