@@ -346,12 +346,7 @@ is
       procedure LLHCL is new
         Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
     begin
-      Put_code(288 - 257, 5);  --  !! maximum = 288 - 257
-      Put_code(30  -   1, 5);  --  !! maximum
-      Put_code(19  -   4, 4);  --  !! maximum
-      truc_freq:= (others => 1);
-      -- ^ !! 1: pretend all bl-codes are used at least once, otherwise it bombs when sending
-      -- a bit length that never appears.
+      truc_freq:= (others => 0);
       for i in dhd.lit_len'Range loop
         bl:= dhd.lit_len(i).length;
         truc_freq(bl):= truc_freq(bl) + 1;  --  +1 for bl's histogram bar
@@ -369,13 +364,16 @@ is
         truc(a).length:= truc_bl(a);
       end loop;
       Prepare_tree(truc);         --  Build the Huffman codes described by the bit lengths
-      --  Save the alphabet
+      --  Output
+      Put_code(288 - 257, 5);  --  !! maximum = 288 - 257
+      Put_code(30  -   1, 5);  --  !! maximum
+      Put_code(19  -   4, 4);  --  !! maximum
+      --  Save the local alphabet's Huffman lengths
       for a in Alphabet loop
         Put_code(U32(truc(bit_order_for_dynamic_block(a)).length), 3);
       end loop;
       --  !! Not RLE compressed (no repeat codes)
-      --  Emit the Huffman lengths for encoding the data, in an Huffman-encoded fashion.
-      --  !! skip lengths that never happen.
+      --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
       for i in dhd.lit_len'Range loop
         Put_code(truc((dhd.lit_len(i).length)));  --  .length is in 0..15
       end loop;

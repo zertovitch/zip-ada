@@ -25,6 +25,8 @@ zip    -1   test_ifz1 %files%
 zip    -6   test_ifz6 %files%
 zip    -9   test_ifz9 %files%
 
+dir test_za??.zip |find ".zip" >test_za_%date%.txt
+
 echo.
 comp_zip test_zash test_ifz9
 comp_zip test_zash test_zar1
