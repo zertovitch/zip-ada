@@ -342,22 +342,37 @@ is
       truc: Huff_descriptor(Alphabet);
       bit_order_for_dynamic_block : constant array (Alphabet) of Natural :=
          ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
-      bl: Natural;
       procedure LLHCL is new
         Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
+      --
+      type Emission_mode is (simulate, effective);
+      --
+      procedure Emit_data_compression_structures(mode: Emission_mode) is
+        procedure Emit_data_compression_bit_length(x: Natural) is
+        -- x is a bit length (value 0..15) or a RLE instruction
+        begin
+          case mode is
+            when simulate =>
+              truc_freq(x):= truc_freq(x) + 1;  --  +1 for x's histogram bar
+            when effective =>
+              Put_code(truc(x));
+          end case;
+        end Emit_data_compression_bit_length;
+      begin
+         --  !! Not RLE compressed (no repeat codes)
+        for i in dhd.lit_len'Range loop
+          Emit_data_compression_bit_length(dhd.lit_len(i).length);
+        end loop;
+        for i in dhd.dis'Range loop
+          Emit_data_compression_bit_length(dhd.dis(i).length);
+        end loop;
+      end Emit_data_compression_structures;
     begin
       truc_freq:= (others => 0);
-      for i in dhd.lit_len'Range loop
-        bl:= dhd.lit_len(i).length;
-        truc_freq(bl):= truc_freq(bl) + 1;  --  +1 for bl's histogram bar
-      end loop;
-      for i in dhd.dis'Range loop
-        bl:= dhd.dis(i).length;
-        truc_freq(bl):= truc_freq(bl) + 1;  --  +1 for bl's histogram bar
-      end loop;
+      Emit_data_compression_structures(simulate);
       --  We have now statistics of all bit lengths occurrences of both Huffman
       --  trees used for compressing the data.
-      --  Now we turn these counts into bit lengths for the local tree
+      --  We turn these counts into bit lengths for the local tree
       --  that helps us to store the compression structure in a more compact form.
       LLHCL(truc_freq, truc_bl);  --  Call to the magic algorithm
       for a in Alphabet loop
@@ -368,18 +383,13 @@ is
       Put_code(288 - 257, 5);  --  !! maximum = 288 - 257
       Put_code(30  -   1, 5);  --  !! maximum
       Put_code(19  -   4, 4);  --  !! maximum
-      --  Save the local alphabet's Huffman lengths
+      --  Save the local alphabet's Huffman lengths. It's the compression
+      --  structure for compressing the data compression structure. Easy isn't it ?
       for a in Alphabet loop
         Put_code(U32(truc(bit_order_for_dynamic_block(a)).length), 3);
       end loop;
-      --  !! Not RLE compressed (no repeat codes)
       --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
-      for i in dhd.lit_len'Range loop
-        Put_code(truc((dhd.lit_len(i).length)));  --  .length is in 0..15
-      end loop;
-      for i in dhd.dis'Range loop
-        Put_code(truc(dhd.dis(i).length));  --  .length is in 0..15
-      end loop;
+      Emit_data_compression_structures(effective);
     end Put_compression_structure;
 
     --  Current tree descriptors
