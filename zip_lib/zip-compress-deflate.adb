@@ -348,7 +348,7 @@ is
       type Emission_mode is (simulate, effective);
       --
       procedure Emit_data_compression_structures(mode: Emission_mode) is
-        procedure Emit_data_compression_bit_length(x: Natural) is
+        procedure Emit_data_compression_atom(x: Natural) is
         -- x is a bit length (value 0..15) or a RLE instruction
         begin
           case mode is
@@ -357,14 +357,22 @@ is
             when effective =>
               Put_code(truc(x));
           end case;
-        end Emit_data_compression_bit_length;
+        end Emit_data_compression_atom;
+        --
+        cs_bl: array(1..dhd.lit_len'Length+dhd.dis'Length) of Natural;
+        idx: Positive:= 1;
       begin
-         --  !! Not RLE compressed (no repeat codes)
         for i in dhd.lit_len'Range loop
-          Emit_data_compression_bit_length(dhd.lit_len(i).length);
+          cs_bl(idx):= dhd.lit_len(i).length;
+          idx:= idx + 1;
         end loop;
         for i in dhd.dis'Range loop
-          Emit_data_compression_bit_length(dhd.dis(i).length);
+          cs_bl(idx):= dhd.dis(i).length;
+          idx:= idx + 1;
+        end loop;
+        for i in cs_bl'Range loop
+          --  !! Not RLE compressed (no repeat codes) so far !!
+          Emit_data_compression_atom(cs_bl(i));
         end loop;
       end Emit_data_compression_structures;
     begin
