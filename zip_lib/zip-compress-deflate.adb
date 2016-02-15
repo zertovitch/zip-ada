@@ -348,7 +348,7 @@ is
       type Emission_mode is (simulate, effective);
       --
       procedure Emit_data_compression_structures(mode: Emission_mode) is
-        procedure Emit_data_compression_atom(x: Natural) is
+        procedure Emit_data_compression_atom(x: Natural; extra: U32:= 0; bits: Natural:= 0) is
         -- x is a bit length (value 0..15) or a RLE instruction
         begin
           case mode is
@@ -356,12 +356,17 @@ is
               truc_freq(x):= truc_freq(x) + 1;  --  +1 for x's histogram bar
             when effective =>
               Put_code(truc(x));
+              if bits > 0 then
+                Put_code(extra, bits);
+              end if;
           end case;
         end Emit_data_compression_atom;
         --
         cs_bl: array(1..dhd.lit_len'Length+dhd.dis'Length) of Natural;
         idx: Positive:= 1;
+        rep: Positive;  --  Number of times current atom is repeated, >= 1
       begin
+        --  Copy bit lengths for both trees into one array
         for i in dhd.lit_len'Range loop
           cs_bl(idx):= dhd.lit_len(i).length;
           idx:= idx + 1;
@@ -370,9 +375,32 @@ is
           cs_bl(idx):= dhd.dis(i).length;
           idx:= idx + 1;
         end loop;
-        for i in cs_bl'Range loop
-          --  !! Not RLE compressed (no repeat codes) so far !!
-          Emit_data_compression_atom(cs_bl(i));
+        --  Emit the bit lengths, with some RLE encoding (Appnote: 5.5.3; RFC 1951: 3.2.7)
+        idx:= 1;
+        loop
+          rep:= 1;  --  Current atom, cs_bl(idx), is repeated 1x so far - obvious, isn't it ?
+          for j in idx + 1 .. cs_bl'Last loop
+            exit when cs_bl(j) /= cs_bl(idx);
+            rep:= rep + 1;
+          end loop;
+          if idx > 1 and then cs_bl(idx) = cs_bl(idx-1) and then rep >= 3 then
+            rep:= Integer'Min(rep, 6);
+            Emit_data_compression_atom(16, U32(rep-3), 2);  --  16: "Repeat previous 3 to 6 times"
+            idx:= idx + rep;
+          elsif cs_bl(idx) = 0 and then rep >= 3 then
+            --  The 0 bit length may occur on long ranges of an alphabet (unused symbols)
+            if rep <= 10 then
+              Emit_data_compression_atom(17, U32(rep-3), 3);  -- 17: "Repeat zero 3 to 10 times"
+            else
+              rep:= Integer'Min(rep, 138);
+              Emit_data_compression_atom(18, U32(rep-11), 7); -- 18: "Repeat zero 11 to 138 times"
+            end if;
+            idx:= idx + rep;
+          else
+            Emit_data_compression_atom(cs_bl(idx));
+            idx:= idx + 1;
+          end if;
+          exit when idx > cs_bl'Last;
         end loop;
       end Emit_data_compression_structures;
     begin
