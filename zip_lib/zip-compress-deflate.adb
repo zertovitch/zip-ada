@@ -340,10 +340,6 @@ is
       type Alpha_Array is new Bit_length_array(Alphabet);
       truc_freq, truc_bl: Alpha_Array;
       truc: Huff_descriptor(Alphabet);
-      bit_order_for_dynamic_block : constant array (Alphabet) of Natural :=
-         ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
-      procedure LLHCL is new
-        Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
       --
       type Emission_mode is (simulate, effective);
       --
@@ -403,6 +399,14 @@ is
           exit when idx > cs_bl'Last;
         end loop;
       end Emit_data_compression_structures;
+      --
+      bit_order_for_dynamic_block : constant array (Alphabet) of Natural :=  --  Permutation
+         ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
+      --  For example, bit lengths 1 and 15 don't occur in the two Huffman trees for data, then
+      --  1 and 15 have a length 0 in the local Alphabet -> omit sending the last two lengths.
+      procedure LLHCL is new
+        Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
+      a_non_zero: Alphabet;
     begin
       truc_freq:= (others => 0);
       Emit_data_compression_structures(simulate);
@@ -415,13 +419,20 @@ is
         truc(a).length:= truc_bl(a);
       end loop;
       Prepare_tree(truc);         --  Build the Huffman codes described by the bit lengths
+      a_non_zero:= 3;
+      --  At least lengths for codes 16, 17, 18, 0 will always be sent if the other lengths are 0
+      for a in Alphabet loop
+        if a > a_non_zero and then truc(bit_order_for_dynamic_block(a)).length > 0 then
+          a_non_zero:= a;
+        end if;
+      end loop;
       --  Output
       Put_code(288 - 257, 5);  --  !! maximum = 288 - 257
       Put_code(30  -   1, 5);  --  !! maximum
-      Put_code(19  -   4, 4);  --  !! maximum
+      Put_code(U32(a_non_zero - 3), 4);
       --  Save the local alphabet's Huffman lengths. It's the compression
       --  structure for compressing the data compression structure. Easy isn't it ?
-      for a in Alphabet loop
+      for a in 0..a_non_zero loop
         Put_code(U32(truc(bit_order_for_dynamic_block(a)).length), 3);
       end loop;
       --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
