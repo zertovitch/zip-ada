@@ -578,11 +578,11 @@ package body Rezip_lib is
             when original =>
               null;
             when shrink =>
-              consider(a):= consider(a) and uncomp_size <= 5000;
+              consider(a):= consider(a) and uncomp_size <= 6000;
             when reduce_1 .. reduce_4 =>
-              consider(a):= consider(a) and uncomp_size <= 8000;
+              consider(a):= consider(a) and uncomp_size <= 9000;
             when deflate_f =>
-              consider(a):= consider(a) and uncomp_size <= 2000;
+              consider(a):= consider(a) and uncomp_size <= 4000;
             when deflate_1 =>
               null;
             when External =>
@@ -627,6 +627,11 @@ package body Rezip_lib is
                 );
                 Close(File_in);
                 Close(File_out);
+                -- if a in deflate_1 .. deflate_1 then
+                --   -- Post processing of "deflated" entry with DeflOpt: 
+                -- !! Need to wrap into a zip file !!
+                -- -- Call_external(S(defl_opt.name), Temp_name(True,a));
+                -- end if;
                 --
               when External =>
                 Dual_IO.New_Line;
