@@ -19,7 +19,7 @@
 --  "A Fast and Space-Economical Algorithm for Length-Limited Coding
 --  Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
---  Translated to Ada from katajainen.c by G. de Montmollin, 7-Feb-2016
+--  Translated to Ada from katajainen.c (Zopfli project) by G. de Montmollin, 7-Feb-2016
 --  Translation notes in procedure's body.
 
 generic

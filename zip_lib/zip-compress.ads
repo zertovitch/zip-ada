@@ -36,11 +36,8 @@ package Zip.Compress is
      Deflate_Fixed,  --  Compress the data in one block and with
                      --  predefined ("fixed") compression structures.
      Deflate_Dynamic_1
-        --  NB: new, in development. "There be bugs".
-        --  Better wait for a release for "prod" usage...
-        --
-        --  WinZip 10 & UnZip 5.51 find "(incomplete d-tree)" errors in some large files
-        --  even though UnZip.Decompress & 7-Zip 9.34 find no error...
+        --  NB: new method, in development. "There be bugs" !
+        --  Better wait for a release for a "prod" usage...
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;

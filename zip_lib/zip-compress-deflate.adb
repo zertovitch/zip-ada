@@ -304,10 +304,10 @@ is
     is
       new_d: Deflate_Huff_descriptors;
     begin
-      for i in bl_for_lit_len'Range loop
+      for i in new_d.lit_len'Range loop
         new_d.lit_len(i):= (length => bl_for_lit_len(i), code => invalid);
       end loop;
-      for i in bl_for_dis'Range loop
+      for i in new_d.dis'Range loop
         new_d.dis(i):= (length => bl_for_dis(i), code => invalid);
       end loop;
       return Prepare_Huffman_codes(new_d);
@@ -414,7 +414,7 @@ is
       --  trees used for compressing the data.
       --  We turn these counts into bit lengths for the local tree
       --  that helps us to store the compression structure in a more compact form.
-      LLHCL(truc_freq, truc_bl);  --  Call to the magic algorithm
+      LLHCL(truc_freq, truc_bl);  --  Call the magic algorithm for setting up Huffman lengths
       for a in Alphabet loop
         truc(a).length:= truc_bl(a);
       end loop;
@@ -643,6 +643,7 @@ is
       end Deflate_code_for_LZ_distance;
       --
       type Count_type is range 0..File_size_type'Last/2-1;
+      --
       type Stats_lit_len_type is array(Alphabet_lit_len) of Count_type;
       lit_len: Alphabet_lit_len;
       stats_lit_len: Stats_lit_len_type;
@@ -653,6 +654,8 @@ is
           Stats_lit_len_type,
           Bit_length_array_lit_len,
           15);
+      bl_for_lit_len : Bit_length_array_lit_len;
+      --
       type Stats_dis_type is array(Alphabet_dis) of Count_type;
       dis: Alphabet_dis;
       stats_dis: Stats_dis_type;
@@ -663,34 +666,55 @@ is
           Stats_dis_type,
           Bit_length_array_dis,
           15);
-      bl_for_lit_len : Bit_length_array_lit_len;
-      bl_for_dis     : Bit_length_array_dis;
-      default_stat: constant:= 0; -- Should be 0 (codes that never happen have 0 count)
+      bl_for_dis : Bit_length_array_dis;
+      used: Natural:= 0;
     begin
       -- !! temporary: 1 dyn block per flush
-      if lz_buffer_full then
+      if lz_buffer_full then  --  !! block boundaries will become independent of LZ_buffer
         Put_code(descr.lit_len(End_Of_Block));
       end if;
       --  put_line("*** New dyn block");
       Put_code(code => 0, code_size => 1); -- signals block is not last
       Put_code(code => 2, code_size => 2); -- signals a dynamic block
-      stats_lit_len:= (End_Of_Block => 1, others => default_stat);
+      stats_lit_len:= (End_Of_Block => 1, others => 0);
       --  ^ End_Of_Block has to happen once, but never appears in the stats...
-      stats_dis:= (others => default_stat);
+      stats_dis:= (others => 0);
+      --
+      --  Compute statistics for both Literal-length, and Distance alphabets
+      --
       for i in 0 .. lz_buffer_index-1 loop
         case lz_buffer(i).kind is
           when plain_byte =>
             lit_len:= Alphabet_lit_len(lz_buffer(i).plain);
-            stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;
+            stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;          --  +1 for this literal
           when distance_length =>
             lit_len:= Deflate_code_for_LZ_length(lz_buffer(i).lz_length);
-            stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;
+            stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;          --  +1 for this length
             dis:= Deflate_code_for_LZ_distance(lz_buffer(i).lz_distance);
-            stats_dis(dis):= stats_dis(dis) + 1;
+            stats_dis(dis):= stats_dis(dis) + 1;                          --  +1 for this distance
         end case;
       end loop;
-      LLHCL_lit_len(stats_lit_len, bl_for_lit_len);
-      LLHCL_dis(stats_dis, bl_for_dis);
+      --  See PatchDistanceCodesForBuggyDecoders in Zopfli's deflate.c
+      --  NB: here, we patch the occurrences and not the bit lengths.
+      --  The decoding bug concerns Zlib v.<= 1.2.1, UnZip v.<= 6.0, WinZip v.10.0.
+      for i in stats_dis'Range loop
+        if stats_dis(i) /= 0 then
+          used:= used + 1;
+        end if;
+      end loop;
+      if used < 2 then
+        if used = 0 then  --  No distance code used at all (data must be almost random)
+          stats_dis(0) := 1;
+          stats_dis(1) := 1;
+        elsif stats_dis(0) = 0 then
+          stats_dis(0) := 1;  --  now code 0 and some other code have non-zero counts
+        else
+          stats_dis(1) := 1;  --  now codes 0 and 1 have non-zero counts
+        end if;
+      end if;
+      LLHCL_lit_len(stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
+      LLHCL_dis(stats_dis, bl_for_dis);              --    up Huffman lengths of both trees
+      --
       descr:= Build_descriptor(bl_for_lit_len, bl_for_dis);
       Put_compression_structure(descr);
       --
@@ -712,7 +736,7 @@ is
     procedure Push(a: LZ_atom) is
     begin
       lz_buffer(lz_buffer_index):= a;
-      lz_buffer_index:= lz_buffer_index + 1;
+      lz_buffer_index:= lz_buffer_index + 1;  --  becomes 0 when reaching LZ_buffer_size (modular)
       if lz_buffer_index = 0 then
         Flush_from_0;
       end if;
@@ -774,19 +798,16 @@ is
       X_Percent := 0;
     end if;
     case method is
-      when Deflate_Fixed =>
-        -- We have only one compressed data block,
-        -- then it is already the last one.
-        Put_code(code => 1, code_size => 1); -- signals last block
-        -- Fixed (predefined) compression structure
-        Put_code(code => 1, code_size => 2); -- signals a fixed block
-        --  No compression structure need to be included in the compressed data.
+      when Deflate_Fixed =>  --  "Fixed" (predefined) compression structure
+        --  We have only one compressed data block, then it is already the last one.
+        Put_code(code => 1, code_size => 1);  --  Signals last block
+        Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
       when Deflate_Dynamic_1 =>
         null;  --  No start data sent, all is delayed
     end case;
-    ------------------------------------------------
-    --  The whole compression is happenning here: --
-    ------------------------------------------------
+    -----------------------------------------------
+    --  The whole compression is happening here: --
+    -----------------------------------------------
     My_LZ77;
     --  Done. Send the code signalling the end of compressed data block:
     case method is
@@ -796,12 +817,11 @@ is
         if lz_buffer_index = 0 then
           null;  --  Already flushed at latest Push, or empty data
         else
-          --  new_line; put_line("last flush");
           Flush_from_0;
         end if;
         Put_code(descr.lit_len(End_Of_Block));
-        Put_code(code => 1, code_size => 1); -- signals last block
-        Put_code(code => 1, code_size => 2); -- signals a fixed block
+        Put_code(code => 1, code_size => 1);  --  Signals last block
+        Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
         descr:= Deflate_fixed_descriptors;
     end case;
     Put_code(descr.lit_len(End_Of_Block));
