@@ -30,7 +30,7 @@ package body Zip.Create is
       return Info.Stream /= null;
    end Is_Created;
 
-   procedure Set(Info       : out Zip_Create_info;
+   procedure Set(Info       : in out Zip_Create_info;
                  New_Method : Zip.Compress.Compression_Method)
    is
    begin

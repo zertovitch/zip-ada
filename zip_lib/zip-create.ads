@@ -42,7 +42,7 @@ package Zip.Create is
    -- Set a new compression format for the next data to be added to the archive.
    -- Can be useful if data are known to be already compressed - or not.
 
-   procedure Set(Info       : out Zip_Create_info;
+   procedure Set(Info       : in out Zip_Create_info;
                  New_Method : Zip.Compress.Compression_Method);
 
    function Name(Info: Zip_Create_info) return String;

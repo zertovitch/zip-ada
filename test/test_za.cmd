@@ -11,6 +11,7 @@ copy /b ..\random_data.exe .
 
 rem Have a badly compressible file (random.bin)
 if not exist random.bin random_data 1000
+if exist test_rz.ReZip.html del test_rz.ReZip.html
 
 set files=*.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.mdb *.bin
 

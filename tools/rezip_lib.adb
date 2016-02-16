@@ -15,12 +15,13 @@
 --   Web URL's: see Zipper_specification below or run ReZip without arguments.
 
 with Zip.Headers, Zip.Compress, UnZip;
+with Zip.Create;                        use Zip.Create;
 with Zip_Streams;                       use Zip_Streams;
 
 with My_feedback, Flexible_temp_files;
 
 with Ada.Calendar;                      use Ada.Calendar;
-with Ada.Directories;
+with Ada.Directories;                   use Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Dual_IO;                           use Dual_IO;
 -- NB about 'use': no worry, Ada detects all conflicts
@@ -349,7 +350,6 @@ package body Rezip_lib is
       info    : out Packer_info
     )
     is
-      use Ada.Directories;
       temp_zip: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$temp$.zip";
       rand_win: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$rand$.tmp";
       options_winner: Unbounded_String;
@@ -454,7 +454,73 @@ package body Rezip_lib is
       info.zfm        := zfm;
       -- We jump back to the startup directory.
       Set_Directory(cur_dir);
-    end Process_external;
+    end Process_External;
+
+    --  Compress data as raw compressed data
+    procedure Process_Internal_Raw(a: Approach; e: in out Dir_entry) is
+      File_in       : aliased File_Zipstream;
+      File_out      : aliased File_Zipstream;
+    begin
+      Set_Name (File_in, Temp_name(False,original));
+      Open (File_in, In_File);
+      Set_Name (File_out, Temp_name(True,a));
+      Create (File_out, Out_File);
+      Zip.Compress.Compress_data
+      (
+        input            => File_in,
+        output           => File_out,
+        input_size_known => True,
+        input_size       => e.head.short_info.dd.uncompressed_size,
+        method           => Approach_to_Method(a),
+        feedback         => My_Feedback'Access,
+        password         => "",
+        CRC              => e.head.short_info.dd.crc_32,
+        -- we take the occasion to compute the CRC if not
+        -- yet available (e.g. JAR)
+        output_size      => e.info(a).size,
+        zip_type         => e.info(a).zfm
+      );
+      Close(File_in);
+      Close(File_out);
+    end Process_Internal_Raw;
+
+    --  Compress data as a Zip archive (like external methods), then call post-processing
+    procedure Process_Internal_as_Zip(a: Approach; e: in out Dir_entry) is
+      zip_file : aliased File_Zipstream;
+      archive : Zip_Create_info;
+      temp_zip: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$temp$.zip";
+      data_name: constant String:= Simple_Name(Temp_name(False,original));
+      zi_ext: Zip.Zip_info;
+      header: Zip.Headers.Local_File_Header;
+      MyStream   : aliased File_Zipstream;
+      cur_dir: constant String:= Current_Directory;
+    begin
+      Set_Directory(Containing_Directory(Flexible_temp_files.Radix));
+      Create (archive, zip_file'Unchecked_Access, temp_zip );
+      Set(archive, Approach_to_Method(a));
+      Add_File(archive, data_name);
+      Finish (archive);
+      -- Post processing of "deflated" entries with DeflOpt:
+      Call_external(S(defl_opt.name), temp_zip);
+      -- Now, rip
+      Set_Name (MyStream, temp_zip);
+      Open (MyStream, In_File);
+      Zip.Load( zi_ext, MyStream, True );
+      Rip_data(
+        archive      => zi_ext,
+        input        => MyStream,
+        data_name    => data_name,
+        rip_rename   => Temp_name(True,a),
+        unzip_rename => "",
+        header       => header
+      );
+      e.info(a).size:= header.dd.compressed_size;
+      e.info(a).zfm := header.zip_type;
+      Close(MyStream);
+      Delete_File(temp_zip);
+      Zip.Delete(zi_ext);
+      Set_Directory(cur_dir);
+    end Process_Internal_as_Zip;
 
     time_0      : constant Ada.Calendar.Time:= Clock;
 
@@ -482,8 +548,6 @@ package body Rezip_lib is
       procedure Process_one(unique_name: String) is
         comp_size  :  Zip.File_size_type;
         uncomp_size:  Zip.File_size_type;
-        File_in       : aliased File_Zipstream;
-        File_out      : aliased File_Zipstream;
         choice: Approach:= original;
         deco: constant String:= "-->-->-->" & (20+unique_name'Length) * '-';
         mth: Zip.PKZip_method;
@@ -606,33 +670,11 @@ package body Rezip_lib is
                 mth:= Zip.Method_from_code(e.info(a).zfm);
                 --
               when Internal =>
-                Set_Name (File_in, Temp_name(False,original));
-                Open (File_in, In_File);
-                Set_Name (File_out, Temp_name(True,a));
-                Create (File_out, Out_File);
-                Zip.Compress.Compress_data
-                (
-                  input            => File_in,
-                  output           => File_out,
-                  input_size_known => True,
-                  input_size       => e.head.short_info.dd.uncompressed_size,
-                  method           => Approach_to_Method(a),
-                  feedback         => My_Feedback'Access,
-                  password         => "",
-                  CRC              => e.head.short_info.dd.crc_32,
-                  -- we take the occasion to compute the CRC if not
-                  -- yet available (e.g. JAR)
-                  output_size      => e.info(a).size,
-                  zip_type         => e.info(a).zfm
-                );
-                Close(File_in);
-                Close(File_out);
-                -- if a in deflate_1 .. deflate_1 then
-                --   -- Post processing of "deflated" entry with DeflOpt: 
-                -- !! Need to wrap into a zip file !!
-                -- -- Call_external(S(defl_opt.name), Temp_name(True,a));
-                -- end if;
-                --
+                if a in deflate_1 .. deflate_1 then
+                  Process_Internal_as_Zip(a, e.all);
+                else
+                  Process_Internal_Raw(a, e.all);
+                end if;
               when External =>
                 Dual_IO.New_Line;
                 Process_External(
@@ -789,7 +831,6 @@ package body Rezip_lib is
           sb(sb'Last-2..sb'Last-1);
       end Webcolor;
 
-      use Ada.Directories;
 
     begin -- Repack_contents
       T0:= Clock;
