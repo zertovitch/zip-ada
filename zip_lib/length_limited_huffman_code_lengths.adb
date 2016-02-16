@@ -241,16 +241,17 @@ begin
     Boundary_PM(Index_Type(max_bits - 1), i = num_Boundary_PM_runs);
   end loop;
   Extract_Bit_Lengths(lists(Index_Type(max_bits - 1))(1));
+  --  Done; some checks before leaving. Not checked: completeness of Huffman codes.
   for a in Alphabet loop
     if frequencies(a) = 0 then
       if bit_lengths(a) > 0 then
-        raise nonzero_length_but_zero_frequency;
+        raise nonzero_length_but_zero_frequency;  --  Never happened so far
       end if;
     else
       if bit_lengths(a) = 0 then
-        raise zero_length_but_nonzero_frequency;
+        raise zero_length_but_nonzero_frequency;  --  Happened before null_index fix
       elsif bit_lengths(a) > max_bits then
-        raise length_exceeds_length_limit;
+        raise length_exceeds_length_limit;        --  Never happened so far
       end if;
     end if;
   end loop;
