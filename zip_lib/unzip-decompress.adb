@@ -1362,6 +1362,11 @@ package body UnZip.Decompress is
 
       --------[ Method: Inflate ]--------
 
+      lt_count,     dl_count,
+      lt_count_0,   dl_count_0,
+      lt_count_dyn, dl_count_dyn,
+      lt_count_fix, dl_count_fix: Long_Integer:= 0;  --  Statistics of LZ codes per block
+
       procedure Inflate_Codes ( Tl, Td: p_Table_list; Bl, Bd: Integer ) is
         CT     : p_HufT_table;       -- current table
         CT_idx : Natural;            -- current table's index
@@ -1370,7 +1375,9 @@ package body UnZip.Decompress is
         W      : Integer:= UnZ_Glob.slide_index;
         -- more local variable for slide index
       begin
-        if full_trace then
+        if some_trace then
+          lt_count_0:= lt_count;
+          dl_count_0:= dl_count;
           Ada.Text_IO.Put_Line("Begin Inflate_codes");
         end if;
 
@@ -1397,6 +1404,9 @@ package body UnZip.Decompress is
 
           case E is
             when 16 =>     -- CT(CT_idx).N is a Literal
+              if some_trace then
+                lt_count:= lt_count + 1;
+              end if;
               UnZ_Glob.slide ( W ) :=  Zip.Byte( CT(CT_idx).n );
               W:= W + 1;
               UnZ_IO.Flush_if_full(W);
@@ -1408,7 +1418,9 @@ package body UnZip.Decompress is
               exit main_loop;
 
             when others => -- We have a length/distance
-
+              if some_trace then
+                dl_count:= dl_count + 1;
+              end if;
               -- Get length of block to copy:
               length:= CT(CT_idx).n + UnZ_IO.Bit_buffer.Read_and_dump(E);
 
@@ -1437,8 +1449,11 @@ package body UnZip.Decompress is
 
         UnZ_Glob.slide_index:= W;
 
-        if full_trace then
-          Ada.Text_IO.Put_Line("End   Inflate_codes");
+        if some_trace then
+          Ada.Text_IO.Put_Line("End   Inflate_codes;  " &
+            Long_Integer'Image(lt_count-lt_count_0) & " literals," &
+            Long_Integer'Image(dl_count-dl_count_0) & " DL codes," &
+            Long_Integer'Image(dl_count+lt_count-lt_count_0-dl_count_0) & " in total");
         end if;
       end Inflate_Codes;
 
@@ -1550,6 +1565,8 @@ package body UnZip.Decompress is
 
         if some_trace then
           Ada.Text_IO.Put_Line("End   Inflate_fixed_block");
+          lt_count_fix:= lt_count_fix + (lt_count-lt_count_0);
+          dl_count_fix:= dl_count_fix + (dl_count-dl_count_0);
         end if;
       end Inflate_fixed_block;
 
@@ -1700,23 +1717,27 @@ package body UnZip.Decompress is
 
         if some_trace then
           Ada.Text_IO.Put_Line("End   Inflate_dynamic_block");
+          lt_count_dyn:= lt_count_dyn + (lt_count-lt_count_0);
+          dl_count_dyn:= dl_count_dyn + (dl_count-dl_count_0);
         end if;
       end Inflate_dynamic_block;
 
-      procedure Inflate_Block( last_block: out Boolean ) is
+      procedure Inflate_Block( last_block: out Boolean; fix, dyn: in out Long_Integer ) is
       begin
         last_block:= Boolean'Val(UnZ_IO.Bit_buffer.Read_and_dump(1));
         case UnZ_IO.Bit_buffer.Read_and_dump(2) is -- Block type = 0,1,2,3
           when 0 =>      Inflate_stored_block;
           when 1 =>      Inflate_fixed_block;
+                         fix:= fix + 1;
           when 2 =>      Inflate_dynamic_block;
+                         dyn:= dyn + 1;
           when others => raise Zip.Zip_file_Error; -- Bad block type (3)
         end case;
       end Inflate_Block;
 
       procedure Inflate is
         is_last_block: Boolean;
-        blocks: Positive:= 1;
+        blocks, blocks_fix, blocks_dyn: Long_Integer:= 0;
       begin
         if deflate_e_mode then
           copy_lengths_literal(28):= 3; -- instead of 258
@@ -1724,14 +1745,29 @@ package body UnZip.Decompress is
           max_dist:= 31;
         end if;
         loop
-          Inflate_Block ( is_last_block );
+          blocks:= blocks + 1;
+          Inflate_Block ( is_last_block, blocks_fix, blocks_dyn );
           exit when is_last_block;
-          blocks:= blocks+1;
         end loop;
         UnZ_IO.Flush( UnZ_Glob.slide_index );
         UnZ_Glob.slide_index:= 0;
         if some_trace then
-          Ada.Text_IO.Put("# blocks:" & Integer'Image(blocks));
+          Ada.Text_IO.Put_Line(
+            "# blocks:" & Long_Integer'Image(blocks) &
+            "; fixed:" & Long_Integer'Image(blocks_fix) &
+            "; dynamic:" & Long_Integer'Image(blocks_dyn));
+          if blocks_fix > 0 then
+            Ada.Text_IO.Put_Line(
+              "Averages per fixed block: literals:" & Long_Integer'Image(lt_count_fix / blocks_fix) &
+              "; DL codes:" & Long_Integer'Image(dl_count_fix / blocks_fix) &
+              "; all codes:" & Long_Integer'Image((lt_count_fix + dl_count_fix) / blocks_fix));
+          end if;
+          if blocks_dyn > 0 then
+            Ada.Text_IO.Put_Line(
+              "Averages per dynamic block: literals:" & Long_Integer'Image(lt_count_dyn / blocks_dyn) &
+              "; DL codes:" & Long_Integer'Image(dl_count_dyn / blocks_dyn) &
+              "; all codes:" & Long_Integer'Image((lt_count_dyn + dl_count_dyn) / blocks_dyn));
+          end if;
         end if;
       end Inflate;
 

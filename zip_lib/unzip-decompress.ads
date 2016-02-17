@@ -30,7 +30,7 @@ private package UnZip.Decompress is
     output_stream_access       : p_Stream;                   -- \ = write_to_stream
     feedback                   : Zip.Feedback_proc;
     explode_literal_tree       : Boolean; -- relevant for the "explode" format
-    explode_slide_8KB_LZMA_EOS : Boolean; -- relevant for the "explode" format
+    explode_slide_8KB_LZMA_EOS : Boolean; -- relevant for the "explode" and "LZMA" formats
     data_descriptor_after_data : Boolean;
     is_encrypted               : Boolean;
     password                   : in out Unbounded_String;
@@ -43,11 +43,11 @@ private package UnZip.Decompress is
 
 private
 
-  -- Primitive tracing using Ada.Text_IO
+  -- Primitive tracing using Ada.Text_IO, plus a few statistics
   --
   type Trace_type is (none, some_t, full);
 
-  trace: constant Trace_type:= none; -- <== Choice
+  trace: constant Trace_type:= none; --  <==  Choice is here
 
   no_trace  : constant Boolean:= trace = none;
   some_trace: constant Boolean:= trace >= some_t;
