@@ -4,27 +4,12 @@
 --                   Core moved to Rezip_lib
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
---
--- To do:
---  * In order to facilitate customization, ReZip could have a config file (
---    http://sf.net/projects/ini-files/ ) to store external packer program
---    names. See ZipMax as an example...
---
--- External programs used (feel free to customize/add/remove):
---   7-Zip, KZip, Zip (info-zip), DeflOpt
---   Web URL's: see Zipper_specification below or run ReZip without arguments.
 
-
-with Comp_Zip_Prc;
+with Rezip_lib, Comp_Zip_Prc, Zip;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
-
-
-with Zip;
-
-with Rezip_lib;
 
 procedure ReZip is
 

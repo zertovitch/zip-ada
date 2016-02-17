@@ -11,7 +11,7 @@
 --    names. See ZipMax as an example...
 --
 -- External programs used (feel free to customize/add/remove):
---   7-Zip, KZip, Zip (info-zip), DeflOpt
+--   7-Zip, KZip, Zip (info-zip), AdvZip, DeflOpt
 --   Web URL's: see Zipper_specification below or run ReZip without arguments.
 
 with Zip.Headers, Zip.Compress, UnZip;
@@ -265,6 +265,33 @@ package body Rezip_lib is
         end;
       end if;
     end Img;
+
+    --  From AZip_Common...
+    function Image_1000(r: Zip.File_size_type; separator: Character:= ''') return String is
+      s: constant String:= Zip.File_size_type'Image(r);
+      t: String(s'First..s'First+(s'Length*4)/3);
+      j, c: Natural;
+    begin
+      --  For signed integers
+      --  if r < 0 then
+      --    return '-' & Image_1000(abs r, separator);
+      --  end if;
+      --
+      --  We build result string t from right to left
+      j:= t'Last + 1;
+      c:= 0;
+      for i in reverse s'First..s'Last loop
+        exit when s(i) = ' ' or s(i) = '-';
+        if c > 0 and then c mod 3 = 0 then
+          j:= j - 1;
+          t(j):= separator;
+        end if;
+        j:= j - 1;
+        t(j):= s(i);
+        c:= c + 1;
+      end loop;
+      return t(j..t'Last);
+    end Image_1000;
 
     procedure Call_external(
       packer:        String;
@@ -725,7 +752,8 @@ package body Rezip_lib is
           -- '/' &
           -- Trim(Integer'Image(Zip.Entries(zi)),Left) &
           "</td>" &
-          "<td bgcolor=lightgrey><tt>" & unique_name & "</tt></td>");
+          "<td bgcolor=lightgrey><tt>" & unique_name & "</tt><br>" &
+          Image_1000(uncomp_size) & "</td>");
         for a in Approach loop
           if consider_a_priori(a) then
             if not consider(a) then
@@ -738,7 +766,7 @@ package body Rezip_lib is
               Put(summary,"<td>");
             end if;
             if consider(a) then
-              Put(summary, Zip.File_size_type'Image(e.info(a).size));
+              Put(summary, Image_1000(e.info(a).size));
             end if;
             if choice = a then
               Put(summary,"</b>");
@@ -759,7 +787,7 @@ package body Rezip_lib is
           "</td>"
         );
         Winner_color;
-        Put(summary, Zip.File_size_type'Image(e.info(choice).size));
+        Put(summary, Image_1000(e.info(choice).size));
         Put(summary,"</b></td><td>");
         if e.info(original).size > 0 then
           Put(
@@ -891,7 +919,7 @@ package body Rezip_lib is
       Put_Line(summary, "</tr>");
       Put(summary,
         "<tr bgcolor=lightyellow><td></td>"&
-        "<td bgcolor=lightgrey valign=bottom><b>File name:</b></td>"
+        "<td bgcolor=lightgrey valign=bottom><b>File name, uncompressed size:</b></td>"
       );
       for a in Approach loop
         if consider_a_priori(a) then
@@ -971,12 +999,12 @@ package body Rezip_lib is
         if consider_a_priori(a) then
           Put(summary,
             "<td bgcolor=#" & Webcolor(a) & ">" &
-            Zip.File_size_type'Image(total(a).size) & "</td>"
+            Image_1000(total(a).size) & "</td>"
           );
         end if;
       end loop;
       Put(summary,
-        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Zip.File_size_type'Image(total_choice.size) &
+        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Image_1000(total_choice.size) &
         "</b></td><td>"
       );
       if total(original).size > 0 then
@@ -1017,12 +1045,13 @@ package body Rezip_lib is
         if consider_a_priori(a) then
           Put(summary,
             "<td bgcolor=#" & Webcolor(a) & ">" &
-            Integer_64'Image(total(a).saved) & "</td>"
+            Image_1000(Zip.File_size_type(total(a).saved)) & "</td>"
           );
         end if;
       end loop;
       Put(summary,
-        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Integer_64'Image(total_choice.saved) &
+        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" &
+        Image_1000(Zip.File_size_type(total_choice.saved)) &
         "</b></td>" &
         "<td>"
       );

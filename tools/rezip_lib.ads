@@ -10,15 +10,6 @@
 --                     only the final size does.
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
---
--- To do:
---  * In order to facilitate customization, ReZip could have a config file (
---    http://sf.net/projects/ini-files/ ) to store external packer program
---    names. See ZipMax as an example...
---
--- External programs used (feel free to customize/add/remove):
---   7-Zip, KZip, Zip (info-zip), DeflOpt
---   Web URL's: see Zipper_specification below or run ReZip without arguments.
 
 with Zip;
 
