@@ -415,7 +415,7 @@ is
             Emit_data_compression_atom(cs_bl(idx));
             idx:= idx + 1;
           end if;
-          exit when idx > 2 + max_used_lln_code + max_used_dis_code;
+          exit when idx > last_cs_bl;
         end loop;
       end Emit_data_compression_structures;
       --
