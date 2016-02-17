@@ -158,7 +158,7 @@ procedure ZipAda95 is
         elsif opt(opt'First..opt'First+3) = "edf " then
           method:= Deflate_Fixed;
         elsif opt(opt'First..opt'First+3) = "ed1 " then
-          method:= Deflate_Dynamic_1;
+          method:= Deflate_1;
         elsif opt(opt'First) = 's' then
           if arg'Length > 2 then  --  Password is appended to the option
             password:= To_Unbounded_String(arg(arg'First+2..arg'Last));
@@ -218,7 +218,7 @@ begin
     Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
     Put_Line("          -es    : ""shrink"" (LZW algorithm, default)");
     Put_Line("          -edf   : ""deflate"", with one fixed block");
-    Put_Line("          -ed1   : ""deflate dynamic"", strength 1");
+    Put_Line("          -ed1   : ""deflate"", ""dynamic"" compression, strength 1");
     Put_Line("          -s[X]  : set password X");
   end if;
 end ZipAda95;

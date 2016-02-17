@@ -22,7 +22,6 @@ zipada -er3 test_zar3 %files%
 zipada -er4 test_zar4 %files%
 zipada -edf test_zadf %files%
 zipada -ed1 test_zad1 %files%
-zip    -1   test_ifz1 %files%
 zip    -6   test_ifz6 %files%
 zip    -9   test_ifz9 %files%
 

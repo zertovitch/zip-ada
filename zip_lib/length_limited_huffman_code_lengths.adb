@@ -19,7 +19,7 @@
 --  "A Fast and Space-Economical Algorithm for Length-Limited Coding
 --  Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
---  Translated to Ada from katajainen.c (Zopfli project) by G. de Montmollin, 7-Feb-2016
+--  Translated by G. de Montmollin to Ada from katajainen.c (Zopfli project), 7-Feb-2016
 --
 --  Main technical differences to katajainen.c:
 --    - pointers are not used, array indices instead
@@ -34,7 +34,7 @@ is
   subtype Index_type is Count_Type;
 
   null_index: constant Index_Type:= Index_Type'Last;
-  
+
   --  Nodes forming chains.
   type Node is record
     weight : Count_Type;

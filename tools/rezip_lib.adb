@@ -201,7 +201,7 @@ package body Rezip_lib is
        reduce_3  => Zip.Compress.Reduce_3,
        reduce_4  => Zip.Compress.Reduce_4,
        deflate_f => Zip.Compress.Deflate_Fixed,
-       deflate_1 => Zip.Compress.Deflate_Dynamic_1
+       deflate_1 => Zip.Compress.Deflate_1
       );
 
     type Packer_info is record
@@ -752,7 +752,7 @@ package body Rezip_lib is
           -- '/' &
           -- Trim(Integer'Image(Zip.Entries(zi)),Left) &
           "</td>" &
-          "<td bgcolor=lightgrey><tt>" & unique_name & "</tt><br>" &
+          "<td bgcolor=lightgrey><tt>" & unique_name & "</tt>, " &
           Image_1000(uncomp_size) & "</td>");
         for a in Approach loop
           if consider_a_priori(a) then
