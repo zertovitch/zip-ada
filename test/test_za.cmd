@@ -16,11 +16,11 @@ if exist test_rz.ReZip.html del test_rz.ReZip.html
 set files=*.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.mdb *.bin
 
 zipada -esh test_zash %files%
-zipada -er1 test_zar1 %files%
-zipada -er2 test_zar2 %files%
-zipada -er3 test_zar3 %files%
-zipada -er4 test_zar4 %files%
-zipada -edf test_zadf %files%
+REM zipada -er1 test_zar1 %files%
+REM zipada -er2 test_zar2 %files%
+REM zipada -er3 test_zar3 %files%
+REM zipada -er4 test_zar4 %files%
+REM zipada -edf test_zadf %files%
 zipada -ed1 test_zad1 %files%
 zip    -6   test_ifz6 %files%
 zip    -9   test_ifz9 %files%
@@ -43,11 +43,11 @@ dir test_za??.zip |find ".zip" >test_za_%nice_date%.log
 
 echo.
 comp_zip test_zash test_ifz9
-comp_zip test_zash test_zar1
-comp_zip test_zash test_zar2
-comp_zip test_zash test_zar3
-comp_zip test_zash test_zar4
-comp_zip test_zash test_zadf
+REM comp_zip test_zash test_zar1
+REM comp_zip test_zash test_zar2
+REM comp_zip test_zash test_zar3
+REM comp_zip test_zash test_zar4
+REM comp_zip test_zash test_zadf
 comp_zip test_zash test_zad1
 
 pause

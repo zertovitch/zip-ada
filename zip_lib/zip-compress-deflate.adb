@@ -474,7 +474,7 @@ is
     subtype Length_range is Integer range 3 .. 258;
     subtype Distance_range is Integer range 1 .. 32768;
 
-    --  !! Performance: use arrays instead of case statements !!
+    --  !! Check performance: perhaps use arrays instead of case statements 
 
     procedure Put_DL_code( distance, length: Integer ) is
     begin
@@ -583,7 +583,7 @@ is
       end case;
     end Put_DL_code;
 
-    --  !! Performance: use arrays instead of case statements !!
+    --  !! Check performance: perhaps use arrays instead of case statements 
 
     function Deflate_code_for_LZ_length(length: Natural) return Natural is
     begin
@@ -605,7 +605,7 @@ is
       end case;
     end Deflate_code_for_LZ_length;
 
-    --  !! Performance: use arrays instead of case statements !!
+    --  !! Check performance: perhaps use arrays instead of case statements 
 
     function Deflate_code_for_LZ_distance(distance: Natural) return Natural is
     begin
@@ -645,8 +645,8 @@ is
     --  LZ Buffer  --
     -----------------
 
-    --  We buffer the LZ codes (plain, or distance/length) in order to analyse them
-    --  and try to do smart things
+    --  We buffer the LZ codes (plain, or distance/length) in order to
+    --  analyse them and try to do smart things
 
     type LZ_atom_kind is (plain_byte, distance_length);
     type LZ_atom is record
@@ -703,8 +703,8 @@ is
             stats_dis(dis):= stats_dis(dis) + 1;                          --  +1 for this distance
         end case;
       end loop;
-      --  See PatchDistanceCodesForBuggyDecoders in Zopfli's deflate.c
-      --  NB: here, we patch the occurrences and not the bit lengths.
+      --  See "PatchDistanceCodesForBuggyDecoders" in Zopfli's deflate.c
+      --  NB: here, we patch the occurrences and not the bit lengths, to avoid invalid codes.
       --  The decoding bug concerns Zlib v.<= 1.2.1, UnZip v.<= 6.0, WinZip v.10.0.
       for i in stats_dis'Range loop
         if stats_dis(i) /= 0 then
@@ -723,7 +723,8 @@ is
       end if;
     end Get_statistics;
 
-    procedure Put_LZ_buffer_slice(lz_buffer: LZ_buffer_type) is
+    --  Send a LZ buffer with current Huffman codes
+    procedure Put_LZ_buffer(lz_buffer: LZ_buffer_type) is
     begin
       for i in lz_buffer'Range loop
         case lz_buffer(i).kind is
@@ -733,7 +734,7 @@ is
             Put_DL_code(lz_buffer(i).lz_distance, lz_buffer(i).lz_length);
         end case;
       end loop;
-    end Put_LZ_buffer_slice;
+    end Put_LZ_buffer;
 
     lz_buffer_index: LZ_buffer_index_type:= 0;
     lz_buffer_full: Boolean:= False;
@@ -741,34 +742,34 @@ is
     --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
     block_to_finish: Boolean:= False;
 
-    procedure Flush_from_0(last_flush: Boolean) is
-      stats_lit_len: Stats_lit_len_type;
-      bl_for_lit_len : Bit_length_array_lit_len;
-      stats_dis: Stats_dis_type;
-      bl_for_dis : Bit_length_array_dis;
+    procedure Mark_new_block(last_block_for_stream: Boolean) is
     begin
-      --  !! Temporary: 1 big fat dynamic block per flush :-(
-      --
       if block_to_finish then
         Put_code(descr.lit_len(End_Of_Block));  --  Finish previous block
       end if;
       block_to_finish:= True;
-      Put_code(code => Boolean'Pos(last_flush), code_size => 1);
-      --  !! ^ will be last block of last flush
-      Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
+      Put_code(code => Boolean'Pos(last_block_for_stream), code_size => 1);
+    end Mark_new_block;
+
+    procedure Flush_from_0(last_flush: Boolean) is
+      stats_lit_len: Stats_lit_len_type;
+      bl_for_lit_len : Bit_length_array_lit_len;
+      stats_dis: Stats_dis_type;
+      bl_for_dis : Bit_length_array_dis;      
+    begin
+      Mark_new_block(last_block_for_stream => last_flush);
+      -- ^ Eventually, will be last block of last flush in a later version
       Get_statistics(lz_buffer(0..lz_buffer_index-1), stats_lit_len, stats_dis);
       LLHCL_lit_len(stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
       LLHCL_dis(stats_dis, bl_for_dis);              --    up Huffman lengths of both trees
-      --
       descr:= Build_descriptor(bl_for_lit_len, bl_for_dis);
+      Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
       Put_compression_structure(descr);
-      --
       lz_buffer_full:= True;
-      --
       --  put_line(
       --    "*** Flush_from_0, index=" & lz_buffer_index'img &
       --    "  range: 0 .." & LZ_buffer_index_type'image(lz_buffer_index-1));
-      Put_LZ_buffer_slice(lz_buffer(0..lz_buffer_index-1));
+      Put_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
     end Flush_from_0;
 
     procedure Push(a: LZ_atom) is
