@@ -3,11 +3,9 @@
 --
 -- See package specification for details.
 --
--- To do:
---  - compute cost/benefit of various choices, e.g. DLE encoding (versus string of literals)
---
 -- Change log:
 --
+-- 20-Feb-2016: (rev.305) Start of smarter techniques for "Dynamic" encoding (Taillaule algorithm)
 --  4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
 -- 19-Feb-2011: All distance and length codes implemented.
 -- 18-Feb-2011: First version working with Deflate fixed and restricted
@@ -38,7 +36,7 @@ procedure Zip.Compress.Deflate
 is
   use Zip_Streams;
 
-  trace    : constant Boolean:= True;
+  trace    : constant Boolean:= False;
   log      : File_Type;
   log_name : constant String:= "Zip.Compress.Deflate.csv";
   sep      : constant Character:= ';';
@@ -337,7 +335,7 @@ is
     type Stats_dis_type is array(Alphabet_dis) of Count_type;
 
     --  Do the phases A) B) C) in one go.
-    function Build_descriptors(stats_lit_len: Stats_lit_len_type; stats_dis: Stats_dis_type)
+    function Build_descriptors(stats_lit_len: Stats_lit_len_type; stats_dis_0: Stats_dis_type)
     return Deflate_Huff_descriptors
     is
       bl_for_lit_len : Bit_length_array_lit_len;
@@ -350,24 +348,115 @@ is
         Length_limited_Huffman_code_lengths(
           Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15
         );
+      stats_dis     : Stats_dis_type:= stats_dis_0;
+      used          : Natural:= 0;
     begin
+      --  See "PatchDistanceCodesForBuggyDecoders" in Zopfli's deflate.c
+      --  NB: here, we patch the occurrences and not the bit lengths, to avoid invalid codes.
+      --  The decoding bug concerns Zlib v.<= 1.2.1, UnZip v.<= 6.0, WinZip v.10.0.
+      for i in stats_dis'Range loop
+        if stats_dis(i) /= 0 then
+          used:= used + 1;
+        end if;
+      end loop;
+      if used < 2 then
+        if used = 0 then  --  No distance code used at all (data must be almost random)
+          stats_dis(0) := 1;
+          stats_dis(1) := 1;
+        elsif stats_dis(0) = 0 then
+          stats_dis(0) := 1;  --  now code 0 and some other code have non-zero counts
+        else
+          stats_dis(1) := 1;  --  now codes 0 and 1 have non-zero counts
+        end if;
+      end if;
       LLHCL_lit_len(stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
       LLHCL_dis(stats_dis, bl_for_dis);              --    up Huffman lengths of both trees
       return Build_descriptors(bl_for_lit_len, bl_for_dis);
     end Build_descriptors;
 
+    End_Of_Block: constant:= 256;
+
     --  Default Huffman trees, for "fixed" blocks, as defined in appnote.txt or RFC 1951
 
     default_lit_len_bl: constant Bit_length_array_lit_len:=
-      (  0 .. 143 => 8,  --  For literals ("plain text" bytes)
-       144 .. 255 => 9,  --  For more literals ("plain text" bytes)
-       256 .. 279 => 7,  --  For EOB (256), then for length codes
-       280 .. 287 => 8   --  For more length codes
+      (  0 .. 143   => 8,  --  For literals ("plain text" bytes)
+       144 .. 255   => 9,  --  For more literals ("plain text" bytes)
+       End_Of_Block => 7,
+       257 .. 279   => 7,  --  For EOB (256), then for length codes
+       280 .. 287   => 8   --  For more length codes
       );
     default_dis_bl: constant Bit_length_array_dis:= (others => 5);
 
     Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
       Build_descriptors( default_lit_len_bl, default_dis_bl);
+
+    random_data_lit_len: constant Stats_lit_len_type:=
+      (0..255       => 30000,
+       End_Of_Block => 1,
+       others       => 0);  --  No length code used, because no repeated slice, because random
+    random_data_dis: constant Stats_dis_type:=
+      (others => 0);  --  No distance code used, because no repeated slice, because random
+
+    random_data_descriptors: constant Deflate_Huff_descriptors:=
+      Build_descriptors( random_data_lit_len, random_data_dis);
+
+    --  Here is the original part in the Taillaule algorithm: use of
+    --  basic topology (metric spaces).
+    
+    function L1_distance(h1, h2: Deflate_Huff_descriptors) return Natural is
+      s: Natural:= 0;
+    begin
+      for i in h1.lit_len'Range loop
+        s:= s + abs(h1.lit_len(i).length - h2.lit_len(i).length);
+      end loop;
+      for i in h1.dis'Range loop
+        s:= s + abs(h1.dis(i).length - h2.dis(i).length);
+      end loop;
+      return s;
+    end L1_distance;
+
+    function L2_distance_square(h1, h2: Deflate_Huff_descriptors) return Natural is
+      s: Natural:= 0;
+    begin
+      for i in h1.lit_len'Range loop
+        s:= s + (h1.lit_len(i).length - h2.lit_len(i).length) ** 2;
+      end loop;
+      for i in h1.dis'Range loop
+        s:= s + (h1.dis(i).length - h2.dis(i).length) ** 2;
+      end loop;
+      return s;
+    end L2_distance_square;
+
+    type Distance_type is (L1, L2);
+
+    function Similar(
+      h1, h2    : Deflate_Huff_descriptors;
+      dist_kind : Distance_type;
+      threshold : Positive;
+      comment   : String
+    )
+    return Boolean is
+      dist  : Natural;
+      thres : Positive:= threshold;
+    begin
+      case dist_kind is
+        when L1 =>
+          dist:= L1_distance(h1,h2);
+        when L2 =>
+          thres := thres * thres;
+          dist  := L2_distance_square(h1,h2);
+      end case;
+      if trace then
+        Put(log, 
+          "Checking similarity" & sep & sep & sep & sep & sep & 
+          Distance_type'Image(dist_kind) & sep &
+          "Distance(ev. **2):" & sep & sep & sep & sep & Integer'Image(dist) & sep & sep &
+          "Threshold:" & sep & sep & Integer'Image(threshold) & sep & sep &
+          comment
+        );
+      end if;
+      return dist < thres;
+    end Similar;
 
     --  Emit a Huffman code
     procedure Put_code(lc: Length_code_pair) is
@@ -708,8 +797,6 @@ is
     type LZ_buffer_type is array (LZ_buffer_index_type range <>) of LZ_atom;
     lz_buffer: LZ_buffer_type(LZ_buffer_index_type);
 
-    End_Of_Block: constant:= 256;
-
     procedure Get_statistics(
       lz_buffer     :     LZ_buffer_type;
       stats_lit_len : out Stats_lit_len_type;
@@ -718,7 +805,6 @@ is
     is
       lit_len: Alphabet_lit_len;
       dis: Alphabet_dis;
-      used: Natural:= 0;
     begin
       stats_lit_len:= (End_Of_Block => 1, others => 0);
       --  ^ End_Of_Block has to happen once, but never appears in the statistics...
@@ -738,24 +824,6 @@ is
             stats_dis(dis):= stats_dis(dis) + 1;                          --  +1 for this distance
         end case;
       end loop;
-      --  See "PatchDistanceCodesForBuggyDecoders" in Zopfli's deflate.c
-      --  NB: here, we patch the occurrences and not the bit lengths, to avoid invalid codes.
-      --  The decoding bug concerns Zlib v.<= 1.2.1, UnZip v.<= 6.0, WinZip v.10.0.
-      for i in stats_dis'Range loop
-        if stats_dis(i) /= 0 then
-          used:= used + 1;
-        end if;
-      end loop;
-      if used < 2 then
-        if used = 0 then  --  No distance code used at all (data must be almost random)
-          stats_dis(0) := 1;
-          stats_dis(1) := 1;
-        elsif stats_dis(0) = 0 then
-          stats_dis(0) := 1;  --  now code 0 and some other code have non-zero counts
-        else
-          stats_dis(1) := 1;  --  now codes 0 and 1 have non-zero counts
-        end if;
-      end if;
     end Get_statistics;
 
     --  Send a LZ buffer with current Huffman codes
@@ -792,11 +860,16 @@ is
     procedure Flush_from_0(last_flush: Boolean) is
       stats_lit_len: Stats_lit_len_type;
       stats_dis: Stats_dis_type;
+      new_descr: Deflate_Huff_descriptors;
     begin
       Mark_new_block(last_block_for_stream => last_flush);
       -- ^ Eventually, will be last block of last flush in a later version
       Get_statistics(lz_buffer(0..lz_buffer_index-1), stats_lit_len, stats_dis);
-      descr:= Build_descriptors(stats_lit_len, stats_dis);
+      new_descr:= Build_descriptors(stats_lit_len, stats_dis);
+      if Similar(random_data_descriptors, new_descr, L2, 500, "Compare to random") then
+        null; -- !! here stored data block, invalidate dyn code
+      end if;
+      descr:= new_descr;
       Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
       Put_compression_structure(descr);
       lz_buffer_full:= True;
