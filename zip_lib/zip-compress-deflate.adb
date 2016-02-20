@@ -38,7 +38,7 @@ procedure Zip.Compress.Deflate
 is
   use Zip_Streams;
 
-  trace    : constant Boolean:= False;
+  trace    : constant Boolean:= True;
   log      : File_Type;
   log_name : constant String:= "Zip.Compress.Deflate.csv";
   sep      : constant Character:= ';';
@@ -233,6 +233,12 @@ is
     --  The Huffman code set (and therefore the Huffman tree) is completely determined by
     --  the bit length to be used for reaching leaf nodes, thanks to two special
     --  rules (See RFC 1951, section 3.2.2).
+    --
+    --  So basically the process is the following:
+    --
+    --  A) Gather statistics (just counts) for the alphabet
+    --  B) Turn these counts into code lengths, with a call to Length_limited_Huffman_code_lengths
+    --  C) Build Huffman codes (the bits to be sent) with a call to Prepare_codes
 
     type Huff_descriptor is array(Natural range <>) of Length_code_pair;
 
@@ -246,12 +252,10 @@ is
     --  but participate in the huffman construction.
     --  GdM: setting upper bound to 285 for literals leads to invalid codes, sometimes.
     
-    --  The Prepare_Huffman_codes function finds the Huffman code for each value, given
+    --  The Prepare_codes function finds the Huffman code for each value, given
     --  the bit length imposed as input.
-
-    max_huffman_bits: constant:= 15;
-
     procedure Prepare_codes(hd: in out Huff_descriptor) is
+      max_huffman_bits: constant:= 15;
       bl_count, next_code: array(0..max_huffman_bits) of Natural:= (others => 0);
       code: Natural:= 0;
       bl: Natural;
@@ -328,6 +332,30 @@ is
       return Prepare_Huffman_codes(new_d);
     end Build_descriptors;
 
+    type Count_type is range 0..File_size_type'Last/2-1;
+    type Stats_lit_len_type is array(Alphabet_lit_len) of Count_type;
+    type Stats_dis_type is array(Alphabet_dis) of Count_type;
+
+    --  Do the phases A) B) C) in one go.
+    function Build_descriptors(stats_lit_len: Stats_lit_len_type; stats_dis: Stats_dis_type)
+    return Deflate_Huff_descriptors
+    is
+      bl_for_lit_len : Bit_length_array_lit_len;
+      bl_for_dis     : Bit_length_array_dis;
+      procedure LLHCL_lit_len is new
+        Length_limited_Huffman_code_lengths(
+          Alphabet_lit_len, Count_type, Stats_lit_len_type, Bit_length_array_lit_len, 15
+        );
+      procedure LLHCL_dis is new
+        Length_limited_Huffman_code_lengths(
+          Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15
+        );
+    begin
+      LLHCL_lit_len(stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
+      LLHCL_dis(stats_dis, bl_for_dis);              --    up Huffman lengths of both trees
+      return Build_descriptors(bl_for_lit_len, bl_for_dis);
+    end Build_descriptors;
+
     --  Default Huffman trees, for "fixed" blocks, as defined in appnote.txt or RFC 1951
 
     default_lit_len_bl: constant Bit_length_array_lit_len:=
@@ -350,6 +378,10 @@ is
       Put_code(U32(lc.code), lc.length);
     end Put_code;
 
+    --  This is where the "dynamic" Huffman trees are sent before the block's data are sent.
+    --  The decoder needs to know the tree pair for decoding the data.
+    --  But this information takes some room. Fortunately Deflate allows for compressing it
+    --  with both Huffman and Run-Length (RLE) encoding.
     procedure Put_compression_structure(dhd: Deflate_Huff_descriptors) is
       subtype Alphabet is Integer range 0..18;
       type Alpha_Array is new Bit_length_array(Alphabet);
@@ -678,18 +710,6 @@ is
 
     End_Of_Block: constant:= 256;
 
-    type Count_type is range 0..File_size_type'Last/2-1;
-    type Stats_lit_len_type is array(Alphabet_lit_len) of Count_type;
-    procedure LLHCL_lit_len is new
-      Length_limited_Huffman_code_lengths(
-        Alphabet_lit_len, Count_type, Stats_lit_len_type, Bit_length_array_lit_len, 15
-      );
-    type Stats_dis_type is array(Alphabet_dis) of Count_type;
-    procedure LLHCL_dis is new
-      Length_limited_Huffman_code_lengths(
-        Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15
-      );
-
     procedure Get_statistics(
       lz_buffer     :     LZ_buffer_type;
       stats_lit_len : out Stats_lit_len_type;
@@ -767,18 +787,16 @@ is
     pragma Unreferenced (lz_buffer_full);
     --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
 
+    --  !! Suboptimal so far. Currently a big fat block is sent one after the other.
+    --     More to come in this place :-) ...
     procedure Flush_from_0(last_flush: Boolean) is
       stats_lit_len: Stats_lit_len_type;
-      bl_for_lit_len : Bit_length_array_lit_len;
       stats_dis: Stats_dis_type;
-      bl_for_dis : Bit_length_array_dis;      
     begin
       Mark_new_block(last_block_for_stream => last_flush);
       -- ^ Eventually, will be last block of last flush in a later version
       Get_statistics(lz_buffer(0..lz_buffer_index-1), stats_lit_len, stats_dis);
-      LLHCL_lit_len(stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
-      LLHCL_dis(stats_dis, bl_for_dis);              --    up Huffman lengths of both trees
-      descr:= Build_descriptors(bl_for_lit_len, bl_for_dis);
+      descr:= Build_descriptors(stats_lit_len, stats_dis);
       Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
       Put_compression_structure(descr);
       lz_buffer_full:= True;
