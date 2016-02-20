@@ -381,8 +381,8 @@ is
     default_lit_len_bl: constant Bit_length_array_lit_len:=
       (  0 .. 143   => 8,  --  For literals ("plain text" bytes)
        144 .. 255   => 9,  --  For more literals ("plain text" bytes)
-       End_Of_Block => 7,
-       257 .. 279   => 7,  --  For EOB (256), then for length codes
+       End_Of_Block => 7,  --  For EOB (256)
+       257 .. 279   => 7,  --  For length codes
        280 .. 287   => 8   --  For more length codes
       );
     default_dis_bl: constant Bit_length_array_dis:= (others => 5);
@@ -391,7 +391,7 @@ is
       Build_descriptors( default_lit_len_bl, default_dis_bl);
 
     random_data_lit_len: constant Stats_lit_len_type:=
-      (0..255       => 30000,
+      (0 .. 255     => 30000,
        End_Of_Block => 1,
        others       => 0);  --  No length code used, because no repeated slice, because random
     random_data_dis: constant Stats_dis_type:=
@@ -403,6 +403,7 @@ is
     --  Here is the original part in the Taillaule algorithm: use of
     --  basic topology (metric spaces).
     
+    --  L1 or Manhattan distance
     function L1_distance(h1, h2: Deflate_Huff_descriptors) return Natural is
       s: Natural:= 0;
     begin
@@ -415,6 +416,7 @@ is
       return s;
     end L1_distance;
 
+    --  L2 or Euclidean distance
     function L2_distance_square(h1, h2: Deflate_Huff_descriptors) return Natural is
       s: Natural:= 0;
     begin
@@ -447,17 +449,32 @@ is
           dist  := L2_distance_square(h1,h2);
       end case;
       if trace then
-        Put(log, 
+        Put_Line(log, 
           "Checking similarity" & sep & sep & sep & sep & sep & 
           Distance_type'Image(dist_kind) & sep &
-          "Distance(ev. **2):" & sep & sep & sep & sep & Integer'Image(dist) & sep & sep &
-          "Threshold:" & sep & sep & Integer'Image(threshold) & sep & sep &
+          "Distance (ev. **2):" & sep & sep & sep & sep & Integer'Image(dist) & sep & sep &
+          "Threshold (ev. **2):" & sep & sep & Integer'Image(thres) & sep & sep &
           comment
         );
       end if;
       return dist < thres;
     end Similar;
 
+    function Recyclable(h_old, h_new: Deflate_Huff_descriptors) return Boolean is
+    begin
+      for i in h_old.lit_len'Range loop
+        if h_old.lit_len(i).length = 0 and h_new.lit_len(i).length > 0 then
+          return False;  --  Code used in new but not in old
+        end if;
+      end loop;
+      for i in h_old.dis'Range loop
+        if h_old.dis(i).length = 0 and h_new.dis(i).length > 0 then
+          return False;  --  Code used in new but not in old
+        end if;
+      end loop;
+      return True;      
+    end Recyclable;
+    
     --  Emit a Huffman code
     procedure Put_code(lc: Length_code_pair) is
     begin
@@ -840,6 +857,7 @@ is
     end Put_LZ_buffer;
 
     block_to_finish: Boolean:= False;
+    last_block_marked: Boolean:= False;
 
     procedure Mark_new_block(last_block_for_stream: Boolean) is
     begin
@@ -848,6 +866,7 @@ is
       end if;
       block_to_finish:= True;
       Put_code(code => Boolean'Pos(last_block_for_stream), code_size => 1);
+      last_block_marked:= last_block_for_stream;
     end Mark_new_block;
 
     lz_buffer_index: LZ_buffer_index_type:= 0;
@@ -855,6 +874,9 @@ is
     pragma Unreferenced (lz_buffer_full);
     --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
 
+    type Block_type is (stored, fixed, dynamic, reserved);  --  Appnote, 5.5.2
+    last_block_type: Block_type:= reserved;  --  If dynamic, we may recycle previous block
+    
     --  !! Suboptimal so far. Currently a big fat block is sent one after the other.
     --     More to come in this place :-) ...
     procedure Flush_from_0(last_flush: Boolean) is
@@ -862,21 +884,31 @@ is
       stats_dis: Stats_dis_type;
       new_descr: Deflate_Huff_descriptors;
     begin
-      Mark_new_block(last_block_for_stream => last_flush);
-      -- ^ Eventually, will be last block of last flush in a later version
       Get_statistics(lz_buffer(0..lz_buffer_index-1), stats_lit_len, stats_dis);
       new_descr:= Build_descriptors(stats_lit_len, stats_dis);
-      if Similar(random_data_descriptors, new_descr, L2, 500, "Compare to random") then
-        null; -- !! here stored data block, invalidate dyn code
+--    if Similar(random_data_descriptors, new_descr, L2, 129, "Compare to random") then
+--      last_block_type:= stored;
+--      Mark_new_block(last_block_for_stream => last_flush);
+--      Expand_LZ_buffer(lz_buffer(0..lz_buffer_index-1));  --  TBD, cf UnZip.Decompress:1460
+--    else
+      if last_block_type = dynamic and then 
+         Similar(descr, new_descr, L1, 110, "Compare to previous") and then
+         Recyclable(descr, new_descr)
+      then
+        if trace then
+          Put_Line(log, "*** Recycle! ***");
+        end if;
+        Put_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
+      else
+        last_block_type:= dynamic;
+        Mark_new_block(last_block_for_stream => last_flush);
+        -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
+        descr:= new_descr;
+        Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
+        Put_compression_structure(descr);
+        Put_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
       end if;
-      descr:= new_descr;
-      Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
-      Put_compression_structure(descr);
       lz_buffer_full:= True;
-      --  put_line(
-      --    "*** Flush_from_0, index=" & lz_buffer_index'img &
-      --    "  range: 0 .." & LZ_buffer_index_type'image(lz_buffer_index-1));
-      Put_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
     end Flush_from_0;
 
     procedure Push(a: LZ_atom) is
@@ -960,21 +992,26 @@ is
     --  Done. Send the code signalling the end of compressed data block:
     case method is
       when Deflate_Fixed =>
-        null;
+        Put_code(descr.lit_len(End_Of_Block));
       when Deflate_1 =>
         if lz_buffer_index = 0 then  --  Already flushed at latest Push, or empty data
-          if block_to_finish then
+          if block_to_finish and then last_block_type in fixed .. dynamic then
             Put_code(descr.lit_len(End_Of_Block));
           end if;
-          --  Add a fake fixed block
+        else
+          Flush_from_0(last_flush => True);
+          if last_block_type in fixed .. dynamic then
+            Put_code(descr.lit_len(End_Of_Block));
+          end if;
+        end if;
+        if not last_block_marked then
+          --  Add a fake fixed block, just to have a final block...
           Put_code(code => 1, code_size => 1);  --  Signals last block
           Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
           descr:= Deflate_fixed_descriptors;
-        else
-          Flush_from_0(last_flush => True);
+          Put_code(descr.lit_len(End_Of_Block));
         end if;
     end case;
-    Put_code(descr.lit_len(End_Of_Block));
   end Encode;
 
 begin
