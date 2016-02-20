@@ -21,7 +21,7 @@ with Length_limited_Huffman_code_lengths;
 
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
---  with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure Zip.Compress.Deflate
  (input,
@@ -37,6 +37,11 @@ procedure Zip.Compress.Deflate
 )
 is
   use Zip_Streams;
+
+  trace    : constant Boolean:= False;
+  log      : File_Type;
+  log_name : constant String:= "Zip.Compress.Deflate.csv";
+  sep      : constant Character:= ';';
 
   ------------------
   -- Buffered I/O --
@@ -191,7 +196,7 @@ is
     -- LZ77 params
     Look_Ahead         : constant Integer:= 258;
     String_buffer_size : constant := 2**15; -- 2**n optimizes "mod" to "and"
-    Threshold          : constant := 3;
+    Threshold          : constant := 2;
 
     -- if the DLE coding doesn't fit the format constraints, we
     -- need to decode it as a simple sequence of literals
@@ -214,6 +219,7 @@ is
     end record;
 
     procedure Invert(lc: in out Length_code_pair) is
+    pragma Inline(Invert);
       a: Natural:= lc.code;
       b: Natural:= 0;
     begin
@@ -224,30 +230,28 @@ is
       lc.code:= b;
     end Invert;
 
-    type Huff_descriptor is array(Natural range <>) of Length_code_pair;
+    --  The Huffman code set (and therefore the Huffman tree) is completely determined by
+    --  the bit length to be used for reaching leaf nodes, thanks to two special
+    --  rules (See RFC 1951, section 3.2.2).
 
-    procedure Invert(hd: in out Huff_descriptor) is
-    begin
-      for i in hd'Range loop
-        Invert(hd(i));
-      end loop;
-    end Invert;
+    type Huff_descriptor is array(Natural range <>) of Length_code_pair;
 
     type Deflate_Huff_descriptors is record
       --  Tree descriptor for Literal, EOB or Length encoding
       lit_len: Huff_descriptor(0..287);
       --  Tree descriptor for Distance encoding
-      dis: Huff_descriptor(0..29);
+      dis: Huff_descriptor(0..31);
     end record;
-
-    --  The Huffman tree is completely determined by the bit length to be used for reaching
-    --  leaf nodes, thanks to two special rules (See RFC 1951, section 3.2.2).
+    --  Appnote: Literal codes 286-287 and distance codes 30-31 are never used
+    --  but participate in the huffman construction.
+    --  GdM: setting upper bound to 285 for literals leads to invalid codes, sometimes.
+    
     --  The Prepare_Huffman_codes function finds the Huffman code for each value, given
     --  the bit length imposed as input.
 
     max_huffman_bits: constant:= 15;
 
-    procedure Prepare_tree(hd: in out Huff_descriptor) is
+    procedure Prepare_codes(hd: in out Huff_descriptor) is
       bl_count, next_code: array(0..max_huffman_bits) of Natural:= (others => 0);
       code: Natural:= 0;
       bl: Natural;
@@ -274,15 +278,17 @@ is
         end if;
       end loop;
       --  Invert bit order for output:
-      Invert(hd);
-    end Prepare_tree;
+      for i in hd'Range loop
+        Invert(hd(i));
+      end loop;
+    end Prepare_codes;
 
     function Prepare_Huffman_codes(dhd: Deflate_Huff_descriptors) return Deflate_Huff_descriptors
     is
       dhd_var: Deflate_Huff_descriptors:= dhd;
     begin
-      Prepare_tree(dhd_var.lit_len);
-      Prepare_tree(dhd_var.dis);
+      Prepare_codes(dhd_var.lit_len);
+      Prepare_codes(dhd_var.dis);
       return dhd_var;
     end Prepare_Huffman_codes;
 
@@ -293,10 +299,10 @@ is
     type Bit_length_array is array(Natural range <>) of Natural;
     subtype Alphabet_lit_len is Natural range 0..287;
     subtype Bit_length_array_lit_len is Bit_length_array(Alphabet_lit_len);
-    subtype Alphabet_dis is Natural range 0..29;
+    subtype Alphabet_dis is Natural range 0..31;
     subtype Bit_length_array_dis is Bit_length_array(Alphabet_dis);
 
-    function Build_descriptor(
+    function Build_descriptors(
       bl_for_lit_len : Bit_length_array_lit_len;
       bl_for_dis     : Bit_length_array_dis
     )
@@ -306,12 +312,21 @@ is
     begin
       for i in new_d.lit_len'Range loop
         new_d.lit_len(i):= (length => bl_for_lit_len(i), code => invalid);
+        if trace then
+          Put(log, Integer'Image(bl_for_lit_len(i)) & sep);
+        end if;
       end loop;
       for i in new_d.dis'Range loop
         new_d.dis(i):= (length => bl_for_dis(i), code => invalid);
+        if trace then
+          Put(log, Integer'Image(bl_for_dis(i)) & sep);
+        end if;
       end loop;
+      if trace then
+        New_Line(log);
+      end if;
       return Prepare_Huffman_codes(new_d);
-    end Build_descriptor;
+    end Build_descriptors;
 
     --  Default Huffman trees, for "fixed" blocks, as defined in appnote.txt or RFC 1951
 
@@ -324,7 +339,7 @@ is
     default_dis_bl: constant Bit_length_array_dis:= (others => 5);
 
     Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
-      Build_descriptor( default_lit_len_bl, default_dis_bl);
+      Build_descriptors( default_lit_len_bl, default_dis_bl);
 
     --  Emit a Huffman code
     procedure Put_code(lc: Length_code_pair) is
@@ -437,7 +452,7 @@ is
       for a in Alphabet loop
         truc(a).length:= truc_bl(a);
       end loop;
-      Prepare_tree(truc);         --  Build the Huffman codes described by the bit lengths
+      Prepare_codes(truc);         --  Build the Huffman codes described by the bit lengths
       a_non_zero:= 3;
       --  At least lengths for codes 16, 17, 18, 0 will always be sent if the other lengths are 0
       for a in Alphabet loop
@@ -736,10 +751,6 @@ is
       end loop;
     end Put_LZ_buffer;
 
-    lz_buffer_index: LZ_buffer_index_type:= 0;
-    lz_buffer_full: Boolean:= False;
-    pragma Unreferenced (lz_buffer_full);
-    --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
     block_to_finish: Boolean:= False;
 
     procedure Mark_new_block(last_block_for_stream: Boolean) is
@@ -750,6 +761,11 @@ is
       block_to_finish:= True;
       Put_code(code => Boolean'Pos(last_block_for_stream), code_size => 1);
     end Mark_new_block;
+
+    lz_buffer_index: LZ_buffer_index_type:= 0;
+    lz_buffer_full: Boolean:= False;
+    pragma Unreferenced (lz_buffer_full);
+    --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
 
     procedure Flush_from_0(last_flush: Boolean) is
       stats_lit_len: Stats_lit_len_type;
@@ -762,7 +778,7 @@ is
       Get_statistics(lz_buffer(0..lz_buffer_index-1), stats_lit_len, stats_dis);
       LLHCL_lit_len(stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
       LLHCL_dis(stats_dis, bl_for_dis);              --    up Huffman lengths of both trees
-      descr:= Build_descriptor(bl_for_lit_len, bl_for_dis);
+      descr:= Build_descriptors(bl_for_lit_len, bl_for_dis);
       Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
       Put_compression_structure(descr);
       lz_buffer_full:= True;
@@ -871,6 +887,21 @@ is
   end Encode;
 
 begin
+  if trace then
+    begin
+      Open(log, Append_File, log_name);
+    exception
+      when Name_Error =>
+        Create(log, Out_File, log_Name);
+    end;
+    Put(log, "New stream" & sep & sep & sep & sep & sep & sep & sep & sep);
+    if input_size_known then
+      Put(log, sep & File_size_type'Image(input_size) &
+               sep & sep & sep & sep & sep & sep & "bytes input");
+    end if;
+    New_Line(log);
+  end if;
+  --  Initialize output byte buffer
   OutBufIdx := 1;
   output_size:= 0;
   --  Initialize output bit buffer
@@ -878,8 +909,14 @@ begin
   Bits_used := 0;
   Encode;
   Flush_output;
+  if trace then
+    Close(log);
+  end if;
   compression_ok:= True;
 exception
   when Compression_unefficient =>
+    if trace then
+      Close(log);
+    end if;
     compression_ok:= False;
 end Zip.Compress.Deflate;
