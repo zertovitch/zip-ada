@@ -36,6 +36,8 @@ if exist test_rz.ReZip.log    del test_rz.ReZip.log
 if exist $* del $*
 if exist tuttifru.zip del tuttifru.zip
 if exist binana.zip   del binana.zip
+del *.xxx
+del *.log
 cd ..
 
 if not exist obj_opt\zip.ali md obj_opt

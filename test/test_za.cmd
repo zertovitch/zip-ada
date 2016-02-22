@@ -11,7 +11,7 @@ copy /b ..\random_data.exe .
 
 rem Have a badly compressible file (random.bin)
 if not exist random.bin random_data 16384
-copy /b random.bin+*.txt random_and_text.mix
+if not exist random_and_text.mix copy /b random.bin+*.txt random_and_text.mix
 if exist test_rz.ReZip.html del test_rz.ReZip.html
 if exist Zip.Compress.Deflate.csv del Zip.Compress.Deflate.csv
 
