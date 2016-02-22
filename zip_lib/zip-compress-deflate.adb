@@ -112,6 +112,8 @@ is
     if OutBufIdx > 1 then
       Write_Block;
     end if;
+    Save_byte := 0;
+    Bits_used := 0;
   end Flush_bit_output;
 
   type U32 is mod 2**32;
@@ -848,39 +850,58 @@ is
     end Get_statistics;
 
     --  Send a LZ buffer with current Huffman codes
-    procedure Put_LZ_buffer(lz_buffer: LZ_buffer_type) is
+    procedure Put_LZ_buffer(lzb: LZ_buffer_type) is
     begin
-      for i in lz_buffer'Range loop
-        case lz_buffer(i).kind is
+      for i in lzb'Range loop
+        case lzb(i).kind is
           when plain_byte =>
-            Put_literal_byte(lz_buffer(i).plain);
+            Put_literal_byte(lzb(i).plain);
           when distance_length =>
-            Put_DL_code(lz_buffer(i).lz_distance, lz_buffer(i).lz_length);
+            Put_DL_code(lzb(i).lz_distance, lzb(i).lz_length);
         end case;
       end loop;
     end Put_LZ_buffer;
 
     --  Send a LZ buffer completely decoded
-    procedure Expand_LZ_buffer(lz_buffer: LZ_buffer_type) is
+    procedure Expand_LZ_buffer(lzb: LZ_buffer_type) is
+      type U16 is mod 2**16;
+      s16: U16:= U16(lzb'Length);
+      b1, b2: Byte;
+      K: Text_buffer_index;
+      x: natural:= 0;
     begin
-      for i in lz_buffer'Range loop
-        case lz_buffer(i).kind is
+      b1:= Byte(s16 and 255);
+      b2:= Byte(s16 / 256);
+  Ada.Text_IO.Put_Line("cod"&s16'img);
+      Put_byte(b1);
+      Put_byte(b2);
+      Put_byte(not b1);
+      Put_byte(not b2);
+      for i in lzb'Range loop
+        case lzb(i).kind is
           when plain_byte =>
-            Put_byte(lz_buffer(i).plain);
+            Put_byte(lzb(i).plain);
           when distance_length =>
-            for K in 0..Text_buffer_index(lz_buffer(i).lz_length-1) loop
-              Put_byte( Text_Buf(lz_buffer(i).lz_copy_start + K) );
+            K:= lzb(i).lz_copy_start;
+            for count in reverse 1 .. lzb(i).lz_length loop
+              Put_byte( Text_Buf(K) );
+              K:= K + 1;
             end loop;
         end case;
+        x:=x+1;
       end loop;
+  put("bytes="&x'img);
+  --  Bug somewhere... but where ?... !!
     end Expand_LZ_buffer;
 
     block_to_finish: Boolean:= False;
     last_block_marked: Boolean:= False;
+    type Block_type is (stored, fixed, dynamic, reserved);  --  Appnote, 5.5.2
+    last_block_type: Block_type:= reserved;  --  If dynamic, we may recycle previous block
 
     procedure Mark_new_block(last_block_for_stream: Boolean) is
     begin
-      if block_to_finish then
+      if block_to_finish and last_block_type /= stored then
         Put_code(descr.lit_len(End_Of_Block));  --  Finish previous block
       end if;
       block_to_finish:= True;
@@ -893,9 +914,6 @@ is
     pragma Unreferenced (lz_buffer_full);
     --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
 
-    type Block_type is (stored, fixed, dynamic, reserved);  --  Appnote, 5.5.2
-    last_block_type: Block_type:= reserved;  --  If dynamic, we may recycle previous block
-    
     --  !! Suboptimal so far. Currently a big fat block is sent one after the other.
     --     More to come in this place :-) ...
     procedure Flush_from_0(last_flush: Boolean) is
@@ -905,20 +923,18 @@ is
     begin
       Get_statistics(lz_buffer(0..lz_buffer_index-1), stats_lit_len, stats_dis);
       new_descr:= Build_descriptors(stats_lit_len, stats_dis);
-      if Similar(random_data_descriptors, new_descr, L1, 25, "Compare to random") then
+      if Similar(random_data_descriptors, new_descr, L1, 0, "Compare to random") then
         if trace then
           Put_Line(log, "### Use stored");
         end if;
-        -- !! here just trace occurrences
-      end if;
---      last_block_type:= stored;
---      Mark_new_block(last_block_for_stream => last_flush);
---      Flush_bit_output;
---      Expand_LZ_buffer(lz_buffer(0..lz_buffer_index-1));  --  TBD, cf UnZip.Decompress:1460
---    else
-      if last_block_type = dynamic and then 
-         Similar(descr, new_descr, L1, 30, "Compare to previous") and then
-         Recyclable(descr, new_descr)
+        last_block_type:= stored;
+        Mark_new_block(last_block_for_stream => last_flush);
+        Put_code(code => 0, code_size => 2);  --  Signals a "stored" block
+        Flush_bit_output;
+        Expand_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
+      elsif last_block_type = dynamic and then 
+         Recyclable(descr, new_descr) and then
+         Similar(descr, new_descr, L1, 30, "Compare to previous")
       then
         if trace then
           Put_Line(log, "### Recycle dynamic");
