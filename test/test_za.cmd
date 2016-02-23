@@ -9,8 +9,8 @@ if exist test_ifz?.zip del test_ifz?.zip
 copy /b ..\zipada.exe .
 copy /b ..\random_data.exe .
 
-rem Have a badly compressible file (random.bin)
-if not exist random.bin random_data 16384
+rem Have a badly compressible file (random.bin), a bit more than 2**n because of rare repetitions
+if not exist random.bin random_data 16500
 if not exist random_and_text.mix copy /b random.bin+*.txt random_and_text.mix
 if exist test_rz.ReZip.html del test_rz.ReZip.html
 if exist Zip.Compress.Deflate.csv del Zip.Compress.Deflate.csv
@@ -26,7 +26,7 @@ REM zipada -edf test_zadf %files%
 zipada -ed1 test_zad1 %files%
 ren Zip.Compress.Deflate.csv Zip.Compress.Deflate.xxx
 zip    -6   test_ifz6 %files%
-zip    -9   test_ifz9 %files%
+REM zip    -9   test_ifz9 %files%
 
 rem --------------------------
 rem Nice date YYYY-MM-DD_HH.MM
@@ -46,7 +46,7 @@ dir test_za??.zip |find ".zip" >test_za_%nice_date%.log
 ren Zip.Compress.Deflate.xxx Zip.Compress.Deflate.%nice_date%.xxx
 
 echo.
-comp_zip test_zash test_ifz9
+REM comp_zip test_zash test_ifz9
 REM comp_zip test_zash test_zar1
 REM comp_zip test_zash test_zar2
 REM comp_zip test_zash test_zar3

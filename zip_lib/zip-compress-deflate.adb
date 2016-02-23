@@ -3,6 +3,10 @@
 --
 -- See package specification for details.
 --
+-- To do:
+--  - buffer & merge dyn. blocks with single compr. structure
+--  - fix lz expander for "random enough" data (idea: store short DLE strings)
+--
 -- Change log:
 --
 -- 20-Feb-2016: (rev.305) Start of (hopefully) smarter techniques for "Dynamic" encoding (Taillaule algorithm)
@@ -36,21 +40,21 @@ procedure Zip.Compress.Deflate
 is
   use Zip_Streams;
 
-  trace    : constant Boolean:= True;
+  trace    : constant Boolean:= False;
   log      : File_Type;
   log_name : constant String:= "Zip.Compress.Deflate.csv";
   sep      : constant Character:= ';';
 
-  ------------------
-  -- Buffered I/O --
-  ------------------
+  -------------------------------------
+  -- Buffered I/O - byte granularity --
+  -------------------------------------
 
   --  Define data types needed to implement input and output file buffers
 
   InBuf, OutBuf: Byte_Buffer(1..buffer_size);
 
-  InBufIdx: Positive;  --  Points to next char in buffer to be read
-  OutBufIdx: Positive; --  Points to next free space in output buffer
+  InBufIdx : Positive;      --  Points to next char in buffer to be read
+  OutBufIdx: Positive := 1; --  Points to next free space in output buffer
 
   MaxInBufIdx: Natural;  --  Count of valid chars in input buffer
   InputEoF: Boolean;     --  End of file indicator
@@ -69,6 +73,7 @@ is
   -- Exception for the case where compression works but produces
   -- a bigger file than the file to be compressed (data is too "random").
   Compression_unefficient: exception;
+  Not_supported_case: exception;
 
   procedure Write_Block is
     amount: constant Integer:= OutBufIdx-1;
@@ -95,26 +100,28 @@ is
     end if;
   end Put_byte;
 
-  --------------------------------------------------------------------------
+  procedure Flush_byte_buffer is
+  begin
+    if OutBufIdx > 1 then
+      Write_Block;
+    end if;
+  end Flush_byte_buffer;
 
   ------------------------------------------------------
   --  Bit code buffer, for sending data at bit level  --
   ------------------------------------------------------
 
-  Save_byte: Byte;  --  Output code buffer
-  Bits_used: Byte;  --  Index into output code buffer
+  Save_byte: Byte := 0;  --  Output code buffer
+  Bits_used: Byte := 0;  --  Index into output code buffer
 
-  procedure Flush_bit_output is
+  procedure Flush_bit_buffer is
   begin
     if Bits_used /= 0 then
       Put_byte(Save_byte);
     end if;
-    if OutBufIdx > 1 then
-      Write_Block;
-    end if;
     Save_byte := 0;
     Bits_used := 0;
-  end Flush_bit_output;
+  end Flush_bit_buffer;
 
   type U32 is mod 2**32;
 
@@ -192,21 +199,6 @@ is
       end if;
       return not InputEoF;
     end More_bytes;
-
-    -- LZ77 params
-    Look_Ahead         : constant Integer:= 258;
-    String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_e
-    Threshold          : constant := 2;
-
-    --  If the DLE coding doesn't fit the format constraints, we need
-    --  to decode it as a simple sequence of literals. The buffer used is
-    --  called "Text" buffer by reference to "clear-text", but actually it
-    --  is any binary data.
-
-    type Text_buffer_index is mod String_buffer_size;
-    type Text_buffer is array ( Text_buffer_index ) of Byte;
-    Text_Buf: Text_Buffer;
-    R: Text_buffer_index;
 
     ------------------------------------------------------
     -- Deflate, post LZ encoding, with Huffman encoding --
@@ -336,8 +328,21 @@ is
     end Build_descriptors;
 
     type Count_type is range 0..File_size_type'Last/2-1;
-    type Stats_lit_len_type is array(Alphabet_lit_len) of Count_type;
-    type Stats_dis_type is array(Alphabet_dis) of Count_type;
+    type Stats_type is array(Natural range <>) of Count_type;
+    function "+"(s,t: Stats_type) return Stats_type is
+      u: Stats_type(s'Range);
+    begin
+      if s'Length /= t'Length or else s'First /= t'First then
+        raise Constraint_Error;
+      end if;
+      for i in u'Range loop
+        u(i):= s(i) + t(i);
+      end loop;
+      return u;
+    end "+";
+    
+    subtype Stats_lit_len_type is Stats_type(Alphabet_lit_len);
+    subtype Stats_dis_type is Stats_type(Alphabet_dis);
 
     --  Do the phases A) B) C) in one go.
     function Build_descriptors(stats_lit_len: Stats_lit_len_type; stats_dis_0: Stats_dis_type)
@@ -623,9 +628,6 @@ is
     procedure Put_literal_byte( b: Byte ) is
     begin
       Put_code( descr.lit_len(Integer(b)) );
-      -- put("{"&character'val(b)&"}");
-      Text_Buf(R):= b;
-      R:= R+1;
     end Put_literal_byte;
 
     --  Possible ranges for distance and length encoding in the Zip-Deflate format:
@@ -812,13 +814,17 @@ is
       plain         : Byte;
       lz_distance   : Natural;
       lz_length     : Natural;
-      lz_copy_start : Text_buffer_index;  --  In case we need to grab un-lz-compressed data
+      --  lz_copy_start : Text_buffer_index;  --  In case we need to grab un-lz-compressed data
     end record;
 
-    LZ_buffer_size: constant:= 2**14;
+    LZ_buffer_size: constant:= 8192;
     type LZ_buffer_index_type is mod LZ_buffer_size;
     type LZ_buffer_type is array (LZ_buffer_index_type range <>) of LZ_atom;
     lz_buffer: LZ_buffer_type(LZ_buffer_index_type);
+
+    empty_lit_len_stat: constant Stats_lit_len_type:= (End_Of_Block => 1, others => 0);
+    --  End_Of_Block will have to happen once, but never appears in the LZ statistics...
+    empty_dis_stat: constant Stats_dis_type:= (others => 0);
 
     procedure Get_statistics(
       lz_buffer     :     LZ_buffer_type;
@@ -826,12 +832,11 @@ is
       stats_dis     : out Stats_dis_type
     )
     is
-      lit_len: Alphabet_lit_len;
-      dis: Alphabet_dis;
+      lit_len : Alphabet_lit_len;
+      dis     : Alphabet_dis;
     begin
-      stats_lit_len:= (End_Of_Block => 1, others => 0);
-      --  ^ End_Of_Block has to happen once, but never appears in the statistics...
-      stats_dis:= (others => 0);
+      stats_lit_len := empty_lit_len_stat;
+      stats_dis     := empty_dis_stat;
       --
       --  Compute statistics for both Literal-length, and Distance alphabets, from the LZ buffer
       --
@@ -864,15 +869,25 @@ is
 
     --  Send a LZ buffer completely decoded
     procedure Expand_LZ_buffer(lzb: LZ_buffer_type) is
-      type U16 is mod 2**16;
-      s16: U16:= U16(lzb'Length);
       b1, b2: Byte;
-      K: Text_buffer_index;
-      x: natural:= 0;
+      --  K: Text_buffer_index;
+      to_be_sent: Natural:= 0;  
+      --  to_be_sent is not always equal to lzb'Length: sometimes you have a DL code
+      --  (lzb'Length being sent as block size was the maddening bug of the year)
     begin
-      b1:= Byte(s16 and 255);
-      b2:= Byte(s16 / 256);
-  Ada.Text_IO.Put_Line("cod"&s16'img);
+      for i in lzb'Range loop
+        case lzb(i).kind is
+          when plain_byte =>
+            to_be_sent:= to_be_sent + 1;
+          when distance_length =>
+            to_be_sent:= to_be_sent + lzb(i).lz_length;
+        end case;
+      end loop;
+      if trace then
+        Put_Line(log, "Sending" & Integer'Image(to_be_sent) & " 'plain' bytes");
+      end if;
+      b1:= Byte(to_be_sent mod 256);
+      b2:= Byte(to_be_sent  /  256);
       Put_byte(b1);
       Put_byte(b2);
       Put_byte(not b1);
@@ -882,16 +897,17 @@ is
           when plain_byte =>
             Put_byte(lzb(i).plain);
           when distance_length =>
-            K:= lzb(i).lz_copy_start;
-            for count in reverse 1 .. lzb(i).lz_length loop
-              Put_byte( Text_Buf(K) );
-              K:= K + 1;
-            end loop;
+            raise Not_supported_case;
+            --
+            --  *** the LZ buffer is out-of-date
+            --
+            --  K:= lzb(i).lz_copy_start;
+            --  for count in reverse 1 .. lzb(i).lz_length loop
+            --    Put_byte( Text_Buf(K) );
+            --    K:= K + 1;
+            --  end loop;
         end case;
-        x:=x+1;
       end loop;
-  put("bytes="&x'img);
-  --  Bug somewhere... but where ?... !!
     end Expand_LZ_buffer;
 
     block_to_finish: Boolean:= False;
@@ -901,7 +917,7 @@ is
 
     procedure Mark_new_block(last_block_for_stream: Boolean) is
     begin
-      if block_to_finish and last_block_type /= stored then
+      if block_to_finish and last_block_type in fixed .. dynamic then
         Put_code(descr.lit_len(End_Of_Block));  --  Finish previous block
       end if;
       block_to_finish:= True;
@@ -914,52 +930,113 @@ is
     pragma Unreferenced (lz_buffer_full);
     --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
 
-    --  !! Suboptimal so far. Currently a big fat block is sent one after the other.
-    --     More to come in this place :-) ...
+    old_stats_lit_len : Stats_lit_len_type;
+    old_stats_dis     : Stats_dis_type;
+
     procedure Flush_from_0(last_flush: Boolean) is
-      stats_lit_len: Stats_lit_len_type;
-      stats_dis: Stats_dis_type;
+      last_idx: constant LZ_buffer_index_type:= lz_buffer_index-1;
       new_descr: Deflate_Huff_descriptors;
-    begin
-      Get_statistics(lz_buffer(0..lz_buffer_index-1), stats_lit_len, stats_dis);
-      new_descr:= Build_descriptors(stats_lit_len, stats_dis);
-      if Similar(random_data_descriptors, new_descr, L1, 0, "Compare to random") then
+      --
+      procedure Send_stored_block is
+      begin
         if trace then
-          Put_Line(log, "### Use stored");
+          Put_Line(log, "### Random enough - use stored");
         end if;
-        last_block_type:= stored;
         Mark_new_block(last_block_for_stream => last_flush);
         Put_code(code => 0, code_size => 2);  --  Signals a "stored" block
-        Flush_bit_output;
-        Expand_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
-      elsif last_block_type = dynamic and then 
-         Recyclable(descr, new_descr) and then
-         Similar(descr, new_descr, L1, 30, "Compare to previous")
-      then
-        if trace then
-          Put_Line(log, "### Recycle dynamic");
-        end if;
-        Put_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
-      elsif Similar(Deflate_fixed_descriptors, new_descr, L1, 30, "Compare to fixed") then
+        Flush_bit_buffer;
+        Expand_LZ_buffer(lz_buffer(0..last_idx));
+        last_block_type:= stored;
+      end Send_stored_block;
+      --
+      procedure Send_fixed_block is
+      begin
         if trace then
           Put_Line(log, "### Use fixed");
         end if;
-        last_block_type:= fixed;
         Mark_new_block(last_block_for_stream => last_flush);
         -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
         descr:= Deflate_fixed_descriptors;
         Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
-        Put_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
-      else
-        last_block_type:= dynamic;
+        Put_LZ_buffer(lz_buffer(0..last_idx));
+        last_block_type:= fixed;
+      end Send_fixed_block;
+      --
+      procedure Recycle_dynamic_block is  --  Just reuse existing compression structure
+      begin
+        if trace then
+          Put_Line(log, "### Recycle dynamic");
+        end if;
+        Put_LZ_buffer(lz_buffer(0..last_idx));
+      end Recycle_dynamic_block;
+      --
+      stats_lit_len: Stats_lit_len_type;
+      stats_dis: Stats_dis_type;
+      --
+      procedure Send_dynamic_block(merge: Boolean) is
+      begin
+        if trace then
+          if merge then
+            Put_Line(log, "### New dynamic block, stats merged with previous");
+          else
+            Put_Line(log, "### New dynamic block with own stats");
+          end if;
+        end if;
+        if merge then
+          stats_lit_len := stats_lit_len + old_stats_lit_len;
+          stats_dis     := stats_dis     + old_stats_dis;
+          new_descr:= Build_descriptors(stats_lit_len, stats_dis);
+        end if;
         Mark_new_block(last_block_for_stream => last_flush);
         -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
         descr:= new_descr;
         Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
         Put_compression_structure(descr);
-        Put_LZ_buffer(lz_buffer(0..lz_buffer_index-1));
+        Put_LZ_buffer(lz_buffer(0..last_idx));
+        last_block_type:= dynamic;
+      end Send_dynamic_block;
+      -- Experimental values - more or less optimal for LZ_buffer_size = n ...
+      -- opti_rand_2048    : constant:= 120;
+      -- opti_merge_2048   : constant:= 25;
+      -- opti_recy_2048    : constant:= 250;
+      -- opti_fix_2048     : constant:= 20;
+      -- opti_size_fix_2048: constant:= 110;
+      opti_rand_8192    : constant:= 1000;
+      opti_merge_8192   : constant:= 50;
+      opti_recy_8192    : constant:= 50;
+      opti_fix_8192     : constant:= 200;
+      opti_size_fix_8192: constant:= 120;
+    begin
+      Get_statistics(lz_buffer(0..last_idx), stats_lit_len, stats_dis);
+      new_descr:= Build_descriptors(stats_lit_len, stats_dis);
+      if Similar(new_descr, random_data_descriptors, L1, opti_rand_8192, "Compare to random") and then
+         stats_dis = empty_dis_stat  --  Prevent any expansion of a LZ DL code (doesn't work)
+      then
+        Send_stored_block;
+      elsif last_block_type = dynamic and then 
+            Recyclable(descr, new_descr) and then
+            Similar(new_descr, descr, L1, opti_recy_8192, "Compare to previous, for recycling")
+      then
+        Recycle_dynamic_block;
+      elsif last_idx < opti_size_fix_8192 or else
+            Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix_8192, "Compare to fixed") 
+      then
+        Send_fixed_block;
+      elsif last_block_type = dynamic and then 
+            Similar(new_descr, descr, L1, opti_merge_8192, "Compare to previous, for merging")
+      then
+        Send_dynamic_block(merge => True);  
+        --  Similar: we merge statistics. Not optimal for this block, but helps further recycling
+        --  Bet: we have a string of similar blocks; better have less nonzero stats to avoid
+        --  non-recyclable cases.
+      else
+        Send_dynamic_block(merge => False);  --  Block is clearly different from last block
       end if;
       lz_buffer_full:= True;
+      if last_block_type = dynamic then
+        old_stats_lit_len := stats_lit_len;
+        old_stats_dis     := stats_dis;
+      end if;
     end Flush_from_0;
 
     procedure Push(a: LZ_atom) is
@@ -978,46 +1055,72 @@ is
         when Deflate_Fixed =>
           Put_literal_byte(b);  --  Buffering is not needed in this mode
         when Deflate_1 =>
-          Push((plain_byte, b, 0, 0, 0));
+          Push((plain_byte, b, 0, 0));
       end case;
     end Put_or_delay_literal_byte;
 
-    procedure Put_or_delay_DL_code( distance, length: Integer; copy_start: Text_buffer_index ) is
+    procedure Put_or_delay_DL_code( distance, length: Integer) is
     pragma Inline(Put_or_delay_DL_code);
     begin
       case method is
         when Deflate_Fixed =>
           Put_DL_code(distance, length);  --  Buffering is not needed in this mode
         when Deflate_1 =>
-          Push((distance_length, 0, distance, length, copy_start));
+          Push((distance_length, 0, distance, length));
       end case;
     end Put_or_delay_DL_code;
+
+    --  If the DLE coding doesn't fit the format constraints, we need
+    --  to decode it as a simple sequence of literals. The buffer used is
+    --  called "Text" buffer by reference to "clear-text", but actually it
+    --  is any binary data.
+
+    -- LZ77 params
+    Look_Ahead         : constant Integer:= 258;
+    String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_e
+    Threshold          : constant := 2;
+    type Text_buffer_index is mod String_buffer_size;
+    type Text_buffer is array ( Text_buffer_index ) of Byte;
+    Text_Buf: Text_Buffer;
+    R: Text_buffer_index;
 
     procedure LZ77_emits_DL_code( distance, length: Integer ) is
       --  NB: no worry, all arithmetics in Text_buffer_index are modulo String_buffer_size.
       copy_start: constant Text_buffer_index:= R - Text_buffer_index(distance);
     begin
+      --  Expand in the circular text buffer to have it up to date
+      for K in 0..Text_buffer_index(length-1) loop
+        Text_Buf(R):= Text_Buf(copy_start + K);
+        R:= R + 1;
+      end loop;
       if distance in Distance_range and length in Length_range then
-        Put_or_delay_DL_code(distance, length, copy_start);
-        -- Expand in the circular text buffer to have it up to date
-        for K in 0..Text_buffer_index(length-1) loop
-          Text_Buf(R):= Text_Buf(copy_start + K);
-          R:= R + 1;
-        end loop;
+        Put_or_delay_DL_code(distance, length);
       else
-        -- Cannot encode this distance-length pair, then we have to expand to output :-(
-        -- if phase= compress then Put("Aie! (" & distance'img & length'img & ")"); end if;
+        if trace then
+          Put_Line(log,
+            "<> Too bad, cannot encode this distance-length pair, " & 
+            "then we have to expand to output (dist = " & Integer'Image(distance) &
+            " len=" & Integer'Image(length) & ")"
+          );
+        end if;
         for K in 0..Text_buffer_index(length-1) loop
-          Put_or_delay_literal_byte( Text_Buf(Copy_start+K) );
+          Put_or_delay_literal_byte( Text_Buf(copy_start + K) );
         end loop;
       end if;
     end LZ77_emits_DL_code;
 
+    procedure LZ77_emits_literal_byte( b: Byte ) is
+    begin
+      Text_Buf(R):= b;
+      R:= R + 1;
+      Put_or_delay_literal_byte(b);
+    end LZ77_emits_literal_byte;
+    
     procedure My_LZ77 is
       new LZ77(
         String_buffer_size, Look_Ahead, Threshold,
         Read_byte, More_bytes,
-        Put_or_delay_literal_byte, LZ77_emits_DL_code
+        LZ77_emits_literal_byte, LZ77_emits_DL_code
       );
 
   begin  --  Encode
@@ -1081,14 +1184,10 @@ begin
     end if;
     New_Line(log);
   end if;
-  --  Initialize output byte buffer
-  OutBufIdx := 1;
   output_size:= 0;
-  --  Initialize output bit buffer
-  Save_byte := 0;
-  Bits_used := 0;
   Encode;
-  Flush_bit_output;
+  Flush_bit_buffer;
+  Flush_byte_buffer;
   if trace then
     Close(log);
   end if;

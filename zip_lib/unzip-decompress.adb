@@ -1460,20 +1460,19 @@ package body UnZip.Decompress is
       procedure Inflate_stored_block is -- Actually, nothing to inflate
         N : Integer;
       begin
-        if full_trace then
-          Ada.Text_IO.Put_Line("Begin Inflate_stored_block");
-        end if;
         UnZ_IO.Bit_buffer.Dump_to_byte_boundary;
-
         -- Get the block length and its complement
         N:= UnZ_IO.Bit_buffer.Read_and_dump( 16 );
+        if some_trace then
+          Ada.Text_IO.Put_Line("Begin Inflate_stored_block, bytes stored: " & Integer'Image(N));
+        end if;
         if  N /= Integer(
          (not UnZ_IO.Bit_buffer.Read_and_dump_U32(16))
          and 16#ffff#)
         then
           raise Zip.Zip_file_Error;
         end if;
-        while N > 0  and then not Zip_EOF loop
+        while N > 0 and then not Zip_EOF loop
           -- Read and output the non-compressed data
           N:= N - 1;
           UnZ_Glob.slide ( UnZ_Glob.slide_index ) :=
@@ -1481,7 +1480,7 @@ package body UnZip.Decompress is
           UnZ_Glob.slide_index:= UnZ_Glob.slide_index + 1;
           UnZ_IO.Flush_if_full(UnZ_Glob.slide_index);
         end loop;
-        if full_trace then
+        if some_trace then
           Ada.Text_IO.Put_Line("End   Inflate_stored_block");
         end if;
       end Inflate_stored_block;

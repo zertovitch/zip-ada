@@ -38,6 +38,7 @@ if exist tuttifru.zip del tuttifru.zip
 if exist binana.zip   del binana.zip
 del *.xxx
 del *.log
+del *.bak
 cd ..
 
 if not exist obj_opt\zip.ali md obj_opt

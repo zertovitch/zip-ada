@@ -13,7 +13,7 @@ if exist test_rz.ReZip.log    del test_rz.ReZip.log
 
 zipada test_rz *.ad* *.txt *.cmd *.pdf *.mdb
 
-rezip test_rz
+rezip %1 %2 %3 %4 %5 %6 %7 %8 %9 test_rz
 
 start test_rz.ReZip.html
 
