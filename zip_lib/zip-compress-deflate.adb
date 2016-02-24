@@ -41,7 +41,7 @@ is
 
   trace    : constant Boolean:= True;
   log      : File_Type;
-  log_name : constant String:= "Zip.Compress.Deflate.csv";
+  log_name : constant String:= "Zip.Compress.Deflate.zcd";  --  A CSV with an unusual extension...
   sep      : constant Character:= ';';
 
   -------------------------------------
