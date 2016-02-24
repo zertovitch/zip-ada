@@ -5,7 +5,6 @@
 --
 -- To do:
 --  - buffer & merge dyn. blocks, send them with single compr. structure
---  - function Similar: use 16 instead of 0 for codes that never occur
 --
 -- Change log:
 --
@@ -410,29 +409,51 @@ is
 
     --  Here is the original part in the Taillaule algorithm: use of
     --  basic topology (metric spaces).
-    
+
+    --  Bit length vector. Convention: 16 is unused bit length (close to the bit length for the
+    --  rarest symbols, 15, and far from the bit length for the most frequent symbols, 1).
+    --  Deflate uses 0 for unused.
+    type BL_vector is array(1..288+32) of Integer range 1..16; 
+
+    function Convert(h: Deflate_Huff_descriptors) return BL_vector is
+      bv: BL_vector;
+      j: Positive:= 1;
+    begin
+      for i in h.lit_len'Range loop
+        if h.lit_len(i).length = 0 then
+          bv(j):= 16;
+        else
+          bv(j):= h.lit_len(i).length;
+        end if;
+        j:= j + 1;
+      end loop;
+      for i in h.dis'Range loop
+        if h.dis(i).length = 0 then
+          bv(j):= 16;
+        else
+          bv(j):= h.dis(i).length;
+        end if;
+        j:= j + 1;
+      end loop;
+      return bv;
+    end Convert;
+
     --  L1 or Manhattan distance
-    function L1_distance(h1, h2: Deflate_Huff_descriptors) return Natural is
+    function L1_distance(b1, b2: BL_vector) return Natural is
       s: Natural:= 0;
     begin
-      for i in h1.lit_len'Range loop
-        s:= s + abs(h1.lit_len(i).length - h2.lit_len(i).length);
-      end loop;
-      for i in h1.dis'Range loop
-        s:= s + abs(h1.dis(i).length - h2.dis(i).length);
+      for i in b1'Range loop
+        s:= s + abs(b1(i) - b2(i));
       end loop;
       return s;
     end L1_distance;
 
     --  L2 or Euclidean distance
-    function L2_distance_square(h1, h2: Deflate_Huff_descriptors) return Natural is
+    function L2_distance_square(b1, b2: BL_vector) return Natural is
       s: Natural:= 0;
     begin
-      for i in h1.lit_len'Range loop
-        s:= s + (h1.lit_len(i).length - h2.lit_len(i).length) ** 2;
-      end loop;
-      for i in h1.dis'Range loop
-        s:= s + (h1.dis(i).length - h2.dis(i).length) ** 2;
+      for i in b1'Range loop
+        s:= s + (b1(i) - b2(i)) ** 2;
       end loop;
       return s;
     end L2_distance_square;
@@ -451,10 +472,10 @@ is
     begin
       case dist_kind is
         when L1 =>
-          dist:= L1_distance(h1,h2);
+          dist:= L1_distance(Convert(h1), Convert(h2));
         when L2 =>
           thres := thres * thres;
-          dist  := L2_distance_square(h1,h2);
+          dist  := L2_distance_square(Convert(h1), Convert(h2));
       end case;
       if trace then
         Put_Line(log, 
@@ -806,8 +827,8 @@ is
     --  We buffer the LZ codes (plain, or distance/length) in order to
     --  analyse them and try to do smart things.
 
-    max_expand: constant:= 10;  --  Sometimes it is better to store data and expand short strings
-    code_for_max_expand: constant:= 257 + max_expand - 3;
+    max_expand: constant:= 14;  --  Sometimes it is better to store data and expand short strings
+    code_for_max_expand: constant:= 266;
     subtype Expanded_data is Byte_Buffer(1..max_expand);
     
     type LZ_atom_kind is (plain_byte, distance_length);
@@ -929,6 +950,10 @@ is
     old_stats_lit_len : Stats_lit_len_type;
     old_stats_dis     : Stats_dis_type;
 
+    subtype Long_length_codes is
+      Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
+    zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0); 
+
     procedure Flush_from_0(last_flush: Boolean) is
       last_idx: constant LZ_buffer_index_type:= lz_buffer_index-1;
       new_descr: Deflate_Huff_descriptors;
@@ -993,21 +1018,19 @@ is
       end Send_dynamic_block;
       -- Experimental values - more or less optimal for LZ_buffer_size = n ...
       -- opti_rand_2048    : constant:= 120;
-      -- opti_merge_2048   : constant:= 25;
+      -- opti_merge_2048   : constant:= 25;  --  merge stats, not blocks so far
       -- opti_recy_2048    : constant:= 250;
       -- opti_fix_2048     : constant:= 20;
-      -- opti_size_fix_2048: constant:= 110;
-      opti_rand_8192    : constant:= 180;
-      opti_merge_8192   : constant:= 50;
-      opti_recy_8192    : constant:= 50;
-      opti_fix_8192     : constant:= 200;
-      opti_size_fix_8192: constant:= 120;
+      opti_rand_8192    : constant:= 333;
+      opti_merge_8192   : constant:= 0;  --  merge stats, not blocks so far
+      opti_recy_8192    : constant:= 40;
+      opti_fix_8192     : constant:= 0;
+      opti_size_fix     : constant:= 110;
     begin
       Get_statistics(lz_buffer(0..last_idx), stats_lit_len, stats_dis);
       new_descr:= Build_descriptors(stats_lit_len, stats_dis);
       if Similar(new_descr, random_data_descriptors, L1, opti_rand_8192, "Compare to random") and then
-         stats_lit_len(code_for_max_expand + 1 .. stats_lit_len'Last) = 
-                      (code_for_max_expand + 1 .. stats_lit_len'Last => 0)  
+         stats_lit_len(Long_length_codes) = zero_bl_long_lengths
          --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0
       then
         Send_stored_block;
@@ -1016,7 +1039,7 @@ is
             Similar(new_descr, descr, L1, opti_recy_8192, "Compare to previous, for recycling")
       then
         Recycle_dynamic_block;
-      elsif last_idx < opti_size_fix_8192 or else
+      elsif last_idx < opti_size_fix or else
             Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix_8192, "Compare to fixed") 
       then
         Send_fixed_block;

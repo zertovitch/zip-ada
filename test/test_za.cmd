@@ -5,12 +5,13 @@ echo.
 
 if exist test_za??.zip del test_za??.zip
 if exist test_ifz?.zip del test_ifz?.zip
+if exist test_kzip.zip del test_kzip.zip
 
 copy /b ..\zipada.exe .
 copy /b ..\random_data.exe .
 
 rem Have a badly compressible file (random.bin), a bit more than 2**n because of rare repetitions
-if not exist random.bin random_data 16500
+if not exist random.bin random_data 8300
 if not exist random_and_text.mix copy /b random.bin+*.txt random_and_text.mix
 if exist test_rz.ReZip.html del test_rz.ReZip.html
 
@@ -23,8 +24,11 @@ REM zipada -er3 test_zar3 %files%
 REM zipada -er4 test_zar4 %files%
 zipada -ed1 test_zad1 %files%
 zipada -edf test_zadf %files%
-zip    -6   test_ifz6 %files%
-REM zip    -9   test_ifz9 %files%
+zip    -1   test_ifz1 %files%
+zip    -4   test_ifz4 %files%
+zip    -5   test_ifz5 %files%
+zip    -9   test_ifz9 %files%
+kzip        test_kzip %files%
 
 rem --------------------------
 rem Nice date YYYY-MM-DD_HH.MM
@@ -40,7 +44,7 @@ set min=%time:~3,2%
 set nice_date=%year%-%month%-%day%_%hour%.%min%
 rem --------------------------
 
-dir test_za??.zip |find ".zip" >test_za_%nice_date%.log
+dir /OS test_za??.zip test_ifz?.zip test_kzip.zip |find ".zip" >test_za_%nice_date%.log
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.
@@ -49,7 +53,7 @@ REM comp_zip test_zash test_zar1
 REM comp_zip test_zash test_zar2
 REM comp_zip test_zash test_zar3
 REM comp_zip test_zash test_zar4
-comp_zip test_zash test_zadf
+REM comp_zip test_zash test_zadf
 comp_zip test_zash test_zad1
 
 pause
