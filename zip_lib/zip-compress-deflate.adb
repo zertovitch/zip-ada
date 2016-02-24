@@ -4,16 +4,15 @@
 -- See package specification for details.
 --
 -- To do:
---  - buffer & merge dyn. blocks with single compr. structure
---  - fix lz expander for "random enough" data (idea: store short DLE strings)
+--  - buffer & merge dyn. blocks, send them with single compr. structure
+--  - function Similar: use 16 instead of 0 for codes that never occur
 --
 -- Change log:
 --
 -- 20-Feb-2016: (rev.305) Start of (hopefully) smarter techniques for "Dynamic" encoding (Taillaule algorithm)
 --  4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
 -- 19-Feb-2011: All distance and length codes implemented.
--- 18-Feb-2011: First version working with Deflate fixed and restricted
---                distance & length codes.
+-- 18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
 -- 17-Feb-2011: Created.
 
 with Zip.LZ77, Zip.CRC_Crypto;
@@ -40,7 +39,7 @@ procedure Zip.Compress.Deflate
 is
   use Zip_Streams;
 
-  trace    : constant Boolean:= False;
+  trace    : constant Boolean:= True;
   log      : File_Type;
   log_name : constant String:= "Zip.Compress.Deflate.csv";
   sep      : constant Character:= ';';
@@ -73,7 +72,6 @@ is
   -- Exception for the case where compression works but produces
   -- a bigger file than the file to be compressed (data is too "random").
   Compression_unefficient: exception;
-  Not_supported_case: exception;
 
   procedure Write_Block is
     amount: constant Integer:= OutBufIdx-1;
@@ -808,13 +806,17 @@ is
     --  We buffer the LZ codes (plain, or distance/length) in order to
     --  analyse them and try to do smart things.
 
+    max_expand: constant:= 10;  --  Sometimes it is better to store data and expand short strings
+    code_for_max_expand: constant:= 257 + max_expand - 3;
+    subtype Expanded_data is Byte_Buffer(1..max_expand);
+    
     type LZ_atom_kind is (plain_byte, distance_length);
     type LZ_atom is record
       kind          : LZ_atom_kind;
       plain         : Byte;
       lz_distance   : Natural;
       lz_length     : Natural;
-      --  lz_copy_start : Text_buffer_index;  --  In case we need to grab un-lz-compressed data
+      lz_expanded   : Expanded_data;
     end record;
 
     LZ_buffer_size: constant:= 8192;
@@ -897,15 +899,9 @@ is
           when plain_byte =>
             Put_byte(lzb(i).plain);
           when distance_length =>
-            raise Not_supported_case;
-            --
-            --  *** the LZ buffer is out-of-date
-            --
-            --  K:= lzb(i).lz_copy_start;
-            --  for count in reverse 1 .. lzb(i).lz_length loop
-            --    Put_byte( Text_Buf(K) );
-            --    K:= K + 1;
-            --  end loop;
+            for j in 1 .. lzb(i).lz_length loop
+              Put_byte( lzb(i).lz_expanded(j) );
+            end loop;
         end case;
       end loop;
     end Expand_LZ_buffer;
@@ -1001,7 +997,7 @@ is
       -- opti_recy_2048    : constant:= 250;
       -- opti_fix_2048     : constant:= 20;
       -- opti_size_fix_2048: constant:= 110;
-      opti_rand_8192    : constant:= 1000;
+      opti_rand_8192    : constant:= 180;
       opti_merge_8192   : constant:= 50;
       opti_recy_8192    : constant:= 50;
       opti_fix_8192     : constant:= 200;
@@ -1010,7 +1006,9 @@ is
       Get_statistics(lz_buffer(0..last_idx), stats_lit_len, stats_dis);
       new_descr:= Build_descriptors(stats_lit_len, stats_dis);
       if Similar(new_descr, random_data_descriptors, L1, opti_rand_8192, "Compare to random") and then
-         stats_dis = empty_dis_stat  --  Prevent any expansion of a LZ DL code (doesn't work)
+         stats_lit_len(code_for_max_expand + 1 .. stats_lit_len'Last) = 
+                      (code_for_max_expand + 1 .. stats_lit_len'Last => 0)  
+         --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0
       then
         Send_stored_block;
       elsif last_block_type = dynamic and then 
@@ -1055,18 +1053,18 @@ is
         when Deflate_Fixed =>
           Put_literal_byte(b);  --  Buffering is not needed in this mode
         when Deflate_1 =>
-          Push((plain_byte, b, 0, 0));
+          Push((plain_byte, b, 0, 0, (b, others => 0)));
       end case;
     end Put_or_delay_literal_byte;
 
-    procedure Put_or_delay_DL_code( distance, length: Integer) is
+    procedure Put_or_delay_DL_code( distance, length: Integer; expand: Expanded_data) is
     pragma Inline(Put_or_delay_DL_code);
     begin
       case method is
         when Deflate_Fixed =>
           Put_DL_code(distance, length);  --  Buffering is not needed in this mode
         when Deflate_1 =>
-          Push((distance_length, 0, distance, length));
+          Push((distance_length, 0, distance, length, expand));
       end case;
     end Put_or_delay_DL_code;
 
@@ -1086,15 +1084,23 @@ is
 
     procedure LZ77_emits_DL_code( distance, length: Integer ) is
       --  NB: no worry, all arithmetics in Text_buffer_index are modulo String_buffer_size.
+      b: Byte;
       copy_start: constant Text_buffer_index:= R - Text_buffer_index(distance);
+      expand: Expanded_data;
+      ie: Positive:= 1;
     begin
-      --  Expand in the circular text buffer to have it up to date
+      --  Expand into the circular text buffer to have it up to date
       for K in 0..Text_buffer_index(length-1) loop
-        Text_Buf(R):= Text_Buf(copy_start + K);
+        b:= Text_Buf(copy_start + K);
+        Text_Buf(R):= b;
         R:= R + 1;
+        if ie <= max_expand then  --  also memorize short sequences for LZ buffering
+          expand(ie):= b;
+          ie:= ie + 1;
+        end if;
       end loop;
       if distance in Distance_range and length in Length_range then
-        Put_or_delay_DL_code(distance, length);
+        Put_or_delay_DL_code(distance, length, expand);
       else
         if trace then
           Put_Line(log,

@@ -22,7 +22,7 @@ REM zipada -er1 test_zar1 %files%
 REM zipada -er2 test_zar2 %files%
 REM zipada -er3 test_zar3 %files%
 REM zipada -er4 test_zar4 %files%
-REM zipada -edf test_zadf %files%
+zipada -edf test_zadf %files%
 zipada -ed1 test_zad1 %files%
 ren Zip.Compress.Deflate.csv Zip.Compress.Deflate.xxx
 zip    -6   test_ifz6 %files%
@@ -51,7 +51,7 @@ REM comp_zip test_zash test_zar1
 REM comp_zip test_zash test_zar2
 REM comp_zip test_zash test_zar3
 REM comp_zip test_zash test_zar4
-REM comp_zip test_zash test_zadf
+comp_zip test_zash test_zadf
 comp_zip test_zash test_zad1
 
 pause
