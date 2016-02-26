@@ -2,5 +2,5 @@
 
 rem Some classic corpora from latest millenium
 
-call bench calGAry 
-call bench caNTrBry 
+call bench calGAry %1
+call bench caNTrBry %1
