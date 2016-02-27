@@ -839,7 +839,7 @@ is
       lz_expanded   : Expanded_data;
     end record;
 
-    LZ_buffer_size: constant:= 8192;
+    LZ_buffer_size: constant:= 2*8192;
     type LZ_buffer_index_type is mod LZ_buffer_size;
     type LZ_buffer_type is array (LZ_buffer_index_type range <>) of LZ_atom;
 
@@ -1067,19 +1067,27 @@ is
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
     --  !! Here we will have much smarter things soon...
-    procedure Flush_from_0(last_flush: Boolean) is
+    procedure Flush_half_buffer(last_flush: Boolean) is
       last_idx: constant LZ_buffer_index_type:= lz_buffer_index-1;
+      n_2: constant:= LZ_buffer_size / 2;
     begin
-      Send_LZ_buffer_as_block(lz_buffer(0..last_idx), last_flush);
+      if last_idx < n_2 then
+        Send_LZ_buffer_as_block(lz_buffer(0..last_idx), last_flush);    -- 1st half
+      else
+        Send_LZ_buffer_as_block(lz_buffer(n_2..last_idx), last_flush);  -- 2nd half
+      end if;
+      --  From this point, all further calls to Flush_half_buffer will
+      --  have n_2 elements of past data.
       past_lz_data:= True;
-    end Flush_from_0;
+    end Flush_half_buffer;
 
     procedure Push(a: LZ_atom) is
+    pragma Inline(Push);
     begin
       lz_buffer(lz_buffer_index):= a;
       lz_buffer_index:= lz_buffer_index + 1;  --  becomes 0 when reaching LZ_buffer_size (modular)
-      if lz_buffer_index = 0 then
-        Flush_from_0(last_flush => False);
+      if lz_buffer_index * 2 = 0 then
+        Flush_half_buffer(last_flush => False);
       end if;
     end Push;
 
@@ -1194,12 +1202,12 @@ is
       when Deflate_Fixed =>
         Put_code(descr.lit_len(End_Of_Block));
       when Deflate_1 =>
-        if lz_buffer_index = 0 then  --  Already flushed at latest Push, or empty data
+        if lz_buffer_index * 2 = 0 then  --  Already flushed at latest Push, or empty data
           if block_to_finish and then last_block_type in fixed .. dynamic then
             Put_code(descr.lit_len(End_Of_Block));
           end if;
         else
-          Flush_from_0(last_flush => True);
+          Flush_half_buffer(last_flush => True);
           if last_block_type in fixed .. dynamic then
             Put_code(descr.lit_len(End_Of_Block));
           end if;
