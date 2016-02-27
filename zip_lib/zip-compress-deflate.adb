@@ -1,18 +1,17 @@
--- The "Deflate" method combines the LZ77 compression method with some Huffman
--- encoding gymnastics.
+--  The "Deflate" method combines the LZ77 compression
+--  method with some Huffman encoding gymnastics.
 --
--- See package specification for details.
+--  To do:
+--   - buffer & merge dyn. blocks, send them with single compr. structure
 --
--- To do:
---  - buffer & merge dyn. blocks, send them with single compr. structure
---
--- Change log:
---
--- 20-Feb-2016: (rev.305) Start of (hopefully) smarter techniques for "Dynamic" encoding (Taillaule algorithm)
---  4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
--- 19-Feb-2011: All distance and length codes implemented.
--- 18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
--- 17-Feb-2011: Created.
+--  Change log:
+-- 
+--  20-Feb-2016: (rev.305) Start of (hopefully) smarter techniques for
+--                 "Dynamic" encoding (Taillaule algorithm)
+--   4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
+--  19-Feb-2011: All distance and length codes implemented.
+--  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
+--  17-Feb-2011: Created.
 
 with Zip.LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
@@ -1099,7 +1098,6 @@ is
     -- LZ77 params
     Look_Ahead         : constant Integer:= 258;
     String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_e
-    Threshold          : constant := 2;
     type Text_buffer_index is mod String_buffer_size;
     type Text_buffer is array ( Text_buffer_index ) of Byte;
     Text_Buf: Text_Buffer;
@@ -1146,12 +1144,15 @@ is
     end LZ77_emits_literal_byte;
     
     procedure My_LZ77 is
-      new LZ77(
-        String_buffer_size, Look_Ahead, Threshold,
-        Read_byte, More_bytes,
-        LZ77_emits_literal_byte, LZ77_emits_DL_code
-      );
-
+      new LZ77
+        ( String_buffer_size => String_buffer_size,
+          Look_Ahead         => Look_Ahead,
+          Threshold          => 2,  --  From a string match length > 2, a DL code is sent
+          Read_byte          => Read_byte,
+          More_bytes         => More_bytes,
+          Write_byte         => LZ77_emits_literal_byte,
+          Write_code         => LZ77_emits_DL_code 
+        );
   begin  --  Encode
     Read_Block;
     R:= Text_buffer_index(String_buffer_size - Look_Ahead);

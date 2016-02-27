@@ -1,5 +1,7 @@
---  Experimental generic LZ77 encoder, based on LZHUF by OKUMURA & YOSHIZAKI
---  Here the Huffman code is used only to find quickly matching patterns.
+--  Generic LZ77 encoder.
+
+--  To do: replace implementation with a faster algorithm.
+--         The one of info-zip / zlib should be a very good candidate...
 
 generic
 

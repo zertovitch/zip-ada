@@ -1,7 +1,9 @@
--- The "Deflate" method combines the LZ77 compression method with some Huffman
--- encoding gymnastics.
+--  The "Deflate" method combines the LZ77 compression
+--  method with some Huffman encoding gymnastics.
 --
--- Author: G. de Montmollin, February 2011
+--  See body for details.
+--
+--  Author: G. de Montmollin, February 2011 and later
 --
 
 with Zip.CRC_Crypto;                    use Zip.CRC_Crypto;

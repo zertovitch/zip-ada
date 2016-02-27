@@ -1,5 +1,6 @@
---  Experimental LZ77 encoder, based on LZHUF by OKUMURA & YOSHIZAKI
---  Here the Huffman code is used only to find quickly matching patterns.
+--  Experimental LZ77 encoder, based on LZHUF by OKUMURA & YOSHIZAKI.
+--  Here the adaptive Huffman coding is thrown away; algorithm is used only to
+--  find matching patterns.
 
 procedure Zip.LZ77 is
 
