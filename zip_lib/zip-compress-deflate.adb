@@ -842,14 +842,13 @@ is
     LZ_buffer_size: constant:= 8192;
     type LZ_buffer_index_type is mod LZ_buffer_size;
     type LZ_buffer_type is array (LZ_buffer_index_type range <>) of LZ_atom;
-    lz_buffer: LZ_buffer_type(LZ_buffer_index_type);
 
     empty_lit_len_stat: constant Stats_lit_len_type:= (End_Of_Block => 1, others => 0);
     --  End_Of_Block will have to happen once, but never appears in the LZ statistics...
     empty_dis_stat: constant Stats_dis_type:= (others => 0);
 
     procedure Get_statistics(
-      lz_buffer     :     LZ_buffer_type;
+      lzb           :     LZ_buffer_type;
       stats_lit_len : out Stats_lit_len_type;
       stats_dis     : out Stats_dis_type
     )
@@ -862,15 +861,15 @@ is
       --
       --  Compute statistics for both Literal-length, and Distance alphabets, from the LZ buffer
       --
-      for i in lz_buffer'Range loop
-        case lz_buffer(i).kind is
+      for i in lzb'Range loop
+        case lzb(i).kind is
           when plain_byte =>
-            lit_len:= Alphabet_lit_len(lz_buffer(i).plain);
+            lit_len:= Alphabet_lit_len(lzb(i).plain);
             stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;          --  +1 for this literal
           when distance_length =>
-            lit_len:= Deflate_code_for_LZ_length(lz_buffer(i).lz_length);
+            lit_len:= Deflate_code_for_LZ_length(lzb(i).lz_length);
             stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;          --  +1 for this length
-            dis:= Deflate_code_for_LZ_distance(lz_buffer(i).lz_distance);
+            dis:= Deflate_code_for_LZ_distance(lzb(i).lz_distance);
             stats_dis(dis):= stats_dis(dis) + 1;                          --  +1 for this distance
         end case;
       end loop;
@@ -895,7 +894,6 @@ is
       --  K: Text_buffer_index;
       to_be_sent: Natural:= 0;  
       --  to_be_sent is not always equal to lzb'Length: sometimes you have a DL code
-      --  (lzb'Length being sent as block size was the maddening bug of the year)
     begin
       for i in lzb'Range loop
         case lzb(i).kind is
@@ -941,20 +939,21 @@ is
       last_block_marked:= last_block_for_stream;
     end Mark_new_block;
 
-    lz_buffer_index: LZ_buffer_index_type:= 0;
-    lz_buffer_full: Boolean:= False;
-    pragma Unreferenced (lz_buffer_full);
-    --  When True: all LZ_buffer_size data before lz_buffer_index (modulo!) are real data
-
-    old_stats_lit_len : Stats_lit_len_type;
-    old_stats_dis     : Stats_dis_type;
-
     subtype Long_length_codes is
       Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
     zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0); 
 
-    procedure Flush_from_0(last_flush: Boolean) is
-      last_idx: constant LZ_buffer_index_type:= lz_buffer_index-1;
+    old_stats_lit_len : Stats_lit_len_type;
+    old_stats_dis     : Stats_dis_type;
+
+    --  Send_LZ_buffer_as_block.
+    --  lzb (can be a slice of the principal buffer) will be sent as:
+    --       * a new "dynamic" block, first with a compression structure header
+    --   or  * the continuation of preceding "dynamic" block
+    --   or  * a new "fixed" block, if lz data are close enough to the "fixed" descriptor
+    --   or  * a new "stored" block, if lz data are random enough
+    
+    procedure Send_LZ_buffer_as_block(lzb: LZ_buffer_type; last_flush: Boolean) is
       new_descr: Deflate_Huff_descriptors;
       --
       procedure Send_stored_block is
@@ -965,7 +964,7 @@ is
         Mark_new_block(last_block_for_stream => last_flush);
         Put_code(code => 0, code_size => 2);  --  Signals a "stored" block
         Flush_bit_buffer;
-        Expand_LZ_buffer(lz_buffer(0..last_idx));
+        Expand_LZ_buffer(lzb);
         last_block_type:= stored;
       end Send_stored_block;
       --
@@ -978,7 +977,7 @@ is
         -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
         descr:= Deflate_fixed_descriptors;
         Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
-        Put_LZ_buffer(lz_buffer(0..last_idx));
+        Put_LZ_buffer(lzb);
         last_block_type:= fixed;
       end Send_fixed_block;
       --
@@ -987,7 +986,7 @@ is
         if trace then
           Put_Line(log, "### Recycle dynamic");
         end if;
-        Put_LZ_buffer(lz_buffer(0..last_idx));
+        Put_LZ_buffer(lzb);
       end Recycle_dynamic_block;
       --
       stats_lit_len: Stats_lit_len_type;
@@ -1012,7 +1011,7 @@ is
         descr:= new_descr;
         Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
         Put_compression_structure(descr);
-        Put_LZ_buffer(lz_buffer(0..last_idx));
+        Put_LZ_buffer(lzb);
         last_block_type:= dynamic;
       end Send_dynamic_block;
       -- Experimental values - more or less optimal for LZ_buffer_size = n ...
@@ -1024,9 +1023,9 @@ is
       opti_merge_8192   : constant:= 0;  --  merge stats, not blocks so far
       opti_recy_8192    : constant:= 40;
       opti_fix_8192     : constant:= 0;
-      opti_size_fix     : constant:= 110;
+      opti_size_fix     : constant:= 111;
     begin
-      Get_statistics(lz_buffer(0..last_idx), stats_lit_len, stats_dis);
+      Get_statistics(lzb, stats_lit_len, stats_dis);
       new_descr:= Build_descriptors(stats_lit_len, stats_dis);
       if Similar(new_descr, random_data_descriptors, L1, opti_rand_8192, "Compare to random") and then
          stats_lit_len(Long_length_codes) = zero_bl_long_lengths
@@ -1038,7 +1037,7 @@ is
             Similar(new_descr, descr, L1, opti_recy_8192, "Compare to previous, for recycling")
       then
         Recycle_dynamic_block;
-      elsif last_idx < opti_size_fix or else
+      elsif lzb'Length < opti_size_fix or else
             Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix_8192, "Compare to fixed") 
       then
         Send_fixed_block;
@@ -1048,15 +1047,31 @@ is
         Send_dynamic_block(merge => True);  
         --  Similar: we merge statistics. Not optimal for this block, but helps further recycling
         --  Bet: we have a string of similar blocks; better have less nonzero stats to avoid
-        --  non-recyclable cases.
+        --  non-recyclable cases. NB !! this will disappear by merging at prior level, with
+        --  merging of blocks and optimal bit lengths for each block sent.
       else
         Send_dynamic_block(merge => False);  --  Block is clearly different from last block
       end if;
-      lz_buffer_full:= True;
       if last_block_type = dynamic then
         old_stats_lit_len := stats_lit_len;
         old_stats_dis     := stats_dis;
       end if;
+    end Send_LZ_buffer_as_block;
+
+    --  This is the main, big, fat, circular buffer containing LZ codes,
+    --  each LZ code being a literal or a DL code.
+    lz_buffer: LZ_buffer_type(LZ_buffer_index_type);
+    lz_buffer_index: LZ_buffer_index_type:= 0;
+    past_lz_data: Boolean:= False;
+    pragma Unreferenced (past_lz_data);
+    --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
+
+    --  !! Here we will have much smarter things soon...
+    procedure Flush_from_0(last_flush: Boolean) is
+      last_idx: constant LZ_buffer_index_type:= lz_buffer_index-1;
+    begin
+      Send_LZ_buffer_as_block(lz_buffer(0..last_idx), last_flush);
+      past_lz_data:= True;
     end Flush_from_0;
 
     procedure Push(a: LZ_atom) is
