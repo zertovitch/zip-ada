@@ -946,14 +946,14 @@ is
     old_stats_lit_len : Stats_lit_len_type;
     old_stats_dis     : Stats_dis_type;
 
-    --  Send_LZ_buffer_as_block.
+    --  Send_as_block.
     --  lzb (can be a slice of the principal buffer) will be sent as:
     --       * a new "dynamic" block, first with a compression structure header
     --   or  * the continuation of preceding "dynamic" block
     --   or  * a new "fixed" block, if lz data are close enough to the "fixed" descriptor
     --   or  * a new "stored" block, if lz data are random enough
     
-    procedure Send_LZ_buffer_as_block(lzb: LZ_buffer_type; last_flush: Boolean) is
+    procedure Send_as_block(lzb: LZ_buffer_type; last_flush: Boolean) is
       new_descr: Deflate_Huff_descriptors;
       --
       procedure Send_stored_block is
@@ -1056,28 +1056,38 @@ is
         old_stats_lit_len := stats_lit_len;
         old_stats_dis     := stats_dis;
       end if;
-    end Send_LZ_buffer_as_block;
+    end Send_as_block;
 
     --  This is the main, big, fat, circular buffer containing LZ codes,
     --  each LZ code being a literal or a DL code.
     lz_buffer: LZ_buffer_type(LZ_buffer_index_type);
     lz_buffer_index: LZ_buffer_index_type:= 0;
     past_lz_data: Boolean:= False;
-    pragma Unreferenced (past_lz_data);
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
-    --  !! Here we will have much smarter things soon...
+    procedure Scan_and_send_from_main_buffer(from, to: LZ_buffer_index_type; last_flush: Boolean) is
+    begin
+      --  !! Here we will have much smarter (and hopefully more efficient) things soon...
+      --
+      if past_lz_data then  --  We have (LZ_buffer_size / 2) previous data before 'from'.
+        null;  --  !!
+      else
+        null;  --  !!
+      end if;
+      Send_as_block(lz_buffer(from..to), last_flush);
+    end Scan_and_send_from_main_buffer;
+    
     procedure Flush_half_buffer(last_flush: Boolean) is
       last_idx: constant LZ_buffer_index_type:= lz_buffer_index-1;
-      n_2: constant:= LZ_buffer_size / 2;
+      n_div_2: constant:= LZ_buffer_size / 2;
     begin
-      if last_idx < n_2 then
-        Send_LZ_buffer_as_block(lz_buffer(0..last_idx), last_flush);    -- 1st half
+      if last_idx < n_div_2 then
+        Scan_and_send_from_main_buffer(0, last_idx, last_flush);        -- 1st half
       else
-        Send_LZ_buffer_as_block(lz_buffer(n_2..last_idx), last_flush);  -- 2nd half
+        Scan_and_send_from_main_buffer(n_div_2, last_idx, last_flush);  -- 2nd half
       end if;
       --  From this point, all further calls to Flush_half_buffer will
-      --  have n_2 elements of past data.
+      --  have n_div_2 elements of past data.
       past_lz_data:= True;
     end Flush_half_buffer;
 
