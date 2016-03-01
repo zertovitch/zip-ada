@@ -293,6 +293,31 @@ package body Rezip_lib is
       return t(j..t'Last);
     end Image_1000;
 
+    function Image_1000(r: Integer_64; separator: Character:= ''') return String is
+      s: constant String:= Integer_64'Image(r);
+      t: String(s'First..s'First+(s'Length*4)/3);
+      j, c: Natural;
+    begin
+      --  For signed integers
+      if r < 0 then
+        return '-' & Image_1000(abs r, separator);
+      end if;
+      --  We build result string t from right to left
+      j:= t'Last + 1;
+      c:= 0;
+      for i in reverse s'First..s'Last loop
+        exit when s(i) = ' ' or s(i) = '-';
+        if c > 0 and then c mod 3 = 0 then
+          j:= j - 1;
+          t(j):= separator;
+        end if;
+        j:= j - 1;
+        t(j):= s(i);
+        c:= c + 1;
+      end loop;
+      return t(j..t'Last);
+    end Image_1000;
+
     procedure Call_external(
       packer:        String;
       args  :        String
@@ -1043,16 +1068,12 @@ package body Rezip_lib is
       Put(summary,"<tr><td></td><td><b>T<small>OTAL SAVED BYTES (when optimal)</small></b></td>");
       for a in Approach loop
         if consider_a_priori(a) then
-          Put(summary,
-            "<td bgcolor=#" & Webcolor(a) & ">" &
-            Image_1000(Zip.File_size_type(total(a).saved)) & "</td>"
-          );
+          Put(summary, "<td bgcolor=#" & Webcolor(a) & ">" & Image_1000(total(a).saved) & "</td>");
         end if;
       end loop;
       Put(summary,
         "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" &
-        Image_1000(Zip.File_size_type(total_choice.saved)) &
-        "</b></td>" &
+        Image_1000(total_choice.saved) & "</b></td>" &
         "<td>"
       );
       if total(original).size > 0 then
