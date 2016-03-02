@@ -839,7 +839,7 @@ is
       lz_expanded   : Expanded_data;
     end record;
 
-    LZ_buffer_size: constant:= 2*8192;
+    LZ_buffer_size: constant:= 16384;  --  min: 16384 (min half buffer 8192)
     type LZ_buffer_index_type is mod LZ_buffer_size;
     type LZ_buffer_type is array (LZ_buffer_index_type range <>) of LZ_atom;
 
@@ -943,6 +943,14 @@ is
       Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
     zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0); 
 
+    function Optimal_descriptors(lzb: LZ_buffer_type) return Deflate_Huff_descriptors is
+      stats_lit_len : Stats_lit_len_type;
+      stats_dis     : Stats_dis_type;
+    begin
+      Get_statistics(lzb, stats_lit_len, stats_dis);
+      return Build_descriptors(stats_lit_len, stats_dis);
+    end Optimal_descriptors;
+
     old_stats_lit_len : Stats_lit_len_type;
     old_stats_dis     : Stats_dis_type;
 
@@ -953,7 +961,7 @@ is
     --   or  * a new "fixed" block, if lz data are close enough to the "fixed" descriptor
     --   or  * a new "stored" block, if lz data are random enough
     
-    procedure Send_as_block(lzb: LZ_buffer_type; last_flush: Boolean) is
+    procedure Send_as_block(lzb: LZ_buffer_type; last_block: Boolean) is
       new_descr: Deflate_Huff_descriptors;
       --
       procedure Send_stored_block is
@@ -961,7 +969,7 @@ is
         if trace then
           Put_Line(log, "### Random enough - use stored");
         end if;
-        Mark_new_block(last_block_for_stream => last_flush);
+        Mark_new_block(last_block_for_stream => last_block);
         Put_code(code => 0, code_size => 2);  --  Signals a "stored" block
         Flush_bit_buffer;
         Expand_LZ_buffer(lzb);
@@ -973,7 +981,7 @@ is
         if trace then
           Put_Line(log, "### Use fixed");
         end if;
-        Mark_new_block(last_block_for_stream => last_flush);
+        Mark_new_block(last_block_for_stream => last_block);
         -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
         descr:= Deflate_fixed_descriptors;
         Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
@@ -1006,7 +1014,7 @@ is
           stats_dis     := stats_dis     + old_stats_dis;
           new_descr:= Build_descriptors(stats_lit_len, stats_dis);
         end if;
-        Mark_new_block(last_block_for_stream => last_flush);
+        Mark_new_block(last_block_for_stream => last_block);
         -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
         descr:= new_descr;
         Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
@@ -1065,16 +1073,64 @@ is
     past_lz_data: Boolean:= False;
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
+    step: constant:= 4096;
+    slider_size: constant:= step;  --  should be <= step
+    half_slider_size: constant:= slider_size / 2;
+    slider_max: constant:= slider_size - 1;
+
     procedure Scan_and_send_from_main_buffer(from, to: LZ_buffer_index_type; last_flush: Boolean) is
+      initial_hd, sliding_hd: Deflate_Huff_descriptors;
+      start, slide_mid, send_from: LZ_buffer_index_type;
     begin
-      --  !! Here we will have much smarter (and hopefully more efficient) things soon...
-      --
-      if past_lz_data then  --  We have (LZ_buffer_size / 2) previous data before 'from'.
-        null;  --  !!
-      else
-        null;  --  !!
+      if to-from < slider_max then
+        Send_as_block(lz_buffer(from..to), last_flush);
+        return;
       end if;
-      Send_as_block(lz_buffer(from..to), last_flush);
+      -- For further comments: n := LZ_buffer_size
+      if past_lz_data then  --  We have n / 2 previous data before 'from'.
+        start:= from - LZ_buffer_index_type(half_slider_size);
+      else
+        start:= from;  --  Cannot have past data
+      end if;
+      if start > from then  --  Looped over (mod n), slider data are in two chunks in main buffer
+        --  put_line(from'img & to'img & start'img);
+        declare
+          copy_from: LZ_buffer_index_type:= start;
+          copy: LZ_buffer_type(0..slider_max);
+        begin
+          for i in copy'Range loop
+            copy(i):= lz_buffer(copy_from);
+            copy_from:= copy_from + 1;  --  Loops over (mod n)
+          end loop;
+          initial_hd:= Optimal_descriptors(copy);
+        end;
+        --  Concatenation bombs with a Range Check error:
+        --  lz_buffer(start .. lz_buffer'Last) &
+        --  lz_buffer(0 .. start + LZ_buffer_index_type(slider_max))
+      else
+        initial_hd:= Optimal_descriptors(lz_buffer(start .. start + slider_max));
+      end if;
+      send_from:= from;
+      slide_mid:= from + step;
+      while Integer_32(slide_mid) + half_slider_size < Integer_32(to) loop  --  !! better: use Integer_M32
+        sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid-step/2 .. slide_mid+step/2));
+        if Similar(initial_hd, sliding_hd, L1, 450, "Compare sliding to initial") then
+          null;
+        else
+          Put("COUPEZ!");
+          Put_Line(" @ " & slide_mid'img & "  ('from' is" & from'img & ", 'to' is" & to'img & ')');
+          Send_as_block(lz_buffer(send_from .. slide_mid-1), last_block => False);
+          send_from:= slide_mid;
+        end if;
+        slide_mid:= slide_mid + step;
+        exit when slide_mid < from + step;  --  catch looping over (mod n)
+      end loop;
+      --
+      --  Send last block for slice from .. to.
+      --
+      if send_from <= to and send_from >= from then  --  2nd test in case of looping over (mod n)
+        Send_as_block(lz_buffer(send_from .. to), last_block => last_flush);
+      end if;
     end Scan_and_send_from_main_buffer;
     
     procedure Flush_half_buffer(last_flush: Boolean) is

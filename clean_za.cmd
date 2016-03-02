@@ -27,18 +27,24 @@ del *.adt
 cd..
 
 cd test
+
 if exist test_za??.zip del test_za??.zip
 if exist test_ifz?.zip del test_ifz?.zip
+if exist test_kzip.zip del test_kzip.zip
+
 if exist test_rz.zip          del test_rz.zip
 if exist test_rz.repacked.zip del test_rz.repacked.zip
 if exist test_rz.ReZip.html   del test_rz.ReZip.html
 if exist test_rz.ReZip.log    del test_rz.ReZip.log
+
 if exist $* del $*
 if exist tuttifru.zip del tuttifru.zip
 if exist binana.zip   del binana.zip
+
 del *.zcd
 del *.log
 del *.bak
+
 cd ..
 
 if not exist obj_opt\zip.ali md obj_opt
