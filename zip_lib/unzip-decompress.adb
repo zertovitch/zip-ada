@@ -1405,7 +1405,11 @@ package body UnZip.Decompress is
               literal:= Zip.Byte( CT(CT_idx).n );
               if some_trace then
                 lt_count:= lt_count + 1;
-                Ada.Text_IO.Put_Line(LZ77_dump, "Lit" & Zip.Byte'Image(literal));
+                Ada.Text_IO.Put(LZ77_dump, "Lit" & Zip.Byte'Image(literal));
+                if literal in 32..126 then
+                  Ada.Text_IO.Put(LZ77_dump, " '" & Character'Val(literal) & ''');
+                end if;
+                Ada.Text_IO.New_Line(LZ77_dump);
               end if;
               UnZ_Glob.slide ( W ) :=  literal;
               W:= W + 1;
