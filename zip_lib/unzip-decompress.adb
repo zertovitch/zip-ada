@@ -52,6 +52,7 @@ package body UnZip.Decompress is
     end UnZ_Glob;
 
     Zip_EOF  : Boolean; -- read over end of zip section for this file
+    LZ77_dump : Ada.Text_IO.File_Type;
 
     package UnZ_IO is
       out_bin_file: Ada.Streams.Stream_IO.File_Type;
@@ -417,11 +418,8 @@ package body UnZip.Decompress is
       procedure Copy(distance, length: Natural; index: in out Natural ) is
         source, part, remain: Integer;
       begin
-        if full_trace or (some_trace and then distance > 32768+3) then
-          Ada.Text_IO.Put(
-            "DLE(distance=" & Integer'Image(distance) &
-            " length=" & Integer'Image(length) & ")"
-          );
+        if some_trace then
+          Ada.Text_IO.Put_Line(LZ77_dump, "DLE" & Integer'Image(distance) & Integer'Image(length));
         end if;
         source:= index - distance;
         remain:= length;
@@ -1372,8 +1370,8 @@ package body UnZip.Decompress is
         CT_idx : Natural;            -- current table's index
         length : Natural;
         E      : Integer;      -- table entry flag/number of extra bits
-        W      : Integer:= UnZ_Glob.slide_index;
-        -- more local variable for slide index
+        W      : Integer:= UnZ_Glob.slide_index;  -- more local variable for slide index
+        literal: Zip.Byte;
       begin
         if some_trace then
           lt_count_0:= lt_count;
@@ -1404,10 +1402,12 @@ package body UnZip.Decompress is
 
           case E is
             when 16 =>     -- CT(CT_idx).N is a Literal
+              literal:= Zip.Byte( CT(CT_idx).n );
               if some_trace then
                 lt_count:= lt_count + 1;
+                Ada.Text_IO.Put_Line(LZ77_dump, "Lit" & Zip.Byte'Image(literal));
               end if;
-              UnZ_Glob.slide ( W ) :=  Zip.Byte( CT(CT_idx).n );
+              UnZ_Glob.slide ( W ) :=  literal;
               W:= W + 1;
               UnZ_IO.Flush_if_full(W);
 
@@ -1866,6 +1866,9 @@ package body UnZip.Decompress is
     use Zip, UnZ_Meth;
 
   begin -- Decompress_Data
+    if some_trace then
+      Ada.Text_IO.Create(LZ77_dump, Ada.Text_IO.Out_File, "dump.lz77");
+    end if;
     output_memory_access:= null;
     -- ^ this is an 'out' parameter, we have to set it anyway
     case mode is
@@ -1973,6 +1976,9 @@ package body UnZip.Decompress is
       when write_to_memory | write_to_stream | just_test =>
         null; -- Nothing to close!
     end case;
+    if some_trace then
+      Ada.Text_IO.Close(LZ77_dump);
+    end if;
 
   exception
     when others => -- close the file in case of an error, if not yet closed
