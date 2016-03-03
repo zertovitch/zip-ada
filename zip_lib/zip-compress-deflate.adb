@@ -2,7 +2,7 @@
 --  method with some Huffman encoding gymnastics.
 --
 --  To do:
---   - buffer & merge dyn. blocks, send them with single compr. structure
+--   - use a better LZ77 compressor, refine the Taillaule algorithm...
 --
 --  Change log:
 -- 
@@ -19,8 +19,9 @@ with Zip_Streams;
 with Length_limited_Huffman_code_lengths;
 
 with Ada.Exceptions;                    use Ada.Exceptions;
-with Interfaces;                        use Interfaces;
+with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Text_IO;                       use Ada.Text_IO;
+with Interfaces;                        use Interfaces;
 
 procedure Zip.Compress.Deflate
  (input,
@@ -37,10 +38,15 @@ procedure Zip.Compress.Deflate
 is
   use Zip_Streams;
 
-  trace    : constant Boolean:= True;
-  log      : File_Type;
-  log_name : constant String:= "Zip.Compress.Deflate.zcd";  --  A CSV with an unusual extension...
-  sep      : constant Character:= ';';
+  --  Options. All should be on False for normal use of this package.
+  
+  bypass_LZ77 : constant Boolean:= False;
+  trace       : constant Boolean:= False;
+  
+  --  A log file is used when trace = True.
+  log         : File_Type;
+  log_name    : constant String:= "Zip.Compress.Deflate.zcd";  --  A CSV with an unusual extension
+  sep         : constant Character:= ';';
 
   -------------------------------------
   -- Buffered I/O - byte granularity --
@@ -147,54 +153,6 @@ is
     Save_byte:= Save_byte_local;
     Bits_used:= Bits_used_local;
   end Put_code;
-
-  --------------------------------
-  -- LZ77 front-end compression --
-  --------------------------------
-
-  procedure Encode is
-
-    X_Percent: Natural;
-    Bytes_in   : Natural;   --  Count of input file bytes processed
-    user_aborting: Boolean;
-    PctDone: Natural;
-
-    function Read_byte return Byte is
-      b: Byte;
-    begin
-      b:= InBuf(InBufIdx);
-      InBufIdx:= InBufIdx + 1;
-      Zip.CRC_Crypto.Update(CRC, (1=> b));
-      Bytes_in:= Bytes_in + 1;
-      if feedback /= null then
-        if Bytes_in = 1 then
-          feedback(0, False, user_aborting);
-        end if;
-        if X_Percent > 0 and then
-           ((Bytes_in-1) mod X_Percent = 0
-            or Bytes_in = Integer(input_size))
-        then
-          if input_size_known then
-            PctDone := Integer( (100.0 * Float( Bytes_in)) / Float(input_size));
-            feedback(PctDone, False, user_aborting);
-          else
-            feedback(0, False, user_aborting);
-          end if;
-          if user_aborting then
-            raise User_abort;
-          end if;
-        end if;
-      end if;
-      return b;
-    end Read_byte;
-
-    function More_bytes return Boolean is
-    begin
-      if InBufIdx > MaxInBufIdx then
-        Read_Block;
-      end if;
-      return not InputEoF;
-    end More_bytes;
 
     ------------------------------------------------------
     -- Deflate, post LZ encoding, with Huffman encoding --
@@ -307,17 +265,17 @@ is
     begin
       for i in new_d.lit_len'Range loop
         new_d.lit_len(i):= (length => bl_for_lit_len(i), code => invalid);
-        if trace then
+        if trace and then Is_Open(log) then
           Put(log, Integer'Image(bl_for_lit_len(i)) & sep);
         end if;
       end loop;
       for i in new_d.dis'Range loop
         new_d.dis(i):= (length => bl_for_dis(i), code => invalid);
-        if trace then
+        if trace and then Is_Open(log) then
           Put(log, Integer'Image(bl_for_dis(i)) & sep);
         end if;
       end loop;
-      if trace then
+      if trace and then Is_Open(log) then
         New_Line(log);
       end if;
       return Prepare_Huffman_codes(new_d);
@@ -1114,11 +1072,14 @@ is
       slide_mid:= from + step;
       while Integer_32(slide_mid) + half_slider_size < Integer_32(to) loop  --  !! better: use Integer_M32
         sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid-step/2 .. slide_mid+step/2));
-        if Similar(initial_hd, sliding_hd, L1, 450, "Compare sliding to initial") then
-          null;
-        else
-          Put("COUPEZ!");
-          Put_Line(" @ " & slide_mid'img & "  ('from' is" & from'img & ", 'to' is" & to'img & ')');
+        if not Similar(initial_hd, sliding_hd, L1, 450, "Compare sliding to initial") then
+          if trace then
+            Put_Line(log, 
+              "### Cutting @ " & LZ_buffer_index_type'Image(slide_mid) & 
+              "  ('from' is" & LZ_buffer_index_type'Image(from) & 
+              ", 'to' is" & LZ_buffer_index_type'Image(to) & ')'
+            );
+          end if;
           Send_as_block(lz_buffer(send_from .. slide_mid-1), last_block => False);
           send_from:= slide_mid;
         end if;
@@ -1179,10 +1140,53 @@ is
       end case;
     end Put_or_delay_DL_code;
 
-    --  If the DLE coding doesn't fit the format constraints, we need
-    --  to decode it as a simple sequence of literals. The buffer used is
-    --  called "Text" buffer by reference to "clear-text", but actually it
-    --  is any binary data.
+  --------------------------------
+  -- LZ77 front-end compression --
+  --------------------------------
+
+  procedure Encode is
+
+    X_Percent: Natural;
+    Bytes_in   : Natural;   --  Count of input file bytes processed
+    user_aborting: Boolean;
+    PctDone: Natural;
+
+    function Read_byte return Byte is
+      b: Byte;
+    begin
+      b:= InBuf(InBufIdx);
+      InBufIdx:= InBufIdx + 1;
+      Zip.CRC_Crypto.Update(CRC, (1=> b));
+      Bytes_in:= Bytes_in + 1;
+      if feedback /= null then
+        if Bytes_in = 1 then
+          feedback(0, False, user_aborting);
+        end if;
+        if X_Percent > 0 and then
+           ((Bytes_in-1) mod X_Percent = 0
+            or Bytes_in = Integer(input_size))
+        then
+          if input_size_known then
+            PctDone := Integer( (100.0 * Float( Bytes_in)) / Float(input_size));
+            feedback(PctDone, False, user_aborting);
+          else
+            feedback(0, False, user_aborting);
+          end if;
+          if user_aborting then
+            raise User_abort;
+          end if;
+        end if;
+      end if;
+      return b;
+    end Read_byte;
+
+    function More_bytes return Boolean is
+    begin
+      if InBufIdx > MaxInBufIdx then
+        Read_Block;
+      end if;
+      return not InputEoF;
+    end More_bytes;
 
     -- LZ77 params
     Look_Ahead         : constant Integer:= 258;
@@ -1191,6 +1195,11 @@ is
     type Text_buffer is array ( Text_buffer_index ) of Byte;
     Text_Buf: Text_Buffer;
     R: Text_buffer_index;
+
+    --  If the DLE coding doesn't fit the format constraints, we need
+    --  to decode it as a simple sequence of literals. The buffer used is
+    --  called "Text" buffer by reference to "clear-text", but actually it
+    --  is any binary data.
 
     procedure LZ77_emits_DL_code( distance, length: Integer ) is
       --  NB: no worry, all arithmetics in Text_buffer_index are modulo String_buffer_size.
@@ -1242,6 +1251,40 @@ is
           Write_byte         => LZ77_emits_literal_byte,
           Write_code         => LZ77_emits_DL_code 
         );
+
+    --  The following is for comparing different LZ77 variants and see how well they
+    --  combine with the rest of our Deflate algorithm above.
+
+    procedure Read_LZ77_codes is
+      LZ77_dump : File_Type;
+      tag: String(1..3);
+      wrong_LZ77_tag: exception;
+      a, b: Integer;
+      dummy: Byte;
+    begin
+      --  Pretend we compress given file (compute CRC, consume stream).
+      while More_bytes loop
+        dummy:= Read_byte;
+      end loop;
+      --  Now deflate using dumped LZ77 data.
+      Open(LZ77_dump, In_File, "dump.lz77");  --  File from UnZip.Decompress, some_trace mode
+      while not End_Of_File(LZ77_dump) loop
+        Get(LZ77_dump, tag);
+        if tag = "Lit" then
+          Get(LZ77_dump, a);
+          LZ77_emits_literal_byte(Byte(a));
+        elsif tag = "DLE" then
+          Get(LZ77_dump, a);
+          Get(LZ77_dump, b);
+          LZ77_emits_DL_code(a, b);
+        else
+          raise wrong_LZ77_tag;
+        end if;
+        Skip_Line(LZ77_dump);
+      end loop;
+      Close(LZ77_dump);
+    end Read_LZ77_codes;
+        
   begin  --  Encode
     Read_Block;
     R:= Text_buffer_index(String_buffer_size - Look_Ahead);
@@ -1259,10 +1302,14 @@ is
       when Deflate_1 =>
         null;  --  No start data sent, all is delayed
     end case;
-    -----------------------------------------------
-    --  The whole compression is happening here: --
-    -----------------------------------------------
-    My_LZ77;
+    if bypass_LZ77 then
+      Read_LZ77_codes;
+    else
+      -----------------------------------------------
+      --  The whole compression is happening here: --
+      -----------------------------------------------
+      My_LZ77;
+    end if;
     --  Done. Send the code signalling the end of compressed data block:
     case method is
       when Deflate_Fixed =>
