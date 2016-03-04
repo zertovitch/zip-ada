@@ -1,335 +1,814 @@
---  Experimental LZ77 encoder, based on LZHUF by OKUMURA & YOSHIZAKI.
---  Here the adaptive Huffman coding is thrown away; algorithm is used only to
---  find matching patterns.
-
 procedure Zip.LZ77 is
 
-  N_Char    : constant Integer:= 256-Threshold+Look_Ahead;
-  -- Character code (= 0..N_CHAR-1)
-  Max_Table     : constant Integer:= N_Char*2-1;
+  procedure LZ77_using_LZHuf is
+    --  Experimental LZ77 encoder, based on LZHUF by OKUMURA & YOSHIZAKI.
+    --  Here the adaptive Huffman coding is thrown away; algorithm is used only to
+    --  find matching patterns.
 
-  use Interfaces; -- Make Unsigned_* types visible
+    N_Char    : constant Integer:= 256-Threshold+Look_Ahead;
+    -- Character code (= 0..N_CHAR-1)
+    Max_Table     : constant Integer:= N_Char*2-1;
 
-  type Text_Buffer is array ( 0..String_buffer_size+Look_Ahead-1 ) of Byte;
-  empty_buffer: constant Text_Buffer:= (others=> 32); -- ' '
+    use Interfaces; -- Make Unsigned_* types visible
 
-  -- > The Huffman frequency handling is made generic so we have
-  --   one copy of the tree and of the frequency table for Encode
-  --   and one for Decode
+    type Text_Buffer is array ( 0..String_buffer_size+Look_Ahead-1 ) of Byte;
+    empty_buffer: constant Text_Buffer:= (others=> 32); -- ' '
 
-  generic
-  package Huffman is
-    --- Pointing parent nodes.
-    --- Area [Max_Table..(Max_Table + N_CHAR - 1)] are pointers for leaves
-    Parent:  array ( 0..Max_Table+N_Char-1 ) of Natural;
-    --- Pointing children nodes (son[], son[] + 1)
-    Son   :  array ( 0..Max_Table-1 )  of Natural;
+    -- > The Huffman frequency handling is made generic so we have
+    --   one copy of the tree and of the frequency table for Encode
+    --   and one for Decode
 
-    Root_Position : constant Integer:= Max_Table-1; -- (can be always Son'last ?)
+    generic
+    package Huffman is
+      --- Pointing parent nodes.
+      --- Area [Max_Table..(Max_Table + N_CHAR - 1)] are pointers for leaves
+      Parent:  array ( 0..Max_Table+N_Char-1 ) of Natural;
+      --- Pointing children nodes (son[], son[] + 1)
+      Son   :  array ( 0..Max_Table-1 )  of Natural;
 
-    procedure Start;
-    procedure Update_Freq_Tree( C0: Natural );
-  end Huffman;
+      Root_Position : constant Integer:= Max_Table-1; -- (can be always Son'last ?)
 
-  package body Huffman is
+      procedure Start;
+      procedure Update_Freq_Tree( C0: Natural );
+    end Huffman;
 
-    Freq: array ( 0..Max_Table ) of Natural; -- Cumulative freq table
+    package body Huffman is
 
-    Max_Freq: constant := 16#8000#;
-    -- ^-- update when cumulative frequency reaches to this value
+      Freq: array ( 0..Max_Table ) of Natural; -- Cumulative freq table
 
-    procedure Start is
-      I: Natural;
-    begin
-      for J in  0 .. N_Char-1  loop
-        Freq(J):= 1;
-        Son (J):= J + Max_Table;
-        Parent(J + Max_Table):= J;
-      end loop;
+      Max_Freq: constant := 16#8000#;
+      -- ^-- update when cumulative frequency reaches to this value
 
-      I:= 0;
-      for J in N_Char .. Root_Position  loop
-        Freq(J):= Freq(I)+Freq(I+1);
-        Son (J):= I;
-        Parent(I):= J;
-        Parent(I+1):= J;
-        I:= I + 2;
-      end loop;
-
-      Freq( Freq'Last ):= 16#FFFF#; -- ( Max_Table )
-      Parent( Root_Position ):= 0;
-    end Start;
-
-    procedure Update_Freq_Tree( C0: Natural ) is
-
-      procedure Reconstruct_Freq_Tree is
-        I,J,K,F,L: Natural;
+      procedure Start is
+        I: Natural;
       begin
-        -- Halven cumulative freq for leaf nodes
-        J:= 0;
-        for I in 0 .. Root_Position loop
-          if Son(I) >= Max_Table then
-            Freq(J):= (Freq(I)+1) / 2;
-            Son (J):= Son(I);
-            J:= J + 1;
-          end if;
+        for J in  0 .. N_Char-1  loop
+          Freq(J):= 1;
+          Son (J):= J + Max_Table;
+          Parent(J + Max_Table):= J;
         end loop;
 
-        -- Make a tree : first, connect children nodes
         I:= 0;
-        for J in N_Char .. Root_Position loop -- J : free nodes
-          K:= I+1;
-          F:= Freq(I) + Freq(K); -- new frequency
-          Freq(J):= F;
-          K:= J-1;
-          while F < Freq(K) loop
-            K:= K-1;
-          end loop;
-
-          K:= K+1;
-          L:= J-K; -- 2007: fix: was L:= (J-K)*2, memcopy parameter remain
-
-          Freq( K+1 .. K+L ):= Freq( K .. K+L-1 ); -- shift by one cell right
-          Freq(K):= F;
-          Son ( K+1 .. K+L ):= Son ( K .. K+L-1 ); -- shift by one cell right
-          Son (K):= I;
+        for J in N_Char .. Root_Position  loop
+          Freq(J):= Freq(I)+Freq(I+1);
+          Son (J):= I;
+          Parent(I):= J;
+          Parent(I+1):= J;
           I:= I + 2;
         end loop;
 
-        -- Connect parent nodes
-        for I in 0 .. Max_Table-1 loop
-          K:= Son(I);
-          Parent(K):= I;
-          if K < Max_Table then
-            Parent(K+1):= I;
-          end if;
-        end loop;
+        Freq( Freq'Last ):= 16#FFFF#; -- ( Max_Table )
+        Parent( Root_Position ):= 0;
+      end Start;
 
-      end Reconstruct_Freq_Tree;
+      procedure Update_Freq_Tree( C0: Natural ) is
 
-      C,I,J,K,L: Natural;
-
-    begin -- Update_Freq_Tree;
-      if Freq( Root_Position ) = Max_Freq then
-        Reconstruct_Freq_Tree;
-      end if;
-      C:= Parent(C0 + Max_Table);
-      loop
-        Freq(C):= Freq(C) + 1;
-        K:= Freq(C);
-        -- Swap nodes to keep the tree freq-ordered
-        L:= C+1;
-        if  K > Freq(L) then
-          while K > Freq(L+1) loop
-            L:= L + 1;
+        procedure Reconstruct_Freq_Tree is
+          I,J,K,F,L: Natural;
+        begin
+          -- Halven cumulative freq for leaf nodes
+          J:= 0;
+          for I in 0 .. Root_Position loop
+            if Son(I) >= Max_Table then
+              Freq(J):= (Freq(I)+1) / 2;
+              Son (J):= Son(I);
+              J:= J + 1;
+            end if;
           end loop;
 
-          Freq(C):= Freq(L);
-          Freq(L):= K;
+          -- Make a tree : first, connect children nodes
+          I:= 0;
+          for J in N_Char .. Root_Position loop -- J : free nodes
+            K:= I+1;
+            F:= Freq(I) + Freq(K); -- new frequency
+            Freq(J):= F;
+            K:= J-1;
+            while F < Freq(K) loop
+              K:= K-1;
+            end loop;
 
-          I:= Son(C);
-          Parent(I):= L;
-          if I < Max_Table then
-            Parent(I+1):= L;
+            K:= K+1;
+            L:= J-K; -- 2007: fix: was L:= (J-K)*2, memcopy parameter remain
+
+            Freq( K+1 .. K+L ):= Freq( K .. K+L-1 ); -- shift by one cell right
+            Freq(K):= F;
+            Son ( K+1 .. K+L ):= Son ( K .. K+L-1 ); -- shift by one cell right
+            Son (K):= I;
+            I:= I + 2;
+          end loop;
+
+          -- Connect parent nodes
+          for I in 0 .. Max_Table-1 loop
+            K:= Son(I);
+            Parent(K):= I;
+            if K < Max_Table then
+              Parent(K+1):= I;
+            end if;
+          end loop;
+
+        end Reconstruct_Freq_Tree;
+
+        C,I,J,K,L: Natural;
+
+      begin -- Update_Freq_Tree;
+        if Freq( Root_Position ) = Max_Freq then
+          Reconstruct_Freq_Tree;
+        end if;
+        C:= Parent(C0 + Max_Table);
+        loop
+          Freq(C):= Freq(C) + 1;
+          K:= Freq(C);
+          -- Swap nodes to keep the tree freq-ordered
+          L:= C+1;
+          if  K > Freq(L) then
+            while K > Freq(L+1) loop
+              L:= L + 1;
+            end loop;
+
+            Freq(C):= Freq(L);
+            Freq(L):= K;
+
+            I:= Son(C);
+            Parent(I):= L;
+            if I < Max_Table then
+              Parent(I+1):= L;
+            end if;
+
+            J:= Son(L);
+            Son(L):= I;
+
+            Parent(J):= C;
+            if J < Max_Table then
+              Parent(J+1):= C;
+            end if;
+            Son(C):= J;
+
+            C := L;
           end if;
+          C:= Parent(C);
+          exit when C=0;
+        end loop;        -- do it until reaching the root
+      end Update_Freq_Tree;
 
-          J:= Son(L);
-          Son(L):= I;
+    end Huffman;
 
-          Parent(J):= C;
-          if J < Max_Table then
-            Parent(J+1):= C;
+    Node_Nil : constant Integer:= String_buffer_size;    -- End of tree's node
+
+    Lson,Dad:  array ( 0..String_buffer_size       ) of Natural;
+    Rson:      array ( 0..String_buffer_size + 256 ) of Natural;
+
+    procedure Init_Tree is
+    begin
+      for I in String_buffer_size+1 .. Rson'Last loop
+        Rson(I) := Node_Nil;
+      end loop; -- root
+      for I in 0 .. String_buffer_size-1 loop
+        Dad(I)  := Node_Nil;
+      end loop; -- node
+    end Init_Tree;
+
+    Match_Position : Natural;
+    Match_Length   : Natural;
+
+    Text_Buf: Text_Buffer:= empty_buffer;
+
+    procedure Insert_Node (R: Integer) is
+      I,P: Integer;
+      Geq: Boolean:= True;
+      C:   Natural;
+    begin
+      P:= String_buffer_size + 1 + Integer(Text_Buf(R));
+      Rson(R):= Node_Nil;
+      Lson(R):= Node_Nil;
+      Match_Length := 0;
+      loop
+        if Geq then
+          if Rson(P) = Node_Nil then
+            Rson(P):= R;
+            Dad(R) := P;
+            return;
           end if;
-          Son(C):= J;
-
-          C := L;
+          P:= Rson(P);
+        else
+          if Lson(P) = Node_Nil then
+            Lson(P):= R;
+            Dad(R) := P;
+            return;
+          end if;
+          P:= Lson(P);
         end if;
-        C:= Parent(C);
-        exit when C=0;
-      end loop;        -- do it until reaching the root
-    end Update_Freq_Tree;
+        I:= 1;
+        while I < Look_Ahead and then Text_Buf(R+I) = Text_Buf(P+I)  loop
+          I:= I + 1;
+        end loop;
 
-  end Huffman;
+        Geq:= Text_Buf(R+I) >= Text_Buf(P+I) or I = Look_Ahead;
 
-  Node_Nil : constant Integer:= String_buffer_size;    -- End of tree's node
-
-  Lson,Dad:  array ( 0..String_buffer_size       ) of Natural;
-  Rson:      array ( 0..String_buffer_size + 256 ) of Natural;
-
-  procedure Init_Tree is
-  begin
-    for I in String_buffer_size+1 .. Rson'Last loop
-      Rson(I) := Node_Nil;
-    end loop; -- root
-    for I in 0 .. String_buffer_size-1 loop
-      Dad(I)  := Node_Nil;
-    end loop; -- node
-  end Init_Tree;
-
-  Match_Position : Natural;
-  Match_Length   : Natural;
-
-  Text_Buf: Text_Buffer:= empty_buffer;
-
-  procedure Insert_Node (R: Integer) is
-    I,P: Integer;
-    Geq: Boolean:= True;
-    C:   Natural;
-  begin
-    P:= String_buffer_size + 1 + Integer(Text_Buf(R));
-    Rson(R):= Node_Nil;
-    Lson(R):= Node_Nil;
-    Match_Length := 0;
-    loop
-      if Geq then
-        if Rson(P) = Node_Nil then
-          Rson(P):= R;
-          Dad(R) := P;
-          return;
+        if I > Threshold then
+          if I > Match_Length then
+            Match_Position := (R-P) mod String_buffer_size - 1;
+            Match_Length:= I;
+            exit when Match_Length >= Look_Ahead;
+          end if;
+          if I = Match_Length then
+            C:= (R-P) mod String_buffer_size - 1;
+            if C < Match_Position then
+              Match_Position:= C;
+            end if;
+          end if;
         end if;
-        P:= Rson(P);
-      else
-        if Lson(P) = Node_Nil then
-          Lson(P):= R;
-          Dad(R) := P;
-          return;
-        end if;
-        P:= Lson(P);
-      end if;
-      I:= 1;
-      while I < Look_Ahead and then Text_Buf(R+I) = Text_Buf(P+I)  loop
-        I:= I + 1;
       end loop;
 
-      Geq:= Text_Buf(R+I) >= Text_Buf(P+I) or I = Look_Ahead;
-
-      if I > Threshold then
-        if I > Match_Length then
-          Match_Position := (R-P) mod String_buffer_size - 1;
-          Match_Length:= I;
-          exit when Match_Length >= Look_Ahead;
-        end if;
-        if I = Match_Length then
-          C:= (R-P) mod String_buffer_size - 1;
-          if C < Match_Position then
-            Match_Position:= C;
-          end if;
-        end if;
+      Dad (R):= Dad (P);
+      Lson(R):= Lson(P);
+      Rson(R):= Rson(P);
+      Dad(Lson(P)):= R;
+      Dad(Rson(P)):= R;
+      if Rson(Dad(P)) = P then
+        Rson(Dad(P)):= R;
+      else
+        Lson(Dad(P)):= R;
       end if;
-    end loop;
+      Dad(P):= Node_Nil; -- remove P
+    end Insert_Node;
 
-    Dad (R):= Dad (P);
-    Lson(R):= Lson(P);
-    Rson(R):= Rson(P);
-    Dad(Lson(P)):= R;
-    Dad(Rson(P)):= R;
-    if Rson(Dad(P)) = P then
-      Rson(Dad(P)):= R;
-    else
-      Lson(Dad(P)):= R;
-    end if;
-    Dad(P):= Node_Nil; -- remove P
-  end Insert_Node;
+    procedure Delete_Node (P: Natural) is
+      Q: Natural;
+    begin
+      if Dad(P) = Node_Nil then  -- unregistered
+        return;
+      end if;
+      if    Rson(P) = Node_Nil then
+        Q:= Lson(P);
+      elsif Lson(P) = Node_Nil then
+        Q:= Rson(P);
+      else
+        Q:= Lson(P);
+        if Rson(Q) /= Node_Nil then
+          loop
+            Q:= Rson(Q);
+            exit when Rson(Q) = Node_Nil;
+          end loop;
+          Rson(Dad(Q)):= Lson(Q);
+          Dad(Lson(Q)):= Dad(Q);
+          Lson(Q):= Lson(P);
+          Dad(Lson(P)):= Q;
+        end if;
+        Rson(Q):= Rson(P);
+        Dad(Rson(P)):= Q;
+      end if;
+      Dad(Q):= Dad(P);
+      if Rson(Dad(P))=P then
+        Rson(Dad(P)):= Q;
+      else
+        Lson(Dad(P)):= Q;
+      end if;
+      Dad(P):= Node_Nil;
+    end Delete_Node;
 
-  procedure Delete_Node (P: Natural) is
-    Q: Natural;
+    package Huffman_E is new Huffman;
+
+    I,R,S,Last_Match_Length: Natural;
+    Len: Integer;
+    C: Byte;
   begin
-    if Dad(P) = Node_Nil then  -- unregistered
+    if not More_bytes then
       return;
     end if;
-    if    Rson(P) = Node_Nil then
-      Q:= Lson(P);
-    elsif Lson(P) = Node_Nil then
-      Q:= Rson(P);
-    else
-      Q:= Lson(P);
-      if Rson(Q) /= Node_Nil then
-        loop
-          Q:= Rson(Q);
-          exit when Rson(Q) = Node_Nil;
-        end loop;
-        Rson(Dad(Q)):= Lson(Q);
-        Dad(Lson(Q)):= Dad(Q);
-        Lson(Q):= Lson(P);
-        Dad(Lson(P)):= Q;
-      end if;
-      Rson(Q):= Rson(P);
-      Dad(Rson(P)):= Q;
-    end if;
-    Dad(Q):= Dad(P);
-    if Rson(Dad(P))=P then
-      Rson(Dad(P)):= Q;
-    else
-      Lson(Dad(P)):= Q;
-    end if;
-    Dad(P):= Node_Nil;
-  end Delete_Node;
-
-  package Huffman_E is new Huffman;
-
-  I,R,S,Last_Match_Length: Natural;
-  Len: Integer;
-  C: Byte;
-begin
-  if not More_bytes then
-    return;
-  end if;
-  Huffman_E.Start;
-  Init_Tree;
-  S:= 0;
-  R:= String_buffer_size - Look_Ahead;
-  Len:= 0;
-  while Len < Look_Ahead and More_bytes loop
-    Text_Buf(R+Len):= Read_byte;
-    Len:= Len + 1;
-  end loop;
-
-  --  Seems: fill dictionary with default value
-  --
-  --  for I in 1.. Look_Ahead loop
-  --    Insert_Node(R - I);
-  --  end loop;
-
-  Insert_Node(R);
-
-  loop
-    if Match_Length > Len then
-      Match_Length:= Len;
-    end if;
-    if Match_Length <= Threshold then
-      Match_Length := 1;
-      Huffman_E.Update_Freq_Tree( Natural(Text_Buf(R)) );
-      Write_byte( Text_Buf(R) );
-    else
-      Write_code(Match_Position+1, Match_Length);
-    end if;
-    Last_Match_Length := Match_Length;
-    I:= 0;
-    while I < Last_Match_Length and More_bytes loop
-      I:= I + 1;
-      Delete_Node(S);
-      C:= Read_byte;
-      Text_Buf(S):= C;
-      if  S < Look_Ahead-1 then
-        Text_Buf(S+String_buffer_size):= C;
-      end if;
-      S:= (S+1) mod String_buffer_size;
-      R:= (R+1) mod String_buffer_size;
-      Insert_Node(R);
+    Huffman_E.Start;
+    Init_Tree;
+    S:= 0;
+    R:= String_buffer_size - Look_Ahead;
+    Len:= 0;
+    while Len < Look_Ahead and More_bytes loop
+      Text_Buf(R+Len):= Read_byte;
+      Len:= Len + 1;
     end loop;
 
-    while I < Last_Match_Length loop
-      I:= I + 1;
-      Delete_Node(S);
-      S := (S+1) mod String_buffer_size;
-      R := (R+1) mod String_buffer_size;
-      Len:= Len - 1;
-      if Len > 0 then
+    --  Seems: fill dictionary with default value
+    --
+    --  for I in 1.. Look_Ahead loop
+    --    Insert_Node(R - I);
+    --  end loop;
+
+    Insert_Node(R);
+
+    loop
+      if Match_Length > Len then
+        Match_Length:= Len;
+      end if;
+      if Match_Length <= Threshold then
+        Match_Length := 1;
+        Huffman_E.Update_Freq_Tree( Natural(Text_Buf(R)) );
+        Write_byte( Text_Buf(R) );
+      else
+        Write_code(Match_Position+1, Match_Length);
+      end if;
+      Last_Match_Length := Match_Length;
+      I:= 0;
+      while I < Last_Match_Length and More_bytes loop
+        I:= I + 1;
+        Delete_Node(S);
+        C:= Read_byte;
+        Text_Buf(S):= C;
+        if  S < Look_Ahead-1 then
+          Text_Buf(S+String_buffer_size):= C;
+        end if;
+        S:= (S+1) mod String_buffer_size;
+        R:= (R+1) mod String_buffer_size;
         Insert_Node(R);
-      end if;
+      end loop;
+
+      while I < Last_Match_Length loop
+        I:= I + 1;
+        Delete_Node(S);
+        S := (S+1) mod String_buffer_size;
+        R := (R+1) mod String_buffer_size;
+        Len:= Len - 1;
+        if Len > 0 then
+          Insert_Node(R);
+        end if;
+      end loop;
+
+      exit when Len=0;
     end loop;
+  end LZ77_using_LZHuf;
+  
+  procedure LZ77_using_Info_Zip is
+    HASH_BITS: constant:= 15;  --  13..15
+    HASH_SIZE: constant:= 2**HASH_BITS;
+    HASH_MASK: constant:= HASH_SIZE-1;
+    WSIZE    : constant Integer:= String_buffer_size;
+    WMASK    : constant Integer:= WSIZE-1;  --  HASH_SIZE and WSIZE must be powers of two
+    NIL      : constant:= 0;  --  Tail of hash chains
+    FAST     : constant:= 4;
+    SLOW     : constant:= 2;  --  speed options for the general purpose bit flag
+    TOO_FAR  : constant:= 4096;  --  Matches of length 3 are discarded if their distance exceeds TOO_FAR
+    --
+    use Interfaces;
+    subtype unsigned is Unsigned_32;  --  !! better, Unsigned_M32
+    subtype ulg is Unsigned_32;
+    subtype ush is Unsigned_32;
+    subtype long is Integer_32;  -- !! Integer_M32
+    subtype int is Integer;
+    --
+    subtype Pos is unsigned;  --  must be at least 32 bits
+    --  subtype IPos is unsigned;
+    --  A Pos is an index in the character window. IPos is used only for parameter passing.
+    window: array(0..2*WSIZE-1) of Byte;
+    --  Sliding window. Input bytes are read into the second half of the window,
+    --  and move to the first half later to keep a dictionary of at least WSIZE
+    --  bytes. With this organization, matches are limited to a distance of
+    --  WSIZE-MAX_MATCH bytes, but this ensures that IO is always
+    --  performed with a length multiple of the block size.
+    prev: array(0..unsigned(WSIZE-1)) of Pos;
+    --  Link to older string with same hash index.
+    --  This link is maintained only for the last 32K strings.
+    --  An index in this array is thus a window index modulo 32K.
+    head: array(0..unsigned(HASH_SIZE-1)) of Pos;
+    --  Heads of the hash chains or NIL.
+    window_size: ulg;
+    --  window size, 2*WSIZE except for MMAP or BIG_MEM, where it is the
+    --  input file length plus MIN_LOOKAHEAD.
+    --  !! need to simplify this
+    block_start: long;
+    --  window position at the beginning of the current output block. Gets
+    --  negative when the window is moved backwards.
+    sliding: Boolean;  --  Set to False when the input file is already in memory  [was: int]
+    ins_h: unsigned;  --  hash index of string to be inserted
+    MIN_MATCH: constant Integer:= Threshold + 1;  --  Deflate: 3
+    MAX_MATCH: constant Integer:= Look_Ahead;     --  Deflate: 258
+    MIN_LOOKAHEAD: constant Integer:= MAX_MATCH + MIN_MATCH + 1;
+    --  Minimum amount of lookahead, except at the end of the input file.
+    MAX_DIST : constant Integer:= WSIZE - MIN_LOOKAHEAD;
+    H_SHIFT: constant Integer:= (HASH_BITS + MIN_MATCH - 1) / MIN_MATCH;
+    --  Number of bits by which ins_h and del_h must be shifted at each
+    --  input step. It must be such that after MIN_MATCH steps, the oldest
+    --  byte no longer takes part in the hash key, that is:
+    --  H_SHIFT * MIN_MATCH >= HASH_BITS
+    prev_length: Natural; --  [was: unsigned]
+    --  Length of the best match at previous step. Matches not greater than this
+    --  are discarded. This is used in the lazy match evaluation.
+    strstart   : Natural;   --  start of string to insert [was: unsigned]
+    match_start: Natural;   --  start of matching string [was: unsigned]
+    eofile     : Boolean;   --  flag set at end of input file [was: int]
+    lookahead  : Natural;   --  number of valid bytes ahead in window  [was: unsigned]
+    max_chain_length : unsigned; 
+    --  To speed up deflation, hash chains are never searched beyond this length.
+    --  A higher limit improves compression ratio but degrades the speed.
+    max_lazy_match: Natural;  --  [was: unsigned]
+    --  Attempt to find a better match only when the current match is strictly
+    --  smaller than this value. This mechanism is used only for compression
+    --  levels >= 4.
+    max_insert_length: Natural renames max_lazy_match;  --  C: a #define ...
+    --  Insert new strings in the hash table only if the match length
+    --  is not greater than this length. This saves time but degrades compression.
+    --  max_insert_length is used only for compression levels <= 3.
+    good_match: Natural;  --  [was: unsigned]
+    --  Use a faster search when the previous match is longer than this
+    nice_match: int;  --  Stop searching when current match exceeds this
+    --  Values for max_lazy_match, good_match, nice_match and max_chain_length,
+    --  depending on the desired pack level (0..9). The values given below have
+    --  been tuned to exclude worst case performance for pathological files.
+    --  Better values may be found for specific files.
+    type config is record
+      good_length  : Integer;  --  reduce lazy search above this match length [was: ush]
+      max_lazy     : Natural;  --  do not perform lazy search above this match length
+      nice_length  : int;      --  quit search above this match length
+      max_chain    : ush;
+    end record;
+    
+    configuration_table: array(0..9) of config:= (
+    --  good lazy nice chain
+        (0,    0,  0,    0),    --  store only
+        (4,    4,  8,    4),    --  maximum speed, no lazy matches
+        (4,    5, 16,    8),
+        (4,    6, 32,   32),
+        (4,    4, 16,   16),    --  lazy matches
+        (8,   16, 32,   32),
+        (8,   16, 128, 128),
+        (8,   32, 128, 256),
+        (32, 128, 258, 1024),
+        (32, 258, 258, 4096));  --  maximum compression
+    
+    --  Update a hash value with the given input byte
+    --  IN  assertion: all calls to to UPDATE_HASH are made with consecutive
+    --     input characters, so that a running hash key can be computed from the
+    --     previous key instead of complete recalculation each time.
+    
+    procedure UPDATE_HASH(h: in out unsigned; c: Byte) is
+    pragma Inline(UPDATE_HASH);
+    begin
+      h := (Shift_Left(h, H_SHIFT) xor unsigned(c)) and HASH_MASK;
+    end UPDATE_HASH;
+    
+    --  Insert string starting at s in the dictionary and set match_head to the previous head
+    --  of the hash chain (the most recent string with same hash key). Return
+    --  the previous length of the hash chain.
+    --  IN  assertion: all calls to to INSERT_STRING are made with consecutive
+    --     input characters and the first MIN_MATCH bytes of s are valid
+    --     (except for the last MIN_MATCH-1 bytes of the input file).
+    
+    procedure INSERT_STRING(s: int; match_head: out Natural) is
+    pragma Inline(INSERT_STRING);
+    begin
+      UPDATE_HASH(ins_h, window((s) + (MIN_MATCH-1)));
+      match_head := Natural(head(ins_h));
+      prev(unsigned(s) and unsigned(WMASK)):= Pos(match_head);
+      head(ins_h) := unsigned(s);
+    end INSERT_STRING;
+    
+    procedure Read_buf(from: Integer; amount: unsigned; actual: out Integer) is
+      need: unsigned:= amount;
+    begin
+      actual:= 0;
+      while need > 0 and then More_bytes loop
+        window(from + actual):= Read_byte;
+        actual:= actual + 1;
+        need:= need - 1;
+      end loop;
+    end Read_buf;
+    
+    procedure Fill_window;
+    
+    --  Initialize the "longest match" routines for a new file
+    --  
+    --  IN assertion: window_size is > 0 if the input file is already read or
+    --     mapped in the window array, 0 otherwise. In the first case,
+    --     window_size is sufficient to contain the whole input file plus
+    --     MIN_LOOKAHEAD bytes (to avoid referencing memory beyond the end
+    --     of window when looking for matches towards the end).
+    
+    procedure lm_init (pack_level: int; flags: out ush) is
+      --  pack_level: 0: store, 1: best speed, 9: best compression
+      --  flags     : general purpose bit flag
+    begin
+      --  Do not slide the window if the whole input is already in memory (window_size > 0)    
+      sliding := False;
+      if window_size = 0 then
+        sliding := True;
+        window_size := 2 * ulg(WSIZE);
+      end if;
+      --  Initialize the hash table.
+      --  prev will be initialized on the fly.
+      head:= (others => NIL);
+      --  Set the default configuration parameters:
+      max_lazy_match   := configuration_table(pack_level).max_lazy;
+      good_match       := configuration_table(pack_level).good_length;
+      nice_match       := configuration_table(pack_level).nice_length;
+      max_chain_length := configuration_table(pack_level).max_chain;
+      if pack_level <= 2 then
+        flags:= flags or FAST;
+      elsif pack_level >= 8 then
+        flags:= flags or SLOW;
+      end if;
+      --  !!  Info-Zip comment: ??? reduce max_chain_length for binary files
+      strstart := 0;
+      block_start := 0;
+      Read_buf(0, unsigned(WSIZE), lookahead);
+      if lookahead = 0 or else not More_bytes then --  transl: lookahead == (unsigned)EOF !!
+        eofile    := True;
+        lookahead := 0;
+        return;
+      end if;
+      eofile := False;
+      --  Make sure that we always have enough lookahead. This is important
+      --  if input comes from a device such as a tty.
+      if lookahead < MIN_LOOKAHEAD then
+        Fill_window;
+      end if;
+      ins_h := 0;
+      for j in 0 .. MIN_MATCH-2 loop
+        UPDATE_HASH(ins_h, window(j));
+      end loop;
+      --  If lookahead < MIN_MATCH, ins_h is garbage, but this is
+      --  not important since only literal bytes will be emitted.
+    end lm_init;
+    
+    --  Set match_start to the longest match starting at the given string and
+    --  return its length. Matches shorter or equal to prev_length are discarded,
+    --  in which case the result is equal to prev_length and match_start is
+    --  garbage.
+    --  IN assertions: cur_match is the head of the hash chain for the current
+    --    string (strstart) and its distance is <= MAX_DIST, and prev_length >= 1
+    
+    procedure Longest_match(cur_match: in out Integer; longest: out int) is 
+      --  cur_match: current match
+      chain_length : unsigned := max_chain_length;  --  max hash chain length
+      scan         : Integer := strstart;           --  current string
+      match        : Integer;                       --  matched string
+      len          : Integer;                       --  length of current match
+      best_len     : Integer := prev_length;        --  best match length so far
+      limit        : Natural;  --  [was: IPos]
+      strend       : constant Integer:= strstart + MAX_MATCH;
+      scan_end     : Integer:= scan + best_len;
+      scan_end1    : Integer:= scan + best_len - 1;
+    begin
+      --  Stop when cur_match becomes <= limit. To simplify the code,
+      --  we prevent matches with the string of window index 0.
+      if strstart > MAX_DIST then
+        limit:= strstart - MAX_DIST;
+      else
+        limit:= NIL;
+      end if;
+      --  The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
+      --  It is easy to get rid of this optimization if necessary.
+      --  Ada: check done at LZ77_using_Info_Zip startup.
+      --
+      --  Do not waste too much time if we already have a good match:
+      if prev_length >= good_match then
+        chain_length := chain_length / 4;
+      end if;
+      --  Assert(strstart <= window_size-MIN_LOOKAHEAD, "insufficient lookahead"); !!
+      loop
+        --  Assert(cur_match < strstart, "no future");
+        match := cur_match;
+        --  Skip to next match if the match length cannot increase
+        --  or if the match length is less than 2:
+        if window(match + best_len)     /= window(scan_end) or else
+           window(match + best_len - 1) /= window(scan_end1) or else
+           window(match)                /= window(scan) or else
+           window(match + 1)            /= window(scan + 1) 
+        then
+          match:= match + 1;  --  C: continue
+        else
+          match:= match + 1;
+          --  The check at best_len-1 can be removed because it will be made
+          --  again later. (This heuristic is not always a win.)
+          --  It is not necessary to compare scan[2] and match[2] since they
+          --  are always equal when the other bytes match, given that
+          --  the hash keys are equal and that HASH_BITS >= 8.
+          scan:= scan + 2;
+          match:= match + 1;
+          --  We check for insufficient lookahead only every 8th comparison;
+          --  the 256th check will be made at strstart + 258.
+          loop
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match);
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match);
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match);
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match);
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match);
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match);
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match);
+            scan:= scan + 1;
+            match:= match + 1;
+            exit when window(scan) /= window(match) or else scan >= strend;
+          end loop;
+          --  Assert(scan <= window+(unsigned)(window_size-1), "wild scan");
+          len := MAX_MATCH - (strend - scan);
+          scan := strend - MAX_MATCH;
+          if len > best_len then
+            match_start := cur_match;
+            best_len := len;
+            exit when len >= nice_match;
+            scan_end1 := scan + best_len - 1;
+            scan_end  := scan + best_len;
+          end if;
+        end if;
+        cur_match := Integer(prev(unsigned(cur_match) and unsigned(WMASK)));
+        exit when cur_match <= limit;
+        chain_length:= chain_length - 1;
+        exit when chain_length = 0;
+      end loop;
+      longest:= best_len;
+    end Longest_match;
+    
+    --  Fill the window when the lookahead becomes insufficient.
+    --  Updates strstart and lookahead, and sets eofile if end of input file.
+    --  
+    --  IN assertion: lookahead < MIN_LOOKAHEAD && strstart + lookahead > 0
+    --  OUT assertions: strstart <= window_size-MIN_LOOKAHEAD
+    --     At least one byte has been read, or eofile is set; file reads are
+    --     performed for at least two bytes (required for the translate_eol option).
 
-    exit when Len=0;
-  end loop;
-
+    procedure Fill_window is
+      more: unsigned;
+      m: Pos;
+      n: Natural;
+    begin
+      loop
+        more:= unsigned(window_size - ulg(lookahead) - ulg(strstart));
+        if False then  --  (more == (unsigned)EOF) ?...
+          --  Very unlikely, but possible on 16 bit machine if strstart == 0
+          --  and lookahead == 1 (input done one byte at time)
+          more:= more - 1;
+        elsif strstart >= WSIZE + MAX_DIST and then sliding then
+          --  By the IN assertion, the window is not empty so we can't confuse
+          --  more == 0 with more == 64K on a 16 bit machine.
+          window(0..WSIZE-1):= window(WSIZE..2*WSIZE-1);
+          match_start := match_start - WSIZE;
+          strstart    := strstart - WSIZE; -- we now have strstart >= MAX_DIST:
+          block_start := block_start - long(WSIZE);
+          for nn in 0 .. unsigned'(HASH_SIZE - 1) loop
+            m := head(nn);
+            if m >= Pos(WSIZE) then
+              head(nn) := m - Pos(WSIZE);
+            else
+              head(nn) := NIL;
+            end if;
+          end loop;
+          --
+          for nn in 0 .. unsigned(WSIZE - 1) loop
+            m := prev(nn);
+            if m >= Pos(WSIZE) then
+              prev(nn) := m - Pos(WSIZE);
+            else
+              prev(nn) := NIL;
+            end if;
+            --  If n is not on any hash chain, prev[n] is garbage but its value will never be used.
+          end loop;
+          more:= more + unsigned(WSIZE);
+          exit when eofile;
+          --  If there was no sliding:
+          --     strstart <= WSIZE+MAX_DIST-1 && lookahead <= MIN_LOOKAHEAD - 1 &&
+          --     more == window_size - lookahead - strstart
+          --  => more >= window_size - (MIN_LOOKAHEAD-1 + WSIZE + MAX_DIST-1)
+          --  => more >= window_size - 2*WSIZE + 2
+          --  In the MMAP or BIG_MEM case (not yet supported in gzip),
+          --    window_size == input_size + MIN_LOOKAHEAD  &&
+          --    strstart + lookahead <= input_size => more >= MIN_LOOKAHEAD.
+          --  Otherwise, window_size == 2*WSIZE so more >= 2.
+          --  If there was sliding, more >= WSIZE. So in all cases, more >= 2.
+          --
+          --  Assert(more >= 2, "more < 2");
+          --
+          Read_buf(strstart + lookahead, more, n);
+          if n = 0 or else not More_bytes then  -- !!  n == (unsigned)EOF)
+            eofile := True;
+          else
+            lookahead := lookahead + n;
+          end if;
+        end if;
+        exit when lookahead >= MIN_LOOKAHEAD or eofile;
+      end loop;
+    end Fill_window;
+    
+    procedure deflate(level: Natural) is
+      hash_head : Natural:= NIL;           --  head of hash chain
+      prev_match: Natural;                 --  previous match  [was: IPos]
+      flush: int;                          --  set if current block must be flushed 
+      match_available: Boolean:= False;    -- set if previous match exists
+      match_length: Natural:= MIN_MATCH-1; -- length of best match
+      max_insert: Natural;
+    begin
+      if level <= 3 then
+        raise Program_Error; -- deflate_fast;
+      end if;
+      --  Process the input block.
+      while lookahead /= 0 loop
+        --  Insert the string window(strstart .. strstart + 2) in the
+        --  dictionary, and set hash_head to the head of the hash chain:
+        if lookahead >= MIN_MATCH then
+          INSERT_STRING(strstart, hash_head);
+        end if;
+        --  Find the longest match, discarding those <= prev_length.
+        prev_length  := match_length;
+        prev_match   := match_start;
+        match_length := MIN_MATCH-1;
+        if hash_head /= NIL and then 
+           prev_length < max_lazy_match and then
+           strstart - hash_head <= MAX_DIST 
+        then
+          --  To simplify the code, we prevent matches with the string
+          --  of window index 0 (in particular we have to avoid a match
+          --  of the string with itself at the start of the input file).
+          --
+          --  Do not look for matches beyond the end of the input.
+          --  This is necessary to make deflate deterministic.
+          if nice_match > lookahead then
+            nice_match := lookahead;
+          end if;
+          longest_match(hash_head, match_length);
+          --  longest_match sets match_start
+          if match_length > lookahead then
+            match_length := lookahead;
+          end if;
+          --  Ignore a length 3 match if it is too distant:
+          if match_length = MIN_MATCH and then strstart - match_start > TOO_FAR then
+            --  If prev_match is also MIN_MATCH, match_start is garbage
+            --  but we will ignore the current match anyway.
+            match_length := MIN_MATCH-1;
+          end if;
+          --  If there was a match at the previous step and the current
+          --  match is not better, output the previous match:
+          if prev_length >= MIN_MATCH and then match_length <= prev_length then
+            max_insert:= strstart + lookahead - MIN_MATCH;
+            --  C: only in DEBUG mode: check_match(strstart-1, prev_match, prev_length);
+            --
+            --  flush = ct_tally(strstart-1-prev_match, prev_length - MIN_MATCH);
+            --  !! DL code here ??
+            --
+            --  Insert in hash table all strings up to the end of the match.
+            --  strstart-1 and strstart are already inserted.
+            lookahead := lookahead - (prev_length-1);
+            prev_length := prev_length - 2;
+            loop
+              strstart:= strstart + 1;
+              if strstart <= max_insert then
+                INSERT_STRING(strstart, hash_head);
+                --  strstart never exceeds WSIZE-MAX_MATCH, so there are
+                --  always MIN_MATCH bytes ahead.
+              end if;
+              prev_length:= prev_length - 1;
+              exit when prev_length = 0;
+            end loop;
+            strstart:= strstart + 1;
+            match_available := False;
+            match_length := MIN_MATCH-1;
+            --   if (flush) FLUSH_BLOCK(0), block_start = strstart;
+          elsif match_available then  --  line 876
+            --  If there was no match at the previous position, output a
+            --  single literal. If there was a match but the current match
+            --  is longer, truncate the previous match to a single literal.
+            
+            -- Seems Literal emission here: !!
+            -- if (ct_tally (0, window[strstart-1])) {
+            --    FLUSH_BLOCK(0), block_start = strstart;
+            -- }
+            strstart:= strstart + 1;
+            lookahead := lookahead - 1;
+          else  --  line 887
+            --  There is no previous match to compare with, wait for the next step to decide.
+            match_available := True;
+            strstart:= strstart + 1;
+            lookahead := lookahead - 1;
+          end if;  --  line 894
+          --  Assert(strstart <= isize && lookahead <= isize, "a bit too far");
+          --
+          --  Make sure that we always have enough lookahead, except
+          --  at the end of the input file. We need MAX_MATCH bytes
+          --  for the next match, plus MIN_MATCH bytes to insert the
+          --  string following the next match.
+          if lookahead < MIN_LOOKAHEAD then
+            Fill_window;
+          end if;
+        end if;
+      end loop;  --  line 903
+      --  if (match_available) ct_tally (0, window[strstart-1]);  !! last literal ?
+      --  return FLUSH_BLOCK(1); /* eof */
+    end deflate;
+    
+    Code_too_clever: exception;
+  begin
+    if HASH_BITS < 8 or MAX_MATCH /= 258 then
+      raise Code_too_clever;
+    end if;
+  end LZ77_using_Info_Zip;
+  
+begin
+  LZ77_using_LZHuf;
 end Zip.LZ77;
