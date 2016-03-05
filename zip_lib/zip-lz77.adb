@@ -1,7 +1,17 @@
 procedure Zip.LZ77 is
 
+  --  There are two LZ77 encoders at choice here:
+  --  1/  LZ77_using_LZHuf, based on LZHuf
+  --  2/  LZ77_using_Info_Zip, based on Info_Zip's Zip's deflate.c which is
+  --       actually the LZ77 part of the compression.
+  --
+  --  Variant 1/ is working since 2009. Two problems: it is slow and not
+  --    well adapted to the Deflate format (mediocre compression).
+  --  Variant 2/ is hopefully faster and better for Deflate (and perhaps
+  --    even Reduce). Added 05-Mar-2016 !! NOT TESTED YET !!
+
   procedure LZ77_using_LZHuf is
-    --  Experimental LZ77 encoder, based on LZHUF by OKUMURA & YOSHIZAKI.
+    --  Based on LZHUF by OKUMURA & YOSHIZAKI.
     --  Here the adaptive Huffman coding is thrown away; algorithm is used only to
     --  find matching patterns.
 
@@ -335,14 +345,13 @@ procedure Zip.LZ77 is
   end LZ77_using_LZHuf;
   
   procedure LZ77_using_Info_Zip is
+    --  Based on deflate.c by Jean-Loup Gailly.
     HASH_BITS: constant:= 15;  --  13..15
     HASH_SIZE: constant:= 2**HASH_BITS;
     HASH_MASK: constant:= HASH_SIZE-1;
     WSIZE    : constant Integer:= String_buffer_size;
     WMASK    : constant Integer:= WSIZE-1;  --  HASH_SIZE and WSIZE must be powers of two
     NIL      : constant:= 0;  --  Tail of hash chains
-    FAST     : constant:= 4;
-    SLOW     : constant:= 2;  --  speed options for the general purpose bit flag
     TOO_FAR  : constant:= 4096;  --  Matches of length 3 are discarded if their distance exceeds TOO_FAR
     --
     use Interfaces;
@@ -400,10 +409,6 @@ procedure Zip.LZ77 is
     --  Attempt to find a better match only when the current match is strictly
     --  smaller than this value. This mechanism is used only for compression
     --  levels >= 4.
-    max_insert_length: Natural renames max_lazy_match;  --  C: a #define ...
-    --  Insert new strings in the hash table only if the match length
-    --  is not greater than this length. This saves time but degrades compression.
-    --  max_insert_length is used only for compression levels <= 3.
     good_match: Natural;  --  [was: unsigned]
     --  Use a faster search when the previous match is longer than this
     nice_match: int;  --  Stop searching when current match exceeds this
@@ -418,7 +423,7 @@ procedure Zip.LZ77 is
       max_chain    : ush;
     end record;
     
-    configuration_table: array(0..9) of config:= (
+    configuration_table: constant array(0..9) of config:= (
     --  good lazy nice chain
         (0,    0,  0,    0),    --  store only
         (4,    4,  8,    4),    --  maximum speed, no lazy matches
@@ -479,7 +484,7 @@ procedure Zip.LZ77 is
     --     MIN_LOOKAHEAD bytes (to avoid referencing memory beyond the end
     --     of window when looking for matches towards the end).
     
-    procedure lm_init (pack_level: int; flags: out ush) is
+    procedure LM_Init (pack_level: int) is
       --  pack_level: 0: store, 1: best speed, 9: best compression
       --  flags     : general purpose bit flag
     begin
@@ -497,11 +502,6 @@ procedure Zip.LZ77 is
       good_match       := configuration_table(pack_level).good_length;
       nice_match       := configuration_table(pack_level).nice_length;
       max_chain_length := configuration_table(pack_level).max_chain;
-      if pack_level <= 2 then
-        flags:= flags or FAST;
-      elsif pack_level >= 8 then
-        flags:= flags or SLOW;
-      end if;
       --  !!  Info-Zip comment: ??? reduce max_chain_length for binary files
       strstart := 0;
       block_start := 0;
@@ -523,7 +523,7 @@ procedure Zip.LZ77 is
       end loop;
       --  If lookahead < MIN_MATCH, ins_h is garbage, but this is
       --  not important since only literal bytes will be emitted.
-    end lm_init;
+    end LM_Init;
     
     --  Set match_start to the longest match starting at the given string and
     --  return its length. Matches shorter or equal to prev_length are discarded,
@@ -697,10 +697,9 @@ procedure Zip.LZ77 is
       end loop;
     end Fill_window;
     
-    procedure deflate(level: Natural) is
+    procedure Deflate_LZ77_part(level: Natural) is
       hash_head : Natural:= NIL;           --  head of hash chain
       prev_match: Natural;                 --  previous match  [was: IPos]
-      flush: int;                          --  set if current block must be flushed 
       match_available: Boolean:= False;    -- set if previous match exists
       match_length: Natural:= MIN_MATCH-1; -- length of best match
       max_insert: Natural;
@@ -718,7 +717,7 @@ procedure Zip.LZ77 is
         --  Find the longest match, discarding those <= prev_length.
         prev_length  := match_length;
         prev_match   := match_start;
-        match_length := MIN_MATCH-1;
+        match_length := MIN_MATCH - 1;
         if hash_head /= NIL and then 
            prev_length < max_lazy_match and then
            strstart - hash_head <= MAX_DIST 
@@ -741,17 +740,15 @@ procedure Zip.LZ77 is
           if match_length = MIN_MATCH and then strstart - match_start > TOO_FAR then
             --  If prev_match is also MIN_MATCH, match_start is garbage
             --  but we will ignore the current match anyway.
-            match_length := MIN_MATCH-1;
+            match_length := MIN_MATCH - 1;
           end if;
           --  If there was a match at the previous step and the current
           --  match is not better, output the previous match:
           if prev_length >= MIN_MATCH and then match_length <= prev_length then
             max_insert:= strstart + lookahead - MIN_MATCH;
             --  C: only in DEBUG mode: check_match(strstart-1, prev_match, prev_length);
-            --
-            --  flush = ct_tally(strstart-1-prev_match, prev_length - MIN_MATCH);
-            --  !! DL code here ??
-            --
+            --  !! Are hash collisions possible ??
+            Write_code(strstart-1-prev_match, prev_length);
             --  Insert in hash table all strings up to the end of the match.
             --  strstart-1 and strstart are already inserted.
             lookahead := lookahead - (prev_length-1);
@@ -760,7 +757,7 @@ procedure Zip.LZ77 is
               strstart:= strstart + 1;
               if strstart <= max_insert then
                 INSERT_STRING(strstart, hash_head);
-                --  strstart never exceeds WSIZE-MAX_MATCH, so there are
+                --  strstart never exceeds WSIZE - MAX_MATCH, so there are
                 --  always MIN_MATCH bytes ahead.
               end if;
               prev_length:= prev_length - 1;
@@ -769,16 +766,11 @@ procedure Zip.LZ77 is
             strstart:= strstart + 1;
             match_available := False;
             match_length := MIN_MATCH-1;
-            --   if (flush) FLUSH_BLOCK(0), block_start = strstart;
           elsif match_available then  --  line 876
             --  If there was no match at the previous position, output a
             --  single literal. If there was a match but the current match
             --  is longer, truncate the previous match to a single literal.
-            
-            -- Seems Literal emission here: !!
-            -- if (ct_tally (0, window[strstart-1])) {
-            --    FLUSH_BLOCK(0), block_start = strstart;
-            -- }
+            Write_byte(window(strstart-1));
             strstart:= strstart + 1;
             lookahead := lookahead - 1;
           else  --  line 887
@@ -798,15 +790,19 @@ procedure Zip.LZ77 is
           end if;
         end if;
       end loop;  --  line 903
-      --  if (match_available) ct_tally (0, window[strstart-1]);  !! last literal ?
-      --  return FLUSH_BLOCK(1); /* eof */
-    end deflate;
+      if match_available then
+        Write_byte(window(strstart-1));
+      end if;
+    end Deflate_LZ77_part;
     
+    level: constant:= 9;  --  !! as parameter
     Code_too_clever: exception;
   begin
-    if HASH_BITS < 8 or MAX_MATCH /= 258 then
+    if MAX_MATCH /= 258 then
       raise Code_too_clever;
     end if;
+    LM_Init(level);
+    Deflate_LZ77_part(level);
   end LZ77_using_Info_Zip;
   
 begin
