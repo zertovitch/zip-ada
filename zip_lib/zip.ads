@@ -345,11 +345,17 @@ package Zip is
 
   function Hexadecimal(x: Interfaces.Unsigned_32) return String;
 
+  --  In case you want to use the Zip.LZ77 compression procedure
+  --  separately, you need to pick an appropriate method
+  --
+  type LZ77_method is
+    (LZHuf, Info_Zip_4, Info_Zip_5, Info_Zip_6, Info_Zip_7, Info_Zip_8, Info_Zip_9);
+
   --------------------------------------------------------------
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "50 preview 7b";
+  version   : constant String:= "50 preview 8a";
   reference : constant String:= "xx-yyy-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^

@@ -556,6 +556,7 @@ is
     procedure My_LZ77 is
       new LZ77(
         String_buffer_size, Look_Ahead, Threshold,
+        LZHuf,
         Read_byte, More_bytes,
         Write_normal_byte, Write_DL_code
       );

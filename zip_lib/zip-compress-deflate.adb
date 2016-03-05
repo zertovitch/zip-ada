@@ -2,12 +2,11 @@
 --  method with some Huffman encoding gymnastics.
 --
 --  To do:
---   - use a better LZ77 compressor, refine the Taillaule algorithm...
+--   - tune / refine the Taillaule algorithm...
 --
 --  Change log:
 -- 
---  20-Feb-2016: (rev.305) Start of (hopefully) smarter techniques for
---                 "Dynamic" encoding (Taillaule algorithm)
+--  20-Feb-2016: (rev.305) Start of smarter techniques for "Dynamic" encoding: Taillaule algorithm
 --   4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
 --  19-Feb-2011: All distance and length codes implemented.
 --  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
@@ -38,7 +37,7 @@ procedure Zip.Compress.Deflate
 is
   use Zip_Streams;
 
-  --  Options. All should be on False for normal use of this package.
+  --  Options for testing. All should be on False for normal use of this procedure.
   
   bypass_LZ77 : constant Boolean:= False;
   trace       : constant Boolean:= False;
@@ -364,8 +363,8 @@ is
     random_data_descriptors: constant Deflate_Huff_descriptors:=
       Build_descriptors( random_data_lit_len, random_data_dis);
 
-    --  Here is the original part in the Taillaule algorithm: use of
-    --  basic topology (metric spaces).
+    --  Here is the original part in the Taillaule algorithm: use of basic
+    --  topology (L1, L2 distances) to check similarities between Huffman code sets.
 
     --  Bit length vector. Convention: 16 is unused bit length (close to the bit length for the
     --  rarest symbols, 15, and far from the bit length for the most frequent symbols, 1).
@@ -1032,7 +1031,7 @@ is
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
     step: constant:= 4096;
-    slider_size: constant:= step;  --  should be <= step
+    slider_size: constant:= step;
     half_slider_size: constant:= slider_size / 2;
     slider_max: constant:= slider_size - 1;
 
@@ -1124,7 +1123,7 @@ is
       case method is
         when Deflate_Fixed =>
           Put_literal_byte(b);  --  Buffering is not needed in this mode
-        when Deflate_1 =>
+        when Taillaule_Deflation_Method =>
           Push((plain_byte, b, 0, 0, (b, others => 0)));
       end case;
     end Put_or_delay_literal_byte;
@@ -1135,7 +1134,7 @@ is
       case method is
         when Deflate_Fixed =>
           Put_DL_code(distance, length);  --  Buffering is not needed in this mode
-        when Deflate_1 =>
+        when Taillaule_Deflation_Method =>
           Push((distance_length, 0, distance, length, expand));
       end case;
     end Put_or_delay_DL_code;
@@ -1240,12 +1239,17 @@ is
       R:= R + 1;
       Put_or_delay_literal_byte(b);
     end LZ77_emits_literal_byte;
-    
+
+    LZ77_choice: constant array(Deflation_Method) of LZ77_method:=
+      (Deflate_Fixed | Deflate_1 => Info_Zip_6,  --  level 6 is the default in Info-Zip's zip.exe
+       others                    => Info_Zip_9);
+
     procedure My_LZ77 is
       new LZ77
         ( String_buffer_size => String_buffer_size,
           Look_Ahead         => Look_Ahead,
           Threshold          => 2,  --  From a string match length > 2, a DL code is sent
+          Method             => LZ77_choice(method),
           Read_byte          => Read_byte,
           More_bytes         => More_bytes,
           Write_byte         => LZ77_emits_literal_byte,
@@ -1299,7 +1303,7 @@ is
         --  We have only one compressed data block, then it is already the last one.
         Put_code(code => 1, code_size => 1);  --  Signals last block
         Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
-      when Deflate_1 =>
+      when Taillaule_Deflation_Method =>
         null;  --  No start data sent, all is delayed
     end case;
     if bypass_LZ77 then
@@ -1314,7 +1318,7 @@ is
     case method is
       when Deflate_Fixed =>
         Put_code(descr.lit_len(End_Of_Block));
-      when Deflate_1 =>
+      when Taillaule_Deflation_Method =>
         if lz_buffer_index * 2 = 0 then  --  Already flushed at latest Push, or empty data
           if block_to_finish and then last_block_type in fixed .. dynamic then
             Put_code(descr.lit_len(End_Of_Block));

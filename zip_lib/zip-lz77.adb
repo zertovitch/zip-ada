@@ -1,14 +1,18 @@
 procedure Zip.LZ77 is
 
   --  There are two LZ77 encoders at choice here:
-  --  1/  LZ77_using_LZHuf, based on LZHuf
-  --  2/  LZ77_using_Info_Zip, based on Info_Zip's Zip's deflate.c which is
-  --       actually the LZ77 part of the compression.
+  --    1/  LZ77_using_LZHuf, based on LZHuf
+  --    2/  LZ77_using_Info_Zip, based on Info-Zip's Zip's deflate.c which is
+  --          actually the LZ77 part of the compression.
   --
   --  Variant 1/ is working since 2009. Two problems: it is slow and not
-  --    well adapted to the Deflate format (mediocre compression).
+  --     well adapted to the Deflate format (mediocre compression).
   --  Variant 2/ is hopefully faster and better for Deflate (and perhaps
-  --    even Reduce). Added 05-Mar-2016 !! NOT TESTED YET !!
+  --     even Reduce). Added 05-Mar-2016
+
+  -----------------------
+  --  LZHuf algorithm  --
+  -----------------------
 
   procedure LZ77_using_LZHuf is
     --  Based on LZHUF by OKUMURA & YOSHIZAKI.
@@ -344,7 +348,15 @@ procedure Zip.LZ77 is
     end loop;
   end LZ77_using_LZHuf;
   
-  procedure LZ77_using_Info_Zip is
+  --------------------------
+  --  Info-Zip algorithm  --
+  --------------------------
+
+  subtype Info_Zip_pack_level is Integer range 4 .. 9;
+  --  0: store, 1: best speed, 9: best compression
+  --  Here only levels 4 to 9 are supported.
+
+  procedure LZ77_using_Info_Zip(level: Info_Zip_pack_level) is
     --  Based on deflate.c by Jean-Loup Gailly.
     HASH_BITS: constant:= 15;  --  13..15
     HASH_SIZE: constant:= 2**HASH_BITS;
@@ -355,8 +367,8 @@ procedure Zip.LZ77 is
     TOO_FAR  : constant:= 4096;  --  Matches of length 3 are discarded if their distance exceeds TOO_FAR
     --
     use Interfaces;
-    subtype unsigned is Unsigned_32;  --  !! better, Unsigned_M32
-    subtype ulg is Unsigned_32;
+    subtype ulg is Unsigned_32; --  !! better, Unsigned_M32
+    subtype unsigned is Unsigned_32;  --  !! better, Unsigned_M16
     subtype ush is Unsigned_32;
     subtype long is Integer_32;  -- !! Integer_M32
     subtype int is Integer;
@@ -466,15 +478,86 @@ procedure Zip.LZ77 is
     procedure Read_buf(from: Integer; amount: unsigned; actual: out Integer) is
       need: unsigned:= amount;
     begin
+      --  put_line("Read buffer: from:" & from'img & ";  amount:" & amount'img);
       actual:= 0;
       while need > 0 and then More_bytes loop
         window(from + actual):= Read_byte;
         actual:= actual + 1;
         need:= need - 1;
       end loop;
+      --  put_line("Read buffer: actual:" & actual'img);
     end Read_buf;
     
-    procedure Fill_window;
+    --  Fill the window when the lookahead becomes insufficient.
+    --  Updates strstart and lookahead, and sets eofile if end of input file.
+    --  
+    --  IN assertion: lookahead < MIN_LOOKAHEAD && strstart + lookahead > 0
+    --  OUT assertions: strstart <= window_size-MIN_LOOKAHEAD
+    --     At least one byte has been read, or eofile is set; file reads are
+    --     performed for at least two bytes (required for the translate_eol option).
+
+    procedure Fill_window is
+      more: unsigned;
+      m: Pos;
+      n: Natural;
+    begin
+      loop
+        more:= unsigned(window_size - ulg(lookahead) - ulg(strstart));
+        if False then  --  (more == (unsigned)EOF) ?... Seems a 16-bit code for EOF
+          --  Very unlikely, but possible on 16 bit machine if strstart == 0
+          --  and lookahead == 1 (input done one byte at time)
+          more:= more - 1;
+        elsif strstart >= WSIZE + MAX_DIST and then sliding then
+          --  By the IN assertion, the window is not empty so we can't confuse
+          --  more == 0 with more == 64K on a 16 bit machine.
+          window(0..WSIZE-1):= window(WSIZE..2*WSIZE-1);
+          match_start := match_start - WSIZE;
+          strstart    := strstart - WSIZE; -- we now have strstart >= MAX_DIST:
+          block_start := block_start - long(WSIZE);
+          for nn in 0 .. unsigned'(HASH_SIZE - 1) loop
+            m := head(nn);
+            if m >= Pos(WSIZE) then
+              head(nn) := m - Pos(WSIZE);
+            else
+              head(nn) := NIL;
+            end if;
+          end loop;
+          --
+          for nn in 0 .. unsigned(WSIZE - 1) loop
+            m := prev(nn);
+            if m >= Pos(WSIZE) then
+              prev(nn) := m - Pos(WSIZE);
+            else
+              prev(nn) := NIL;
+            end if;
+            --  If n is not on any hash chain, prev[n] is garbage but its value will never be used.
+          end loop;
+          more:= more + unsigned(WSIZE);
+        end if;
+        exit when eofile;
+        --  If there was no sliding:
+        --     strstart <= WSIZE+MAX_DIST-1 && lookahead <= MIN_LOOKAHEAD - 1 &&
+        --     more == window_size - lookahead - strstart
+        --  => more >= window_size - (MIN_LOOKAHEAD-1 + WSIZE + MAX_DIST-1)
+        --  => more >= window_size - 2*WSIZE + 2
+        --  In the MMAP or BIG_MEM case (not yet supported in gzip),
+        --    window_size == input_size + MIN_LOOKAHEAD  &&
+        --    strstart + lookahead <= input_size => more >= MIN_LOOKAHEAD.
+        --  Otherwise, window_size == 2*WSIZE so more >= 2.
+        --  If there was sliding, more >= WSIZE. So in all cases, more >= 2.
+        --
+        --  Assert(more >= 2, "more < 2");
+        --
+        Read_buf(strstart + lookahead, more, n);
+        if n = 0 then
+          eofile := True;
+        else
+          lookahead := lookahead + n;
+        end if;
+        exit when lookahead >= MIN_LOOKAHEAD or eofile;
+      end loop;
+      --  put_line("Fill done - eofile = " & eofile'img);
+    end Fill_window;
     
     --  Initialize the "longest match" routines for a new file
     --  
@@ -484,9 +567,7 @@ procedure Zip.LZ77 is
     --     MIN_LOOKAHEAD bytes (to avoid referencing memory beyond the end
     --     of window when looking for matches towards the end).
     
-    procedure LM_Init (pack_level: int) is
-      --  pack_level: 0: store, 1: best speed, 9: best compression
-      --  flags     : general purpose bit flag
+    procedure LM_Init (pack_level: Info_Zip_pack_level) is
     begin
       --  Do not slide the window if the whole input is already in memory (window_size > 0)    
       sliding := False;
@@ -506,9 +587,8 @@ procedure Zip.LZ77 is
       strstart := 0;
       block_start := 0;
       Read_buf(0, unsigned(WSIZE), lookahead);
-      if lookahead = 0 or else not More_bytes then --  transl: lookahead == (unsigned)EOF !!
-        eofile    := True;
-        lookahead := 0;
+      if lookahead = 0 then
+        eofile := True;
         return;
       end if;
       eofile := False;
@@ -532,7 +612,7 @@ procedure Zip.LZ77 is
     --  IN assertions: cur_match is the head of the hash chain for the current
     --    string (strstart) and its distance is <= MAX_DIST, and prev_length >= 1
     
-    procedure Longest_match(cur_match: in out Integer; longest: out int) is 
+    procedure Longest_Match(cur_match: in out Integer; longest: out int) is 
       --  cur_match: current match
       chain_length : unsigned := max_chain_length;  --  max hash chain length
       scan         : Integer := strstart;           --  current string
@@ -625,85 +705,16 @@ procedure Zip.LZ77 is
         exit when chain_length = 0;
       end loop;
       longest:= best_len;
-    end Longest_match;
+    end Longest_Match;
     
-    --  Fill the window when the lookahead becomes insufficient.
-    --  Updates strstart and lookahead, and sets eofile if end of input file.
-    --  
-    --  IN assertion: lookahead < MIN_LOOKAHEAD && strstart + lookahead > 0
-    --  OUT assertions: strstart <= window_size-MIN_LOOKAHEAD
-    --     At least one byte has been read, or eofile is set; file reads are
-    --     performed for at least two bytes (required for the translate_eol option).
-
-    procedure Fill_window is
-      more: unsigned;
-      m: Pos;
-      n: Natural;
-    begin
-      loop
-        more:= unsigned(window_size - ulg(lookahead) - ulg(strstart));
-        if False then  --  (more == (unsigned)EOF) ?...
-          --  Very unlikely, but possible on 16 bit machine if strstart == 0
-          --  and lookahead == 1 (input done one byte at time)
-          more:= more - 1;
-        elsif strstart >= WSIZE + MAX_DIST and then sliding then
-          --  By the IN assertion, the window is not empty so we can't confuse
-          --  more == 0 with more == 64K on a 16 bit machine.
-          window(0..WSIZE-1):= window(WSIZE..2*WSIZE-1);
-          match_start := match_start - WSIZE;
-          strstart    := strstart - WSIZE; -- we now have strstart >= MAX_DIST:
-          block_start := block_start - long(WSIZE);
-          for nn in 0 .. unsigned'(HASH_SIZE - 1) loop
-            m := head(nn);
-            if m >= Pos(WSIZE) then
-              head(nn) := m - Pos(WSIZE);
-            else
-              head(nn) := NIL;
-            end if;
-          end loop;
-          --
-          for nn in 0 .. unsigned(WSIZE - 1) loop
-            m := prev(nn);
-            if m >= Pos(WSIZE) then
-              prev(nn) := m - Pos(WSIZE);
-            else
-              prev(nn) := NIL;
-            end if;
-            --  If n is not on any hash chain, prev[n] is garbage but its value will never be used.
-          end loop;
-          more:= more + unsigned(WSIZE);
-          exit when eofile;
-          --  If there was no sliding:
-          --     strstart <= WSIZE+MAX_DIST-1 && lookahead <= MIN_LOOKAHEAD - 1 &&
-          --     more == window_size - lookahead - strstart
-          --  => more >= window_size - (MIN_LOOKAHEAD-1 + WSIZE + MAX_DIST-1)
-          --  => more >= window_size - 2*WSIZE + 2
-          --  In the MMAP or BIG_MEM case (not yet supported in gzip),
-          --    window_size == input_size + MIN_LOOKAHEAD  &&
-          --    strstart + lookahead <= input_size => more >= MIN_LOOKAHEAD.
-          --  Otherwise, window_size == 2*WSIZE so more >= 2.
-          --  If there was sliding, more >= WSIZE. So in all cases, more >= 2.
-          --
-          --  Assert(more >= 2, "more < 2");
-          --
-          Read_buf(strstart + lookahead, more, n);
-          if n = 0 or else not More_bytes then  -- !!  n == (unsigned)EOF)
-            eofile := True;
-          else
-            lookahead := lookahead + n;
-          end if;
-        end if;
-        exit when lookahead >= MIN_LOOKAHEAD or eofile;
-      end loop;
-    end Fill_window;
-    
-    procedure Deflate_LZ77_part(level: Natural) is
+    procedure Deflate_LZ77_part(level: Info_Zip_pack_level) is
       hash_head : Natural:= NIL;           --  head of hash chain
       prev_match: Natural;                 --  previous match  [was: IPos]
       match_available: Boolean:= False;    -- set if previous match exists
       match_length: Natural:= MIN_MATCH-1; -- length of best match
       max_insert: Natural;
     begin
+      match_start:= 0;  --  NB: no initialization in deflate.c
       if level <= 3 then
         raise Program_Error; -- deflate_fast;
       end if;
@@ -731,8 +742,8 @@ procedure Zip.LZ77 is
           if nice_match > lookahead then
             nice_match := lookahead;
           end if;
-          longest_match(hash_head, match_length);
-          --  longest_match sets match_start
+          Longest_Match(hash_head, match_length);
+          --  Longest_Match sets match_start
           if match_length > lookahead then
             match_length := lookahead;
           end if;
@@ -742,52 +753,52 @@ procedure Zip.LZ77 is
             --  but we will ignore the current match anyway.
             match_length := MIN_MATCH - 1;
           end if;
-          --  If there was a match at the previous step and the current
-          --  match is not better, output the previous match:
-          if prev_length >= MIN_MATCH and then match_length <= prev_length then
-            max_insert:= strstart + lookahead - MIN_MATCH;
-            --  C: only in DEBUG mode: check_match(strstart-1, prev_match, prev_length);
-            --  !! Are hash collisions possible ??
-            Write_code(strstart-1-prev_match, prev_length);
-            --  Insert in hash table all strings up to the end of the match.
-            --  strstart-1 and strstart are already inserted.
-            lookahead := lookahead - (prev_length-1);
-            prev_length := prev_length - 2;
-            loop
-              strstart:= strstart + 1;
-              if strstart <= max_insert then
-                INSERT_STRING(strstart, hash_head);
-                --  strstart never exceeds WSIZE - MAX_MATCH, so there are
-                --  always MIN_MATCH bytes ahead.
-              end if;
-              prev_length:= prev_length - 1;
-              exit when prev_length = 0;
-            end loop;
+        end if;
+        --  If there was a match at the previous step and the current
+        --  match is not better, output the previous match:
+        if prev_length >= MIN_MATCH and then match_length <= prev_length then
+          max_insert:= strstart + lookahead - MIN_MATCH;
+          --  C: only in DEBUG mode: check_match(strstart-1, prev_match, prev_length);
+          --  !! Are hash collisions possible ??
+          Write_code(strstart-1-prev_match, prev_length);
+          --  Insert in hash table all strings up to the end of the match.
+          --  strstart-1 and strstart are already inserted.
+          lookahead := lookahead - (prev_length-1);
+          prev_length := prev_length - 2;
+          loop
             strstart:= strstart + 1;
-            match_available := False;
-            match_length := MIN_MATCH-1;
-          elsif match_available then  --  line 876
-            --  If there was no match at the previous position, output a
-            --  single literal. If there was a match but the current match
-            --  is longer, truncate the previous match to a single literal.
-            Write_byte(window(strstart-1));
-            strstart:= strstart + 1;
-            lookahead := lookahead - 1;
-          else  --  line 887
-            --  There is no previous match to compare with, wait for the next step to decide.
-            match_available := True;
-            strstart:= strstart + 1;
-            lookahead := lookahead - 1;
-          end if;  --  line 894
-          --  Assert(strstart <= isize && lookahead <= isize, "a bit too far");
-          --
-          --  Make sure that we always have enough lookahead, except
-          --  at the end of the input file. We need MAX_MATCH bytes
-          --  for the next match, plus MIN_MATCH bytes to insert the
-          --  string following the next match.
-          if lookahead < MIN_LOOKAHEAD then
-            Fill_window;
-          end if;
+            if strstart <= max_insert then
+              INSERT_STRING(strstart, hash_head);
+              --  strstart never exceeds WSIZE - MAX_MATCH, so there are
+              --  always MIN_MATCH bytes ahead.
+            end if;
+            prev_length:= prev_length - 1;
+            exit when prev_length = 0;
+          end loop;
+          strstart:= strstart + 1;
+          match_available := False;
+          match_length := MIN_MATCH-1;
+        elsif match_available then  --  line 876
+          --  If there was no match at the previous position, output a
+          --  single literal. If there was a match but the current match
+          --  is longer, truncate the previous match to a single literal.
+          Write_byte(window(strstart-1));
+          strstart:= strstart + 1;
+          lookahead := lookahead - 1;
+        else  --  line 887
+          --  There is no previous match to compare with, wait for the next step to decide.
+          match_available := True;
+          strstart:= strstart + 1;
+          lookahead := lookahead - 1;
+        end if;  --  line 894
+        --  Assert(strstart <= isize && lookahead <= isize, "a bit too far");
+        --
+        --  Make sure that we always have enough lookahead, except
+        --  at the end of the input file. We need MAX_MATCH bytes
+        --  for the next match, plus MIN_MATCH bytes to insert the
+        --  string following the next match.
+        if lookahead < MIN_LOOKAHEAD then
+          Fill_window;
         end if;
       end loop;  --  line 903
       if match_available then
@@ -795,16 +806,21 @@ procedure Zip.LZ77 is
       end if;
     end Deflate_LZ77_part;
     
-    level: constant:= 9;  --  !! as parameter
-    Code_too_clever: exception;
+    Code_too_clever_MAX_MATCH_should_be_258: exception;
   begin
     if MAX_MATCH /= 258 then
-      raise Code_too_clever;
+      raise Code_too_clever_MAX_MATCH_should_be_258;
     end if;
+    window_size:= 0;
     LM_Init(level);
     Deflate_LZ77_part(level);
   end LZ77_using_Info_Zip;
   
 begin
-  LZ77_using_LZHuf;
+  case method is
+    when LZHuf =>
+      LZ77_using_LZHuf;
+    when Info_Zip_4 .. Info_Zip_9 =>
+      LZ77_using_Info_Zip( 4 + LZ77_method'Pos(method) -  LZ77_method'Pos(Info_Zip_4) );
+  end case;
 end Zip.LZ77;

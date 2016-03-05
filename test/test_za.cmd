@@ -23,10 +23,10 @@ REM zipada -er2 test_zar2 %files%
 REM zipada -er3 test_zar3 %files%
 REM zipada -er4 test_zar4 %files%
 zipada -ed1 test_zad1 %files%
+zipada -ed2 test_zad2 %files%
 zipada -edf test_zadf %files%
 zip    -1   test_ifz1 %files%
-zip    -4   test_ifz4 %files%
-zip    -5   test_ifz5 %files%
+zip    -6   test_ifz6 %files%
 zip    -9   test_ifz9 %files%
 kzip        test_kzip %files%
 
@@ -48,12 +48,13 @@ dir /OS test_za??.zip test_ifz?.zip test_kzip.zip |find ".zip" >test_za_%nice_da
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.
-REM comp_zip test_zash test_ifz9
+comp_zip test_zash test_ifz9
 REM comp_zip test_zash test_zar1
 REM comp_zip test_zash test_zar2
 REM comp_zip test_zash test_zar3
 REM comp_zip test_zash test_zar4
-REM comp_zip test_zash test_zadf
+comp_zip test_zash test_zadf
 comp_zip test_zash test_zad1
+comp_zip test_zash test_zad2
 
 pause

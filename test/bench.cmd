@@ -29,10 +29,13 @@ rem   ### LZMA
 7z a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma *
 
 :skip
+if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 zipada -edf ../bench_%1_deflate_f *
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 zipada -ed1 ../bench_%1_deflate_1 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_1_%1.zcd
+zipada -ed2 ../bench_%1_deflate_2 *
+if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_2_%1.zcd
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 
 cd ..
