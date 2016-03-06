@@ -105,6 +105,7 @@ procedure LZMA_Enc is
     procedure My_LZ77 is
       new Zip.LZ77(
         String_buffer_size, Look_Ahead, Threshold,
+        Zip.IZ_9,
         Read_byte, More_bytes,
         Write_literal_byte, Write_DL_code
       );

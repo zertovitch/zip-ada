@@ -11,6 +11,7 @@ del *.3
 del *.tmp
 del *.adt
 del $test.*
+del *.lz77
 
 cd zip_lib
 del *.ali
@@ -44,6 +45,7 @@ if exist binana.zip   del binana.zip
 del *.zcd
 del *.log
 del *.bak
+del *.lz77
 
 cd ..
 

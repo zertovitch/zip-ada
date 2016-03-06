@@ -1,4 +1,4 @@
---  The "Deflate" method combines the LZ77 compression
+--  The "Deflate" method combines a LZ77 compression
 --  method with some Huffman encoding gymnastics.
 --
 --  To do:
@@ -8,6 +8,7 @@
 -- 
 --  20-Feb-2016: (rev.305) Start of smarter techniques for "Dynamic" encoding: Taillaule algorithm
 --   4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
+--
 --  19-Feb-2011: All distance and length codes implemented.
 --  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
 --  17-Feb-2011: Created.
@@ -845,10 +846,9 @@ is
       end loop;
     end Put_LZ_buffer;
 
-    --  Send a LZ buffer completely decoded
+    --  Send a LZ buffer completely decoded as literals
     procedure Expand_LZ_buffer(lzb: LZ_buffer_type) is
       b1, b2: Byte;
-      --  K: Text_buffer_index;
       to_be_sent: Natural:= 0;  
       --  to_be_sent is not always equal to lzb'Length: sometimes you have a DL code
     begin
@@ -913,8 +913,8 @@ is
 
     --  Send_as_block.
     --  lzb (can be a slice of the principal buffer) will be sent as:
-    --       * a new "dynamic" block, first with a compression structure header
-    --   or  * the continuation of preceding "dynamic" block
+    --       * a new "dynamic" block, preceded by a compression structure header
+    --   or  * the continuation of previous "dynamic" block
     --   or  * a new "fixed" block, if lz data are close enough to the "fixed" descriptor
     --   or  * a new "stored" block, if lz data are random enough
     
@@ -981,11 +981,11 @@ is
       end Send_dynamic_block;
       -- Experimental values - more or less optimal for LZ_buffer_size = n ...
       -- opti_rand_2048    : constant:= 120;
-      -- opti_merge_2048   : constant:= 25;  --  merge stats, not blocks so far
+      -- opti_merge_2048   : constant:= 25;  --  merge stats, not blocks
       -- opti_recy_2048    : constant:= 250;
       -- opti_fix_2048     : constant:= 20;
       opti_rand_8192    : constant:= 333;
-      opti_merge_8192   : constant:= 0;  --  merge stats, not blocks so far
+      opti_merge_8192   : constant:= 0;  --  merge stats, not blocks
       opti_recy_8192    : constant:= 40;
       opti_fix_8192     : constant:= 0;
       opti_size_fix     : constant:= 111;
@@ -1007,7 +1007,7 @@ is
       then
         Send_fixed_block;
       elsif last_block_type = dynamic and then 
-            Similar(new_descr, descr, L1, opti_merge_8192, "Compare to previous, for merging")
+            Similar(new_descr, descr, L1, opti_merge_8192, "Compare to previous, for stats merging")
       then
         Send_dynamic_block(merge => True);  
         --  Similar: we merge statistics. Not optimal for this block, but helps further recycling
@@ -1030,8 +1030,10 @@ is
     past_lz_data: Boolean:= False;
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
+    --  !! Constants to be tuned...
     step: constant:= 4096;
-    slider_size: constant:= step;
+    slider_size: constant:= 4096;
+    --
     half_slider_size: constant:= slider_size / 2;
     slider_max: constant:= slider_size - 1;
 
@@ -1049,7 +1051,7 @@ is
       else
         start:= from;  --  Cannot have past data
       end if;
-      if start > from then  --  Looped over (mod n), slider data are in two chunks in main buffer
+      if start > from then  --  Looped over, (mod n). Slider data are in two chunks in main buffer
         --  put_line(from'img & to'img & start'img);
         declare
           copy_from: LZ_buffer_index_type:= start;
@@ -1061,7 +1063,7 @@ is
           end loop;
           initial_hd:= Optimal_descriptors(copy);
         end;
-        --  Concatenation bombs with a Range Check error:
+        --  Concatenation instead of above loop bombs with a Range Check error:
         --  lz_buffer(start .. lz_buffer'Last) &
         --  lz_buffer(0 .. start + LZ_buffer_index_type(slider_max))
       else
@@ -1241,8 +1243,8 @@ is
     end LZ77_emits_literal_byte;
 
     LZ77_choice: constant array(Deflation_Method) of LZ77_method:=
-      (Deflate_Fixed | Deflate_1 => Info_Zip_6,  --  level 6 is the default in Info-Zip's zip.exe
-       others                    => Info_Zip_9);
+      (Deflate_Fixed | Deflate_1 => IZ_6,  --  level 6 is the default in Info-Zip's zip.exe
+       others                    => IZ_9);
 
     procedure My_LZ77 is
       new LZ77
@@ -1256,8 +1258,8 @@ is
           Write_code         => LZ77_emits_DL_code 
         );
 
-    --  The following is for comparing different LZ77 variants and see how well they
-    --  combine with the rest of our Deflate algorithm above.
+    --  The following is for research purposes: compare different LZ77 variants and see
+    --  how well they combine with the rest of our Deflate algorithm above.
 
     procedure Read_LZ77_codes is
       LZ77_dump : File_Type;

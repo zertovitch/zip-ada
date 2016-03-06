@@ -348,8 +348,7 @@ package Zip is
   --  In case you want to use the Zip.LZ77 compression procedure
   --  separately, you need to pick an appropriate method
   --
-  type LZ77_method is
-    (LZHuf, Info_Zip_4, Info_Zip_5, Info_Zip_6, Info_Zip_7, Info_Zip_8, Info_Zip_9);
+  type LZ77_method is (LZHuf, IZ_4, IZ_5, IZ_6, IZ_7, IZ_8, IZ_9);
 
   --------------------------------------------------------------
   -- Information about this package - e.g. for an "about" box --

@@ -2,12 +2,12 @@ procedure Zip.LZ77 is
 
   --  There are two LZ77 encoders at choice here:
   --    1/  LZ77_using_LZHuf, based on LZHuf
-  --    2/  LZ77_using_Info_Zip, based on Info-Zip's Zip's deflate.c which is
+  --    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c which is
   --          actually the LZ77 part of the compression.
   --
   --  Variant 1/ is working since 2009. Two problems: it is slow and not
   --     well adapted to the Deflate format (mediocre compression).
-  --  Variant 2/ is hopefully faster and better for Deflate (and perhaps
+  --  Variant 2/ is much faster, and better for Deflate (and perhaps
   --     even Reduce). Added 05-Mar-2016
 
   -----------------------
@@ -16,8 +16,8 @@ procedure Zip.LZ77 is
 
   procedure LZ77_using_LZHuf is
     --  Based on LZHUF by OKUMURA & YOSHIZAKI.
-    --  Here the adaptive Huffman coding is thrown away; algorithm is used only to
-    --  find matching patterns.
+    --  Here the adaptive Huffman coding is thrown away:
+    --  algorithm is used only to find matching patterns.
 
     N_Char    : constant Integer:= 256-Threshold+Look_Ahead;
     -- Character code (= 0..N_CHAR-1)
@@ -352,11 +352,11 @@ procedure Zip.LZ77 is
   --  Info-Zip algorithm  --
   --------------------------
 
-  subtype Info_Zip_pack_level is Integer range 4 .. 9;
+  subtype IZ_pack_level is Integer range 4 .. 9;
   --  0: store, 1: best speed, 9: best compression
   --  Here only levels 4 to 9 are supported.
 
-  procedure LZ77_using_Info_Zip(level: Info_Zip_pack_level) is
+  procedure LZ77_using_IZ(level: IZ_pack_level) is
     --  Based on deflate.c by Jean-Loup Gailly.
     HASH_BITS: constant:= 15;  --  13..15
     HASH_SIZE: constant:= 2**HASH_BITS;
@@ -567,7 +567,7 @@ procedure Zip.LZ77 is
     --     MIN_LOOKAHEAD bytes (to avoid referencing memory beyond the end
     --     of window when looking for matches towards the end).
     
-    procedure LM_Init (pack_level: Info_Zip_pack_level) is
+    procedure LM_Init (pack_level: IZ_pack_level) is
     begin
       --  Do not slide the window if the whole input is already in memory (window_size > 0)    
       sliding := False;
@@ -609,11 +609,10 @@ procedure Zip.LZ77 is
     --  return its length. Matches shorter or equal to prev_length are discarded,
     --  in which case the result is equal to prev_length and match_start is
     --  garbage.
-    --  IN assertions: cur_match is the head of the hash chain for the current
+    --  IN assertions: current_match is the head of the hash chain for the current
     --    string (strstart) and its distance is <= MAX_DIST, and prev_length >= 1
     
-    procedure Longest_Match(cur_match: in out Integer; longest: out int) is 
-      --  cur_match: current match
+    procedure Longest_Match(current_match: in out Integer; longest: out int) is 
       chain_length : unsigned := max_chain_length;  --  max hash chain length
       scan         : Integer := strstart;           --  current string
       match        : Integer;                       --  matched string
@@ -624,7 +623,7 @@ procedure Zip.LZ77 is
       scan_end     : Integer:= scan + best_len;
       scan_end1    : Integer:= scan + best_len - 1;
     begin
-      --  Stop when cur_match becomes <= limit. To simplify the code,
+      --  Stop when current_match becomes <= limit. To simplify the code,
       --  we prevent matches with the string of window index 0.
       if strstart > MAX_DIST then
         limit:= strstart - MAX_DIST;
@@ -633,7 +632,7 @@ procedure Zip.LZ77 is
       end if;
       --  The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
       --  It is easy to get rid of this optimization if necessary.
-      --  Ada: check done at LZ77_using_Info_Zip startup.
+      --  Ada: check done at LZ77_using_IZ startup.
       --
       --  Do not waste too much time if we already have a good match:
       if prev_length >= good_match then
@@ -641,21 +640,21 @@ procedure Zip.LZ77 is
       end if;
       --  Assert(strstart <= window_size-MIN_LOOKAHEAD, "insufficient lookahead"); !!
       loop
-        --  Assert(cur_match < strstart, "no future");
-        match := cur_match;
+        --  Assert(current_match < strstart, "no future");
+        match := current_match;
         --  Skip to next match if the match length cannot increase
         --  or if the match length is less than 2:
         if window(match + best_len)     /= window(scan_end) or else
            window(match + best_len - 1) /= window(scan_end1) or else
            window(match)                /= window(scan) or else
-           window(match + 1)            /= window(scan + 1) 
+           window(match + 1)            /= window(scan + 1)
         then
           match:= match + 1;  --  C: continue
         else
           match:= match + 1;
           --  The check at best_len-1 can be removed because it will be made
           --  again later. (This heuristic is not always a win.)
-          --  It is not necessary to compare scan[2] and match[2] since they
+          --  It is not necessary to compare window(scan + 2) and window(match + 2) since they
           --  are always equal when the other bytes match, given that
           --  the hash keys are equal and that HASH_BITS >= 8.
           scan:= scan + 2;
@@ -692,32 +691,31 @@ procedure Zip.LZ77 is
           len := MAX_MATCH - (strend - scan);
           scan := strend - MAX_MATCH;
           if len > best_len then
-            match_start := cur_match;
+            match_start := current_match;
             best_len := len;
             exit when len >= nice_match;
             scan_end1 := scan + best_len - 1;
             scan_end  := scan + best_len;
           end if;
         end if;
-        cur_match := Integer(prev(unsigned(cur_match) and unsigned(WMASK)));
-        exit when cur_match <= limit;
+        current_match := Integer(prev(unsigned(current_match) and unsigned(WMASK)));
+        exit when current_match <= limit;
         chain_length:= chain_length - 1;
         exit when chain_length = 0;
       end loop;
       longest:= best_len;
     end Longest_Match;
     
-    procedure Deflate_LZ77_part(level: Info_Zip_pack_level) is
-      hash_head : Natural:= NIL;           --  head of hash chain
-      prev_match: Natural;                 --  previous match  [was: IPos]
-      match_available: Boolean:= False;    -- set if previous match exists
-      match_length: Natural:= MIN_MATCH-1; -- length of best match
+    procedure LZ77_part_of_IZ_Deflate is
+      hash_head : Natural:= NIL;              --  head of hash chain
+      prev_match: Natural;                    --  previous match  [was: IPos]
+      match_available: Boolean:= False;       --  set if previous match exists
+      match_length: Natural:= MIN_MATCH - 1;  --  length of best match
       max_insert: Natural;
     begin
       match_start:= 0;  --  NB: no initialization in deflate.c
-      if level <= 3 then
-        raise Program_Error; -- deflate_fast;
-      end if;
+      --  NB: level <= 3 would call deflate_fast;
+      --
       --  Process the input block.
       while lookahead /= 0 loop
         --  Insert the string window(strstart .. strstart + 2) in the
@@ -758,8 +756,7 @@ procedure Zip.LZ77 is
         --  match is not better, output the previous match:
         if prev_length >= MIN_MATCH and then match_length <= prev_length then
           max_insert:= strstart + lookahead - MIN_MATCH;
-          --  C: only in DEBUG mode: check_match(strstart-1, prev_match, prev_length);
-          --  !! Are hash collisions possible ??
+          --  C: in DEBUG mode: check_match(strstart-1, prev_match, prev_length);
           Write_code(strstart-1-prev_match, prev_length);
           --  Insert in hash table all strings up to the end of the match.
           --  strstart-1 and strstart are already inserted.
@@ -777,7 +774,7 @@ procedure Zip.LZ77 is
           end loop;
           strstart:= strstart + 1;
           match_available := False;
-          match_length := MIN_MATCH-1;
+          match_length := MIN_MATCH - 1;
         elsif match_available then  --  line 876
           --  If there was no match at the previous position, output a
           --  single literal. If there was a match but the current match
@@ -804,23 +801,23 @@ procedure Zip.LZ77 is
       if match_available then
         Write_byte(window(strstart-1));
       end if;
-    end Deflate_LZ77_part;
+    end LZ77_part_of_IZ_Deflate;
     
-    Code_too_clever_MAX_MATCH_should_be_258: exception;
+    Code_too_clever: exception;
   begin
     if MAX_MATCH /= 258 then
-      raise Code_too_clever_MAX_MATCH_should_be_258;
+      raise Code_too_clever;  --  Longest_Match optimized for MAX_MATCH-2 multiple of 16
     end if;
     window_size:= 0;
     LM_Init(level);
-    Deflate_LZ77_part(level);
-  end LZ77_using_Info_Zip;
+    LZ77_part_of_IZ_Deflate;
+  end LZ77_using_IZ;
   
 begin
   case method is
     when LZHuf =>
       LZ77_using_LZHuf;
-    when Info_Zip_4 .. Info_Zip_9 =>
-      LZ77_using_Info_Zip( 4 + LZ77_method'Pos(method) -  LZ77_method'Pos(Info_Zip_4) );
+    when IZ_4 .. IZ_9 =>
+      LZ77_using_IZ( 4 + LZ77_method'Pos(method) -  LZ77_method'Pos(IZ_4) );
   end case;
 end Zip.LZ77;

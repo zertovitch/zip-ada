@@ -106,8 +106,8 @@ begin
       arg_rezip: constant String:= arg_nozip & ".repacked." & ext;
       arg_rpt  : constant String:= arg_nozip & ".ReZip.html";
       arg_log  : constant String:= arg_nozip & ".ReZip.log";
-      info_zip,
-      info_rezip : Zip.Zip_info;
+      info_original_zip,
+      info_rezipped_zip : Zip.Zip_info;
     begin
       if arg(arg'First) = '-' or arg(arg'First) = '/' then
         -- Options
@@ -145,9 +145,9 @@ begin
           html_report       => arg_rpt
         );
         if compare then
-          Zip.Load( info_zip, arg_zip );
-          Zip.Load( info_rezip, arg_rezip );
-          Comp_Zip_Prc(info_zip, info_rezip);
+          Zip.Load( info_original_zip, arg_zip );
+          Zip.Load( info_rezipped_zip, arg_rezip );
+          Comp_Zip_Prc(info_original_zip, info_rezipped_zip);
         end if;
       else
         Ada.Text_IO.Put_Line("  ** Error: archive not found: " & arg_zip);
