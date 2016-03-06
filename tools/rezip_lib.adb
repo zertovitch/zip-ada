@@ -69,7 +69,7 @@ package body Rezip_lib is
     original,
     shrink,
     reduce_1, reduce_2, reduce_3, reduce_4,
-    deflate_f, deflate_1,
+    deflate_f, deflate_1, deflate_2,
     external_1, external_2, external_3, external_4,
     external_5, external_6, external_7, external_8,
     external_9, external_10, external_11, external_12,
@@ -201,7 +201,8 @@ package body Rezip_lib is
        reduce_3  => Zip.Compress.Reduce_3,
        reduce_4  => Zip.Compress.Reduce_4,
        deflate_f => Zip.Compress.Deflate_Fixed,
-       deflate_1 => Zip.Compress.Deflate_1
+       deflate_1 => Zip.Compress.Deflate_1,
+       deflate_2 => Zip.Compress.Deflate_2
       );
 
     type Packer_info is record
@@ -699,7 +700,7 @@ package body Rezip_lib is
               consider(a):= consider(a) and uncomp_size <= 9000;
             when deflate_f =>
               consider(a):= consider(a) and uncomp_size <= 4000;
-            when deflate_1 =>
+            when deflate_1 .. deflate_2 =>
               null;
             when External =>
               consider(a):= consider(a) and (ext(a).limit = 0 or uncomp_size <= ext(a).limit);
@@ -722,7 +723,7 @@ package body Rezip_lib is
                 mth:= Zip.Method_from_code(e.info(a).zfm);
                 --
               when Internal =>
-                if a in deflate_1 .. deflate_1 then
+                if a in deflate_1 .. deflate_2 then
                   Process_Internal_as_Zip(a, e.all);
                 else
                   Process_Internal_Raw(a, e.all);
@@ -952,7 +953,9 @@ package body Rezip_lib is
             when original =>
               Put(summary, "<td align=right bgcolor=#dddd00 class=""td_approach"">Approach's<br>method/<br>format &rarr;</td>");
             when Internal =>
-              Put(summary, "<td bgcolor=#fafa64>" & To_Lower( Zip.Compress.Compression_Method'Image(Approach_to_Method(a))) & "</td>");
+              Put(summary, "<td bgcolor=#fafa64>" &
+                To_Lower( Zip.PKZip_method'Image(
+                  Zip.Compress.Method_to_Format(Approach_to_Method(a)))) & "</td>");
               -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
             when External =>
               Put(summary, "<td bgcolor=#fafa64>" & To_Lower(Zip.PKZip_method'Image(ext(a).pkzm)) & "</td>");
