@@ -1347,7 +1347,7 @@ begin
       Open(log, Append_File, log_name);
     exception
       when Name_Error =>
-        Create(log, Out_File, log_Name);
+        Create(log, Out_File, log_name);
     end;
     Put(log, "New stream" & sep & sep & sep & sep & sep & sep & sep & sep);
     if input_size_known then
