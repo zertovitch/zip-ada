@@ -1071,7 +1071,7 @@ is
       end if;
       send_from:= from;
       slide_mid:= from + step;
-      while Integer_32(slide_mid) + half_slider_size < Integer_32(to) loop  --  !! better: use Integer_M32
+      while Integer_M32(slide_mid) + half_slider_size < Integer_M32(to) loop
         sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid-step/2 .. slide_mid+step/2));
         if not Similar(initial_hd, sliding_hd, L1, 450, "Compare sliding to initial") then
           if trace then

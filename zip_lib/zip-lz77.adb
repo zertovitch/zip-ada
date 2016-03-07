@@ -367,13 +367,13 @@ procedure Zip.LZ77 is
     TOO_FAR  : constant:= 4096;  --  Matches of length 3 are discarded if their distance exceeds TOO_FAR
     --
     use Interfaces;
-    subtype ulg is Unsigned_32; --  !! better, Unsigned_M32
-    subtype unsigned is Unsigned_32;  --  !! better, Unsigned_M16
-    subtype ush is Unsigned_32;
-    subtype long is Integer_32;  -- !! Integer_M32
+    subtype ulg is Unsigned_M32;
+    subtype unsigned is Unsigned_M16;
+    subtype ush is Unsigned_M16;
+    subtype long is Integer_M32;
     subtype int is Integer;
     --
-    subtype Pos is unsigned;  --  must be at least 32 bits
+    subtype Pos is Unsigned_M32;  --  must be at least 32 bits
     --  subtype IPos is unsigned;
     --  A Pos is an index in the character window. IPos is used only for parameter passing.
     window: array(0..2*WSIZE-1) of Byte;
@@ -472,7 +472,7 @@ procedure Zip.LZ77 is
       UPDATE_HASH(ins_h, window((s) + (MIN_MATCH-1)));
       match_head := Natural(head(ins_h));
       prev(unsigned(s) and unsigned(WMASK)):= Pos(match_head);
-      head(ins_h) := unsigned(s);
+      head(ins_h) := Pos(s);
     end INSERT_STRING;
     
     procedure Read_buf(from: Integer; amount: unsigned; actual: out Integer) is

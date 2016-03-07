@@ -41,6 +41,7 @@
 with Zip_Streams;
 with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO;
 with Interfaces;
+with System;
 
 package Zip is
 
@@ -403,5 +404,28 @@ private
     total_entries   : Natural;
     zip_file_comment: p_String;
   end record;
+
+  min_bits_32: constant:= Integer'Max(32, System.Word_Size);
+  min_bits_16: constant:= Integer'Max(16, System.Word_Size);
+  --  System.Word_Size: 13.3(8): A word is the largest amount of storage
+  --  that can be conveniently and efficiently manipulated by the hardware,
+  --  given the implementation's run-time model.
+
+  type Integer_M32 is range -2**(min_bits_32-1) .. 2**(min_bits_32-1) - 1;
+  --  We define an Integer type which is at least 32 bits, but n bits
+  --  on a native n (> 32) bits architecture (no performance hit on 64+
+  --  bits architectures).
+  --  Integer_M16 not needed: Integer already guarantees 16 bits
+
+  subtype Natural_M32  is Integer_M32 range 0..Integer_M32'Last;
+  subtype Positive_M32 is Integer_M32 range 1..Integer_M32'Last;
+
+  type Unsigned_M16 is mod 2**min_bits_16;
+  type Unsigned_M32 is mod 2**min_bits_32;
+
+  function Shift_Left
+    (Value  : Unsigned_M16;
+     Amount : Natural) return Unsigned_M16;
+   pragma Import (Intrinsic, Shift_Left);
 
 end Zip;
