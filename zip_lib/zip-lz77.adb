@@ -503,7 +503,7 @@ procedure Zip.LZ77 is
     begin
       loop
         more:= unsigned(window_size - ulg(lookahead) - ulg(strstart));
-        if False then  --  (more == (unsigned)EOF) ?... Seems a 16-bit code for EOF
+        if False then  --  C: "if (more == (unsigned)EOF) {" ?... Seems a 16-bit code for EOF
           --  Very unlikely, but possible on 16 bit machine if strstart == 0
           --  and lookahead == 1 (input done one byte at time)
           more:= more - 1;
@@ -630,15 +630,11 @@ procedure Zip.LZ77 is
       else
         limit:= NIL;
       end if;
-      --  The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
-      --  It is easy to get rid of this optimization if necessary.
-      --  Ada: check done at LZ77_using_IZ startup.
-      --
       --  Do not waste too much time if we already have a good match:
       if prev_length >= good_match then
         chain_length := chain_length / 4;
       end if;
-      --  Assert(strstart <= window_size-MIN_LOOKAHEAD, "insufficient lookahead"); !!
+      --  Assert(strstart <= window_size-MIN_LOOKAHEAD, "insufficient lookahead");
       loop
         --  Assert(current_match < strstart, "no future");
         match := current_match;
@@ -659,34 +655,46 @@ procedure Zip.LZ77 is
           --  the hash keys are equal and that HASH_BITS >= 8.
           scan:= scan + 2;
           match:= match + 1;
-          --  We check for insufficient lookahead only every 8th comparison;
-          --  the 256th check will be made at strstart + 258.
-          loop
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match);
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match);
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match);
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match);
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match);
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match);
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match);
-            scan:= scan + 1;
-            match:= match + 1;
-            exit when window(scan) /= window(match) or else scan >= strend;
-          end loop;
+          --  C: The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
+          --     It is easy to get rid of this optimization if necessary.
+          --  Ada: see the "else" part below.
+          if MAX_MATCH = 258 then
+            --  We check for insufficient lookahead only every 8th comparison;
+            --  the 256th check will be made at strstart + 258.
+            loop
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match);
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match);
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match);
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match);
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match);
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match);
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match);
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match) or else scan >= strend;
+            end loop;
+          else
+            --  We check for insufficient lookahead after every comparison.
+            loop
+              scan:= scan + 1;
+              match:= match + 1;
+              exit when window(scan) /= window(match) or else scan >= strend;
+            end loop;
+          end if;            
           --  Assert(scan <= window+(unsigned)(window_size-1), "wild scan");
           len := MAX_MATCH - (strend - scan);
           scan := strend - MAX_MATCH;
@@ -766,8 +774,8 @@ procedure Zip.LZ77 is
             strstart:= strstart + 1;
             if strstart <= max_insert then
               INSERT_STRING(strstart, hash_head);
-              --  strstart never exceeds WSIZE - MAX_MATCH, so there are
-              --  always MIN_MATCH bytes ahead.
+              --  strstart never exceeds WSIZE - MAX_MATCH, so there
+              --  are always MIN_MATCH bytes ahead.
             end if;
             prev_length:= prev_length - 1;
             exit when prev_length = 0;
@@ -775,19 +783,19 @@ procedure Zip.LZ77 is
           strstart:= strstart + 1;
           match_available := False;
           match_length := MIN_MATCH - 1;
-        elsif match_available then  --  line 876
+        elsif match_available then
           --  If there was no match at the previous position, output a
           --  single literal. If there was a match but the current match
           --  is longer, truncate the previous match to a single literal.
           Write_byte(window(strstart-1));
           strstart:= strstart + 1;
           lookahead := lookahead - 1;
-        else  --  line 887
+        else
           --  There is no previous match to compare with, wait for the next step to decide.
           match_available := True;
           strstart:= strstart + 1;
           lookahead := lookahead - 1;
-        end if;  --  line 894
+        end if;
         --  Assert(strstart <= isize && lookahead <= isize, "a bit too far");
         --
         --  Make sure that we always have enough lookahead, except
@@ -797,7 +805,7 @@ procedure Zip.LZ77 is
         if lookahead < MIN_LOOKAHEAD then
           Fill_window;
         end if;
-      end loop;  --  line 903
+      end loop;
       if match_available then
         Write_byte(window(strstart-1));
       end if;
@@ -805,8 +813,8 @@ procedure Zip.LZ77 is
     
     Code_too_clever: exception;
   begin
-    if MAX_MATCH /= 258 then
-      raise Code_too_clever;  --  Longest_Match optimized for MAX_MATCH-2 multiple of 16
+    if Look_Ahead /= 258 or String_buffer_size < 2 ** 15 or Threshold /= 2 then
+      raise Code_too_clever;  --  was optimized for these parameters
     end if;
     window_size:= 0;
     LM_Init(level);

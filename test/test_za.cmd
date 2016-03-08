@@ -6,6 +6,8 @@ echo.
 if exist test_za??.zip del test_za??.zip
 if exist test_ifz?.zip del test_ifz?.zip
 if exist test_kzip.zip del test_kzip.zip
+if exist test_7z_d.zip del test_7z_d.zip
+if exist test_zopf.zip del test_zopf.zip
 
 copy /b ..\zipada.exe .
 copy /b ..\random_data.exe .
@@ -17,18 +19,21 @@ if exist test_rz.ReZip.html del test_rz.ReZip.html
 
 set files=*.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.mdb *.bin
 
-zipada -esh test_zash %files%
-REM zipada -er1 test_zar1 %files%
-REM zipada -er2 test_zar2 %files%
-REM zipada -er3 test_zar3 %files%
-REM zipada -er4 test_zar4 %files%
-zipada -ed1 test_zad1 %files%
-zipada -ed2 test_zad2 %files%
-zipada -edf test_zadf %files%
-zip    -1   test_ifz1 %files%
-zip    -6   test_ifz6 %files%
-zip    -9   test_ifz9 %files%
-kzip        test_kzip %files%
+zipada     -esh              test_zash     %files%
+zipada     -er1              test_zar1     %files%
+zipada     -er2              test_zar2     %files%
+zipada     -er3              test_zar3     %files%
+zipada     -er4              test_zar4     %files%
+zipada     -ed1              test_zad1     %files%
+zipada     -ed2              test_zad2     %files%
+zipada     -edf              test_zadf     %files%
+zip        -1                test_ifz1     %files%
+zip        -6                test_ifz6     %files%
+zip        -9                test_ifz9     %files%
+7z a -tzip -mx=9 -mm=deflate test_7z_d     %files%
+rem  --  Now if you need a coffee, it's the right time to have one or two...
+kzip                         test_kzip     %files%
+advzip -a -4                 test_zopf.zip %files%
 
 rem --------------------------
 rem Nice date YYYY-MM-DD_HH.MM
@@ -44,17 +49,20 @@ set min=%time:~3,2%
 set nice_date=%year%-%month%-%day%_%hour%.%min%
 rem --------------------------
 
-dir /OS test_za??.zip test_ifz?.zip test_kzip.zip |find ".zip" >test_za_%nice_date%.log
+dir /OS test_za??.zip test_ifz?.zip test_kzip.zip test_7z_d.zip test_zopf.zip |find ".zip" >test_za_%nice_date%.log
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.
-comp_zip test_zash test_ifz9
-REM comp_zip test_zash test_zar1
-REM comp_zip test_zash test_zar2
-REM comp_zip test_zash test_zar3
-REM comp_zip test_zash test_zar4
-comp_zip test_zash test_zadf
-comp_zip test_zash test_zad1
-comp_zip test_zash test_zad2
+comp_zip test_zash test_zar1 -q2
+comp_zip test_zash test_zar2 -q2
+comp_zip test_zash test_zar3 -q2
+comp_zip test_zash test_zar4 -q2
+comp_zip test_zash test_zadf -q2
+comp_zip test_zash test_zad1 -q2
+comp_zip test_zash test_zad2 -q2
+comp_zip test_zash test_ifz9 -q2
+comp_zip test_zash test_kzip -q2
+comp_zip test_zash test_7z_d -q2
+comp_zip test_zash test_zopf -q2
 
 pause

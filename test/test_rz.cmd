@@ -17,6 +17,6 @@ rezip %1 %2 %3 %4 %5 %6 %7 %8 %9 test_rz
 
 start test_rz.ReZip.html
 
-comp_zip test_rz test_rz.repacked
+comp_zip test_rz test_rz.repacked -q2
 
 pause

@@ -186,22 +186,24 @@ is
   markov_d: array(Symbol_range, Symbol_range) of Count:=
     (others=> (others=> 0));
 
-  -- Build probability of transition from symbol i to symbol j:
+  --  Build probability of transition from symbol i to symbol j:
   --
-  -- markov(i,j) = P(symbol i is followed by j)
-  --             = markov_d(i,j) / sum_k( markov_d(i,k))
+  --     markov(i,j) = P(symbol i is followed by j)
+  --                 = markov_d(i,j) / sum_k( markov_d(i,k))
+  --
+  --  Only the discrete matrix markov_d is stored.
 
-  total_line: array(Symbol_range) of Count;
-  -- total_line(i) = sum_k( markov_d(i,k))
+  total_row: array(Symbol_range) of Count;
+  -- total_row(i) = sum_k( markov_d(i,k))
 
   order: array(Symbol_range, Symbol_range) of Symbol_range;
 
   use_probas: constant Boolean:= True;
   trace     : constant Boolean:= False;
 
-  -- We keep the most significant quantiles of markov
-  -- to allow a coding shorter than the symbol itself.
-  -- Otherwise, why doing all that ;-) ?...
+  --  We use the most significant quantiles of each row of the Markov matrix
+  --  to allow for a frequent coding that is shorter than the symbol itself.
+  --  Otherwise, why doing all that ;-) ?...
 
   has_follower: array(Symbol_range, Symbol_range) of Boolean:=
     (others => (others => False));
@@ -235,7 +237,7 @@ is
         Put(':' & Count'Image(markov_d(si,sj)) & ' ');
       end loop;
       if ordered then
-        Put("|" & Count'Image(total_line(si)) & Integer'Image(Slen(si)));
+        Put("|" & Count'Image(total_row(si)) & Integer'Image(Slen(si)));
       end if;
       New_Line;
     end loop;
@@ -253,7 +255,10 @@ is
       c: Symbol_range;
     begin c:= a;a:= b;b:= c; end Swap;
 
-    procedure Sort(sym_line: Symbol_range) is
+    --  Sort a row (sym_row) in the Markov matrix, largest probabilities first.
+    --  Original order is kept by the order matrix.
+    --
+    procedure Sort(sym_row: Symbol_range) is
       -- A stupid bubble sort algo, but one working with sets
       -- having big packs of same data (trouble with qsort)...
       swapped: Boolean;
@@ -262,9 +267,9 @@ is
       loop
         swapped:= False;
         for i in reverse left .. Symbol_range'Last-1 loop
-          if markov_d(sym_line, i) < markov_d(sym_line, i+1) then
-            Swap( markov_d(sym_line, i), markov_d(sym_line, i+1));
-            Swap( order   (sym_line, i), order   (sym_line, i+1));
+          if markov_d(sym_row, i) < markov_d(sym_row, i+1) then
+            Swap( markov_d(sym_row, i), markov_d(sym_row, i+1));
+            Swap( order   (sym_row, i), order   (sym_row, i+1));
             swapped:= True;
           end if;
         end loop;
@@ -292,9 +297,11 @@ is
     --  6 => 62  -- NB: not 63
       );
 
-    cumul_per_length: array(Bit_range) of Count:= (others => 0);
+    cumul_per_bit_length: array(Bit_range) of Count:= (others => 0);
 
-    exp_size, min_size: Float;
+    subtype Real is Long_Float;
+
+    exp_size, min_size: Real;
     bits_min: Bit_range;
 
   begin -- Build_Followers
@@ -306,37 +313,43 @@ is
       Show_partial_markov(False);
     end if;
     for si in Symbol_range loop
-      total_line(si):= 0;
+      total_row(si):= 0;
       for sj in Symbol_range loop
         order(si,sj):= sj;
-        total_line(si):= total_line(si) + markov_d(si,sj);
+        total_row(si):= total_row(si) + markov_d(si,sj);
       end loop;
       Sort(si);
       cumul:= 0;
-      -- Define all possible followers:
+      -- Define all possible followers to symbol si:
       for sj in Follower_range loop
         cumul:= cumul + markov_d(si,sj);
-        cumul_per_length(B_Table(sj+1)):= cumul;
+        cumul_per_bit_length(B_Table(sj+1)):= cumul;
+        --  ^ Overwritten several times. When sj jumps to the next bit length
+        --    (say, bl+1), cumul_per_bit_length(bl) contains the amount of symbols
+        --    for the stream to be encoded that can be emitted as immediate
+        --    successors to symbol si by using follower shortcuts of bit length bl.
         follo:= order(si,sj);
         Followers(si,sj):= follo;
         follower_pos(si, follo):= sj;
       end loop;
       -- Now we decide to which length we are using the followers
-      min_size:= Float(total_line(si)) * 8.0;
-      -- ^ Size of all codes for no followers at all to symbol si
+      min_size:= Real(total_row(si)) * 8.0;
+      --         ^ Size of all codes, in bits, when no follower
+      --           at all is defined for symbol si. In the next
+      --           loop, we will work to reduce that size.
       bits_min:= 0;
       for bits in 1 .. Bit_range'Last loop
-        -- We compute the exact size of reduced output when cutting
-        -- the follower range to 0..2**bits-1
+        --  We compute the exact size of reduced output (entire file!) for
+        --  symbol si when cutting the follower range to 0..2**bits-1.
         exp_size:=
-          Float(cumul_per_length(bits))                * Float(bits+1) +
-          -- ^ Coded followers
-          Float(total_line(si)-cumul_per_length(bits)) * 9.0 +
-          -- ^ All codes outside the follower list will take 8+1 bits
-          Float(max_follo(bits)+1) * 8.0;
-          -- ^ Also the follower list at the beginning takes place...
+          Real(cumul_per_bit_length(bits))               * Real(bits+1) +
+          --  ^ Coded followers
+          Real(total_row(si)-cumul_per_bit_length(bits)) * 9.0 +
+          --  ^ All codes outside the follower list will take 8+1 bits
+          Real(max_follo(bits)+1) * 8.0;
+          --  ^ Also the follower list at the beginning takes place...
         if exp_size < min_size then
-          -- It is more efficient to encode si's followers with 'bits' bits.
+          --  So far, it is more efficient to encode si's followers with 'bits' bits.
           min_size:= exp_size;
           bits_min:= bits;
         end if;
@@ -443,9 +456,9 @@ is
     maximum_len_1: constant Integer:= upper_shift - 1;
     maximum_len_1_b: constant Byte:= Byte(maximum_len_1);
 
-    -- LZ77 params
+    --  LZ77 params
     Look_redfac        : constant array(1..4) of Integer:= (31,63,255,191);
-    -- see uza_work.xls for the cooking of these numbers...
+    --  See za_work.xls, sheet Reduce, for the cooking of these numbers...
     Look_Ahead         : constant Integer:= Look_redfac(reduction_factor);
     String_buffer_size : constant := 2**12; -- 2**n optimizes "mod" to "and"
     Threshold          : constant := 3;
@@ -482,7 +495,7 @@ is
             follo:= has_follower(last_b,curr_b);
             Put_code(1-Boolean'Pos(follo), 1);
             --  ^ Certainly a weakness of this format is that each byte is preceded by
-            --    a flag signalling "clear text" or compressed.
+            --    a flag signaling "clear text" or compressed.
             if follo then
               Put_code(Byte(follower_pos(last_b,curr_b)), B_Table( Slen(last_b) ));
             else
@@ -499,8 +512,8 @@ is
         -- already stored.
       then
         raise Derail_LZ77;
-        --  We interrupt the LZ77 compression: data is already cached
-        --  on first pass (phase = stats)
+        --  We interrupt the LZ77 compression: data has been already
+        --  cached upon first pass (phase = stats), no need to redo it.
       end if;
     end Write_raw_byte;
 
@@ -554,12 +567,16 @@ is
     end Write_DL_code;
 
     procedure My_LZ77 is
-      new LZ77(
-        String_buffer_size, Look_Ahead, Threshold,
-        LZHuf,
-        Read_byte, More_bytes,
-        Write_normal_byte, Write_DL_code
-      );
+      new LZ77 (String_buffer_size => String_buffer_size,
+                Look_Ahead         => Look_Ahead,
+                Threshold          => Threshold,
+                Method             => LZHuf,  
+                --  NB: Method IZ_9 needs exactly the same set of LZ77 parameters as in
+                --      Deflate. Then the compression is worse, though much faster.
+                Read_byte          => Read_byte,
+                More_bytes         => More_bytes,
+                Write_byte         => Write_normal_byte,
+                Write_code         => Write_DL_code);
 
     procedure Finish_Cache is
       i: LZ_buffer_range:= LZ_buffer_range(lz77_pos mod LZ_cache_size);
@@ -572,7 +589,7 @@ is
 
   begin -- Encode
     Read_Block;
-    R:= String_buffer_size-Look_Ahead;
+    R:= String_buffer_size - Look_Ahead;
     Bytes_in := 0;
     if input_size_known then
       X_Percent := Integer(input_size / 40);
