@@ -147,7 +147,7 @@ begin
         if compare then
           Zip.Load( info_original_zip, arg_zip );
           Zip.Load( info_rezipped_zip, arg_rezip );
-          Comp_Zip_Prc(info_original_zip, info_rezipped_zip);
+          Comp_Zip_Prc(info_original_zip, info_rezipped_zip, 0);
         end if;
       else
         Ada.Text_IO.Put_Line("  ** Error: archive not found: " & arg_zip);

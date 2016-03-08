@@ -2,7 +2,7 @@
 --  File:            Comp_Zip_Prc.adb
 --  Description:     A zip comparison tool using Zip-Ada lib.
 --                   Demonstrates the new Zip.Traverse procedure
---  Date/version:    9-Mar-2007 ; 31-Oct-2006 ; 4-Jul-2004 ; 29-Nov-2002
+--  Date/version:    8-Mar-2016; 9-Mar-2007 ; ... ; 29-Nov-2002
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -13,7 +13,7 @@ with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Zip;
 with UnZip.Streams;                     use UnZip.Streams;
 
-procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info) is
+procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
   z: array(1..2) of Zip.Zip_info;
   total_1,
   total_2,
@@ -47,16 +47,20 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info) is
     stuffing: constant String(1..l-mininame'Length+1):= (others => ' ');
 
   begin
-    Put("   [" & stuffing & mininame & "] ");
+    if quiet = 0 then
+      Put("   [" & stuffing & mininame & "] ");
+    end if;
     for i in 1..2 loop
       begin
         Open( f(i), z(i), name );
-        if i=1 then
+        if i = 1 then
           total_1:= total_1 + 1;
         end if;
       exception
         when Zip.File_name_not_found =>
-          Put( "   # Not found in archive [" & Zip.Zip_Name(z(i)) & ']' );
+          if quiet = 0 then
+            Put( "   # Not found in archive [" & Zip.Zip_Name(z(i)) & ']' );
+          end if;
           if i = 1 then
             Put_Line("-- internal error!");
           else
@@ -64,9 +68,13 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info) is
           end if;
           if name(name'Last)='/' or name(name'Last)='\' then
             just_a_directory:= just_a_directory + 1;
-            Put_Line(" (just a dir.)");
+            if quiet = 0 then
+              Put_Line(" (just a dir.)");
+            end if;
           else
-            New_Line;
+            if quiet = 0 then
+              New_Line;
+            end if;
           end if;
           missing_1_in_2:= missing_1_in_2 + 1;
           return;
@@ -76,19 +84,23 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info) is
     -- File found, now the comparison:
     while not End_of_file(f(1)) loop
       if End_of_file(f(2)) then
-        Put_Line("   # Shorter in [" & Zip.Zip_Name(z(2)) & "] at position" &
-                 Long_Integer'Image(p) );
+        if quiet = 0 then
+          Put_Line("   # Shorter in [" & Zip.Zip_Name(z(2)) & "] at position" &
+                   Long_Integer'Image(p) );
+        end if;
         Close(f(1));
         Close(f(2));
         size_failures:= size_failures + 1;
         return;
       end if;
-
+      --  Read one character in each stream
       for i in 1..2 loop
         Character'Read(s(i),c(i));
       end loop;
       if c(1)/=c(2) then
-        Put_Line("   # Difference at position" & Long_Integer'Image(p) );
+        if quiet = 0 then
+          Put_Line("   # Difference at position" & Long_Integer'Image(p) );
+        end if;
         Close(f(1));
         Close(f(2));
         compare_failures:= compare_failures + 1;
@@ -97,7 +109,9 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info) is
       p:= p+1;
     end loop;
     if not End_of_file(f(2)) then
-      Put_Line("   # Longer in [" & Zip.Zip_Name(z(2)) & "]" );
+      if quiet = 0 then
+        Put_Line("   # Longer in [" & Zip.Zip_Name(z(2)) & "]" );
+      end if;
       Close(f(1));
       Close(f(2));
       size_failures:= size_failures + 1;
@@ -105,7 +119,9 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info) is
     end if;
     Close(f(1));
     Close(f(2));
-    Put_Line("OK -" & Long_Integer'Image(p-1) & " bytes compared");
+    if quiet = 0 then
+      Put_Line("OK -" & Long_Integer'Image(p-1) & " bytes compared");
+    end if;
     total_bytes:= total_bytes + (p-1);
   end Compare_1_file;
 
@@ -116,16 +132,18 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info) is
 begin
   z(1):= z1;
   z(2):= z2;
-  Put_Line("* Comparing [" & Zip.Zip_Name(z(1)) & "] and [" & Zip.Zip_Name(z(2)) & "] :");
+  Put_Line("* Comparing [" & Zip.Zip_Name(z(1)) & "] and [" & Zip.Zip_Name(z(2)) & "]");
   Compare_all_files(z(1));
   total_2:= Zip.Entries(z(2));
   common:= total_1 - missing_1_in_2;
-  Put_Line("* === Results ===");
-  Put_Line("  1st archive: [" & Zip.Zip_Name(z(1)) & "], total files:" & Natural'Image(total_1));
-  Put_Line("  2nd archive: [" & Zip.Zip_Name(z(2)) & "], total files:" & Natural'Image(total_2));
-  Put_Line("  Total files compared: " & Natural'Image(common));
-  Put_Line("  Total of correct bytes: " & Long_Integer'Image(total_bytes));
-  Put_Line("* === Error summary ===");
+  if quiet < 2 then
+    Put_Line("* === Results ===");
+    Put_Line("  1st archive: [" & Zip.Zip_Name(z(1)) & "], total files:" & Natural'Image(total_1));
+    Put_Line("  2nd archive: [" & Zip.Zip_Name(z(2)) & "], total files:" & Natural'Image(total_2));
+    Put_Line("  Total files compared: " & Natural'Image(common));
+    Put_Line("  Total of correct bytes: " & Long_Integer'Image(total_bytes));
+  end if;
+  Put_Line("* === Comparison summary ===");
   Put(err_str,size_failures);
   Put_Line("    Size failures . . . . . . . . . . . :" & err_str);
   Put(err_str,compare_failures);

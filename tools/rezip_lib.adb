@@ -63,7 +63,7 @@ package body Rezip_lib is
 
   NN: constant Unbounded_String:= Null_Unbounded_String;
 
-  kzip_limit: constant:= 3_100_000;
+  kzip_limit: constant:= 10_000_000;
 
   type Approach is (
     original,
@@ -118,7 +118,7 @@ package body Rezip_lib is
          U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False),
       -- AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U("advzip"), U("AdvZip"), U("http://advancemame.sf.net/comp-readme.html"),
-         U("-a -4"), NN, 20, Zip.deflate, 0, False)
+         U("-a -4"), NN, 20, Zip.deflate, kzip_limit, False)
     );
 
   defl_opt: constant Zipper_specification:=
@@ -688,7 +688,7 @@ package body Rezip_lib is
         --  Apply limitations: skip some methods if certain conditions are met.
         --  For instance:
         --    Shrink may in rare cases be better for tiny files;
-        --    KZip is excellent but really too slow on large files
+        --    KZip and Zopfli are excellent but really too slow on large files
         --
         for a in Approach loop
           case a is

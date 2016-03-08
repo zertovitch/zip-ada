@@ -23,6 +23,8 @@ procedure Comp_Zip is
     end if;
   end Try_with_zip;
 
+  quiet: Natural:= 0;
+
 begin
   if Argument_Count < 2 then
     Put_Line("Comp_Zip * compare two zip archive files, incl. contents");
@@ -30,7 +32,10 @@ begin
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
     Put_Line("URL: " & Zip.web);
     New_Line;
-    Put_Line("Usage: comp_zip archive1[.zip] archive2[.zip]");
+    Put_Line("Usage: comp_zip archive1[.zip] archive2[.zip] [options]");
+    New_Line;
+    Put_Line("Options: -q1: (quiet level 1): summary only");
+    Put_Line("         -q2: (quiet level 2): shorter summary only");
     return;
   end if;
   for i in 1..2 loop
@@ -45,7 +50,16 @@ begin
         Put( "Archive has a password" ); raise;
     end;
   end loop;
+  for a in 3 .. Argument_Count loop
+    declare
+      arg: String renames Argument(a);
+    begin
+      if arg'Length > 2 and then arg(arg'First..arg'First+1) = "-q" then
+        quiet:= Natural'Value(arg(arg'First+2..arg'Last));
+      end if;
+    end;
+  end loop;
   --
-  Comp_Zip_Prc(z(1), z(2));
+  Comp_Zip_Prc(z(1), z(2), quiet);
   --
 end Comp_Zip;
