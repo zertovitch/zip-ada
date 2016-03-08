@@ -51,6 +51,8 @@ procedure Test_LZ77 is
     min_dis:= Natural'Min(min_dis,distance);
     min_len:= Natural'Min(min_len,length);
     --  Put("[d:" & Integer'Image(distance) & ",l:" & Integer'Image(length) & ",");
+    --
+    --  Expand DL code:
     I:= (R - distance) mod String_buffer_size;
     for K in 0..length-1 loop
       b:= Text_Buf((I+K) mod String_buffer_size);
@@ -62,6 +64,7 @@ procedure Test_LZ77 is
   procedure My_LZ77 is
     new Zip.LZ77(
       String_buffer_size, Look_Ahead, Threshold,
+      LZHuf,
       Read_byte, More_bytes,
       Write_byte, Write_code
     );

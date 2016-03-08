@@ -14,6 +14,17 @@ procedure LZ77_Stats is
   stat        : File_Type;
   stat_name   : constant String:= "LZ77_Stats.csv";
   sep         : constant Character:= ';';
+
+  subtype Distance_range is Integer range 1 .. 32768;
+  subtype Length_range is Integer range 3 .. 258;
+
+  d_stats: array(Distance_range) of Natural:= (others => 0);
+  l_stats: array(Length_range) of Natural:= (others => 0);
+  type DL_matrix is array(Distance_range, Length_range) of Natural;
+  type p_DL_matrix is access DL_matrix;
+  dl_stats: constant p_DL_matrix:= new DL_matrix'(others => (others => 0));
+  total: Natural:= 0;
+
 begin
   Open(LZ77_dump, In_File, "dump.lz77");  --  File from UnZip.Decompress, some_trace mode
   while not End_Of_File(LZ77_dump) loop
@@ -23,9 +34,10 @@ begin
     elsif tag = "DLE" then
       Get(LZ77_dump, a);
       Get(LZ77_dump, b);
-      --
-      --  !! stub - do something here :-)
-      --
+      d_stats(a):= d_stats(a) + 1;
+      l_stats(b):= l_stats(b) + 1;
+      dl_stats(a,b):= dl_stats(a,b) + 1;
+      total:= total + 1;
     else
       raise wrong_LZ77_tag;
     end if;
@@ -36,6 +48,32 @@ begin
   --  Write stats
   --
   Create(stat, Out_File, stat_name);
-  --  !! stub - do something here :-)
+  Put(stat, sep & sep & sep & "Length" & sep & sep);
+  for l in Length_range loop
+    Put(stat, l);
+    Put(stat, sep);
+  end loop;
+  New_Line(stat, 2);
+  Put(stat, sep & sep);
+  Put(stat, total);
+  Put(stat, sep & "stats" & sep & sep);
+  for l in Length_range loop
+    Put(stat, l_stats(l));
+    Put(stat, sep);
+  end loop;
+  New_Line(stat);
+  Put_Line(stat, "Distance" & sep & sep & "stats");
+  New_Line(stat);
+  for d in Distance_range loop
+    Put(stat, d);
+    Put(stat, sep & sep);
+    Put(stat, d_stats(d));
+    Put(stat, sep & sep & sep);
+    for l in Length_range loop
+      Put(stat, dl_stats(d,l));
+      Put(stat, sep);
+    end loop;
+    New_Line(stat);
+  end loop;
   Close(stat);
 end LZ77_Stats;
