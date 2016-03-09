@@ -1,6 +1,8 @@
 --  The "Deflate" method combines a LZ77 compression
 --  method with some Huffman encoding gymnastics.
 --
+--  Magic numbers adjusted through experimentation are marked with: *Tuned*
+--
 --  To do:
 --   - tune / refine the Taillaule algorithm...
 --
@@ -784,7 +786,7 @@ is
     --  We buffer the LZ codes (plain, or distance/length) in order to
     --  analyse them and try to do smart things.
 
-    max_expand: constant:= 14;  --  Sometimes it is better to store data and expand short strings
+    max_expand: constant:= 14;  --  *Tuned* Sometimes it is better to store data and expand short strings
     code_for_max_expand: constant:= 266;
     subtype Expanded_data is Byte_Buffer(1..max_expand);
     
@@ -797,7 +799,9 @@ is
       lz_expanded   : Expanded_data;
     end record;
 
-    LZ_buffer_size: constant:= 16384;  --  min: 16384 (min half buffer 8192)
+    -- *Tuned*. Min: 2**14, = 16384 (min half buffer 8192)
+    -- Optimal so far: 2**17
+    LZ_buffer_size: constant:= 2**17;
     type LZ_buffer_index_type is mod LZ_buffer_size;
     type LZ_buffer_type is array (LZ_buffer_index_type range <>) of LZ_atom;
 
@@ -846,25 +850,60 @@ is
       end loop;
     end Put_LZ_buffer;
 
+    block_to_finish: Boolean:= False;
+    last_block_marked: Boolean:= False;
+    type Block_type is (stored, fixed, dynamic, reserved);  --  Appnote, 5.5.2
+    last_block_type: Block_type:= reserved;  --  If dynamic, we may recycle previous block
+
+    procedure Mark_new_block(last_block_for_stream: Boolean) is
+    begin
+      if block_to_finish and last_block_type in fixed .. dynamic then
+        Put_code(descr.lit_len(End_Of_Block));  --  Finish previous block
+      end if;
+      block_to_finish:= True;
+      Put_code(code => Boolean'Pos(last_block_for_stream), code_size => 1);
+      last_block_marked:= last_block_for_stream;
+    end Mark_new_block;
+
     --  Send a LZ buffer completely decoded as literals
-    procedure Expand_LZ_buffer(lzb: LZ_buffer_type) is
+    procedure Expand_LZ_buffer(lzb: LZ_buffer_type; last_block: Boolean) is
       b1, b2: Byte;
-      to_be_sent: Natural:= 0;  
+      to_be_sent: Natural_M32:= 0;  
       --  to_be_sent is not always equal to lzb'Length: sometimes you have a DL code
+      mid: LZ_buffer_index_type;
     begin
       for i in lzb'Range loop
         case lzb(i).kind is
           when plain_byte =>
             to_be_sent:= to_be_sent + 1;
           when distance_length =>
-            to_be_sent:= to_be_sent + lzb(i).lz_length;
+            to_be_sent:= to_be_sent + Natural_M32(lzb(i).lz_length);
         end case;
       end loop;
+      if to_be_sent > 16#FFFF# then  --  Ow, cannot send all that in one chunk.
+        --  Instead of a tedious block splitting, just divide and conquer:
+        mid:= LZ_buffer_index_type((Natural_M32(lzb'First) + Natural_M32(lzb'Last)) / 2);
+        if trace then
+          Put_Line(log,
+            "Expand_LZ_buffer: splitting large stored block: " &
+            LZ_buffer_index_type'Image(lzb'First) &
+            LZ_buffer_index_type'Image(mid) &
+            LZ_buffer_index_type'Image(lzb'Last)
+          );
+        end if;
+        Expand_LZ_buffer(lzb(lzb'First .. mid     ), last_block => False);
+        Expand_LZ_buffer(lzb(mid + 1   .. lzb'Last), last_block => last_block);
+        return;
+      end if;
       if trace then
-        Put_Line(log, "Sending" & Integer'Image(to_be_sent) & " 'plain' bytes");
+        Put_Line(log, "Expand_LZ_buffer: sending" & Natural_M32'Image(to_be_sent) & " 'plain' bytes");
       end if;
       b1:= Byte(to_be_sent mod 256);
       b2:= Byte(to_be_sent  /  256);
+      Mark_new_block(last_block_for_stream => last_block);
+      last_block_type:= stored;
+      Put_code(code => 0, code_size => 2);  --  Signals a "stored" block
+      Flush_bit_buffer;  --  Go to byte boundary
       Put_byte(b1);
       Put_byte(b2);
       Put_byte(not b1);
@@ -880,21 +919,6 @@ is
         end case;
       end loop;
     end Expand_LZ_buffer;
-
-    block_to_finish: Boolean:= False;
-    last_block_marked: Boolean:= False;
-    type Block_type is (stored, fixed, dynamic, reserved);  --  Appnote, 5.5.2
-    last_block_type: Block_type:= reserved;  --  If dynamic, we may recycle previous block
-
-    procedure Mark_new_block(last_block_for_stream: Boolean) is
-    begin
-      if block_to_finish and last_block_type in fixed .. dynamic then
-        Put_code(descr.lit_len(End_Of_Block));  --  Finish previous block
-      end if;
-      block_to_finish:= True;
-      Put_code(code => Boolean'Pos(last_block_for_stream), code_size => 1);
-      last_block_marked:= last_block_for_stream;
-    end Mark_new_block;
 
     subtype Long_length_codes is
       Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
@@ -926,11 +950,7 @@ is
         if trace then
           Put_Line(log, "### Random enough - use stored");
         end if;
-        Mark_new_block(last_block_for_stream => last_block);
-        Put_code(code => 0, code_size => 2);  --  Signals a "stored" block
-        Flush_bit_buffer;
-        Expand_LZ_buffer(lzb);
-        last_block_type:= stored;
+        Expand_LZ_buffer(lzb, last_block);
       end Send_stored_block;
       --
       procedure Send_fixed_block is
@@ -984,6 +1004,7 @@ is
       -- opti_merge_2048   : constant:= 25;  --  merge stats, not blocks
       -- opti_recy_2048    : constant:= 250;
       -- opti_fix_2048     : constant:= 20;
+      -- *Tuned*
       opti_rand_8192    : constant:= 333;
       opti_merge_8192   : constant:= 0;  --  merge stats, not blocks
       opti_recy_8192    : constant:= 40;
@@ -1030,9 +1051,10 @@ is
     past_lz_data: Boolean:= False;
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
-    --  !! Constants to be tuned...
-    step: constant:= 4096;
+    --  *Tuned*
+    step: constant:= 2048;
     slider_size: constant:= 4096;
+    cutting_threshold: constant:= 470;
     --
     half_slider_size: constant:= slider_size / 2;
     slider_max: constant:= slider_size - 1;
@@ -1072,8 +1094,8 @@ is
       send_from:= from;
       slide_mid:= from + step;
       while Integer_M32(slide_mid) + half_slider_size < Integer_M32(to) loop
-        sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid-step/2 .. slide_mid+step/2));
-        if not Similar(initial_hd, sliding_hd, L1, 450, "Compare sliding to initial") then
+        sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid - half_slider_size .. slide_mid + half_slider_size));
+        if not Similar(initial_hd, sliding_hd, L1, cutting_threshold, "Compare sliding to initial") then
           if trace then
             Put_Line(log, 
               "### Cutting @ " & LZ_buffer_index_type'Image(slide_mid) & 
@@ -1083,7 +1105,7 @@ is
           end if;
           Send_as_block(lz_buffer(send_from .. slide_mid-1), last_block => False);
           send_from:= slide_mid;
-          initial_hd:= sliding_hd;  --  update reference descriptor for further comparisons
+          initial_hd:= sliding_hd;  --  reset reference descriptor for further comparisons
         end if;
         slide_mid:= slide_mid + step;
         exit when slide_mid < from + step;  --  catch looping over (mod n)
