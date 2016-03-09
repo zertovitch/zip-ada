@@ -456,7 +456,7 @@ procedure Zip.LZ77 is
     procedure UPDATE_HASH(h: in out unsigned; c: Byte) is
     pragma Inline(UPDATE_HASH);
     begin
-      h := (Shift_Left(h, H_SHIFT) xor unsigned(c)) and HASH_MASK;
+      h := (unsigned(Shift_Left(Unsigned_32(h), H_SHIFT)) xor unsigned(c)) and HASH_MASK;
     end UPDATE_HASH;
     
     --  Insert string starting at s in the dictionary and set match_head to the previous head
@@ -621,7 +621,6 @@ procedure Zip.LZ77 is
       limit        : Natural;  --  [was: IPos]
       strend       : constant Integer:= strstart + MAX_MATCH;
       scan_end     : Integer:= scan + best_len;
-      scan_end1    : Integer:= scan + best_len - 1;
     begin
       --  Stop when current_match becomes <= limit. To simplify the code,
       --  we prevent matches with the string of window index 0.
@@ -640,21 +639,25 @@ procedure Zip.LZ77 is
         match := current_match;
         --  Skip to next match if the match length cannot increase
         --  or if the match length is less than 2:
+        --
+        --  NB: this is the Not-UNALIGNED_OK variant in the C code.
+        --      Translation of the UNALIGNED_OK variant is left as an exercise ;-).
+        --
         if window(match + best_len)     /= window(scan_end) or else
-           window(match + best_len - 1) /= window(scan_end1) or else
+           window(match + best_len - 1) /= window(scan_end - 1) or else
            window(match)                /= window(scan) or else
            window(match + 1)            /= window(scan + 1)
         then
           match:= match + 1;  --  C: continue
         else
-          match:= match + 1;
-          --  The check at best_len-1 can be removed because it will be made
+          --  The check at best_len - 1 can be removed because it will be made
           --  again later. (This heuristic is not always a win.)
+          --
           --  It is not necessary to compare window(scan + 2) and window(match + 2) since they
           --  are always equal when the other bytes match, given that
           --  the hash keys are equal and that HASH_BITS >= 8.
           scan:= scan + 2;
-          match:= match + 1;
+          match:= match + 2;
           --  C: The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
           --     It is easy to get rid of this optimization if necessary.
           --  Ada: see the "else" part below.
@@ -702,7 +705,6 @@ procedure Zip.LZ77 is
             match_start := current_match;
             best_len := len;
             exit when len >= nice_match;
-            scan_end1 := scan + best_len - 1;
             scan_end  := scan + best_len;
           end if;
         end if;

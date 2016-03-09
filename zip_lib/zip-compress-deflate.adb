@@ -1083,6 +1083,7 @@ is
           end if;
           Send_as_block(lz_buffer(send_from .. slide_mid-1), last_block => False);
           send_from:= slide_mid;
+          initial_hd:= sliding_hd;  --  update reference descriptor for further comparisons
         end if;
         slide_mid:= slide_mid + step;
         exit when slide_mid < from + step;  --  catch looping over (mod n)
