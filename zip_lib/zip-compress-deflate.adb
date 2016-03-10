@@ -1052,7 +1052,8 @@ is
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
     --  *Tuned*
-    step: constant:= 2048;
+    step: constant array(Taillaule_Deflation_Method) of LZ_buffer_index_type:=
+      (Deflate_1 | Deflate_2 => 4096, Deflate_3 => 3072);
     slider_size: constant:= 4096;
     cutting_threshold: constant:= 470;
     --
@@ -1092,7 +1093,7 @@ is
         initial_hd:= Optimal_descriptors(lz_buffer(start .. start + slider_max));
       end if;
       send_from:= from;
-      slide_mid:= from + step;
+      slide_mid:= from + step(method);
       while Integer_M32(slide_mid) + half_slider_size < Integer_M32(to) loop
         sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid - half_slider_size .. slide_mid + half_slider_size));
         if not Similar(initial_hd, sliding_hd, L1, cutting_threshold, "Compare sliding to initial") then
@@ -1107,8 +1108,8 @@ is
           send_from:= slide_mid;
           initial_hd:= sliding_hd;  --  reset reference descriptor for further comparisons
         end if;
-        slide_mid:= slide_mid + step;
-        exit when slide_mid < from + step;  --  catch looping over (mod n)
+        slide_mid:= slide_mid + step(method);
+        exit when slide_mid < from + step(method);  --  catch looping over (mod n)
       end loop;
       --
       --  Send last block for slice from .. to.
@@ -1266,8 +1267,10 @@ is
     end LZ77_emits_literal_byte;
 
     LZ77_choice: constant array(Deflation_Method) of LZ77_method:=
-      (Deflate_Fixed | Deflate_1 => IZ_6,  --  level 6 is the default in Info-Zip's zip.exe
-       others                    => IZ_9);
+      (Deflate_Fixed  => IZ_4,
+       Deflate_1      => IZ_6,  --  level 6 is the default in Info-Zip's zip.exe
+       Deflate_2      => IZ_8,
+       Deflate_3      => IZ_10);
 
     procedure My_LZ77 is
       new LZ77

@@ -352,17 +352,18 @@ procedure Zip.LZ77 is
   --  Info-Zip algorithm  --
   --------------------------
 
-  subtype IZ_pack_level is Integer range 4 .. 9;
-  --  0: store, 1: best speed, 9: best compression
-  --  Here only levels 4 to 9 are supported.
+  subtype IZ_pack_level is Integer range 4 .. 10;
+  --  0: store, 1: best speed, 9: best compression, 10: variant of level 9
+  --  Here only levels 4 to 10 are supported.
 
   procedure LZ77_using_IZ(level: IZ_pack_level) is
     --  Based on deflate.c by Jean-Loup Gailly.
     HASH_BITS: constant:= 15;  --  13..15
-    HASH_SIZE: constant:= 2**HASH_BITS;
-    HASH_MASK: constant:= HASH_SIZE-1;
-    WSIZE    : constant Integer:= String_buffer_size;
-    WMASK    : constant Integer:= WSIZE-1;  --  HASH_SIZE and WSIZE must be powers of two
+    HASH_SIZE: constant:= 2 ** HASH_BITS;
+    HASH_MASK: constant:= HASH_SIZE - 1;
+    WSIZE    : constant Integer_M32:= Integer_M32(String_buffer_size);
+    WMASK    : constant Unsigned_M16:= Unsigned_M16(WSIZE - 1);
+    --  HASH_SIZE and WSIZE must be powers of two
     NIL      : constant:= 0;  --  Tail of hash chains
     TOO_FAR  : constant:= 4096;  --  Matches of length 3 are discarded if their distance exceeds TOO_FAR
     --
@@ -370,72 +371,69 @@ procedure Zip.LZ77 is
     subtype ulg is Unsigned_M32;
     subtype unsigned is Unsigned_M16;
     subtype ush is Unsigned_M16;
-    subtype long is Integer_M32;
-    subtype int is Integer;
+    --  subtype long is Integer_M32;
+    --  subtype int is Integer;
     --
     subtype Pos is Unsigned_M32;  --  must be at least 32 bits
     --  subtype IPos is unsigned;
     --  A Pos is an index in the character window. IPos is used only for parameter passing.
-    window: array(0..2*WSIZE-1) of Byte;
+    window: array(0 .. 2 * WSIZE - 1) of Byte;
     --  Sliding window. Input bytes are read into the second half of the window,
     --  and move to the first half later to keep a dictionary of at least WSIZE
     --  bytes. With this organization, matches are limited to a distance of
     --  WSIZE-MAX_MATCH bytes, but this ensures that IO is always
     --  performed with a length multiple of the block size.
-    prev: array(0..unsigned(WSIZE-1)) of Pos;
+    prev: array(0..unsigned(WSIZE - 1)) of Pos;
     --  Link to older string with same hash index.
     --  This link is maintained only for the last 32K strings.
     --  An index in this array is thus a window index modulo 32K.
-    head: array(0..unsigned(HASH_SIZE-1)) of Pos;
+    head: array(0..unsigned(HASH_SIZE - 1)) of Pos;
     --  Heads of the hash chains or NIL.
     window_size: ulg;
     --  window size, 2*WSIZE except for MMAP or BIG_MEM, where it is the
     --  input file length plus MIN_LOOKAHEAD.
-    --  !! need to simplify this
-    block_start: long;
-    --  window position at the beginning of the current output block. Gets
-    --  negative when the window is moved backwards.
+    --  !! perhaps simplify this
     sliding: Boolean;  --  Set to False when the input file is already in memory  [was: int]
-    ins_h: unsigned;  --  hash index of string to be inserted
-    MIN_MATCH: constant Integer:= Threshold + 1;  --  Deflate: 3
-    MAX_MATCH: constant Integer:= Look_Ahead;     --  Deflate: 258
-    MIN_LOOKAHEAD: constant Integer:= MAX_MATCH + MIN_MATCH + 1;
+    ins_h: unsigned;   --  hash index of string to be inserted
+    MIN_MATCH: constant Integer_M32:= Integer_M32(Threshold) + 1;  --  Deflate: 3
+    MAX_MATCH: constant Integer_M32:= Integer_M32(Look_Ahead);     --  Deflate: 258
+    MIN_LOOKAHEAD: constant Integer_M32:= MAX_MATCH + MIN_MATCH + 1;
     --  Minimum amount of lookahead, except at the end of the input file.
-    MAX_DIST : constant Integer:= WSIZE - MIN_LOOKAHEAD;
-    H_SHIFT: constant Integer:= (HASH_BITS + MIN_MATCH - 1) / MIN_MATCH;
+    MAX_DIST : constant Integer_M32:= WSIZE - MIN_LOOKAHEAD;
+    H_SHIFT: constant Integer:= Integer((HASH_BITS + MIN_MATCH - 1) / MIN_MATCH);
     --  Number of bits by which ins_h and del_h must be shifted at each
     --  input step. It must be such that after MIN_MATCH steps, the oldest
     --  byte no longer takes part in the hash key, that is:
     --  H_SHIFT * MIN_MATCH >= HASH_BITS
-    prev_length: Natural; --  [was: unsigned]
+    prev_length: Natural_M32; --  [was: unsigned]
     --  Length of the best match at previous step. Matches not greater than this
     --  are discarded. This is used in the lazy match evaluation.
-    strstart   : Natural;   --  start of string to insert [was: unsigned]
-    match_start: Natural;   --  start of matching string [was: unsigned]
-    eofile     : Boolean;   --  flag set at end of input file [was: int]
-    lookahead  : Natural;   --  number of valid bytes ahead in window  [was: unsigned]
+    strstart   : Natural_M32;   --  start of string to insert [was: unsigned]
+    match_start: Natural_M32;   --  start of matching string [was: unsigned]
+    eofile     : Boolean;       --  flag set at end of input file [was: int]
+    lookahead  : Natural_M32;   --  number of valid bytes ahead in window  [was: unsigned]
     max_chain_length : unsigned; 
     --  To speed up deflation, hash chains are never searched beyond this length.
     --  A higher limit improves compression ratio but degrades the speed.
-    max_lazy_match: Natural;  --  [was: unsigned]
+    max_lazy_match: Natural_M32;  --  [was: unsigned]
     --  Attempt to find a better match only when the current match is strictly
     --  smaller than this value. This mechanism is used only for compression
     --  levels >= 4.
-    good_match: Natural;  --  [was: unsigned]
+    good_match: Natural_M32;  --  [was: unsigned]
     --  Use a faster search when the previous match is longer than this
-    nice_match: int;  --  Stop searching when current match exceeds this
+    nice_match: Integer_M32;  --  Stop searching when current match exceeds this
     --  Values for max_lazy_match, good_match, nice_match and max_chain_length,
     --  depending on the desired pack level (0..9). The values given below have
     --  been tuned to exclude worst case performance for pathological files.
     --  Better values may be found for specific files.
     type config is record
-      good_length  : Integer;  --  reduce lazy search above this match length [was: ush]
-      max_lazy     : Natural;  --  do not perform lazy search above this match length
-      nice_length  : int;      --  quit search above this match length
+      good_length  : Natural_M32;  --  reduce lazy search above this match length [was: ush]
+      max_lazy     : Natural_M32;  --  do not perform lazy search above this match length
+      nice_length  : Integer_M32;  --  quit search above this match length
       max_chain    : ush;
     end record;
     
-    configuration_table: constant array(0..9) of config:= (
+    configuration_table: constant array(0..10) of config:= (
     --  good lazy nice chain
         (0,    0,  0,    0),    --  store only
         (4,    4,  8,    4),    --  maximum speed, no lazy matches
@@ -446,7 +444,8 @@ procedure Zip.LZ77 is
         (8,   16, 128, 128),
         (8,   32, 128, 256),
         (32, 128, 258, 1024),
-        (32, 258, 258, 4096));  --  maximum compression
+        (32, 258, 258, 4096),   --  maximum compression
+        (32, 258, 258, 4096));  --  variant of level 9
     
     --  Update a hash value with the given input byte
     --  IN  assertion: all calls to to UPDATE_HASH are made with consecutive
@@ -466,16 +465,16 @@ procedure Zip.LZ77 is
     --     input characters and the first MIN_MATCH bytes of s are valid
     --     (except for the last MIN_MATCH-1 bytes of the input file).
     
-    procedure INSERT_STRING(s: int; match_head: out Natural) is
+    procedure INSERT_STRING(s: Integer_M32; match_head: out Natural_M32) is
     pragma Inline(INSERT_STRING);
     begin
-      UPDATE_HASH(ins_h, window((s) + (MIN_MATCH-1)));
-      match_head := Natural(head(ins_h));
-      prev(unsigned(s) and unsigned(WMASK)):= Pos(match_head);
+      UPDATE_HASH(ins_h, window(s + MIN_MATCH - 1));
+      match_head := Natural_M32(head(ins_h));
+      prev(unsigned(s) and WMASK):= Pos(match_head);
       head(ins_h) := Pos(s);
     end INSERT_STRING;
     
-    procedure Read_buf(from: Integer; amount: unsigned; actual: out Integer) is
+    procedure Read_buf(from: Integer_M32; amount: unsigned; actual: out Integer_M32) is
       need: unsigned:= amount;
     begin
       --  put_line("Read buffer: from:" & from'img & ";  amount:" & amount'img);
@@ -499,21 +498,23 @@ procedure Zip.LZ77 is
     procedure Fill_window is
       more: unsigned;
       m: Pos;
-      n: Natural;
+      n: Natural_M32;
     begin
       loop
         more:= unsigned(window_size - ulg(lookahead) - ulg(strstart));
-        if False then  --  C: "if (more == (unsigned)EOF) {" ?... Seems a 16-bit code for EOF
+        if False then  --  C: "if (more == (unsigned)EOF) {" ?... GdM: seems a 16-bit code for EOF
           --  Very unlikely, but possible on 16 bit machine if strstart == 0
           --  and lookahead == 1 (input done one byte at time)
           more:= more - 1;
         elsif strstart >= WSIZE + MAX_DIST and then sliding then
           --  By the IN assertion, the window is not empty so we can't confuse
           --  more == 0 with more == 64K on a 16 bit machine.
-          window(0..WSIZE-1):= window(WSIZE..2*WSIZE-1);
-          match_start := match_start - WSIZE;
+          window(0 .. WSIZE - 1):= window(WSIZE .. 2 * WSIZE - 1);
+          --  GdM: in rare cases (e.g. level 9 on test file "enwik8"), match_start happens
+          --  to be < WSIZE. We do as in C code: mod 2**16. This assumes WSIZE = 2**15,
+          --  which is checked at startup of LZ77_using_IZ.
+          match_start := Natural_M32( Unsigned_16(match_start) - Unsigned_16(WSIZE) );
           strstart    := strstart - WSIZE; -- we now have strstart >= MAX_DIST:
-          block_start := block_start - long(WSIZE);
           for nn in 0 .. unsigned'(HASH_SIZE - 1) loop
             m := head(nn);
             if m >= Pos(WSIZE) then
@@ -585,7 +586,6 @@ procedure Zip.LZ77 is
       max_chain_length := configuration_table(pack_level).max_chain;
       --  !!  Info-Zip comment: ??? reduce max_chain_length for binary files
       strstart := 0;
-      block_start := 0;
       Read_buf(0, unsigned(WSIZE), lookahead);
       if lookahead = 0 then
         eofile := True;
@@ -598,7 +598,7 @@ procedure Zip.LZ77 is
         Fill_window;
       end if;
       ins_h := 0;
-      for j in 0 .. MIN_MATCH-2 loop
+      for j in 0 .. Natural_M32(MIN_MATCH)-2 loop
         UPDATE_HASH(ins_h, window(j));
       end loop;
       --  If lookahead < MIN_MATCH, ins_h is garbage, but this is
@@ -612,15 +612,15 @@ procedure Zip.LZ77 is
     --  IN assertions: current_match is the head of the hash chain for the current
     --    string (strstart) and its distance is <= MAX_DIST, and prev_length >= 1
     
-    procedure Longest_Match(current_match: in out Integer; longest: out int) is 
+    procedure Longest_Match(current_match: in out Integer_M32; longest: out Integer_M32) is 
       chain_length : unsigned := max_chain_length;  --  max hash chain length
-      scan         : Integer := strstart;           --  current string
-      match        : Integer;                       --  matched string
-      len          : Integer;                       --  length of current match
-      best_len     : Integer := prev_length;        --  best match length so far
-      limit        : Natural;  --  [was: IPos]
-      strend       : constant Integer:= strstart + MAX_MATCH;
-      scan_end     : Integer:= scan + best_len;
+      scan         : Integer_M32 := strstart;       --  current string
+      match        : Integer_M32;                   --  matched string
+      len          : Integer_M32;                   --  length of current match
+      best_len     : Integer_M32 := prev_length;    --  best match length so far
+      limit        : Natural_M32;  --  [was: IPos]
+      strend       : constant Integer_M32:= strstart + MAX_MATCH;
+      scan_end     : Integer_M32:= scan + best_len;
     begin
       --  Stop when current_match becomes <= limit. To simplify the code,
       --  we prevent matches with the string of window index 0.
@@ -642,6 +642,7 @@ procedure Zip.LZ77 is
         --
         --  NB: this is the Not-UNALIGNED_OK variant in the C code.
         --      Translation of the UNALIGNED_OK variant is left as an exercise ;-).
+        --      (!! worth a try: GNAT optimizes window(match..match+1[3]) to 16[32] bit)
         --
         if window(match + best_len)     /= window(scan_end) or else
            window(match + best_len - 1) /= window(scan_end - 1) or else
@@ -708,7 +709,7 @@ procedure Zip.LZ77 is
             scan_end  := scan + best_len;
           end if;
         end if;
-        current_match := Integer(prev(unsigned(current_match) and unsigned(WMASK)));
+        current_match := Integer_M32(prev(unsigned(current_match) and WMASK));
         exit when current_match <= limit;
         chain_length:= chain_length - 1;
         exit when chain_length = 0;
@@ -717,11 +718,11 @@ procedure Zip.LZ77 is
     end Longest_Match;
     
     procedure LZ77_part_of_IZ_Deflate is
-      hash_head : Natural:= NIL;              --  head of hash chain
-      prev_match: Natural;                    --  previous match  [was: IPos]
-      match_available: Boolean:= False;       --  set if previous match exists
-      match_length: Natural:= MIN_MATCH - 1;  --  length of best match
-      max_insert: Natural;
+      hash_head : Natural_M32:= NIL;              --  head of hash chain
+      prev_match: Natural_M32;                    --  previous match  [was: IPos]
+      match_available: Boolean:= False;           --  set if previous match exists
+      match_length: Natural_M32:= MIN_MATCH - 1;  --  length of best match
+      max_insert: Natural_M32;
     begin
       match_start:= 0;  --  NB: no initialization in deflate.c
       --  NB: level <= 3 would call deflate_fast;
@@ -767,7 +768,11 @@ procedure Zip.LZ77 is
         if prev_length >= MIN_MATCH and then match_length <= prev_length then
           max_insert:= strstart + lookahead - MIN_MATCH;
           --  C: in DEBUG mode: check_match(strstart-1, prev_match, prev_length);
-          Write_code(strstart-1-prev_match, prev_length);
+          --
+          ------------------------------------
+          --  Output a Distance-Length code --
+          ------------------------------------
+          Write_code(Positive(strstart - 1 - prev_match), Positive(prev_length));
           --  Insert in hash table all strings up to the end of the match.
           --  strstart-1 and strstart are already inserted.
           lookahead := lookahead - (prev_length-1);
@@ -789,6 +794,10 @@ procedure Zip.LZ77 is
           --  If there was no match at the previous position, output a
           --  single literal. If there was a match but the current match
           --  is longer, truncate the previous match to a single literal.
+          --
+          ------------------------
+          --  Output a literal  --
+          ------------------------
           Write_byte(window(strstart-1));
           strstart:= strstart + 1;
           lookahead := lookahead - 1;
@@ -808,6 +817,9 @@ procedure Zip.LZ77 is
           Fill_window;
         end if;
       end loop;
+      -----------------------------------
+      --  Output last literal, if any  --
+      -----------------------------------
       if match_available then
         Write_byte(window(strstart-1));
       end if;
@@ -815,19 +827,19 @@ procedure Zip.LZ77 is
     
     Code_too_clever: exception;
   begin
-    if Look_Ahead /= 258 or String_buffer_size < 2 ** 15 or Threshold /= 2 then
+    if Look_Ahead /= 258 or String_buffer_size /= 2 ** 15 or Threshold /= 2 then
       raise Code_too_clever;  --  was optimized for these parameters
     end if;
     window_size:= 0;
     LM_Init(level);
     LZ77_part_of_IZ_Deflate;
   end LZ77_using_IZ;
-  
+
 begin
   case method is
     when LZHuf =>
       LZ77_using_LZHuf;
-    when IZ_4 .. IZ_9 =>
+    when IZ_4 .. IZ_10 =>
       LZ77_using_IZ( 4 + LZ77_method'Pos(method) -  LZ77_method'Pos(IZ_4) );
   end case;
 end Zip.LZ77;

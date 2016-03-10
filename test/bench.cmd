@@ -36,6 +36,8 @@ zipada -ed1 ../bench_%1_deflate_1 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_1_%1.zcd
 zipada -ed2 ../bench_%1_deflate_2 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_2_%1.zcd
+zipada -ed3 ../bench_%1_deflate_3 *
+if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_3_%1.zcd
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 
 cd ..

@@ -20,20 +20,24 @@ if exist test_rz.ReZip.html del test_rz.ReZip.html
 set files=*.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.mdb *.bin
 
 zipada     -esh              test_zash     %files%
-zipada     -er1              test_zar1     %files%
-zipada     -er2              test_zar2     %files%
-zipada     -er3              test_zar3     %files%
-zipada     -er4              test_zar4     %files%
+zipada     -edf              test_zadf     %files%
 zipada     -ed1              test_zad1     %files%
 zipada     -ed2              test_zad2     %files%
-zipada     -edf              test_zadf     %files%
+zipada     -ed3              test_zad3     %files%
 zip        -1                test_ifz1     %files%
 zip        -6                test_ifz6     %files%
 zip        -9                test_ifz9     %files%
 7z a -tzip -mx=9 -mm=deflate test_7z_d     %files%
+
+if not "%1" == "full" goto skip
 rem  --  Now if you need a coffee, it's the right time to have one or two...
+zipada     -er1              test_zar1     %files%
+zipada     -er2              test_zar2     %files%
+zipada     -er3              test_zar3     %files%
+zipada     -er4              test_zar4     %files%
 kzip                         test_kzip     %files%
 advzip -a -4                 test_zopf.zip %files%
+:skip
 
 rem --------------------------
 rem Nice date YYYY-MM-DD_HH.MM
@@ -53,16 +57,17 @@ dir /OS test_za??.zip test_ifz?.zip test_kzip.zip test_7z_d.zip test_zopf.zip |f
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.
-comp_zip test_zash test_zar1 -q2
-comp_zip test_zash test_zar2 -q2
-comp_zip test_zash test_zar3 -q2
-comp_zip test_zash test_zar4 -q2
+if exist test_zar1 comp_zip test_zash test_zar1 -q2
+if exist test_zar2 comp_zip test_zash test_zar2 -q2
+if exist test_zar3 comp_zip test_zash test_zar3 -q2
+if exist test_zar4 comp_zip test_zash test_zar4 -q2
 comp_zip test_zash test_zadf -q2
 comp_zip test_zash test_zad1 -q2
 comp_zip test_zash test_zad2 -q2
+comp_zip test_zash test_zad3 -q2
 comp_zip test_zash test_ifz9 -q2
-comp_zip test_zash test_kzip -q2
 comp_zip test_zash test_7z_d -q2
-comp_zip test_zash test_zopf -q2
+if exist test_kzip comp_zip test_zash test_kzip -q2
+if exist test_zopf comp_zip test_zash test_zopf -q2
 
 pause

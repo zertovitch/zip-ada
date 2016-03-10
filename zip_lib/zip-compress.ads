@@ -40,7 +40,8 @@ package Zip.Compress is
      Deflate_Fixed,
      --  Multi-block method, strength 1 (stronger => slower but smaller output)
      Deflate_1,
-     Deflate_2
+     Deflate_2,
+     Deflate_3
      --  NB: Deflate_1 + are in development. "There be bugs" !
      --  Better wait for a release for a "prod" usage...
     );
@@ -50,8 +51,8 @@ package Zip.Compress is
 
   subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
 
-  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_2;
-  subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_2;
+  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_3;
+  subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
 
   User_abort: exception;
 
@@ -84,9 +85,7 @@ private
      Reduce_2            => reduce_2,
      Reduce_3            => reduce_3,
      Reduce_4            => reduce_4,
-     Deflate_Fixed       => deflate,
-     Deflate_1           => deflate,
-     Deflate_2           => deflate
+     Deflation_Method    => deflate
     );
 
 end Zip.Compress;

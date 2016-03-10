@@ -349,13 +349,13 @@ package Zip is
   --  In case you want to use the Zip.LZ77 compression procedure
   --  separately, you need to pick an appropriate method
   --
-  type LZ77_method is (LZHuf, IZ_4, IZ_5, IZ_6, IZ_7, IZ_8, IZ_9);
+  type LZ77_method is (LZHuf, IZ_4, IZ_5, IZ_6, IZ_7, IZ_8, IZ_9, IZ_10);
 
   --------------------------------------------------------------
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "50 preview 8b";
+  version   : constant String:= "50 preview 8c";
   reference : constant String:= "xx-yyy-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
