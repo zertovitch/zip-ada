@@ -465,7 +465,7 @@ procedure Zip.LZ77 is
         (8,   32, 128, 256),
         (32, 128, 258, 1024),
         (32, 258, 258, 4096),   --  9: maximum compression
-        (258,258, 258, 4096));  --  "secret" variant of level 9
+        (34, 258, 258, 4096));  --  "secret" variant of level 9
     
     --  Update a hash value with the given input byte
     --  IN  assertion: all calls to to UPDATE_HASH are made with consecutive

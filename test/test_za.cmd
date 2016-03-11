@@ -57,17 +57,17 @@ dir /OS test_za??.zip test_ifz?.zip test_kzip.zip test_7z_d.zip test_zopf.zip |f
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.
-if exist test_zar1 comp_zip test_zash test_zar1 -q2
-if exist test_zar2 comp_zip test_zash test_zar2 -q2
-if exist test_zar3 comp_zip test_zash test_zar3 -q2
-if exist test_zar4 comp_zip test_zash test_zar4 -q2
+if exist test_zar1.zip comp_zip test_zash test_zar1 -q2
+if exist test_zar2.zip comp_zip test_zash test_zar2 -q2
+if exist test_zar3.zip comp_zip test_zash test_zar3 -q2
+if exist test_zar4.zip comp_zip test_zash test_zar4 -q2
 comp_zip test_zash test_zadf -q2
 comp_zip test_zash test_zad1 -q2
 comp_zip test_zash test_zad2 -q2
 comp_zip test_zash test_zad3 -q2
 comp_zip test_zash test_ifz9 -q2
 comp_zip test_zash test_7z_d -q2
-if exist test_kzip comp_zip test_zash test_kzip -q2
-if exist test_zopf comp_zip test_zash test_zopf -q2
+if exist test_kzip.zip comp_zip test_zash test_kzip -q2
+if exist test_zopf.zip comp_zip test_zash test_zopf -q2
 
 pause
