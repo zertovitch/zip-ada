@@ -29,7 +29,7 @@ cd..
 
 cd test
 
-if exist test_za??.zip del test_za??.zip
+if exist test_za*.zip  del test_za*.zip
 if exist test_ifz?.zip del test_ifz?.zip
 if exist test_kzip.zip del test_kzip.zip
 if exist test_7z_d.zip del test_7z_d.zip

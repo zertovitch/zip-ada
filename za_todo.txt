@@ -1,5 +1,24 @@
+- Taillaule: cut at different levels with different steps (higher levels for shorter steps)
+
+- Taillaule: try with slider and/or initial lz window not centered
+
+- Taillaule: compare slider to random and fixed in addition to initial
+
+- Taillaule: use a corpus of comparatively badly compressed files
+
+- LZ77 / IZ: 
+   - tune TOO_FAR,
+   - tune parameters of secret level 10.
+
+- LZ77: try LZ77 from 7-Zip
+
+- Add DeflOpt to slowest method
+
+
 - comp_zip: optionally, check only CRC
+
 - more profiling - see prof_za.cmd and test/prof.cmd
+
   OK:
     2**n expanded to 
     interfaces__unsigned_32($system__exp_uns__exp_unsigned(2, n) and 16#FFFF_FFFF#)

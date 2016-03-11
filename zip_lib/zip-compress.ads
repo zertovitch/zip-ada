@@ -37,6 +37,7 @@ package Zip.Compress is
      Reduce_3,
      Reduce_4,
      --  Compress the data in one block and with predefined ("fixed") compression structures.
+     --  The data are basically LZ-Compressed, the Huffman code set is flat.
      Deflate_Fixed,
      --  Multi-block method, strength 1 (stronger => slower but smaller output)
      Deflate_1,

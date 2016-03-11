@@ -356,8 +356,29 @@ procedure Zip.LZ77 is
   --  0: store, 1: best speed, 9: best compression, 10: variant of level 9
   --  Here only levels 4 to 10 are supported.
 
+  --  LZ77_using_IZ: based on deflate.c by Jean-Loup Gailly.
+  --  Core description of the algorithm:
+  --
+  --     The most straightforward technique turns out to be the fastest for
+  --     most input files: try all possible matches and select the longest.
+  --     The key feature of this algorithm is that insertions into the string
+  --     dictionary are very simple and thus fast, and deletions are avoided
+  --     completely. Insertions are performed at each input character, whereas
+  --     string matches are performed only when the previous match ends. So it
+  --     is preferable to spend more time in matches to allow very fast string
+  --     insertions and avoid deletions. The matching algorithm for small
+  --     strings is inspired from that of Rabin & Karp [1]. A brute force approach
+  --     is used to find longer strings when a small match has been found.
+  --
+  --     The idea of lazy evaluation of matches is due to Jan-Mark Wams.
+  --
+  --     [1] A description of the Rabin and Karp algorithm is given in the book
+  --         "Algorithms" by R. Sedgewick, Addison-Wesley, p252.
+  --
+  --  About hashing: chapter 6.4 of The Art of Computer Programming, Volume 3, D.E. Knuth
+  --  Rabin and Karp algorithm: http://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm
+  
   procedure LZ77_using_IZ(level: IZ_pack_level) is
-    --  Based on deflate.c by Jean-Loup Gailly.
     HASH_BITS: constant:= 15;  --  13..15
     HASH_SIZE: constant:= 2 ** HASH_BITS;
     HASH_MASK: constant:= HASH_SIZE - 1;
@@ -373,7 +394,6 @@ procedure Zip.LZ77 is
     subtype ush is Unsigned_M16;
     --  subtype long is Integer_M32;
     --  subtype int is Integer;
-    --
     subtype Pos is Unsigned_M32;  --  must be at least 32 bits
     --  subtype IPos is unsigned;
     --  A Pos is an index in the character window. IPos is used only for parameter passing.
@@ -435,17 +455,17 @@ procedure Zip.LZ77 is
     
     configuration_table: constant array(0..10) of config:= (
     --  good lazy nice chain
-        (0,    0,  0,    0),    --  store only
-        (4,    4,  8,    4),    --  maximum speed, no lazy matches
+        (0,    0,  0,    0),    --  0: store only
+        (4,    4,  8,    4),    --  1: maximum speed, no lazy matches
         (4,    5, 16,    8),
         (4,    6, 32,   32),
-        (4,    4, 16,   16),    --  lazy matches
+        (4,    4, 16,   16),    --  4: lazy matches
         (8,   16, 32,   32),
         (8,   16, 128, 128),
         (8,   32, 128, 256),
         (32, 128, 258, 1024),
-        (32, 258, 258, 4096),   --  maximum compression
-        (32, 258, 258, 4096));  --  variant of level 9
+        (32, 258, 258, 4096),   --  9: maximum compression
+        (258,258, 258, 4096));  --  "secret" variant of level 9
     
     --  Update a hash value with the given input byte
     --  IN  assertion: all calls to to UPDATE_HASH are made with consecutive
