@@ -1052,17 +1052,39 @@ is
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
     --  *Tuned*
-    step: constant array(Taillaule_Deflation_Method) of LZ_buffer_index_type:=
-      (Deflate_1 | Deflate_2 => 4096, Deflate_3 => 3072);
+    
+    --  We examine similarities in the LZ data flow at different step sizes.
+    --  If the optimal Huffman encoding for this portion is very different, we choose to
+    --  cut current block and start a new one. The shorter the step, the higher the threshold
+    --  for starting a dynamic block, since the compression header is taking some room ech time.
+    --  !! TBD: differenciate dynamic vs fixed & stored cases, with a different threshold.
+
+    type Step_threshold_metric is record
+      slider_step       : LZ_buffer_index_type;
+      cutting_threshold : Positive;
+      metric            : Distance_type;
+    end record;
+
+    min_step: constant:= 750;
+
+    step_choice: constant array(Positive range <>) of Step_threshold_metric:=
+      ( ( 6000,  465, L1),
+        ( 3000,  470, L1),
+        ( 1500, 2300, L1),
+        (  750, 2400, L1)        
+      );
+
+    max_choice: array(Taillaule_Deflation_Method) of Positive:=
+      (Deflate_1 | Deflate_2 => 2, Deflate_3 => step_choice'Last);
+
     slider_size: constant:= 4096;
-    cutting_threshold: constant:= 470;
-    --
     half_slider_size: constant:= slider_size / 2;
     slider_max: constant:= slider_size - 1;
 
     procedure Scan_and_send_from_main_buffer(from, to: LZ_buffer_index_type; last_flush: Boolean) is
       initial_hd, sliding_hd: Deflate_Huff_descriptors;
       start, slide_mid, send_from: LZ_buffer_index_type;
+      sliding_hd_computed: Boolean;
     begin
       if to-from < slider_max then
         Send_as_block(lz_buffer(from..to), last_flush);
@@ -1093,23 +1115,42 @@ is
         initial_hd:= Optimal_descriptors(lz_buffer(start .. start + slider_max));
       end if;
       send_from:= from;
-      slide_mid:= from + step(method);
+      slide_mid:= from + min_step;
       while Integer_M32(slide_mid) + half_slider_size < Integer_M32(to) loop
-        sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid - half_slider_size .. slide_mid + half_slider_size));
-        if not Similar(initial_hd, sliding_hd, L1, cutting_threshold, "Compare sliding to initial") then
-          if trace then
-            Put_Line(log, 
-              "### Cutting @ " & LZ_buffer_index_type'Image(slide_mid) & 
-              "  ('from' is" & LZ_buffer_index_type'Image(from) & 
-              ", 'to' is" & LZ_buffer_index_type'Image(to) & ')'
-            );
+        sliding_hd_computed:= False;
+        Level_loop:
+        for level in step_choice'Range loop
+          exit when level > max_choice(method);
+          if (slide_mid - from) mod step_choice(level).slider_step = 0 then
+            if not sliding_hd_computed then
+              sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid - half_slider_size .. slide_mid + half_slider_size));
+              sliding_hd_computed:= True;
+            end if;
+            if not Similar(
+              initial_hd, 
+              sliding_hd, 
+              step_choice(level).metric, 
+              step_choice(level).cutting_threshold, 
+              "Compare sliding to initial (step size=" & 
+              LZ_buffer_index_type'Image(step_choice(level).slider_step) & ')'
+            ) 
+            then
+              if trace then
+                Put_Line(log, 
+                  "### Cutting @ " & LZ_buffer_index_type'Image(slide_mid) & 
+                  "  ('from' is" & LZ_buffer_index_type'Image(from) & 
+                  ", 'to' is" & LZ_buffer_index_type'Image(to) & ')'
+                );
+              end if;
+              Send_as_block(lz_buffer(send_from .. slide_mid-1), last_block => False);
+              send_from:= slide_mid;
+              initial_hd:= sliding_hd;  --  reset reference descriptor for further comparisons
+              exit Level_loop;  --  Cutting once at a given place is enough :-)
+            end if;
           end if;
-          Send_as_block(lz_buffer(send_from .. slide_mid-1), last_block => False);
-          send_from:= slide_mid;
-          initial_hd:= sliding_hd;  --  reset reference descriptor for further comparisons
-        end if;
-        slide_mid:= slide_mid + step(method);
-        exit when slide_mid < from + step(method);  --  catch looping over (mod n)
+        end loop Level_loop;
+        slide_mid:= slide_mid + min_step;
+        exit when slide_mid < from + min_step;  --  catch looping over (mod n)
       end loop;
       --
       --  Send last block for slice from .. to.
