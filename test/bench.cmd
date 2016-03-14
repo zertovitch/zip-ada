@@ -19,8 +19,10 @@ zipada      ../bench_%1_shrink    *
 rem   ### Reduce (LZ & Markov)
 zipada -er4 ../bench_%1_reduce_4  *
 rem   ### Deflate
+zip    -6   ../bench_%1_iz_6      *
 zip    -9   ../bench_%1_iz_9      *
 kzip        ../bench_%1_kzip      *
+7z a -tzip -mm=deflate -mx5  ../bench_%1_7zip_defl_5 *
 7z a -tzip -mm=deflate -mfb=258 -mpass=15 -mmc=10000 ../bench_%1_7zip_deflate *
 advzip -a -4 ../bench_%1_zopfli.zip *
 rem   ### BZip2
@@ -29,8 +31,6 @@ rem   ### LZMA
 7z a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma *
 
 :skip
-zip    -6   ../bench_%1_iz_6      *
-7z a -tzip -mm=deflate -mx5  ../bench_%1_7zip_defl_5 *
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 zipada -edf ../bench_%1_deflate_f *
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd

@@ -2,7 +2,8 @@
 
 - Taillaule: compare slider to random and fixed in addition to initial
 
-- Taillaule: use a corpus of comparatively badly compressed files
+- Taillaule: use a corpus of files badly compressed by our Deflate comparatively
+    to other Deflates (e.g. 7Z is outstanding with databases)
 
 - LZ77 / IZ: similar to the test with TOO_FAR, try to cluster distances around
     values needing less extra bits (may not work at all...)
@@ -10,7 +11,9 @@
 - LZ77: try yet another LZ77, e.g. from 7-Zip
 
 - Add DeflOpt to slowest method, or approximate it by tweaking
-    distance and length statistics before computing their Huffman codes
+    distance and length statistics before computing their Huffman codes, or
+    reinvent it by computing the size of emitted codes and trying slight changes
+    to the codes' bit lengths.
 
 - UnZip.Decompress, Deflate: "strict" option with default True for dealing with
   incomplete distance code set (old PKZIP bug)
