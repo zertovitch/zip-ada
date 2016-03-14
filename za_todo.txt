@@ -1,5 +1,3 @@
-- Taillaule: cut at different levels with different steps (higher levels for shorter steps)
-
 - Taillaule: try with slider and/or initial lz window not centered
 
 - Taillaule: compare slider to random and fixed in addition to initial
@@ -9,11 +7,13 @@
 - LZ77 / IZ: similar to the test with TOO_FAR, try to cluster distances around
     values needing less extra bits (may not work at all...)
 
-- LZ77: try LZ77 from 7-Zip
+- LZ77: try yet another LZ77, e.g. from 7-Zip
 
 - Add DeflOpt to slowest method, or approximate it by tweaking
     distance and length statistics before computing their Huffman codes
 
+- UnZip.Decompress, Deflate: "strict" option with default True for dealing with
+  incomplete distance code set (old PKZIP bug)
 
 - comp_zip: optionally, check only CRC
 

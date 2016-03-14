@@ -724,7 +724,7 @@ package body Rezip_lib is
                 mth:= Zip.Method_from_code(e.info(a).zfm);
                 --
               when Internal =>
-                if a in deflate_1 .. deflate_2 then
+                if a in deflate_1 .. deflate_3 then
                   Process_Internal_as_Zip(a, e.all);
                 else
                   Process_Internal_Raw(a, e.all);

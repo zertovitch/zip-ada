@@ -123,9 +123,10 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 * Changes in '50', xx-yyy-2016:
   - New compression features:
     - Deflate_Fixed much faster and with slightly better compression
-    - added Deflate_1: compression level similar to zlib level 6
-    - added Deflate_2: compression level similar to zlib level 9
-    - added Deflate_3: compression level similar to 7-Zip (Deflate) level x
+    - added Deflate_1: compression level similar to zlib, level 6
+    - added Deflate_2: compression level similar to zlib, level 9
+    - added Deflate_3: compression level similar to 7-Zip,
+        meth=deflate, level 5
 
 * Changes in '49', 21-Mar-2015:
   - encryption implemented (portable Zip 2.0 encryption scheme)
