@@ -1,14 +1,16 @@
 procedure Zip.LZ77 is
 
   --  There are two LZ77 encoders at choice here:
+  --
   --    1/  LZ77_using_LZHuf, based on LZHuf
+  --
   --    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c which is
   --          actually the LZ77 part of the compression.
   --
   --  Variant 1/ is working since 2009. Two problems: it is slow and not
   --     well adapted to the Deflate format (mediocre compression).
-  --  Variant 2/ is much faster, and better for Deflate (and perhaps
-  --     even Reduce). Added 05-Mar-2016
+  --
+  --  Variant 2/ is much faster, and better for Deflate. Added 05-Mar-2016.
 
   -----------------------
   --  LZHuf algorithm  --
@@ -352,10 +354,6 @@ procedure Zip.LZ77 is
   --  Info-Zip algorithm  --
   --------------------------
 
-  subtype IZ_pack_level is Integer range 4 .. 10;
-  --  0: store, 1: best speed, 9: best compression, 10: variant of level 9
-  --  Here only levels 4 to 10 are supported.
-
   --  LZ77_using_IZ: based on deflate.c by Jean-Loup Gailly.
   --  Core description of the algorithm:
   --
@@ -378,7 +376,10 @@ procedure Zip.LZ77 is
   --  About hashing: chapter 6.4 of The Art of Computer Programming, Volume 3, D.E. Knuth
   --  Rabin and Karp algorithm: http://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm
   
-  procedure LZ77_using_IZ(level: IZ_pack_level) is
+  --  Compression level: 0: store, 1: best speed, 9: best compression, 10: variant of level 9
+  --  Ada code: only levels 4 to 10 are supported.
+
+  procedure LZ77_using_IZ(level: Natural) is
     HASH_BITS: constant:= 15;  --  13..15
     HASH_SIZE: constant:= 2 ** HASH_BITS;
     HASH_MASK: constant:= HASH_SIZE - 1;
@@ -531,8 +532,10 @@ procedure Zip.LZ77 is
           --  more == 0 with more == 64K on a 16 bit machine.
           window(0 .. WSIZE - 1):= window(WSIZE .. 2 * WSIZE - 1);
           --  GdM: in rare cases (e.g. level 9 on test file "enwik8"), match_start happens
-          --  to be < WSIZE. We do as in C code: mod 2**16. This assumes WSIZE = 2**15,
-          --  which is checked at startup of LZ77_using_IZ.
+          --  to be < WSIZE. We do as in the original 16-bit C code: mod 2**16, such that the
+          --  index is the window's range.
+          --  This assumes WSIZE = 2**15, which is checked at startup of LZ77_using_IZ.
+          --  Very likely, match_start is garbage anyway - see http://sf.net/p/infozip/bugs/49/
           match_start := Natural_M32( Unsigned_16(match_start) - Unsigned_16(WSIZE) );
           strstart    := strstart - WSIZE; -- we now have strstart >= MAX_DIST:
           for nn in 0 .. unsigned'(HASH_SIZE - 1) loop
@@ -588,7 +591,7 @@ procedure Zip.LZ77 is
     --     MIN_LOOKAHEAD bytes (to avoid referencing memory beyond the end
     --     of window when looking for matches towards the end).
     
-    procedure LM_Init (pack_level: IZ_pack_level) is
+    procedure LM_Init (pack_level: Natural) is
     begin
       --  Do not slide the window if the whole input is already in memory (window_size > 0)    
       sliding := False;
