@@ -43,6 +43,14 @@ private package UnZip.Decompress is
 
 private
 
+  --  When deflate_strict = True, stop if there is an incomplete Huffman
+  --  code set for decoding LZ distances. This is the correct and safe behaviour.
+  --  When dealing with Zip files from some old compression programs like PKZIP 1.93a,
+  --  the check can be bypassed with deflate_strict = False, but this lessens the
+  --  data error detection.
+  --
+  deflate_strict: constant Boolean:= True;
+
   -- Primitive tracing using Ada.Text_IO, plus a few statistics
   --
   type Trace_type is (none, some_t, full);

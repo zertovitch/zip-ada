@@ -1074,7 +1074,7 @@ is
         (  750, 2400, L1)        
       );
 
-    max_choice: array(Taillaule_Deflation_Method) of Positive:=
+    max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
       (Deflate_1 | Deflate_2 => 2, Deflate_3 => step_choice'Last);
 
     slider_size: constant:= 4096;

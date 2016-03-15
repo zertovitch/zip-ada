@@ -15,9 +15,6 @@
     reinvent it by computing the size of emitted codes and trying slight changes
     to the codes' bit lengths.
 
-- UnZip.Decompress, Deflate: "strict" option with default True for dealing with
-  incomplete distance code set (old PKZIP bug)
-
 - comp_zip: optionally, check only CRC
 
 - more profiling - see prof_za.cmd and test/prof.cmd

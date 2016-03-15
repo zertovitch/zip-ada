@@ -1520,26 +1520,21 @@ package body UnZip.Decompress is
           ( 0..143=> 8, 144..255=> 9, 256..279=> 7, 280..287=> 8);
 
       procedure Inflate_fixed_block is
-        Tl,                        -- literal/length code table
-          Td : p_Table_list;            -- distance code table
-        Bl, Bd : Integer;          -- lookup bits for tl/bd
+        Tl,                        --   literal/length code table
+            Td : p_Table_list;            --  distance code table
+        Bl, Bd : Integer;          --  lookup bits for tl/bd
         huft_incomplete : Boolean;
-
-        -- length list for HufT_build (literal table)
-
       begin
         if some_trace then
           Ada.Text_IO.Put_Line("Begin Inflate_fixed_block");
         end if;
-
-        -- make a complete, but wrong code set
+        --  Make a complete, but wrong [why ?] code set (see Appnote: 5.5.2, RFC 1951: 3.2.6)
         Bl := 7;
         HufT_build(
           length_list_for_fixed_block_literals, 257, copy_lengths_literal,
           extra_bits_literal, Tl, Bl, huft_incomplete
         );
-
-        -- Make an incomplete code set
+        --  Make an incomplete code set (see Appnote: 5.5.2, RFC 1951: 3.2.6)
         Bd := 5;
         begin
           HufT_build(
@@ -1560,12 +1555,11 @@ package body UnZip.Decompress is
             HufT_free( Tl );
             raise Zip.Zip_file_Error;
         end;
-
+        --  Decompress the block's data, until an end-of-block code.
         Inflate_Codes ( Tl, Td, Bl, Bd );
-
+        --  Done with this block, free resources.
         HufT_free ( Tl );
         HufT_free ( Td );
-
         if some_trace then
           Ada.Text_IO.Put_Line("End   Inflate_fixed_block");
           lt_count_fix:= lt_count_fix + (lt_count-lt_count_0);
@@ -1639,11 +1633,11 @@ package body UnZip.Decompress is
           );
           if huft_incomplete then
             HufT_free(Tl);
-            raise Zip.Zip_file_Error;
+            Raise_Exception(Zip.Zip_file_Error'Identity, "Incomplete code set for compresssion structure");
           end if;
         exception
           when others =>
-            raise Zip.Zip_file_Error;
+            Raise_Exception(Zip.Zip_file_Error'Identity, "Error when building tables for compresssion structure");
         end;
 
         -- Read in literal and distance code lengths
@@ -1669,15 +1663,14 @@ package body UnZip.Decompress is
             when 18 =>          -- 11 to 138 zero length codes
               current_length:= 0;
               Repeat_length_code(11 + UnZ_IO.Bit_buffer.Read_and_dump(7));
-            when others =>
+            when others =>      --  Shouldn't occurr if this tree is correct
               if full_trace then
                 Ada.Text_IO.Put_Line("Illegal length code: " & Integer'Image(CT(CT_idx).n));
               end if;
           end case;
         end loop;
-        HufT_free ( Tl );        -- free decoding table for trees
-
-        -- Build the decoding tables for literal/length codes
+        HufT_free ( Tl );
+        --  Build the decoding tables for literal/length codes
         Bl := Lbits;
         begin
           HufT_build (
@@ -1687,14 +1680,13 @@ package body UnZip.Decompress is
           );
           if huft_incomplete then
             HufT_free(Tl);
-            raise Zip.Zip_file_Error;
+            Raise_Exception(Zip.Zip_file_Error'Identity, "Incomplete code set for literals/lengths");
           end if;
         exception
           when others =>
-            raise Zip.Zip_file_Error;
+            Raise_Exception(Zip.Zip_file_Error'Identity, "Error when building tables for literals/lengths");
         end;
-
-        -- Build the decoding tables for distance codes
+        --  Build the decoding tables for distance codes
         Bd := Dbits;
         begin
           HufT_build (
@@ -1702,22 +1694,23 @@ package body UnZip.Decompress is
             copy_offset_distance, extra_bits_distance,
             Td, Bd, huft_incomplete
           );
-          if huft_incomplete then -- do nothing!
-            if some_trace then
+          if huft_incomplete then
+            if deflate_strict then
+              Raise_Exception(Zip.Zip_file_Error'Identity, "Incomplete code set for distances");
+            elsif some_trace then  --  not deflate_strict => don't stop
               Ada.Text_IO.Put_Line("Huffman tree incomplete - PKZIP 1.93a bug workaround");
             end if;
           end if;
         exception
           when huft_out_of_memory | huft_error =>
             HufT_free(Tl);
-            raise Zip.Zip_file_Error;
+            Raise_Exception(Zip.Zip_file_Error'Identity, "Error when building tables for distances");
         end;
-
-        -- Decompress the block, until an end-of-block code
+        --  Decompress the block's data, until an end-of-block code.
         Inflate_Codes ( Tl, Td, Bl, Bd );
+        --  Done with this block, free resources.
         HufT_free ( Tl );
         HufT_free ( Td );
-
         if some_trace then
           Ada.Text_IO.Put_Line("End   Inflate_dynamic_block");
           lt_count_dyn:= lt_count_dyn + (lt_count-lt_count_0);
