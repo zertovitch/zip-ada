@@ -1,15 +1,18 @@
 with Ada.Exceptions;
 with Ada.Unchecked_Deallocation;
 with Ada.Text_IO;
+
 with Interfaces;                        use Interfaces;
-with Ada.Calendar;
 
 package body Zip.Create is
 
-   procedure Create(Info        : out Zip_Create_info;
-                    Z_Stream    : in Zipstream_Class_Access;
-                    Name        : String;
-                    Compress    : Zip.Compress.Compression_Method:= Zip.Compress.Shrink) is
+   procedure Create(Info          : out Zip_Create_info;
+                    Z_Stream      : in Zipstream_Class_Access;
+                    Name          : String;
+                    Creation_time : Zip.Time;  --  e.g. Zip.Convert(Ada.Calendar.Clock)
+                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink
+   )
+   is
    begin
       Info.Stream := Z_Stream;
       Info.Compress := Compress;
@@ -22,7 +25,7 @@ package body Zip.Create is
       if Z_Stream.all in File_Zipstream'Class then
         Zip_Streams.Create (File_Zipstream(Z_Stream.all), Zip_Streams.Out_File);
       end if;
-      Info.Creation_time:= Convert(Ada.Calendar.Clock);
+      Info.Creation_time:= Creation_time;
    end Create;
 
    function Is_Created(Info: Zip_Create_info) return Boolean is

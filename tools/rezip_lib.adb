@@ -550,7 +550,7 @@ package body Rezip_lib is
       cur_dir: constant String:= Current_Directory;
     begin
       Set_Directory(Containing_Directory(Flexible_temp_files.Radix));
-      Create (archive, zip_file'Unchecked_Access, temp_zip );
+      Create (archive, zip_file'Unchecked_Access, temp_zip, Zip_Streams.Calendar.Time_Of(2016, 1, 1) );
       Set(archive, Approach_to_Method(a));
       Add_File(archive, data_name);
       Finish (archive);

@@ -32,10 +32,12 @@ package Zip.Create is
 
    -- Create the Zip archive; create the file if the stream is a file
 
-   procedure Create(Info        : out Zip_Create_info;
-                    Z_Stream    : in Zipstream_Class_Access;
-                    Name        : String;
-                    Compress    : Zip.Compress.Compression_Method:= Zip.Compress.Shrink);
+   procedure Create(Info          : out Zip_Create_info;
+                    Z_Stream      : in Zipstream_Class_Access;
+                    Name          : String;
+                    Creation_time : Zip.Time;  --  e.g. Zip.Convert(Ada.Calendar.Clock)
+                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink
+   );
 
    function Is_Created(Info: Zip_Create_info) return Boolean;
 

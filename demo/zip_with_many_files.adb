@@ -21,8 +21,10 @@ procedure Zip_with_many_files is
     );
   end Add_one_entry;
 
+  some_date : constant Time:= Calendar.Time_Of(2016, 3, 14);
+
 begin
-  Create(archive, stream'Unchecked_Access, "Large.zip");
+  Create(archive, stream'Unchecked_Access, "Large.zip", some_date);
   for i in 1..65_535 loop
     Add_one_entry( "Entry #" & Integer'Image(i) & ".txt");
   end loop;
