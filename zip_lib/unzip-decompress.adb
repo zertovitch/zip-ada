@@ -1633,11 +1633,11 @@ package body UnZip.Decompress is
           );
           if huft_incomplete then
             HufT_free(Tl);
-            Raise_Exception(Zip.Zip_file_Error'Identity, "Incomplete code set for compresssion structure");
+            Raise_Exception(Zip.Zip_file_Error'Identity, "Incomplete code set for compression structure");
           end if;
         exception
           when others =>
-            Raise_Exception(Zip.Zip_file_Error'Identity, "Error when building tables for compresssion structure");
+            Raise_Exception(Zip.Zip_file_Error'Identity, "Error when building tables for compression structure");
         end;
 
         -- Read in literal and distance code lengths
@@ -1663,7 +1663,7 @@ package body UnZip.Decompress is
             when 18 =>          -- 11 to 138 zero length codes
               current_length:= 0;
               Repeat_length_code(11 + UnZ_IO.Bit_buffer.Read_and_dump(7));
-            when others =>      --  Shouldn't occurr if this tree is correct
+            when others =>      --  Shouldn't occur if this tree is correct
               if full_trace then
                 Ada.Text_IO.Put_Line("Illegal length code: " & Integer'Image(CT(CT_idx).n));
               end if;
