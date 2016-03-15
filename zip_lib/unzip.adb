@@ -363,7 +363,7 @@ package body UnZip is
             );
           end if;
         exception
-          when Zip_Streams.Calendar.Time_Error =>
+          when Zip_Streams.Calendar.Time_Error | Ada.Calendar.Time_Error =>
             null; -- invalid time, we give up setting the time stamp
         end;
       end if;
