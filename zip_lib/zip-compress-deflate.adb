@@ -96,6 +96,7 @@ is
   end Write_Block;
 
   procedure Put_byte(B : Byte) is  --  Put a byte, at the byte granularity level
+  pragma Inline(Put_byte);
   begin
     OutBuf(OutBufIdx) := B;
     OutBufIdx:= OutBufIdx + 1;
@@ -115,50 +116,52 @@ is
   --  Bit code buffer, for sending data at bit level  --
   ------------------------------------------------------
 
-  Save_byte: Byte := 0;  --  Output code buffer
-  Bits_used: Byte := 0;  --  Index into output code buffer
+  --  Output buffer. bits are inserted starting at the bottom (least significant
+  --  bits). The width of bit_buffer must be at least 16 bits.
+
+  Buf_size: constant:= 16;  --  Number of bits used within bit_buffer.
+  subtype U32 is Unsigned_32;
+  bit_buffer: U32:= 0;
+  
+  --  Number of valid bits in bit_buffer.  All bits above the last valid bit
+  --  are always zero [or considered being zero].
+  
+  valid_bits: Integer:= 0;
 
   procedure Flush_bit_buffer is
   begin
-    if Bits_used /= 0 then
-      Put_byte(Save_byte);
+    if valid_bits > 8 then
+      Put_byte(Byte(bit_buffer and 16#FF#));
+      Put_byte(Byte(Shift_Right(bit_buffer, 8) and 16#FF#));
+    elsif valid_bits > 0 then
+      Put_byte(Byte(bit_buffer and 16#FF#));
     end if;
-    Save_byte := 0;
-    Bits_used := 0;
+    bit_buffer := 0;
+    valid_bits := 0;
   end Flush_bit_buffer;
 
-  type U32 is mod 2**32;
+  --  Send a value on a given number of bits.
+  subtype Code_size_type is Integer range 1..16;
 
-  procedure Put_code(code: U32; code_size: Natural) is
-    code_work: U32:= code;
-    temp, Save_byte_local, Bits_used_local: Byte;
+  procedure Put_code(code: U32; code_size: Code_size_type) is
+  pragma Inline(Put_code);
   begin
-    temp:= 0;
-    Save_byte_local:= Save_byte;
-    Bits_used_local:= Bits_used;
-    for count in reverse 1 .. code_size loop
-      temp:= 0;
-      if code_work mod 2 = 1 then
-        temp:= temp + 1;
-      end if;
-      code_work:= code_work  / 2;
-      temp:= Shift_Left(temp, Integer(Bits_used_local));
-      Bits_used_local:= Bits_used_local+1;
-      Save_byte_local:= Save_byte_local or temp;
-      if Bits_used_local = 8 then
-        Put_byte(Save_byte_local);
-        Save_byte_local:= 0;
-        temp:= 0;
-        Bits_used_local:= 0;
-      end if;
-    end loop;
-    Save_byte:= Save_byte_local;
-    Bits_used:= Bits_used_local;
+    --  Put bits from code at the left of existing ones.
+    bit_buffer:= bit_buffer or Shift_Left(code, valid_bits);
+    valid_bits:= valid_bits + code_size;
+    if valid_bits > Buf_size then
+      --  Flush 16 bits to output as two bytes
+      Put_byte(Byte(bit_buffer and 16#FF#));
+      Put_byte(Byte(Shift_Right(bit_buffer, 8) and 16#FF#));
+      valid_bits:= valid_bits - Buf_size;
+      --  Empty buffer and put on it the rest of the code
+      bit_buffer := Shift_Right(code, code_size - valid_bits);
+    end if;
   end Put_code;
 
-    ------------------------------------------------------
-    -- Deflate, post LZ encoding, with Huffman encoding --
-    ------------------------------------------------------
+  ------------------------------------------------------
+  -- Deflate, post LZ encoding, with Huffman encoding --
+  ------------------------------------------------------
 
     invalid: constant:= -1;
 
@@ -465,17 +468,19 @@ is
     
     --  Emit a Huffman code
     procedure Put_code(lc: Length_code_pair) is
+    pragma Inline(Put_code);
     begin
       if lc.length = 0 then
-        Raise_Exception(Constraint_Error'Identity, "Huffman code of length 0 should not occurr");
+        Raise_Exception(Constraint_Error'Identity, "Huffman code of length 0 should not occur");
       end if;
       Put_code(U32(lc.code), lc.length);
     end Put_code;
 
     --  This is where the "dynamic" Huffman trees are sent before the block's data are sent.
-    --  The decoder needs to know the tree pair for decoding the data.
+    --  The decoder needs to know the tree pair (literal-eob-length, distance) for decoding data.
     --  But this information takes some room. Fortunately Deflate allows for compressing it
-    --  with both Huffman and Run-Length (RLE) encoding.
+    --  with a combination of Huffman and Run-Length (RLE) encoding to make this header smaller.
+    --
     procedure Put_compression_structure(dhd: Deflate_Huff_descriptors) is
       subtype Alphabet is Integer range 0..18;
       type Alpha_Array is new Bit_length_array(Alphabet);
@@ -562,8 +567,9 @@ is
       --
       bit_order_for_dynamic_block : constant array (Alphabet) of Natural :=  --  Permutation
          ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
-      --  For example, bit lengths 1 and 15 don't occur in the two Huffman trees for data, then
-      --  1 and 15 have a length 0 in the local Alphabet -> omit sending the last two lengths.
+      --  The most usual bit lengths (around 8, which is the "neutral" bit length) appear first.
+      --  For example, bit lengths 1 and 15 don't occur in any of the two Huffman trees for data,
+      --  then 1 and 15 have a length 0 in the local Alphabet -> omit sending the last two lengths.
       procedure LLHCL is new
         Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
       a_non_zero: Alphabet;
@@ -579,8 +585,9 @@ is
         truc(a).length:= truc_bl(a);
       end loop;
       Prepare_codes(truc);         --  Build the Huffman codes described by the bit lengths
+      --  At least lengths for codes 16, 17, 18, 0 will always be sent,
+      --  even if all other bit lengths are 0 because codes 1 to 15 are unused.
       a_non_zero:= 3;
-      --  At least lengths for codes 16, 17, 18, 0 will always be sent if the other lengths are 0
       for a in Alphabet loop
         if a > a_non_zero and then truc(bit_order_for_dynamic_block(a)).length > 0 then
           a_non_zero:= a;
@@ -590,8 +597,8 @@ is
       Put_code(U32(max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
       Put_code(U32(max_used_dis_code), 5);
       Put_code(U32(a_non_zero - 3), 4);
-      --  Save the local alphabet's Huffman lengths. It's the compression
-      --  structure for compressing the data compression structure. Easy isn't it ?
+      --  Save the local alphabet's Huffman lengths. It's the compression structure
+      --  for compressing the data compression structure. Easy, isn't it ?
       for a in 0..a_non_zero loop
         Put_code(U32(truc(bit_order_for_dynamic_block(a)).length), 3);
       end loop;
@@ -809,8 +816,11 @@ is
     --  End_Of_Block will have to happen once, but never appears in the LZ statistics...
     empty_dis_stat: constant Stats_dis_type:= (others => 0);
 
+    --
+    --  Compute statistics for both Literal-length, and Distance alphabets, from a LZ buffer
+    --
     procedure Get_statistics(
-      lzb           :     LZ_buffer_type;
+      lzb           :  in LZ_buffer_type;
       stats_lit_len : out Stats_lit_len_type;
       stats_dis     : out Stats_dis_type
     )
@@ -820,9 +830,6 @@ is
     begin
       stats_lit_len := empty_lit_len_stat;
       stats_dis     := empty_dis_stat;
-      --
-      --  Compute statistics for both Literal-length, and Distance alphabets, from the LZ buffer
-      --
       for i in lzb'Range loop
         case lzb(i).kind is
           when plain_byte =>
@@ -837,7 +844,9 @@ is
       end loop;
     end Get_statistics;
 
-    --  Send a LZ buffer with current Huffman codes
+    --
+    --  Send a LZ buffer using currently defined Huffman codes
+    --
     procedure Put_LZ_buffer(lzb: LZ_buffer_type) is
     begin
       for i in lzb'Range loop
@@ -1056,8 +1065,8 @@ is
     --  We examine similarities in the LZ data flow at different step sizes.
     --  If the optimal Huffman encoding for this portion is very different, we choose to
     --  cut current block and start a new one. The shorter the step, the higher the threshold
-    --  for starting a dynamic block, since the compression header is taking some room ech time.
-    --  !! TBD: differenciate dynamic vs fixed & stored cases, with a different threshold.
+    --  for starting a dynamic block, since the compression header is taking some room each time.
+    --  !! TBD: differentiate dynamic vs fixed & stored cases, with a different threshold.
 
     type Step_threshold_metric is record
       slider_step       : LZ_buffer_index_type;
@@ -1070,8 +1079,8 @@ is
     step_choice: constant array(Positive range <>) of Step_threshold_metric:=
       ( ( 6000,  465, L1),
         ( 3000,  470, L1),
-        ( 1500, 2300, L1),
-        (  750, 2400, L1)        
+        ( 1500, 2300, L1),  --  Deflate_3 only
+        (  750, 2400, L1)   --  Deflate_3 only
       );
 
     max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
@@ -1254,7 +1263,7 @@ is
       return not InputEoF;
     end More_bytes;
 
-    -- LZ77 params
+    -- LZ77 parameters
     Look_Ahead         : constant Integer:= 258;
     String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_e
     type Text_buffer_index is mod String_buffer_size;
@@ -1383,7 +1392,7 @@ is
       -----------------------------------------------
       My_LZ77;
     end if;
-    --  Done. Send the code signalling the end of compressed data block:
+    --  Done. Send the code signaling the end of compressed data block:
     case method is
       when Deflate_Fixed =>
         Put_code(descr.lit_len(End_Of_Block));

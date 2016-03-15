@@ -8,6 +8,9 @@
 - LZ77 / IZ: similar to the test with TOO_FAR, try to cluster distances around
     values needing less extra bits (may not work at all...)
 
+- LZ77 (for Deflate): try to get > 258 lengths and split into 258 + something.
+    Length 258 has no extra bit, could be good...
+
 - LZ77: try yet another LZ77, e.g. from 7-Zip
 
 - Add DeflOpt to slowest method, or approximate it by tweaking
