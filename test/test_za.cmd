@@ -17,7 +17,11 @@ if not exist random.bin random_data 8300
 if not exist random_and_text.mix copy /b random.bin+*.txt random_and_text.mix
 if exist test_rz.ReZip.html del test_rz.ReZip.html
 
-set files=*.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.mdb *.bin
+set files=*.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin
+if exist *.ldf set files=%files% *.ldf
+if exist *.mdf set files=%files% *.mdf
+if exist *.mdb set files=%files% *.mdb
+if exist *.sql set files=%files% *.sql
 
 zipada     -esh              test_zash     %files%
 zipada     -edf              test_zadf     %files%

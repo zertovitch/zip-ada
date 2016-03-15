@@ -12,6 +12,10 @@ del *.tmp
 del *.adt
 del $test.*
 del *.lz77
+del test*.exe
+del demo*.exe
+del ziptest.exe
+del zip_with_many_files.exe
 
 cd zip_lib
 del *.ali
