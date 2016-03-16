@@ -15,7 +15,8 @@
 --        values needing less extra bits (may not work at all...)
 --    - LZ77 (for Deflate): try to get > 258 lengths and split into 258 + something.
 --        Length 258 is encoded with no extra bit, could be good...
---    - LZ77: try yet another LZ77, e.g. from 7-Zip
+--    - LZ77: try yet another LZ77, e.g. from 7-Zip, or program a new one with
+--        hash chains etc.
   
 procedure Zip.LZ77 is
   
