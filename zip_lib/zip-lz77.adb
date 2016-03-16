@@ -1,17 +1,24 @@
+--  There are two LZ77 encoders at choice here:
+--
+--    1/  LZ77_using_LZHuf, based on LZHuf
+--
+--    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c which is
+--          actually the LZ77 part of Zip's compression.
+--
+--  Variant 1/ is working since 2009. Two problems: it is slow and not
+--     well adapted to the Deflate format (mediocre compression).
+--
+--  Variant 2/ is much faster, and better for Deflate. Added 05-Mar-2016.
+
+--  To do:
+--    - LZ77 / IZ: similar to the test with TOO_FAR, try to cluster distances around
+--        values needing less extra bits (may not work at all...)
+--    - LZ77 (for Deflate): try to get > 258 lengths and split into 258 + something.
+--        Length 258 is encoded with no extra bit, could be good...
+--    - LZ77: try yet another LZ77, e.g. from 7-Zip
+  
 procedure Zip.LZ77 is
-
-  --  There are two LZ77 encoders at choice here:
-  --
-  --    1/  LZ77_using_LZHuf, based on LZHuf
-  --
-  --    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c which is
-  --          actually the LZ77 part of the compression.
-  --
-  --  Variant 1/ is working since 2009. Two problems: it is slow and not
-  --     well adapted to the Deflate format (mediocre compression).
-  --
-  --  Variant 2/ is much faster, and better for Deflate. Added 05-Mar-2016.
-
+  
   -----------------------
   --  LZHuf algorithm  --
   -----------------------
@@ -413,7 +420,6 @@ procedure Zip.LZ77 is
     window_size: ulg;
     --  window size, 2*WSIZE except for MMAP or BIG_MEM, where it is the
     --  input file length plus MIN_LOOKAHEAD.
-    --  !! perhaps simplify this
     sliding: Boolean;  --  Set to False when the input file is already in memory  [was: int]
     ins_h: unsigned;   --  hash index of string to be inserted
     MIN_MATCH: constant Integer_M32:= Integer_M32(Threshold) + 1;  --  Deflate: 3
@@ -607,7 +613,7 @@ procedure Zip.LZ77 is
       good_match       := configuration_table(pack_level).good_length;
       nice_match       := configuration_table(pack_level).nice_length;
       max_chain_length := configuration_table(pack_level).max_chain;
-      --  !!  Info-Zip comment: ??? reduce max_chain_length for binary files
+      --  Info-Zip comment: ??? reduce max_chain_length for binary files
       strstart := 0;
       Read_buf(0, unsigned(WSIZE), lookahead);
       if lookahead = 0 then

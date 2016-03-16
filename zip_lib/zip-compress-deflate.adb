@@ -4,7 +4,16 @@
 --  Magic numbers adjusted through experimentation are marked with: *Tuned*
 --
 --  To do:
---   - tune / refine the Taillaule algorithm...
+--    - 32-bit bit buffer (container 32 bits anyway)
+--    - Taillaule: tune the opti_*_8192 thresholds for step size = 6000
+--    - Taillaule: try with slider and/or initial lz window not centered
+--    - Taillaule: compare slider to random and fixed in addition to initial
+--    - Taillaule: use a corpus of files badly compressed by our Deflate comparatively
+--        to other Deflates (e.g. 7Z seems better with databases)
+--    - Add DeflOpt to slowest method, or approximate it by tweaking
+--        distance and length statistics before computing their Huffman codes, or
+--        reinvent it by computing the size of emitted codes and trying slight changes
+--        to the codes' bit lengths.
 --
 --  Change log:
 -- 
@@ -619,8 +628,6 @@ is
     subtype Length_range is Integer range 3 .. 258;
     subtype Distance_range is Integer range 1 .. 32768;
 
-    --  !! Check performance: perhaps use arrays instead of case statements 
-
     procedure Put_DL_code( distance, length: Integer ) is
     begin
       -- Already checked: distance in Distance_range and length in Length_range
@@ -728,8 +735,6 @@ is
       end case;
     end Put_DL_code;
 
-    --  !! Check performance: perhaps use arrays instead of case statements 
-
     function Deflate_code_for_LZ_length(length: Natural) return Natural is
     begin
       case Length_range(length) is
@@ -749,8 +754,6 @@ is
           return 285;
       end case;
     end Deflate_code_for_LZ_length;
-
-    --  !! Check performance: perhaps use arrays instead of case statements 
 
     function Deflate_code_for_LZ_distance(distance: Natural) return Natural is
     begin
@@ -1078,13 +1081,13 @@ is
 
     step_choice: constant array(Positive range <>) of Step_threshold_metric:=
       ( ( 6000,  465, L1),
-        ( 3000,  470, L1),
+        ( 3000,  470, L1),  --  Deflate_2, Deflate_3
         ( 1500, 2300, L1),  --  Deflate_3 only
         (  750, 2400, L1)   --  Deflate_3 only
       );
 
     max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
-      (Deflate_1 | Deflate_2 => 2, Deflate_3 => step_choice'Last);
+      (Deflate_1 => 1, Deflate_2 => 2, Deflate_3 => step_choice'Last);
 
     slider_size: constant:= 4096;
     half_slider_size: constant:= slider_size / 2;
