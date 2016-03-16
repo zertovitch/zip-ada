@@ -4,10 +4,10 @@
 --  Magic numbers adjusted through experimentation are marked with: *Tuned*
 --
 --  To do:
---    - 32-bit bit buffer (container 32 bits anyway)
 --    - Taillaule: tune the opti_*_8192 thresholds for step size = 6000
 --    - Taillaule: try with slider and/or initial lz window not centered
 --    - Taillaule: compare slider to random and fixed in addition to initial
+--    - Taillaule: try L_sup distance
 --    - Taillaule: use a corpus of files badly compressed by our Deflate comparatively
 --        to other Deflates (e.g. 7Z seems better with databases)
 --    - Add DeflOpt to slowest method, or approximate it by tweaking
@@ -125,44 +125,40 @@ is
   --  Bit code buffer, for sending data at bit level  --
   ------------------------------------------------------
 
-  --  Output buffer. bits are inserted starting at the bottom (least significant
-  --  bits). The width of bit_buffer must be at least 16 bits.
-
-  Buf_size: constant:= 16;  --  Number of bits used within bit_buffer.
+  --  Output buffer. Bits are inserted starting at the right (least
+  --  significant bits). The width of bit_buffer must be at least 16 bits.
   subtype U32 is Unsigned_32;
   bit_buffer: U32:= 0;
-  
-  --  Number of valid bits in bit_buffer.  All bits above the last valid bit
-  --  are always zero [or considered being zero].
-  
+  --  Number of valid bits in bit_buffer.  All bits above the last valid bit are always zero.
   valid_bits: Integer:= 0;
 
   procedure Flush_bit_buffer is
   begin
-    if valid_bits > 8 then
+    while valid_bits > 0 loop
       Put_byte(Byte(bit_buffer and 16#FF#));
-      Put_byte(Byte(Shift_Right(bit_buffer, 8) and 16#FF#));
-    elsif valid_bits > 0 then
-      Put_byte(Byte(bit_buffer and 16#FF#));
-    end if;
+      bit_buffer:= Shift_Right(bit_buffer, 8);
+      valid_bits := Integer'Max(0, valid_bits - 8);
+    end loop;
     bit_buffer := 0;
-    valid_bits := 0;
   end Flush_bit_buffer;
 
   --  Send a value on a given number of bits.
-  subtype Code_size_type is Integer range 1..16;
+  subtype Code_size_type is Integer range 1..32;
 
   procedure Put_code(code: U32; code_size: Code_size_type) is
   pragma Inline(Put_code);
   begin
-    --  Put bits from code at the left of existing ones.
+    --  Put bits from code at the left of existing ones. They might be shifted
+    --  partially on the left side (or even entirely if valid_bits is already = 32).
     bit_buffer:= bit_buffer or Shift_Left(code, valid_bits);
     valid_bits:= valid_bits + code_size;
-    if valid_bits > Buf_size then
-      --  Flush 16 bits to output as two bytes
+    if valid_bits > 32 then
+      --  Flush 32 bits to output as 4 bytes
       Put_byte(Byte(bit_buffer and 16#FF#));
-      Put_byte(Byte(Shift_Right(bit_buffer, 8) and 16#FF#));
-      valid_bits:= valid_bits - Buf_size;
+      Put_byte(Byte(Shift_Right(bit_buffer,  8) and 16#FF#));
+      Put_byte(Byte(Shift_Right(bit_buffer, 16) and 16#FF#));
+      Put_byte(Byte(Shift_Right(bit_buffer, 24) and 16#FF#));
+      valid_bits:= valid_bits - 32;
       --  Empty buffer and put on it the rest of the code
       bit_buffer := Shift_Right(code, code_size - valid_bits);
     end if;
@@ -195,29 +191,23 @@ is
 
     --  The Huffman code set (and therefore the Huffman tree) is completely determined by
     --  the bit length to be used for reaching leaf nodes, thanks to two special
-    --  rules (See RFC 1951, section 3.2.2).
+    --  rules (explanation in RFC 1951, section 3.2.2).
     --
     --  So basically the process is the following:
     --
-    --  A) Gather statistics (just counts) for the alphabet
-    --  B) Turn these counts into code lengths, with a call to Length_limited_Huffman_code_lengths
-    --  C) Build Huffman codes (the bits to be sent) with a call to Prepare_codes
+    --     (A) Gather statistics (just counts) for the alphabet.
+    --     (B) Turn these counts into code lengths, by calling Length_limited_Huffman_code_lengths.
+    --     (C) Build Huffman codes (the bits to be sent) with a call to Prepare_Huffman_codes.
+    --
+    --  In short:
+    --
+    --     data -> (A) -> stats -> (B) -> Huffman codes' bit lengths -> (C) -> Huffman codes
 
     type Huff_descriptor is array(Natural range <>) of Length_code_pair;
 
-    type Deflate_Huff_descriptors is record
-      --  Tree descriptor for Literal, EOB or Length encoding
-      lit_len: Huff_descriptor(0..287);
-      --  Tree descriptor for Distance encoding
-      dis: Huff_descriptor(0..31);
-    end record;
-    --  Appnote: Literal codes 286-287 and distance codes 30-31 are never used
-    --  but participate in the huffman construction.
-    --  GdM: setting upper bound to 285 for literals leads to invalid codes, sometimes.
-    
-    --  The Prepare_codes function finds the Huffman code for each value, given
-    --  the bit length imposed as input.
-    procedure Prepare_codes(hd: in out Huff_descriptor) is
+    --  Phase (C): the Prepare_Huffman_codes procedure finds the Huffman code for each
+    --  value, given the bit length imposed as input.
+    procedure Prepare_Huffman_codes(hd: in out Huff_descriptor) is
       max_huffman_bits: constant:= 15;
       bl_count, next_code: array(0..max_huffman_bits) of Natural:= (others => 0);
       code: Natural:= 0;
@@ -248,20 +238,27 @@ is
       for i in hd'Range loop
         Invert(hd(i));
       end loop;
-    end Prepare_codes;
+    end Prepare_Huffman_codes;
 
+    type Deflate_Huff_descriptors is record
+      --  Tree descriptor for Literal, EOB or Length encoding
+      lit_len: Huff_descriptor(0..287);
+      --  Tree descriptor for Distance encoding
+      dis: Huff_descriptor(0..31);
+    end record;
+    --  NB: Appnote: "Literal codes 286-287 and distance codes 30-31 are never used
+    --                  but participate in the Huffman construction."
+    --  Setting upper bound to 285 for literals leads to invalid codes, sometimes.
+
+    --  This is the phase (C) for the pair of alphabets used in the Deflate format.
     function Prepare_Huffman_codes(dhd: Deflate_Huff_descriptors) return Deflate_Huff_descriptors
     is
       dhd_var: Deflate_Huff_descriptors:= dhd;
     begin
-      Prepare_codes(dhd_var.lit_len);
-      Prepare_codes(dhd_var.dis);
+      Prepare_Huffman_codes(dhd_var.lit_len);
+      Prepare_Huffman_codes(dhd_var.dis);
       return dhd_var;
     end Prepare_Huffman_codes;
-
-    ------------------------------
-    --  Compression structures  --
-    ------------------------------
 
     type Bit_length_array is array(Natural range <>) of Natural;
     subtype Alphabet_lit_len is Natural range 0..287;
@@ -269,6 +266,7 @@ is
     subtype Alphabet_dis is Natural range 0..31;
     subtype Bit_length_array_dis is Bit_length_array(Alphabet_dis);
 
+    --  Copy bit length vectors into descriptors
     function Build_descriptors(
       bl_for_lit_len : Bit_length_array_lit_len;
       bl_for_dis     : Bit_length_array_dis
@@ -292,8 +290,24 @@ is
       if trace and then Is_Open(log) then
         New_Line(log);
       end if;
-      return Prepare_Huffman_codes(new_d);
+      return new_d;
     end Build_descriptors;
+
+    End_Of_Block: constant:= 256;
+
+    --  Default Huffman trees, for "fixed" blocks, as defined in appnote.txt or RFC 1951
+
+    default_lit_len_bl: constant Bit_length_array_lit_len:=
+      (  0 .. 143   => 8,  --  For literals ("plain text" bytes)
+       144 .. 255   => 9,  --  For more literals ("plain text" bytes)
+       End_Of_Block => 7,  --  For EOB (256)
+       257 .. 279   => 7,  --  For length codes
+       280 .. 287   => 8   --  For more length codes
+      );
+    default_dis_bl: constant Bit_length_array_dis:= (others => 5);
+
+    Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
+      Prepare_Huffman_codes(Build_descriptors(default_lit_len_bl, default_dis_bl));
 
     type Count_type is range 0..File_size_type'Last/2-1;
     type Stats_type is array(Natural range <>) of Count_type;
@@ -312,8 +326,11 @@ is
     subtype Stats_lit_len_type is Stats_type(Alphabet_lit_len);
     subtype Stats_dis_type is Stats_type(Alphabet_dis);
 
-    --  Do the phases A) B) C) in one go.
-    function Build_descriptors(stats_lit_len: Stats_lit_len_type; stats_dis_0: Stats_dis_type)
+    --  Do the phases (B) and optionally (C) : we turn statistics into Huffman length & codes.
+    function Build_descriptors(
+      stats_lit_len  : Stats_lit_len_type; 
+      stats_dis      : Stats_dis_type
+    )
     return Deflate_Huff_descriptors
     is
       bl_for_lit_len : Bit_length_array_lit_len;
@@ -326,47 +343,31 @@ is
         Length_limited_Huffman_code_lengths(
           Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15
         );
-      stats_dis     : Stats_dis_type:= stats_dis_0;
-      used          : Natural:= 0;
+      stats_dis_copy : Stats_dis_type:= stats_dis;
+      used           : Natural:= 0;
     begin
       --  See "PatchDistanceCodesForBuggyDecoders" in Zopfli's deflate.c
       --  NB: here, we patch the occurrences and not the bit lengths, to avoid invalid codes.
       --  The decoding bug concerns Zlib v.<= 1.2.1, UnZip v.<= 6.0, WinZip v.10.0.
-      for i in stats_dis'Range loop
-        if stats_dis(i) /= 0 then
+      for i in stats_dis_copy'Range loop
+        if stats_dis_copy(i) /= 0 then
           used:= used + 1;
         end if;
       end loop;
       if used < 2 then
         if used = 0 then  --  No distance code used at all (data must be almost random)
-          stats_dis(0) := 1;
-          stats_dis(1) := 1;
-        elsif stats_dis(0) = 0 then
-          stats_dis(0) := 1;  --  now code 0 and some other code have non-zero counts
+          stats_dis_copy(0) := 1;
+          stats_dis_copy(1) := 1;
+        elsif stats_dis_copy(0) = 0 then
+          stats_dis_copy(0) := 1;  --  now code 0 and some other code have non-zero counts
         else
-          stats_dis(1) := 1;  --  now codes 0 and 1 have non-zero counts
+          stats_dis_copy(1) := 1;  --  now codes 0 and 1 have non-zero counts
         end if;
       end if;
       LLHCL_lit_len(stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
-      LLHCL_dis(stats_dis, bl_for_dis);              --    up Huffman lengths of both trees
+      LLHCL_dis(stats_dis_copy, bl_for_dis);         --    up Huffman lengths of both trees
       return Build_descriptors(bl_for_lit_len, bl_for_dis);
     end Build_descriptors;
-
-    End_Of_Block: constant:= 256;
-
-    --  Default Huffman trees, for "fixed" blocks, as defined in appnote.txt or RFC 1951
-
-    default_lit_len_bl: constant Bit_length_array_lit_len:=
-      (  0 .. 143   => 8,  --  For literals ("plain text" bytes)
-       144 .. 255   => 9,  --  For more literals ("plain text" bytes)
-       End_Of_Block => 7,  --  For EOB (256)
-       257 .. 279   => 7,  --  For length codes
-       280 .. 287   => 8   --  For more length codes
-      );
-    default_dis_bl: constant Bit_length_array_dis:= (others => 5);
-
-    Deflate_fixed_descriptors: constant Deflate_Huff_descriptors:=
-      Build_descriptors( default_lit_len_bl, default_dis_bl);
 
     random_data_lit_len: constant Stats_lit_len_type:=
       (0 .. 255     => 30000,
@@ -593,7 +594,7 @@ is
       for a in Alphabet loop
         truc(a).length:= truc_bl(a);
       end loop;
-      Prepare_codes(truc);         --  Build the Huffman codes described by the bit lengths
+      Prepare_Huffman_codes(truc);
       --  At least lengths for codes 16, 17, 18, 0 will always be sent,
       --  even if all other bit lengths are 0 because codes 1 to 15 are unused.
       a_non_zero:= 3;
@@ -616,12 +617,12 @@ is
     end Put_compression_structure;
 
     --  Current tree descriptors
-    descr: Deflate_Huff_descriptors:= Deflate_fixed_descriptors;
+    curr_descr: Deflate_Huff_descriptors:= Deflate_fixed_descriptors;
 
     --  Write a normal, "clear-text" (post LZ, pre Huffman), 8-bit character (literal)
     procedure Put_literal_byte( b: Byte ) is
     begin
-      Put_code( descr.lit_len(Integer(b)) );
+      Put_code( curr_descr.lit_len(Integer(b)) );
     end Put_literal_byte;
 
     --  Possible ranges for distance and length encoding in the Zip-Deflate format:
@@ -653,24 +654,24 @@ is
       --
       case Length_range(length) is
         when 3..10 => -- Codes 257..264, with no extra bit
-          Put_code( descr.lit_len( 257 + length-3 ) );
+          Put_code( curr_descr.lit_len( 257 + length-3 ) );
         when 11..18 => -- Codes 265..268, with 1 extra bit
-          Put_code( descr.lit_len( 265 + (length-11) / 2 ) );
+          Put_code( curr_descr.lit_len( 265 + (length-11) / 2 ) );
           Put_code( U32((length-11) mod 2), 1 );
         when 19..34 => -- Codes 269..272, with 2 extra bits
-          Put_code( descr.lit_len( 269 + (length-19) / 4 ) );
+          Put_code( curr_descr.lit_len( 269 + (length-19) / 4 ) );
           Put_code( U32((length-19) mod 4), 2 );
         when 35..66 => -- Codes 273..276, with 3 extra bits
-          Put_code( descr.lit_len( 273 + (length-35) / 8 ) );
+          Put_code( curr_descr.lit_len( 273 + (length-35) / 8 ) );
           Put_code( U32((length-35) mod 8), 3 );
         when 67..130 => -- Codes 277..280, with 4 extra bits
-          Put_code( descr.lit_len( 277 + (length-67) / 16 ) );
+          Put_code( curr_descr.lit_len( 277 + (length-67) / 16 ) );
           Put_code( U32((length-67) mod 16), 4 );
         when 131..257 => -- Codes 281..284, with 5 extra bits
-          Put_code( descr.lit_len( 281 + (length-131) / 32 ) );
+          Put_code( curr_descr.lit_len( 281 + (length-131) / 32 ) );
           Put_code( U32((length-131) mod 32), 5 );
         when 258 => -- Code 285, with no extra bit
-          Put_code( descr.lit_len( 285 ) );
+          Put_code( curr_descr.lit_len( 285 ) );
       end case;
       --                            Distance Codes
       --                            --------------
@@ -692,45 +693,45 @@ is
       --           by the 4 extra bits (between 0 and 15).
       case Distance_range(distance) is
         when 1..4 => -- Codes 0..3, with no extra bit
-          Put_code( descr.dis(distance-1) );
+          Put_code( curr_descr.dis(distance-1) );
         when 5..8 => -- Codes 4..5, with 1 extra bit
-          Put_code( descr.dis( 4 + (distance-5) / 2 ) );
+          Put_code( curr_descr.dis( 4 + (distance-5) / 2 ) );
           Put_code( U32((distance-5) mod 2), 1 );
         when 9..16 => -- Codes 6..7, with 2 extra bits
-          Put_code( descr.dis( 6 + (distance-9) / 4 ) );
+          Put_code( curr_descr.dis( 6 + (distance-9) / 4 ) );
           Put_code( U32((distance-9) mod 4), 2 );
         when 17..32 => -- Codes 8..9, with 3 extra bits
-          Put_code( descr.dis( 8 + (distance-17) / 8 ) );
+          Put_code( curr_descr.dis( 8 + (distance-17) / 8 ) );
           Put_code( U32((distance-17) mod 8), 3 );
         when 33..64 => -- Codes 10..11, with 4 extra bits
-          Put_code( descr.dis( 10 + (distance-33) / 16 ) );
+          Put_code( curr_descr.dis( 10 + (distance-33) / 16 ) );
           Put_code( U32((distance-33) mod 16), 4 );
         when 65..128 => -- Codes 12..13, with 5 extra bits
-          Put_code( descr.dis( 12 + (distance-65) / 32 ) );
+          Put_code( curr_descr.dis( 12 + (distance-65) / 32 ) );
           Put_code( U32((distance-65) mod 32), 5 );
         when 129..256 => -- Codes 14..15, with 6 extra bits
-          Put_code( descr.dis( 14 + (distance-129) / 64 ) );
+          Put_code( curr_descr.dis( 14 + (distance-129) / 64 ) );
           Put_code( U32((distance-129) mod 64), 6 );
         when 257..512 => -- Codes 16..17, with 7 extra bits
-          Put_code( descr.dis( 16 + (distance-257) / 128 ) );
+          Put_code( curr_descr.dis( 16 + (distance-257) / 128 ) );
           Put_code( U32((distance-257) mod 128), 7 );
         when 513..1024 => -- Codes 18..19, with 8 extra bits
-          Put_code( descr.dis( 18 + (distance-513) / 256 ) );
+          Put_code( curr_descr.dis( 18 + (distance-513) / 256 ) );
           Put_code( U32((distance-513) mod 256), 8 );
         when 1025..2048 => -- Codes 20..21, with 9 extra bits
-          Put_code( descr.dis( 20 + (distance-1025) / 512 ) );
+          Put_code( curr_descr.dis( 20 + (distance-1025) / 512 ) );
           Put_code( U32((distance-1025) mod 512), 9 );
         when 2049..4096 => -- Codes 22..23, with 10 extra bits
-          Put_code( descr.dis( 22 + (distance-2049) / 1024 ) );
+          Put_code( curr_descr.dis( 22 + (distance-2049) / 1024 ) );
           Put_code( U32((distance-2049) mod 1024), 10 );
         when 4097..8192 => -- Codes 24..25, with 11 extra bits
-          Put_code( descr.dis( 24 + (distance-4097) / 2048 ) );
+          Put_code( curr_descr.dis( 24 + (distance-4097) / 2048 ) );
           Put_code( U32((distance-4097) mod 2048), 11 );
         when 8193..16384 => -- Codes 26..27, with 12 extra bits
-          Put_code( descr.dis( 26 + (distance-8193) / 4096 ) );
+          Put_code( curr_descr.dis( 26 + (distance-8193) / 4096 ) );
           Put_code( U32((distance-8193) mod 4096), 12 );
         when 16385..32768 => -- Codes 28..29, with 13 extra bits
-          Put_code( descr.dis( 28 + (distance-16385) / 8192 ) );
+          Put_code( curr_descr.dis( 28 + (distance-16385) / 8192 ) );
           Put_code( U32((distance-16385) mod 8192), 13 );
       end case;
     end Put_DL_code;
@@ -870,7 +871,7 @@ is
     procedure Mark_new_block(last_block_for_stream: Boolean) is
     begin
       if block_to_finish and last_block_type in fixed .. dynamic then
-        Put_code(descr.lit_len(End_Of_Block));  --  Finish previous block
+        Put_code(curr_descr.lit_len(End_Of_Block));  --  Finish previous block
       end if;
       block_to_finish:= True;
       Put_code(code => Boolean'Pos(last_block_for_stream), code_size => 1);
@@ -936,14 +937,6 @@ is
       Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
     zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0); 
 
-    function Optimal_descriptors(lzb: LZ_buffer_type) return Deflate_Huff_descriptors is
-      stats_lit_len : Stats_lit_len_type;
-      stats_dis     : Stats_dis_type;
-    begin
-      Get_statistics(lzb, stats_lit_len, stats_dis);
-      return Build_descriptors(stats_lit_len, stats_dis);
-    end Optimal_descriptors;
-
     old_stats_lit_len : Stats_lit_len_type;
     old_stats_dis     : Stats_dis_type;
 
@@ -972,7 +965,7 @@ is
         end if;
         Mark_new_block(last_block_for_stream => last_block);
         -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
-        descr:= Deflate_fixed_descriptors;
+        curr_descr:= Deflate_fixed_descriptors;
         Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
         Put_LZ_buffer(lzb);
         last_block_type:= fixed;
@@ -1005,9 +998,9 @@ is
         end if;
         Mark_new_block(last_block_for_stream => last_block);
         -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
-        descr:= new_descr;
+        curr_descr:= Prepare_Huffman_codes(new_descr);
         Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
-        Put_compression_structure(descr);
+        Put_compression_structure(curr_descr);
         Put_LZ_buffer(lzb);
         last_block_type:= dynamic;
       end Send_dynamic_block;
@@ -1031,8 +1024,8 @@ is
       then
         Send_stored_block;
       elsif last_block_type = dynamic and then 
-            Recyclable(descr, new_descr) and then
-            Similar(new_descr, descr, L1, opti_recy_8192, "Compare to previous, for recycling")
+            Recyclable(curr_descr, new_descr) and then
+            Similar(new_descr, curr_descr, L1, opti_recy_8192, "Compare to previous, for recycling")
       then
         Recycle_dynamic_block;
       elsif lzb'Length < opti_size_fix or else
@@ -1040,7 +1033,7 @@ is
       then
         Send_fixed_block;
       elsif last_block_type = dynamic and then 
-            Similar(new_descr, descr, L1, opti_merge_8192, "Compare to previous, for stats merging")
+            Similar(new_descr, curr_descr, L1, opti_merge_8192, "Compare to previous, for stats merging")
       then
         Send_dynamic_block(merge => True);  
         --  Similar: we merge statistics. Not optimal for this block, but helps further recycling
@@ -1063,7 +1056,9 @@ is
     past_lz_data: Boolean:= False;
     --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
 
-    --  *Tuned*
+    ---------------------------------------------------------------------------------
+    --  Scanning and sampling: the really sexy part of the Taillaule algorithm...  --
+    ---------------------------------------------------------------------------------
     
     --  We examine similarities in the LZ data flow at different step sizes.
     --  If the optimal Huffman encoding for this portion is very different, we choose to
@@ -1071,13 +1066,14 @@ is
     --  for starting a dynamic block, since the compression header is taking some room each time.
     --  !! TBD: differentiate dynamic vs fixed & stored cases, with a different threshold.
 
+    --  *Tuned*
+    min_step: constant:= 750;
+
     type Step_threshold_metric is record
-      slider_step       : LZ_buffer_index_type;
+      slider_step       : LZ_buffer_index_type;  --  Should be a multiple of min_step.
       cutting_threshold : Positive;
       metric            : Distance_type;
     end record;
-
-    min_step: constant:= 750;
 
     step_choice: constant array(Positive range <>) of Step_threshold_metric:=
       ( ( 6000,  465, L1),
@@ -1093,8 +1089,18 @@ is
     half_slider_size: constant:= slider_size / 2;
     slider_max: constant:= slider_size - 1;
 
+    --  Phases (A) and (B) are done in a single function: we get Huffman
+    --  descriptors that should be good for encoding a given sequence of LZ atoms.
+    function Build_descriptors(lzb: LZ_buffer_type) return Deflate_Huff_descriptors is
+      stats_lit_len : Stats_lit_len_type;
+      stats_dis     : Stats_dis_type;
+    begin
+      Get_statistics(lzb, stats_lit_len, stats_dis);
+      return Build_descriptors(stats_lit_len, stats_dis);
+    end Build_descriptors;
+    
     procedure Scan_and_send_from_main_buffer(from, to: LZ_buffer_index_type; last_flush: Boolean) is
-      initial_hd, sliding_hd: Deflate_Huff_descriptors;
+      initial_hd, sliding_hd: Deflate_Huff_descriptors;  --  These descriptors are *not* used for compressing.
       start, slide_mid, send_from: LZ_buffer_index_type;
       sliding_hd_computed: Boolean;
     begin
@@ -1118,24 +1124,25 @@ is
             copy(i):= lz_buffer(copy_from);
             copy_from:= copy_from + 1;  --  Loops over (mod n)
           end loop;
-          initial_hd:= Optimal_descriptors(copy);
+          initial_hd:= Build_descriptors(copy);
         end;
         --  Concatenation instead of above loop bombs with a Range Check error:
         --  lz_buffer(start .. lz_buffer'Last) &
         --  lz_buffer(0 .. start + LZ_buffer_index_type(slider_max))
       else
-        initial_hd:= Optimal_descriptors(lz_buffer(start .. start + slider_max));
+        initial_hd:= Build_descriptors(lz_buffer(start .. start + slider_max));
       end if;
       send_from:= from;
       slide_mid:= from + min_step;
+      Scan_LZ_data:
       while Integer_M32(slide_mid) + half_slider_size < Integer_M32(to) loop
         sliding_hd_computed:= False;
-        Level_loop:
+        Browse_step_level:
         for level in step_choice'Range loop
-          exit when level > max_choice(method);
+          exit Browse_step_level when level > max_choice(method);
           if (slide_mid - from) mod step_choice(level).slider_step = 0 then
             if not sliding_hd_computed then
-              sliding_hd:= Optimal_descriptors(lz_buffer(slide_mid - half_slider_size .. slide_mid + half_slider_size));
+              sliding_hd:= Build_descriptors(lz_buffer(slide_mid - half_slider_size .. slide_mid + half_slider_size));
               sliding_hd_computed:= True;
             end if;
             if not Similar(
@@ -1156,14 +1163,14 @@ is
               end if;
               Send_as_block(lz_buffer(send_from .. slide_mid-1), last_block => False);
               send_from:= slide_mid;
-              initial_hd:= sliding_hd;  --  reset reference descriptor for further comparisons
-              exit Level_loop;  --  Cutting once at a given place is enough :-)
+              initial_hd:= sliding_hd;  --  Reset reference descriptor for further comparisons
+              exit Browse_step_level;  --  Cutting once at a given place is enough :-)
             end if;
           end if;
-        end loop Level_loop;
+        end loop Browse_step_level;
         slide_mid:= slide_mid + min_step;
-        exit when slide_mid < from + min_step;  --  catch looping over (mod n)
-      end loop;
+        exit Scan_LZ_data when slide_mid < from + min_step;  --  Catch a looping over (mod n)
+      end loop Scan_LZ_data;
       --
       --  Send last block for slice from .. to.
       --
@@ -1398,24 +1405,24 @@ is
     --  Done. Send the code signaling the end of compressed data block:
     case method is
       when Deflate_Fixed =>
-        Put_code(descr.lit_len(End_Of_Block));
+        Put_code(curr_descr.lit_len(End_Of_Block));
       when Taillaule_Deflation_Method =>
         if lz_buffer_index * 2 = 0 then  --  Already flushed at latest Push, or empty data
           if block_to_finish and then last_block_type in fixed .. dynamic then
-            Put_code(descr.lit_len(End_Of_Block));
+            Put_code(curr_descr.lit_len(End_Of_Block));
           end if;
         else
           Flush_half_buffer(last_flush => True);
           if last_block_type in fixed .. dynamic then
-            Put_code(descr.lit_len(End_Of_Block));
+            Put_code(curr_descr.lit_len(End_Of_Block));
           end if;
         end if;
         if not last_block_marked then
           --  Add a fake fixed block, just to have a final block...
           Put_code(code => 1, code_size => 1);  --  Signals last block
           Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
-          descr:= Deflate_fixed_descriptors;
-          Put_code(descr.lit_len(End_Of_Block));
+          curr_descr:= Deflate_fixed_descriptors;
+          Put_code(curr_descr.lit_len(End_Of_Block));
         end if;
     end case;
   end Encode;

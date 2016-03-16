@@ -4,7 +4,11 @@
 
 - Zip.LZ77: see specific "to do"'s in package's body
 
-- comp_zip: optionally, check only CRC
+- Zip.Compress.Shrink: use the fast bit buffer from Zip.Compress.Deflate
+
+- tools: comp_zip: optionally, check only CRC
+
+- tools: zipada: ignore 2nd or more instance of the same file name (otherwise, invalid zip archive with duplicate entries)
 
 - more profiling - see prof_za.cmd and test/prof.cmd
 

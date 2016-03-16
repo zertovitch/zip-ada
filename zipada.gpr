@@ -65,13 +65,16 @@ project ZipAda is
       case Build_Mode is
 
          when "Debug" =>
-            for Default_Switches ("ada") use ("-g");
+            for Default_Switches ("ada") use ("-g",
+              "-Xlinker", "--stack=0x2000000,0x20000");
 
          when "Optimize" =>
-            for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections");
+            for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections", 
+              "-Xlinker", "--stack=0x2000000,0x20000");
 
          when "Profiling" =>
-            for Default_Switches ("ada") use ("-pg");
+            for Default_Switches ("ada") use ("-pg",
+              "-Xlinker", "--stack=0x2000000,0x20000");
       end case;
    end Linker;
 
