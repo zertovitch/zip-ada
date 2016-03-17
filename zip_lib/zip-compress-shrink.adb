@@ -84,47 +84,48 @@ is
 
   --------------------------------------------------------------------------
 
-  -----------------
-  -- Code buffer --
-  -----------------
+  ------------------------------------------------------
+  --  Bit code buffer, for sending data at bit level  --
+  ------------------------------------------------------
 
-  Save_byte: Unsigned_8;  --  Output code buffer
-  Bits_used: Unsigned_8;  --  Index into output code buffer
-  Code_size: Natural;     --  Size of codes (in bits) currently being written
+  --  Output buffer. Bits are inserted starting at the right (least
+  --  significant bits). The width of bit_buffer must be at least 16 bits.
+  subtype U32 is Unsigned_32;
+  bit_buffer: U32:= 0;
+  --  Number of valid bits in bit_buffer.  All bits above the last valid bit are always zero.
+  valid_bits: Integer:= 0;
 
-  procedure Put_code(Code : Integer) is
-    --  Assemble coded bytes for output (was in 16-bit ASM)
-    Code_work: Integer;
-    temp, Save_byte_local, Bits_used_local: Unsigned_8;
+  procedure Flush_bit_buffer is
   begin
-    Code_work:= Code;
-    temp:= 0;
-    Save_byte_local:= Save_byte;
-    Bits_used_local:= Bits_used;
-    if Code_work = -1 then
-      if Bits_used_local /= 0 then
-        Put_byte(Save_byte_local);
-      end if;
-    else
-      for count in reverse 1 .. Code_size loop
-        temp:= 0;
-        if Code_work mod 2 = 1 then
-          temp:= temp + 1;
-        end if;
-        Code_work:= Code_work  / 2;
-        temp:= Shift_Left(temp, Integer(Bits_used_local));
-        Bits_used_local:= Bits_used_local+1;
-        Save_byte_local:= Save_byte_local or temp;
-        if Bits_used_local = 8 then
-          Put_byte(Save_byte_local);
-          Save_byte_local:= 0;
-          temp:= 0;
-          Bits_used_local:= 0;
-        end if;
-      end loop;
+    while valid_bits > 0 loop
+      Put_byte(Byte(bit_buffer and 16#FF#));
+      bit_buffer:= Shift_Right(bit_buffer, 8);
+      valid_bits := Integer'Max(0, valid_bits - 8);
+    end loop;
+    bit_buffer := 0;
+  end Flush_bit_buffer;
+
+  subtype Code_size_type is Integer range 1..32;
+  code_size: Code_size_type;     --  Size of codes (in bits) currently being written
+
+  --  Send a value on a given number of bits.
+  procedure Put_code(code: Natural) is
+  pragma Inline(Put_code);
+  begin
+    --  Put bits from code at the left of existing ones. They might be shifted away
+    --  partially on the left side (or even entirely if valid_bits is already = 32).
+    bit_buffer:= bit_buffer or Shift_Left(U32(code), valid_bits);
+    valid_bits:= valid_bits + code_size;
+    if valid_bits > 32 then
+      --  Flush 32 bits to output as 4 bytes
+      Put_byte(Byte(bit_buffer and 16#FF#));
+      Put_byte(Byte(Shift_Right(bit_buffer,  8) and 16#FF#));
+      Put_byte(Byte(Shift_Right(bit_buffer, 16) and 16#FF#));
+      Put_byte(Byte(Shift_Right(bit_buffer, 24) and 16#FF#));
+      valid_bits:= valid_bits - 32;
+      --  Empty buffer and put on it the rest of the code
+      bit_buffer := Shift_Right(U32(code), code_size - valid_bits);
     end if;
-    Save_byte:= Save_byte_local;
-    Bits_used:= Bits_used_local;
   end Put_code;
 
   Table_full: Boolean; -- Flag indicating a full symbol table
@@ -352,15 +353,15 @@ is
     lookup_ok: Boolean;
   begin
     if First_atom then            --  If just getting started ...
-      Save_byte := 16#00#;     --  Initialize our output code buffer
-      Bits_used := 0;
+      bit_buffer:= 0;
+      valid_bits:= 0;
       Code_size := Min_bits;   --    Initialize code size to minimum
       Max_code  := 2 ** Code_size - 1;
       Last_code := Suffix;      --    get first character from input,
       First_atom  := False;       --    and reset the first char flag.
-    elsif Suffix = UNUSED then --  Nothing to crunch...must be EOF on input
+    elsif Suffix = UNUSED then --  Nothing to crunch... must be EOF on input
       Put_code(Last_code);         --  Write last prefix code
-      Put_code(UNUSED);           --  Tell Put_code to flush remaining bits
+      Flush_bit_buffer;
       Flush_output;               --  Flush our output buffer
     elsif Table_full then
       --  Ok, lets clear the code table (adaptive reset)
