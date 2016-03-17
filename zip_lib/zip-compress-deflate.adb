@@ -49,10 +49,12 @@ procedure Zip.Compress.Deflate
 is
   use Zip_Streams;
 
-  --  Options for testing. All should be on False for normal use of this procedure.
+  --  Options for testing.
+  --  All should be on False for normal use of this procedure.
   
-  bypass_LZ77 : constant Boolean:= False;
-  trace       : constant Boolean:= False;
+  bypass_LZ77         : constant Boolean:= False;  --  Use LZ data encoded by another program
+  deactivate_scanning : constant Boolean:= False;  --  Impact analysis of the scanning method
+  trace               : constant Boolean:= False;  --  Log file with details
   
   --  A log file is used when trace = True.
   log         : File_Type;
@@ -735,29 +737,41 @@ is
     end case;
   end Put_DL_code;
 
-  function Deflate_code_for_LZ_length(length: Natural) return Natural is
-  begin
-    case Length_range(length) is
-      when 3..10 => -- Codes 257..264, with no extra bit
-        return 257 + length-3;
-      when 11..18 => -- Codes 265..268, with 1 extra bit
-        return 265 + (length-11) / 2;
-      when 19..34 => -- Codes 269..272, with 2 extra bits
-        return 269 + (length-19) / 4;
-      when 35..66 => -- Codes 273..276, with 3 extra bits
-        return 273 + (length-35) / 8;
-      when 67..130 => -- Codes 277..280, with 4 extra bits
-        return 277 + (length-67) / 16;
-      when 131..257 => -- Codes 281..284, with 5 extra bits
-        return 281 + (length-131) / 32;
-      when 258 => -- Code 285, with no extra bit
-        return 285;
-    end case;
-  end Deflate_code_for_LZ_length;
+  Deflate_code_for_LZ_length: constant array(Length_range) of Natural:=
+    (  3  => 257,          -- Codes 257..264, with no extra bit
+       4  => 258, 
+       5  => 259, 
+       6  => 260, 
+       7  => 261, 
+       8  => 262, 
+       9  => 263, 
+       10 => 264, 
+       11  .. 12  => 265,  -- Codes 265..268, with 1 extra bit
+       13  .. 14  => 266, 
+       15  .. 16  => 267, 
+       17  .. 18  => 268, 
+       19  .. 22  => 269,  -- Codes 269..272, with 2 extra bits
+       23  .. 26  => 270,   
+       27  .. 30  => 271, 
+       31  .. 34  => 272, 
+       35  .. 42  => 273,  -- Codes 273..276, with 3 extra bits
+       43  .. 50  => 274, 
+       51  .. 58  => 275, 
+       59  .. 66  => 276, 
+       67  .. 82  => 277,  -- Codes 277..280, with 4 extra bits
+       83  .. 98  => 278, 
+       99  .. 114 => 279, 
+       115 .. 130 => 280, 
+       131 .. 162 => 281,  -- Codes 281..284, with 5 extra bits
+       163 .. 194 => 282, 
+       195 .. 226 => 283, 
+       227 .. 257 => 284, 
+       258 => 285          -- Code 285, with no extra bit
+     );
 
-  function Deflate_code_for_LZ_distance(distance: Natural) return Natural is
+  function Deflate_code_for_LZ_distance(distance: Distance_range) return Natural is
   begin
-    case Distance_range(distance) is
+    case distance is
       when 1..4 => -- Codes 0..3, with no extra bit
         return distance-1 ;
       when 5..8 => -- Codes 4..5, with 1 extra bit
@@ -1135,6 +1149,7 @@ is
     slide_mid:= from + min_step;
     Scan_LZ_data:
     while Integer_M32(slide_mid) + half_slider_size < Integer_M32(to) loop
+      exit when deactivate_scanning;
       sliding_hd_computed:= False;
       Browse_step_level:
       for level in step_choice'Range loop
@@ -1167,13 +1182,14 @@ is
           end if;
         end if;
       end loop Browse_step_level;
+      --  Exit before an eventual increment of slide_mid that would loop over (mod n). 
+      exit when Integer_M32(slide_mid) + min_step + half_slider_size >= Integer_M32(to);
       slide_mid:= slide_mid + min_step;
-      exit Scan_LZ_data when slide_mid < from + min_step;  --  Catch a looping over (mod n)
     end loop Scan_LZ_data;
     --
     --  Send last block for slice from .. to.
     --
-    if send_from <= to and send_from >= from then  --  2nd test in case of looping over (mod n)
+    if send_from <= to then
       Send_as_block(lz_buffer(send_from .. to), last_block => last_flush);
     end if;
   end Scan_and_send_from_main_buffer;

@@ -65,16 +65,19 @@ project ZipAda is
       case Build_Mode is
 
          when "Debug" =>
-            for Default_Switches ("ada") use ("-g",
-              "-Xlinker", "--stack=0x2000000,0x20000");
+            for Default_Switches ("ada") use ("-g"
+              -- "-Wl,--stack=0x100000"  --  Larger stack size for GNAT 4.6 / Ubuntu 12.04 32 bit needed, but no syntax is working...
+              );
 
          when "Optimize" =>
-            for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections", 
-              "-Xlinker", "--stack=0x2000000,0x20000");
+            for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections" 
+              -- "-Wl,--stack=0x100000"  --  Larger stack size for GNAT 4.6 / Ubuntu 12.04 32 bit needed, but no syntax is working...
+              );
 
          when "Profiling" =>
-            for Default_Switches ("ada") use ("-pg",
-              "-Xlinker", "--stack=0x2000000,0x20000");
+            for Default_Switches ("ada") use ("-pg"
+              -- "-Wl,--stack=0x100000"  --  Larger stack size for GNAT 4.6 / Ubuntu 12.04 32 bit needed, but no syntax is working...
+              );
       end case;
    end Linker;
 
