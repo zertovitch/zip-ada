@@ -14,6 +14,9 @@
 --        distance and length statistics before computing their Huffman codes, or
 --        reinvent it by computing the size of emitted codes and trying slight changes
 --        to the codes' bit lengths.
+--    - Improve LZ77 compression: see Zip.LZ77 to-do list; check with bypass_LZ77 below
+--        and various programs based on LZ77 using the trace >= some and the LZ77 dump
+--        in UnZip.Decompress.
 --
 --  Change log:
 -- 
@@ -419,15 +422,15 @@ is
     return True;      
   end Recyclable;
   
-  --  Emit a Huffman code
-  procedure Put_code(lc: Length_code_pair) is
-  pragma Inline(Put_code);
+  --  Emit a variable length Huffman code
+  procedure Put_Huffman_code(lc: Length_code_pair) is
+  pragma Inline(Put_Huffman_code);
   begin
     if lc.length = 0 then
       Raise_Exception(Constraint_Error'Identity, "Huffman code of length 0 should not occur");
     end if;
     Put_code(U32(lc.code), lc.length);
-  end Put_code;
+  end Put_Huffman_code;
 
   --  Phase (C): the Prepare_Huffman_codes procedure finds the Huffman code for each
   --  value, given the bit length imposed as input.
@@ -497,7 +500,7 @@ is
           when simulate =>
             truc_freq(x):= truc_freq(x) + 1;  --  +1 for x's histogram bar
           when effective =>
-            Put_code(truc(x));
+            Put_Huffman_code(truc(x));
             if bits > 0 then
               Put_code(extra, bits);
             end if;
@@ -623,119 +626,29 @@ is
   --  Write a normal, "clear-text" (post LZ, pre Huffman), 8-bit character (literal)
   procedure Put_literal_byte( b: Byte ) is
   begin
-    Put_code( curr_descr.lit_len(Integer(b)) );
+    Put_Huffman_code( curr_descr.lit_len(Integer(b)) );
   end Put_literal_byte;
 
   --  Possible ranges for distance and length encoding in the Zip-Deflate format:
   subtype Length_range is Integer range 3 .. 258;
   subtype Distance_range is Integer range 1 .. 32768;
 
-  procedure Put_DL_code( distance, length: Integer ) is
-  begin
-    -- Already checked: distance in Distance_range and length in Length_range
-    --
-    -- put('('&distance'img & ',' & length'img&')');
-
-    --                             Length Codes
-    --                             ------------
-    --      Extra             Extra              Extra              Extra
-    -- Code Bits Length  Code Bits Lengths  Code Bits Lengths  Code Bits Length(s)
-    -- ---- ---- ------  ---- ---- -------  ---- ---- -------  ---- ---- ---------
-    --  257   0     3     265   1   11,12    273   3   35-42    281   5  131-162
-    --  258   0     4     266   1   13,14    274   3   43-50    282   5  163-194
-    --  259   0     5     267   1   15,16    275   3   51-58    283   5  195-226
-    --  260   0     6     268   1   17,18    276   3   59-66    284   5  227-257
-    --  261   0     7     269   2   19-22    277   4   67-82    285   0    258
-    --  262   0     8     270   2   23-26    278   4   83-98
-    --  263   0     9     271   2   27-30    279   4   99-114
-    --  264   0    10     272   2   31-34    280   4  115-130
-    --
-    --  Example: the code # 266 means the LZ length (# of message bytes to be copied)
-    --           shall be 13 or 14, depending on the extra bit value.
-    --
-    case Length_range(length) is
-      when 3..10 => -- Codes 257..264, with no extra bit
-        Put_code( curr_descr.lit_len( 257 + length-3 ) );
-      when 11..18 => -- Codes 265..268, with 1 extra bit
-        Put_code( curr_descr.lit_len( 265 + (length-11) / 2 ) );
-        Put_code( U32((length-11) mod 2), 1 );
-      when 19..34 => -- Codes 269..272, with 2 extra bits
-        Put_code( curr_descr.lit_len( 269 + (length-19) / 4 ) );
-        Put_code( U32((length-19) mod 4), 2 );
-      when 35..66 => -- Codes 273..276, with 3 extra bits
-        Put_code( curr_descr.lit_len( 273 + (length-35) / 8 ) );
-        Put_code( U32((length-35) mod 8), 3 );
-      when 67..130 => -- Codes 277..280, with 4 extra bits
-        Put_code( curr_descr.lit_len( 277 + (length-67) / 16 ) );
-        Put_code( U32((length-67) mod 16), 4 );
-      when 131..257 => -- Codes 281..284, with 5 extra bits
-        Put_code( curr_descr.lit_len( 281 + (length-131) / 32 ) );
-        Put_code( U32((length-131) mod 32), 5 );
-      when 258 => -- Code 285, with no extra bit
-        Put_code( curr_descr.lit_len( 285 ) );
-    end case;
-    --                            Distance Codes
-    --                            --------------
-    --      Extra           Extra             Extra               Extra
-    -- Code Bits Dist  Code Bits  Dist   Code Bits Distance  Code Bits Distance
-    -- ---- ---- ----  ---- ---- ------  ---- ---- --------  ---- ---- --------
-    --   0   0    1      8   3   17-24    16    7  257-384    24   11  4097-6144
-    --   1   0    2      9   3   25-32    17    7  385-512    25   11  6145-8192
-    --   2   0    3     10   4   33-48    18    8  513-768    26   12  8193-12288
-    --   3   0    4     11   4   49-64    19    8  769-1024   27   12 12289-16384
-    --   4   1   5,6    12   5   65-96    20    9 1025-1536   28   13 16385-24576
-    --   5   1   7,8    13   5   97-128   21    9 1537-2048   29   13 24577-32768
-    --   6   2   9-12   14   6  129-192   22   10 2049-3072
-    --   7   2  13-16   15   6  193-256   23   10 3073-4096
-    --
-    --
-    --  Example: the code # 10 means the LZ distance (# positions back in the circular
-    --           message buffer for starting the copy) shall be 33, plus the value given
-    --           by the 4 extra bits (between 0 and 15).
-    case Distance_range(distance) is
-      when 1..4 => -- Codes 0..3, with no extra bit
-        Put_code( curr_descr.dis(distance-1) );
-      when 5..8 => -- Codes 4..5, with 1 extra bit
-        Put_code( curr_descr.dis( 4 + (distance-5) / 2 ) );
-        Put_code( U32((distance-5) mod 2), 1 );
-      when 9..16 => -- Codes 6..7, with 2 extra bits
-        Put_code( curr_descr.dis( 6 + (distance-9) / 4 ) );
-        Put_code( U32((distance-9) mod 4), 2 );
-      when 17..32 => -- Codes 8..9, with 3 extra bits
-        Put_code( curr_descr.dis( 8 + (distance-17) / 8 ) );
-        Put_code( U32((distance-17) mod 8), 3 );
-      when 33..64 => -- Codes 10..11, with 4 extra bits
-        Put_code( curr_descr.dis( 10 + (distance-33) / 16 ) );
-        Put_code( U32((distance-33) mod 16), 4 );
-      when 65..128 => -- Codes 12..13, with 5 extra bits
-        Put_code( curr_descr.dis( 12 + (distance-65) / 32 ) );
-        Put_code( U32((distance-65) mod 32), 5 );
-      when 129..256 => -- Codes 14..15, with 6 extra bits
-        Put_code( curr_descr.dis( 14 + (distance-129) / 64 ) );
-        Put_code( U32((distance-129) mod 64), 6 );
-      when 257..512 => -- Codes 16..17, with 7 extra bits
-        Put_code( curr_descr.dis( 16 + (distance-257) / 128 ) );
-        Put_code( U32((distance-257) mod 128), 7 );
-      when 513..1024 => -- Codes 18..19, with 8 extra bits
-        Put_code( curr_descr.dis( 18 + (distance-513) / 256 ) );
-        Put_code( U32((distance-513) mod 256), 8 );
-      when 1025..2048 => -- Codes 20..21, with 9 extra bits
-        Put_code( curr_descr.dis( 20 + (distance-1025) / 512 ) );
-        Put_code( U32((distance-1025) mod 512), 9 );
-      when 2049..4096 => -- Codes 22..23, with 10 extra bits
-        Put_code( curr_descr.dis( 22 + (distance-2049) / 1024 ) );
-        Put_code( U32((distance-2049) mod 1024), 10 );
-      when 4097..8192 => -- Codes 24..25, with 11 extra bits
-        Put_code( curr_descr.dis( 24 + (distance-4097) / 2048 ) );
-        Put_code( U32((distance-4097) mod 2048), 11 );
-      when 8193..16384 => -- Codes 26..27, with 12 extra bits
-        Put_code( curr_descr.dis( 26 + (distance-8193) / 4096 ) );
-        Put_code( U32((distance-8193) mod 4096), 12 );
-      when 16385..32768 => -- Codes 28..29, with 13 extra bits
-        Put_code( curr_descr.dis( 28 + (distance-16385) / 8192 ) );
-        Put_code( U32((distance-16385) mod 8192), 13 );
-    end case;
-  end Put_DL_code;
+  --                             Length Codes
+  --                             ------------
+  --      Extra             Extra              Extra              Extra
+  -- Code Bits Length  Code Bits Lengths  Code Bits Lengths  Code Bits Length(s)
+  -- ---- ---- ------  ---- ---- -------  ---- ---- -------  ---- ---- ---------
+  --  257   0     3     265   1   11,12    273   3   35-42    281   5  131-162
+  --  258   0     4     266   1   13,14    274   3   43-50    282   5  163-194
+  --  259   0     5     267   1   15,16    275   3   51-58    283   5  195-226
+  --  260   0     6     268   1   17,18    276   3   59-66    284   5  227-257
+  --  261   0     7     269   2   19-22    277   4   67-82    285   0    258
+  --  262   0     8     270   2   23-26    278   4   83-98
+  --  263   0     9     271   2   27-30    279   4   99-114
+  --  264   0    10     272   2   31-34    280   4  115-130
+  --
+  --  Example: the code # 266 means the LZ length (# of message bytes to be copied)
+  --           shall be 13 or 14, depending on the extra bit value.
 
   Deflate_code_for_LZ_length: constant array(Length_range) of Natural:=
     (  3  => 257,          -- Codes 257..264, with no extra bit
@@ -768,6 +681,102 @@ is
        227 .. 257 => 284, 
        258 => 285          -- Code 285, with no extra bit
      );
+
+  extra_bits_for_lz_length_offset: constant array(Length_range) of Integer:=
+    (3..10 | 258 => invalid,  --  just placeholder, there is no extra bit there!
+     11..18      => 11,
+     19..34      => 19,
+     35..66      => 35,
+     67..130     => 67,
+     131..257    => 131);
+
+  extra_bits_for_lz_length: constant array(Length_range) of Natural:=
+    (3..10 | 258 => 0, 
+     11..18      => 1,
+     19..34      => 2,
+     35..66      => 3,
+     67..130     => 4,
+     131..257    => 5);
+     
+  procedure Put_DL_code( distance: Distance_range; length: Length_range ) is
+    extra_bits: Natural;
+  begin
+    Put_Huffman_code(curr_descr.lit_len(Deflate_code_for_LZ_length(length)));
+    --  Extra bits are needed to differentiate lengths sharing the same code.
+    extra_bits:= extra_bits_for_lz_length(length);
+    if extra_bits > 0 then
+      --  We keep only the last extra_bits bits of the length (minus given offset).
+      --  Example: if extra_bits = 1, only the parity is sent (0 or 1);
+      --  the rest has been already sent with Put_Huffman_code above.
+      --  Equivalent: x:= x mod (2 ** extra_bits);
+      Put_code(
+        U32(length - extra_bits_for_lz_length_offset(length))
+          and
+        (Shift_Left(U32'(1), extra_bits) - 1), 
+        extra_bits);
+    end if;
+    --                            Distance Codes
+    --                            --------------
+    --      Extra           Extra             Extra               Extra
+    -- Code Bits Dist  Code Bits  Dist   Code Bits Distance  Code Bits Distance
+    -- ---- ---- ----  ---- ---- ------  ---- ---- --------  ---- ---- --------
+    --   0   0    1      8   3   17-24    16    7  257-384    24   11  4097-6144
+    --   1   0    2      9   3   25-32    17    7  385-512    25   11  6145-8192
+    --   2   0    3     10   4   33-48    18    8  513-768    26   12  8193-12288
+    --   3   0    4     11   4   49-64    19    8  769-1024   27   12 12289-16384
+    --   4   1   5,6    12   5   65-96    20    9 1025-1536   28   13 16385-24576
+    --   5   1   7,8    13   5   97-128   21    9 1537-2048   29   13 24577-32768
+    --   6   2   9-12   14   6  129-192   22   10 2049-3072
+    --   7   2  13-16   15   6  193-256   23   10 3073-4096
+    --
+    --
+    --  Example: the code # 10 means the LZ distance (# positions back in the circular
+    --           message buffer for starting the copy) shall be 33, plus the value given
+    --           by the 4 extra bits (between 0 and 15).
+    case distance is
+      when 1..4 => -- Codes 0..3, with no extra bit
+        Put_Huffman_code( curr_descr.dis(distance-1) );
+      when 5..8 => -- Codes 4..5, with 1 extra bit
+        Put_Huffman_code( curr_descr.dis( 4 + (distance-5) / 2 ) );
+        Put_code( U32((distance-5) mod 2), 1 );
+      when 9..16 => -- Codes 6..7, with 2 extra bits
+        Put_Huffman_code( curr_descr.dis( 6 + (distance-9) / 4 ) );
+        Put_code( U32((distance-9) mod 4), 2 );
+      when 17..32 => -- Codes 8..9, with 3 extra bits
+        Put_Huffman_code( curr_descr.dis( 8 + (distance-17) / 8 ) );
+        Put_code( U32((distance-17) mod 8), 3 );
+      when 33..64 => -- Codes 10..11, with 4 extra bits
+        Put_Huffman_code( curr_descr.dis( 10 + (distance-33) / 16 ) );
+        Put_code( U32((distance-33) mod 16), 4 );
+      when 65..128 => -- Codes 12..13, with 5 extra bits
+        Put_Huffman_code( curr_descr.dis( 12 + (distance-65) / 32 ) );
+        Put_code( U32((distance-65) mod 32), 5 );
+      when 129..256 => -- Codes 14..15, with 6 extra bits
+        Put_Huffman_code( curr_descr.dis( 14 + (distance-129) / 64 ) );
+        Put_code( U32((distance-129) mod 64), 6 );
+      when 257..512 => -- Codes 16..17, with 7 extra bits
+        Put_Huffman_code( curr_descr.dis( 16 + (distance-257) / 128 ) );
+        Put_code( U32((distance-257) mod 128), 7 );
+      when 513..1024 => -- Codes 18..19, with 8 extra bits
+        Put_Huffman_code( curr_descr.dis( 18 + (distance-513) / 256 ) );
+        Put_code( U32((distance-513) mod 256), 8 );
+      when 1025..2048 => -- Codes 20..21, with 9 extra bits
+        Put_Huffman_code( curr_descr.dis( 20 + (distance-1025) / 512 ) );
+        Put_code( U32((distance-1025) mod 512), 9 );
+      when 2049..4096 => -- Codes 22..23, with 10 extra bits
+        Put_Huffman_code( curr_descr.dis( 22 + (distance-2049) / 1024 ) );
+        Put_code( U32((distance-2049) mod 1024), 10 );
+      when 4097..8192 => -- Codes 24..25, with 11 extra bits
+        Put_Huffman_code( curr_descr.dis( 24 + (distance-4097) / 2048 ) );
+        Put_code( U32((distance-4097) mod 2048), 11 );
+      when 8193..16384 => -- Codes 26..27, with 12 extra bits
+        Put_Huffman_code( curr_descr.dis( 26 + (distance-8193) / 4096 ) );
+        Put_code( U32((distance-8193) mod 4096), 12 );
+      when 16385..32768 => -- Codes 28..29, with 13 extra bits
+        Put_Huffman_code( curr_descr.dis( 28 + (distance-16385) / 8192 ) );
+        Put_code( U32((distance-16385) mod 8192), 13 );
+    end case;
+  end Put_DL_code;
 
   function Deflate_code_for_LZ_distance(distance: Distance_range) return Natural is
   begin
@@ -884,7 +893,7 @@ is
   procedure Mark_new_block(last_block_for_stream: Boolean) is
   begin
     if block_to_finish and last_block_type in fixed .. dynamic then
-      Put_code(curr_descr.lit_len(End_Of_Block));  --  Finish previous block
+      Put_Huffman_code(curr_descr.lit_len(End_Of_Block));  --  Finish previous block
     end if;
     block_to_finish:= True;
     Put_code(code => Boolean'Pos(last_block_for_stream), code_size => 1);
@@ -1420,16 +1429,16 @@ is
     --  Done. Send the code signaling the end of compressed data block:
     case method is
       when Deflate_Fixed =>
-        Put_code(curr_descr.lit_len(End_Of_Block));
+        Put_Huffman_code(curr_descr.lit_len(End_Of_Block));
       when Taillaule_Deflation_Method =>
         if lz_buffer_index * 2 = 0 then  --  Already flushed at latest Push, or empty data
           if block_to_finish and then last_block_type in fixed .. dynamic then
-            Put_code(curr_descr.lit_len(End_Of_Block));
+            Put_Huffman_code(curr_descr.lit_len(End_Of_Block));
           end if;
         else
           Flush_half_buffer(last_flush => True);
           if last_block_type in fixed .. dynamic then
-            Put_code(curr_descr.lit_len(End_Of_Block));
+            Put_Huffman_code(curr_descr.lit_len(End_Of_Block));
           end if;
         end if;
         if not last_block_marked then
@@ -1437,7 +1446,7 @@ is
           Put_code(code => 1, code_size => 1);  --  Signals last block
           Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
           curr_descr:= Deflate_fixed_descriptors;
-          Put_code(curr_descr.lit_len(End_Of_Block));
+          Put_Huffman_code(curr_descr.lit_len(End_Of_Block));
         end if;
     end case;
   end Encode;
