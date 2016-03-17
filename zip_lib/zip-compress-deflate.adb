@@ -35,6 +35,8 @@ with Length_limited_Huffman_code_lengths;
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Unchecked_Deallocation;
+
 with Interfaces;                        use Interfaces;
 
 procedure Zip.Compress.Deflate
@@ -1071,9 +1073,15 @@ is
     end if;
   end Send_as_block;
 
+  subtype Full_range_LZ_buffer_type is LZ_buffer_type(LZ_buffer_index_type);
+  type p_Full_range_LZ_buffer_type is access Full_range_LZ_buffer_type;
+  procedure Dispose is
+    new Ada.Unchecked_Deallocation(Full_range_LZ_buffer_type, p_Full_range_LZ_buffer_type);
+
   --  This is the main, big, fat, circular buffer containing LZ codes,
   --  each LZ code being a literal or a DL code.
-  lz_buffer: LZ_buffer_type(LZ_buffer_index_type);
+  --  Heap allocation is needed because default stack is too small on some targets.
+  lz_buffer: p_Full_range_LZ_buffer_type;
   lz_buffer_index: LZ_buffer_index_type:= 0;
   past_lz_data: Boolean:= False;
   --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
@@ -1467,9 +1475,11 @@ begin
     New_Line(log);
   end if;
   output_size:= 0;
+  lz_buffer:= new Full_range_LZ_buffer_type;
   Encode;
   Flush_bit_buffer;
   Flush_byte_buffer;
+  Dispose(lz_buffer);
   if trace then
     Close(log);
   end if;
