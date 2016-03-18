@@ -31,7 +31,7 @@ generic
   max_bits: Positive;  --  Length limit in Huffman codes
 
 procedure Length_limited_Huffman_code_lengths(
-  frequencies :     Count_Array;
+  frequencies : in  Count_Array;
   bit_lengths : out Length_Array
 );
 

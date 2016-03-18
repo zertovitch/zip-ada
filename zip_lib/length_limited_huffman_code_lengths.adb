@@ -27,7 +27,7 @@
 --    - sub-programs are nested, then unneeded parameters are removed
 
 procedure Length_limited_Huffman_code_lengths(
-  frequencies :     Count_Array;
+  frequencies : in  Count_Array;
   bit_lengths : out Length_Array
 )
 is
