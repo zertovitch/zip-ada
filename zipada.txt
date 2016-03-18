@@ -92,19 +92,20 @@ Contents
   and remove the line with Ada_Directories_Extensions to get a totally portable
   tool using only Zip-Ada and Ada standard libraries.
 
-* To build the tests, simply "gnatmake" or "adamake" them !
+* To build the tests, simply "gprbuild" or "adabuild" them.
   You can also start "make_za" for minimal effort with GNAT.
 
   There are also the following project files for building them
   with various systems:
   - ZipAda.gpr for GNAT or the GNAT Programming Studio
-  - ZipAda_ObjectAda.prj for Aonix's ObjectAda 7.2.2 and later  
+  - ZipAda_ObjectAda.prj for ObjectAda 7.2.2 and later (this is the
+      project file for the ObjectAda's IDE)
   - UnZipAda_A#.sln for Microsoft Visual Studio and A# (uses files
       UnZipAda_A#.adaproj and UnZipAda_Asharp.gpr)
 
 * The file extensions of source files are GNAT-ish:
-  .ads is specification; .adb is body
-  Rename the files if necessary, for other compilers.
+  .ads is specification; .adb is body.
+  Rename the files if necessary.
 
 * You may wish to force text-mode and lower case names (Unix)
   by using unzip's "-aa" and "-L" options: "unzip -aa -L zipada*.zip".
@@ -121,12 +122,13 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '50', xx-yyy-2016:
+  - Shrink is slightly faster
   - New compression features:
-    - Deflate_Fixed much faster and with slightly better compression
+    - Deflate_Fixed is much faster, with slightly better compression
     - added Deflate_1: compression level similar to zlib, level 6
     - added Deflate_2: compression level similar to zlib, level 9
     - added Deflate_3: compression level similar to 7-Zip,
-        meth=deflate, level 5
+        method: deflate, level 5
 
 * Changes in '49', 21-Mar-2015:
   - encryption implemented (portable Zip 2.0 encryption scheme)
