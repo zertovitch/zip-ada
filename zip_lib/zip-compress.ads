@@ -12,12 +12,12 @@
 --  This package facilitates the storage or compression of data.
 -- 
 --  Note that unlike decompression where the decoding is unique,
---  there is an quasi indefinite number of ways of compressing data into
+--  there is a quasi indefinite number of ways of compressing data into
 --  most Zip-supported formats, including LZW (Shrink), Reduce, or Deflate.
 --  As a result, you may want to use your own way for compressing data.
 --  This package is a portable one and doesn't claim to be the "best".
 --  The term "best" is relative to the needs, since there are at least
---  two criteria that usually go in opposite direction: speed and
+--  two criteria that usually go in opposite directions: speed and
 --  compression ratio, a bit like risk and return in finance.
 
 with Zip_Streams;
