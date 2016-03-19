@@ -4,7 +4,7 @@
 --  Magic numbers adjusted through experimentation are marked with: *Tuned*
 --
 --  To do:
---    - Taillaule: tune the opti_*_8192 thresholds for step size = 6000
+--    - Taillaule: tune the opti_*_ thresholds
 --    - Taillaule: try with slider and/or initial lz window not centered
 --    - Taillaule: compare slider to random and fixed in addition to initial
 --    - Taillaule: try L_sup distance
@@ -1018,21 +1018,16 @@ is
       Put_LZ_buffer(lzb);
       last_block_type:= dynamic;
     end Send_dynamic_block;
-    -- Experimental values - more or less optimal for LZ_buffer_size = n ...
-    -- opti_rand_2048    : constant:= 120;
-    -- opti_merge_2048   : constant:= 25;  --  merge stats, not blocks
-    -- opti_recy_2048    : constant:= 250;
-    -- opti_fix_2048     : constant:= 20;
     -- *Tuned*
-    opti_rand_8192    : constant:= 333;
-    opti_merge_8192   : constant:= 0;  --  merge stats, not blocks
-    opti_recy_8192    : constant:= 40;
-    opti_fix_8192     : constant:= 0;
-    opti_size_fix     : constant:= 111;
+    opti_random    : constant:= 333;
+    opti_recycle   : constant:= 62;
+    opti_fix       : constant:= 230;
+    opti_size_fix  : constant:= 111;
+    opti_merge     : constant:= 0;  --  merge stats, not blocks (we will discard this "feature" !!)
   begin
     Get_statistics(lzb, stats_lit_len, stats_dis);
     new_descr:= Build_descriptors(stats_lit_len, stats_dis);
-    if Similar(new_descr, random_data_descriptors, L1, opti_rand_8192, "Compare to random") and then
+    if Similar(new_descr, random_data_descriptors, L1, opti_random, "Compare to random") and then
        stats_lit_len(Long_length_codes) = zero_bl_long_lengths
        --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0
     then
@@ -1043,14 +1038,14 @@ is
     elsif last_block_type = dynamic and then 
           Recyclable(curr_descr, new_descr) and then
           --  !! ^ we could extend this for check last_block_type = fixed 
-          Similar(new_descr, curr_descr, L1, opti_recy_8192, "Compare to previous, for recycling")
+          Similar(new_descr, curr_descr, L1, opti_recycle, "Compare to previous, for recycling")
     then
       if trace then
         Put_Line(log, "### Recycle: continue using existing dynamic compression structures");
       end if;
       Put_LZ_buffer(lzb);
     elsif lzb'Length < opti_size_fix or else
-          Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix_8192, "Compare to fixed") 
+          Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix, "Compare to fixed") 
     then
       Send_fixed_block;
     -- 
@@ -1059,7 +1054,7 @@ is
     --  more space with a better Huffman encoding of data.
     --
     elsif last_block_type = dynamic and then 
-          Similar(new_descr, curr_descr, L1, opti_merge_8192, "Compare to previous, for stats merging")
+          Similar(new_descr, curr_descr, L1, opti_merge, "Compare to previous, for stats merging")
     then
       Send_dynamic_block(merge => True);  
       --  Similar: we merge statistics. Not optimal for this block, but helps further recycling

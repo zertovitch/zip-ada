@@ -20,15 +20,21 @@ file format. It supplies:
  - task safety: this library can be used ad libitum in parallel processing
  - endian-neutral I/O
 
-The full source is in Ada: pure Ada, not even a single dependency
-to a compiler, a CPU architecture, an OS or an external package or library!
+The full source is in Ada: pure Ada 95, not even a single dependency
+to a compiler, a CPU architecture, an OS or an external package or library.
 The price for the *unconditional* portability of Zip-Ada hold in these details:
   - archive creation: attributes (read-only, system etc.) are not stored
   - archive extraction: time stamps and attributes of decompressed files
       are not restored as original
 That's it!
 
-For details about the code's history, read the file unzip.ads.
+Note however that some compilers may not have the necessary integer types
+for compiling Zip-Ada; other (like the old 7.2.2 version of ObjectAda of 2002)
+won't compile correctly some parts or crash during the build. Still, a list of
+more than 25 successfully tested OS-CPU-Compiler combinations can be found below
+under "note on portability".
+
+For details about the code's history, read the files zip.ads and unzip.ads.
 
 License / Warning / Legal stuff
 ===============================
@@ -466,7 +472,8 @@ To do further
 Note on portability
 ===================
 
-Portability is unconditional and unrestricted!
+Portability is unconditional and unrestricted: no need of preprocessing,
+conditional compilation, magic folders...
 If you still have doubts, here is a list of OS/CPU/Compiler
 combinations where Zip-Ada has been reported to be in use:
 
@@ -492,7 +499,7 @@ FreeBSD                     Intel x64 (64 bit)
 Android 2.3+                ARM
 
 MS Windows 95,98;
-           NT,2K,XP         Intel x86 (32 bit)  Atego - ObjectAda
+           NT,2K,XP         Intel x86 (32 bit)  PTC - ObjectAda
 
 MS Windows 95,98;
            NT,2K,XP         Intel x86 (32 bit)  RR Software - Janus/Ada
