@@ -206,7 +206,7 @@ is
     Quick_sort(a(a'First + i .. a'Last));
   end Quick_sort;
 
-  paranoid: Boolean:= True;
+  paranoid: constant Boolean:= True;
   
 begin
   bit_lengths:= (others => 0);
