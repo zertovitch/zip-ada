@@ -4,10 +4,10 @@
 --  Magic numbers adjusted through experimentation are marked with: *Tuned*
 --
 --  To do:
---    - Taillaule: tune the opti_*_ thresholds
 --    - Taillaule: try with slider and/or initial lz window not centered
 --    - Taillaule: compare slider to random and fixed in addition to initial
 --    - Taillaule: try L_sup distance
+--    - Taillaule: restrict BL_Vector to short LZ distances (long distances perhaps too random)
 --    - Taillaule: use a corpus of files badly compressed by our Deflate comparatively
 --        to other Deflates (e.g. 7Z seems better with databases)
 --    - Add DeflOpt to slowest method, or approximate it by tweaking
@@ -981,16 +981,21 @@ is
     --
     procedure Send_fixed_block is
     begin
-      --  !! block boundary useless if already: last_block_type = fixed
-      if trace then
-        Put_Line(log, "### New fixed block");
+      if last_block_type = fixed then
+        --  Cool, we don't need to do anything: the Huffman codes are already
+        --  the expected ones. We can just continue sending the LZ atoms.
+        null;
+      else
+        if trace then
+          Put_Line(log, "### New fixed block");
+        end if;
+        Mark_new_block(last_block_for_stream => last_block);
+        -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
+        curr_descr:= Deflate_fixed_descriptors;
+        Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
+        last_block_type:= fixed;
       end if;
-      Mark_new_block(last_block_for_stream => last_block);
-      -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
-      curr_descr:= Deflate_fixed_descriptors;
-      Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
       Put_LZ_buffer(lzb);
-      last_block_type:= fixed;
     end Send_fixed_block;
     --
     stats_lit_len: Stats_lit_len_type;
@@ -1035,16 +1040,18 @@ is
         Put_Line(log, "### Random enough - use stored");
       end if;
       Expand_LZ_buffer(lzb, last_block);
-    elsif last_block_type = dynamic and then 
-          Recyclable(curr_descr, new_descr) and then
-          --  !! ^ we could extend this for check last_block_type = fixed 
-          Similar(new_descr, curr_descr, L1, opti_recycle, "Compare to previous, for recycling")
+    elsif  (  last_block_type = fixed
+                or else
+             (last_block_type = dynamic and then Recyclable(curr_descr, new_descr)) 
+           )
+          and then
+            Similar(new_descr, curr_descr, L1, opti_recycle, "Compare to previous, for recycling")
     then
       if trace then
         Put_Line(log, "### Recycle: continue using existing dynamic compression structures");
       end if;
       Put_LZ_buffer(lzb);
-    elsif lzb'Length < opti_size_fix or else
+    elsif lzb'Length < opti_size_fix or else  --  Very small block
           Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix, "Compare to fixed") 
     then
       Send_fixed_block;
@@ -1058,7 +1065,7 @@ is
     then
       Send_dynamic_block(merge => True);  
       --  Similar: we merge statistics. Not optimal for this block, but helps further recycling
-      --  Bet: we have a string of similar blocks; better have less nonzero stats to avoid
+      --  Bet: we have a string of similar blocks; better have less non-zero statistics to avoid
       --  non-recyclable cases. NB !! this will disappear by merging at prior level, with
       --  merging of blocks and optimal bit lengths for each block sent.
     else
