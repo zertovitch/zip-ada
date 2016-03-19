@@ -32,7 +32,6 @@ with Zip_Streams;
 
 with Length_limited_Huffman_code_lengths;
 
-with Ada.Exceptions;                    use Ada.Exceptions;
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
@@ -1043,6 +1042,7 @@ is
       Expand_LZ_buffer(lzb, last_block);
     elsif last_block_type = dynamic and then 
           Recyclable(curr_descr, new_descr) and then
+          --  !! ^ we could extend this for check last_block_type = fixed 
           Similar(new_descr, curr_descr, L1, opti_recy_8192, "Compare to previous, for recycling")
     then
       if trace then
@@ -1053,6 +1053,11 @@ is
           Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix_8192, "Compare to fixed") 
     then
       Send_fixed_block;
+    -- 
+    --  Past this point we have exhausted all possibilities to avoid sending a new
+    --  header with compression structures. We have to lose some space, but it is for saving
+    --  more space with a better Huffman encoding of data.
+    --
     elsif last_block_type = dynamic and then 
           Similar(new_descr, curr_descr, L1, opti_merge_8192, "Compare to previous, for stats merging")
     then
