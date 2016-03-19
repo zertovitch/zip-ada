@@ -206,6 +206,8 @@ is
     Quick_sort(a(a'First + i .. a'Last));
   end Quick_sort;
 
+  paranoid: Boolean:= True;
+  
 begin
   bit_lengths:= (others => 0);
   --  Count used symbols and place them in the leaves.
@@ -228,11 +230,13 @@ begin
   end if;
   --  Sort the leaves from lightest to heaviest.
   Quick_sort(leaves(0..num_symbols-1));
-  for i in 0..num_symbols-1 loop
-    if i > 0 and then leaves(i) < leaves(i-1) then
-      raise buggy_sorting;
-    end if;
-  end loop;
+  if paranoid then
+    for i in 1..num_symbols-1 loop
+      if leaves(i) < leaves(i-1) then
+        raise buggy_sorting;
+      end if;
+    end loop;
+  end if;
   Init_Lists;
   --  In the last list, 2 * num_symbols - 2 active chains need to be created. Two
   --  are already created in the initialization. Each Boundary_PM run creates one.
@@ -241,18 +245,20 @@ begin
     Boundary_PM(Index_Type(max_bits - 1), i = num_Boundary_PM_runs);
   end loop;
   Extract_Bit_Lengths(lists(Index_Type(max_bits - 1))(1));
-  --  Done; some checks before leaving. Not checked: completeness of Huffman codes.
-  for a in Alphabet loop
-    if frequencies(a) = 0 then
-      if bit_lengths(a) > 0 then
-        raise nonzero_length_but_zero_frequency;  --  Never happened so far
+  if paranoid then
+    --  Done; some checks before leaving. Not checked: completeness of Huffman codes.
+    for a in Alphabet loop
+      if frequencies(a) = 0 then
+        if bit_lengths(a) > 0 then
+          raise nonzero_length_but_zero_frequency;  --  Never happened so far
+        end if;
+      else
+        if bit_lengths(a) = 0 then
+          raise zero_length_but_nonzero_frequency;  --  Happened before null_index fix
+        elsif bit_lengths(a) > max_bits then
+          raise length_exceeds_length_limit;        --  Never happened so far
+        end if;
       end if;
-    else
-      if bit_lengths(a) = 0 then
-        raise zero_length_but_nonzero_frequency;  --  Happened before null_index fix
-      elsif bit_lengths(a) > max_bits then
-        raise length_exceeds_length_limit;        --  Never happened so far
-      end if;
-    end if;
-  end loop;
+    end loop;
+  end if;
 end Length_limited_Huffman_code_lengths;
