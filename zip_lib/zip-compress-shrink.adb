@@ -105,7 +105,10 @@ is
     bit_buffer := 0;
   end Flush_bit_buffer;
 
-  subtype Code_size_type is Integer range 1..32;
+  Min_bits: constant:= 9;    --  Starting code size of 9 bits
+  Max_bits: constant:= 13;   --  Maximum code size of 13 bits
+  
+  subtype Code_size_type is Integer range 1..Max_bits;
   code_size: Code_size_type;     --  Size of codes (in bits) currently being written
 
   --  Send a value on a given number of bits.
@@ -348,8 +351,6 @@ is
 
   procedure Shrink_Atom(Suffix: Integer) is
     WhereFound: Integer;
-    Min_bits: constant:= 9;    --  Starting code size of 9 bits
-    Max_bits: constant:= 13;   --  Maximum code size of 13 bits
     lookup_ok: Boolean;
   begin
     if First_atom then            --  If just getting started ...

@@ -149,7 +149,9 @@ is
     bit_buffer := 0;
   end Flush_bit_buffer;
 
-  subtype Code_size_type is Integer range 1..32;
+  --  Bit codes are at most 15 bits for Huffman codes,
+  --  or 13 for explicit codes (distance extra bits).
+  subtype Code_size_type is Integer range 1..15;
 
   --  Send a value on a given number of bits.
   procedure Put_code(code: U32; code_size: Code_size_type) is
@@ -428,10 +430,13 @@ is
   procedure Put_Huffman_code(lc: Length_code_pair) is
   pragma Inline(Put_Huffman_code);
   begin
-    if lc.length = 0 then
-      Raise_Exception(Constraint_Error'Identity, "Huffman code of length 0 should not occur");
-    end if;
-    Put_code(U32(lc.code), lc.length);
+    --  Huffman code of length 0 should never occur: when constructing
+    --  the code lengths (LLHCL) any single occurrence in the statistics
+    --  will trigger the build of a code length of 1 or more.
+    Put_code(
+      code      => U32(lc.code), 
+      code_size => Code_size_type(lc.length)  --  Range check (if enabled).
+    );
   end Put_Huffman_code;
 
   --  Phase (C): the Prepare_Huffman_codes procedure finds the Huffman code for each
@@ -890,7 +895,8 @@ is
   block_to_finish: Boolean:= False;
   last_block_marked: Boolean:= False;
   type Block_type is (stored, fixed, dynamic, reserved);  --  Appnote, 5.5.2
-  last_block_type: Block_type:= reserved;  --  If dynamic, we may recycle previous block
+  --  If last_block_type = dynamic, we may recycle previous block's Huffman codes
+  last_block_type: Block_type:= reserved;
 
   procedure Mark_new_block(last_block_for_stream: Boolean) is
   begin
@@ -974,18 +980,11 @@ is
   procedure Send_as_block(lzb: LZ_buffer_type; last_block: Boolean) is
     new_descr: Deflate_Huff_descriptors;
     --
-    procedure Send_stored_block is
-    begin
-      if trace then
-        Put_Line(log, "### Random enough - use stored");
-      end if;
-      Expand_LZ_buffer(lzb, last_block);
-    end Send_stored_block;
-    --
     procedure Send_fixed_block is
     begin
+      --  !! block boundary useless if already: last_block_type = fixed
       if trace then
-        Put_Line(log, "### Use fixed");
+        Put_Line(log, "### New fixed block");
       end if;
       Mark_new_block(last_block_for_stream => last_block);
       -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
@@ -994,14 +993,6 @@ is
       Put_LZ_buffer(lzb);
       last_block_type:= fixed;
     end Send_fixed_block;
-    --
-    procedure Recycle_dynamic_block is  --  Just reuse existing compression structure
-    begin
-      if trace then
-        Put_Line(log, "### Recycle dynamic");
-      end if;
-      Put_LZ_buffer(lzb);
-    end Recycle_dynamic_block;
     --
     stats_lit_len: Stats_lit_len_type;
     stats_dis: Stats_dis_type;
@@ -1046,12 +1037,18 @@ is
        stats_lit_len(Long_length_codes) = zero_bl_long_lengths
        --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0
     then
-      Send_stored_block;
+      if trace then
+        Put_Line(log, "### Random enough - use stored");
+      end if;
+      Expand_LZ_buffer(lzb, last_block);
     elsif last_block_type = dynamic and then 
           Recyclable(curr_descr, new_descr) and then
           Similar(new_descr, curr_descr, L1, opti_recy_8192, "Compare to previous, for recycling")
     then
-      Recycle_dynamic_block;
+      if trace then
+        Put_Line(log, "### Recycle: continue using existing dynamic compression structures");
+      end if;
+      Put_LZ_buffer(lzb);
     elsif lzb'Length < opti_size_fix or else
           Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix_8192, "Compare to fixed") 
     then
