@@ -425,19 +425,6 @@ is
     return True;      
   end Recyclable;
   
-  --  Emit a variable length Huffman code
-  procedure Put_Huffman_code(lc: Length_code_pair) is
-  pragma Inline(Put_Huffman_code);
-  begin
-    --  Huffman code of length 0 should never occur: when constructing
-    --  the code lengths (LLHCL) any single occurrence in the statistics
-    --  will trigger the build of a code length of 1 or more.
-    Put_code(
-      code      => U32(lc.code), 
-      code_size => Code_size_type(lc.length)  --  Range check (if enabled).
-    );
-  end Put_Huffman_code;
-
   --  Phase (C): the Prepare_Huffman_codes procedure finds the Huffman code for each
   --  value, given the bit length imposed as input.
   procedure Prepare_Huffman_codes(hd: in out Huff_descriptor) is
@@ -483,6 +470,19 @@ is
     return dhd_var;
   end Prepare_Huffman_codes;
   
+  --  Emit a variable length Huffman code
+  procedure Put_Huffman_code(lc: Length_code_pair) is
+  pragma Inline(Put_Huffman_code);
+  begin
+    --  Huffman code of length 0 should never occur: when constructing
+    --  the code lengths (LLHCL) any single occurrence in the statistics
+    --  will trigger the build of a code length of 1 or more.
+    Put_code(
+      code      => U32(lc.code), 
+      code_size => Code_size_type(lc.length)  --  Range check for length 0 (if enabled).
+    );
+  end Put_Huffman_code;
+
   --  This is where the "dynamic" Huffman trees are sent before the block's data are sent.
   --  The decoder needs to know the tree pair (literal-eob-length, distance) for decoding data.
   --  But this information takes some room. Fortunately Deflate allows for compressing it
@@ -639,6 +639,12 @@ is
   subtype Length_range is Integer range 3 .. 258;
   subtype Distance_range is Integer range 1 .. 32768;
 
+  --  This is where LZ distance-length tokens are written to the output stream.
+  --  The Deflate format defines a sort of logarithmic compression, with codes
+  --  for various distance and length ranges, plus extra bits for specifying the
+  --  exact values. The codes are sent as Huffman codes with variable bit lengths
+  --  (nothing to do with the lengths of LZ distance-length tokens).
+
   --                             Length Codes
   --                             ------------
   --      Extra             Extra              Extra              Extra
@@ -703,7 +709,7 @@ is
      35..66      => 3,
      67..130     => 4,
      131..257    => 5);
-     
+  
   procedure Put_DL_code( distance: Distance_range; length: Length_range ) is
     extra_bits: Natural;
   begin
