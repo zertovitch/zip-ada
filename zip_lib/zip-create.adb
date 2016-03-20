@@ -280,8 +280,8 @@ package body Zip.Create is
         String'Read(Stream'Access, extra);
         Info.Contains (Info.Last_entry).name := new String'(name);
         lh.extra_field_length:= 0; -- extra field is zeroed (causes problems if not)
-        Zip.Headers.Write(Info.Stream.all, lh);
-        String'Write(Info.Stream, name);
+        Zip.Headers.Write(Info.Stream.all, lh);  --  Copy local header to new stream
+        String'Write(Info.Stream, name);         --  Copy entry name to new stream
       end;
       Zip.Copy_Chunk(
         Stream,

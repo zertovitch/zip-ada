@@ -123,9 +123,9 @@ private
       Stream    : Zipstream_Class_Access;
       Compress  : Zip.Compress.Compression_Method;
       Contains  : Pdir_entries:= null;
+      -- 'Contains' has unused room, to avoid reallocating each time:
       Last_entry: Natural:= 0;
-      -- 'Contains' has unused room, to avoid reallocating each time
-      Creation_time: Time;
+      Creation_time: Time;  --  This will determine an entry's time stamp for Add_String
    end record;
 
 end Zip.Create;
