@@ -9,7 +9,6 @@ package body Zip.Create is
    procedure Create(Info          : out Zip_Create_info;
                     Z_Stream      : in Zipstream_Class_Access;
                     Name          : String;
-                    Creation_time : Zip.Time;  --  e.g. Zip.Convert(Ada.Calendar.Clock)
                     Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink
    )
    is
@@ -25,7 +24,6 @@ package body Zip.Create is
       if Z_Stream.all in File_Zipstream'Class then
         Zip_Streams.Create (File_Zipstream(Z_Stream.all), Zip_Streams.Out_File);
       end if;
-      Info.Creation_time:= Creation_time;
    end Create;
 
    function Is_Created(Info: Zip_Create_info) return Boolean is
@@ -233,28 +231,39 @@ package body Zip.Create is
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : String;
                          Name_in_archive   : String;
+                         --   Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
                          Name_UTF_8_encoded: Boolean:= False;
-                         -- True if Name is actually UTF-8 encoded (Unicode)
-                         Password          : String:= ""
+                         Password          : String:= "";
+                         --  Time stamp for this entry, e.g. Zip.Convert(Ada.Calendar.Clock)
+                         Creation_time     : Zip.Time:= default_time
    )
    is
    begin
-     Add_String(Info, To_Unbounded_String(Contents), Name_in_archive, Name_UTF_8_encoded, Password);
+     Add_String(
+       Info               => Info,
+       Contents           => To_Unbounded_String(Contents),
+       Name_in_archive    => Name_in_archive,
+       Name_UTF_8_encoded => Name_UTF_8_encoded,
+       Password           => Password,
+       Creation_time      => Creation_time
+     );
    end Add_String;
 
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : Unbounded_String;
                          Name_in_archive   : String;
+                         --   Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
                          Name_UTF_8_encoded: Boolean:= False;
-                         -- True if Name is actually UTF-8 encoded (Unicode)
-                         Password          : String:= ""
+                         Password          : String:= "";
+                         --  Time stamp for this entry, e.g. Zip.Convert(Ada.Calendar.Clock)
+                         Creation_time     : Zip.Time:= default_time
    )
    is
      temp_zip_stream     : aliased Memory_Zipstream;
    begin
      Set(temp_zip_stream, Contents);
      Set_Name(temp_zip_stream, Name_in_archive);
-     Set_Time(temp_zip_stream, Info.Creation_time);
+     Set_Time(temp_zip_stream, Creation_time);
      Set_Unicode_Name_Flag(temp_zip_stream, Name_UTF_8_encoded);
      Add_Stream (Info, temp_zip_stream, Password);
    end Add_String;

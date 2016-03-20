@@ -12,7 +12,6 @@ with Zip.Create;                        use Zip.Create;
 
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Text_IO;
-with Ada.Calendar;                      use Ada.Calendar;
 
 procedure Demo_csv_into_zip is
 
@@ -138,8 +137,7 @@ procedure Demo_csv_into_zip is
   begin
     Create (archive,
       MyStream_file'Unchecked_Access,
-      "detailed_results.zip",
-      Zip.Convert(Time_Of(2016, 3, 14))
+      "detailed_results.zip"
     );
     for p in Peril loop
       for g in Groupcountries loop

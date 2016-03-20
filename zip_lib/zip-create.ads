@@ -35,7 +35,6 @@ package Zip.Create is
    procedure Create(Info          : out Zip_Create_info;
                     Z_Stream      : in Zipstream_Class_Access;
                     Name          : String;
-                    Creation_time : Zip.Time;  --  e.g. Zip.Convert(Ada.Calendar.Clock)
                     Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink
    );
 
@@ -83,17 +82,21 @@ package Zip.Create is
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : String;
                          Name_in_archive   : String;
+                         --   Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
                          Name_UTF_8_encoded: Boolean:= False;
-                         -- True if Name is actually UTF-8 encoded (Unicode)
-                         Password          : String:= ""
+                         Password          : String:= "";
+                         --  Time stamp for this entry, e.g. Zip.Convert(Ada.Calendar.Clock)
+                         Creation_time     : Zip.Time:= default_time
    );
 
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : Unbounded_String;
                          Name_in_archive   : String;
+                         --   Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
                          Name_UTF_8_encoded: Boolean:= False;
-                         -- True if Name is actually UTF-8 encoded (Unicode)
-                         Password          : String:= ""
+                         Password          : String:= "";
+                         --  Time stamp for this entry, e.g. Zip.Convert(Ada.Calendar.Clock)
+                         Creation_time     : Zip.Time:= default_time
    );
 
    -- Add a new entry to a Zip archive, copied from another Zip archive.
@@ -125,7 +128,6 @@ private
       Contains  : Pdir_entries:= null;
       -- 'Contains' has unused room, to avoid reallocating each time:
       Last_entry: Natural:= 0;
-      Creation_time: Time;  --  This will determine an entry's time stamp for Add_String
    end record;
 
 end Zip.Create;

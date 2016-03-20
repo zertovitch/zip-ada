@@ -32,11 +32,9 @@ procedure ZipTest is
    MyStream1 : aliased Memory_Zipstream;
    MyStream2 : aliased File_Zipstream;
 
-   some_date : constant Time:= Calendar.Time_Of(2016, 3, 14);
-
 begin
-   Create (Info2, MyStream_file'Unchecked_Access,   "to_file.zip", some_date, Zip.Compress.Shrink);
-   Create (Info1, MyStream_memory'Unchecked_Access, "to_memo.zip", some_date, Zip.Compress.Shrink);
+   Create (Info2, MyStream_file'Unchecked_Access,   "to_file.zip", Zip.Compress.Shrink);
+   Create (Info1, MyStream_memory'Unchecked_Access, "to_memo.zip", Zip.Compress.Shrink);
 
    -- Read the file1.txt in unbounded string (see also the specific Zip.Create.Add_String)
    RW_File.Read_File ("file1.txt", UnbFile1);
