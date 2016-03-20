@@ -45,8 +45,6 @@ package body Zip.Create is
 
    procedure Dispose is new
      Ada.Unchecked_Deallocation (Dir_entries, Pdir_entries);
-   procedure Dispose is new
-     Ada.Unchecked_Deallocation (String, p_String);
 
    procedure Resize (A    : in out Pdir_entries;
                      Size : Integer) is
@@ -99,6 +97,41 @@ package body Zip.Create is
       end;
    end Add_catalogue_entry;
 
+   --  This is just for detecting duplicates
+   procedure Insert_to_name_dictionary(file_name: String; node: in out p_Dir_node) is
+   begin
+     if node = null then
+       node:= new Dir_node'
+         ( (name_len          => file_name'Length,
+            left              => null,
+            right             => null,
+            file_name         => file_name)
+         );
+     elsif file_name > node.file_name then
+       Insert_to_name_dictionary( file_name, node.right );
+     elsif file_name < node.file_name then
+       Insert_to_name_dictionary( file_name, node.left );
+     else
+       --  Name already registered
+       raise Duplicate_name;
+     end if;
+   end Insert_to_name_dictionary;
+
+   procedure Clear_name_dictionary(Info : in out Zip_Create_info) is
+     procedure Clear( p: in out p_Dir_node ) is
+        procedure Dispose is new Ada.Unchecked_Deallocation (Dir_node, p_Dir_node);
+     begin
+       if p /= null then
+         Clear(p.left);
+         Clear(p.right);
+         Dispose(p);
+         p:= null;
+       end if;
+     end Clear;
+   begin
+     Clear(Info.dir);
+   end Clear_name_dictionary;
+   
    procedure Add_Stream (Info     : in out Zip_Create_info;
                          Stream   : in out Root_Zipstream_Type'Class;
                          Password : in     String:= "")
@@ -127,7 +160,8 @@ package body Zip.Create is
           entry_name(i):= '/';
         end if;
       end loop;
-      --
+      --  Check duplicates; raises Duplicate_name in this case.
+      Insert_to_name_dictionary (entry_name, Info.dir);
       Add_catalogue_entry (Info);
       Last:= Info.Last_entry;
       declare
@@ -276,17 +310,19 @@ package body Zip.Create is
    is
       lh: Zip.Headers.Local_File_Header;
    begin
-      Add_catalogue_entry (Info);
       Zip.Headers.Read_and_check(Stream, lh);
-      Info.Contains (Info.Last_entry).head.local_header_offset :=
-        Unsigned_32 (Index (Info.Stream.all)) - 1;
-      -- Copy name and extra field
+      -- Copy name and ignore extra field
       declare
         name: String(1..Positive(lh.filename_length));
         extra: String(1..Natural(lh.extra_field_length));
       begin
         String'Read(Stream'Access, name);
         String'Read(Stream'Access, extra);
+        --  Check for duplicates; raises Duplicate_name in this case:
+        Insert_to_name_dictionary (name, Info.dir);
+        Add_catalogue_entry (Info);
+        Info.Contains (Info.Last_entry).head.local_header_offset :=
+          Unsigned_32 (Index (Info.Stream.all)) - 1;
         Info.Contains (Info.Last_entry).name := new String'(name);
         lh.extra_field_length:= 0; -- extra field is zeroed (causes problems if not)
         Zip.Headers.Write(Info.Stream.all, lh);  --  Copy local header to new stream
@@ -303,6 +339,7 @@ package body Zip.Create is
 
    procedure Finish (Info : in out Zip_Create_info) is
       ed : Zip.Headers.End_of_Central_Dir;
+      procedure Dispose is new Ada.Unchecked_Deallocation (String, p_String);
    begin
       --
       --  2/ Almost done - write Central Directory:
@@ -330,6 +367,7 @@ package body Zip.Create is
         Dispose (Info.Contains);
       end if;
       Info.Last_entry:= 0;
+      Clear_name_dictionary (Info);
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;
