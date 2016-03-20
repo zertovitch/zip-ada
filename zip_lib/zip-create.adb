@@ -160,7 +160,7 @@ package body Zip.Create is
           entry_name(i):= '/';
         end if;
       end loop;
-      --  Check duplicates; raises Duplicate_name in this case.
+      --  Check for duplicates; raises Duplicate_name in this case.
       Insert_to_name_dictionary (entry_name, Info.dir);
       Add_catalogue_entry (Info);
       Last:= Info.Last_entry;

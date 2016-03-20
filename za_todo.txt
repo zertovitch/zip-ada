@@ -2,7 +2,6 @@
 - Zip.LZ77: see specific "to do"'s in package's body
 
 - tools: comp_zip: optionally, check only CRC
-- tools: zipada: ignore 2nd or more instance of the same file name (otherwise, invalid zip archive with duplicate entries)
 
 - more profiling - see prof_za.cmd and test/prof.cmd
 
