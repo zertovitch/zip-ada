@@ -1,24 +1,27 @@
--- Contributed by ITEC - NXP Semiconductors
--- June 2008
+--  Zip archive creation
 --
--- Change log:
--- ==========
+--  Contributed by ITEC - NXP Semiconductors
+--  June 2008
 --
--- 14-Feb-2015: GdM: Added "Is_Created" function
--- 13-Feb-2015: GdM: Added "Password" parameter
--- 30-Oct-2012: GdM: Removed all profiles using Zip_Streams' objects
---                      with accesses (cf 25-Oct's modifications)
--- 26-Oct-2012: GdM: Added Add_Compressed_Stream
--- 25-Oct-2012: GdM: Some procedures using Zip_Streams' objects also with
---                     pointer-free profiles (no more 'access' or access type)
--- 14-Oct-2012: GdM: Added Set procedure for changing compression method
--- 30-Mar-2010: GdM: Added Name function
--- 25-Feb-2010: GdM: Fixed major bottlenecks around Dir_entries
---                     -> 5x faster overall for 1000 files, 356x for 100'000 !
--- 17-Feb-2009: GdM: Added procedure Add_String
--- 10-Feb-2009: GdM: Create / Finish: if Info.Stream is to a file,
---                     the underling file is also created / closed in time
---  4-Feb-2009: GdM: Added procedure Add_File
+--  Change log:
+--  ==========
+--
+--  22-Mar-2016: GdM: Added Duplicate_name_policy
+--  14-Feb-2015: GdM: Added "Is_Created" function
+--  13-Feb-2015: GdM: Added "Password" parameter
+--  30-Oct-2012: GdM: Removed all profiles using Zip_Streams' objects
+--                       with accesses (cf 25-Oct's modifications)
+--  26-Oct-2012: GdM: Added Add_Compressed_Stream
+--  25-Oct-2012: GdM: Some procedures using Zip_Streams' objects also with
+--                      pointer-free profiles (no more 'access' or access type)
+--  14-Oct-2012: GdM: Added Set procedure for changing compression method
+--  30-Mar-2010: GdM: Added Name function
+--  25-Feb-2010: GdM: Fixed major bottlenecks around Dir_entries
+--                      -> 5x faster overall for 1000 files, 356x for 100'000 !
+--  17-Feb-2009: GdM: Added procedure Add_String
+--  10-Feb-2009: GdM: Create / Finish: if Info.Stream is to a file,
+--                      the underling file is also created / closed in time
+--   4-Feb-2009: GdM: Added procedure Add_File
 --
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
@@ -30,12 +33,18 @@ package Zip.Create is
 
    type Zip_Create_info is private;
 
+   type Duplicate_name_policy is
+     ( admit_duplicates,    --  two entries in the Zip archive may have the same full name
+       error_on_duplicate   --  raise exception on attempt to add twice the same entry name
+     );
+
    -- Create the Zip archive; create the file if the stream is a file
 
    procedure Create(Info          : out Zip_Create_info;
                     Z_Stream      : in Zipstream_Class_Access;
                     Name          : String;
-                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink
+                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink;
+                    Duplicates    : Duplicate_name_policy:= admit_duplicates
    );
 
    function Is_Created(Info: Zip_Create_info) return Boolean;
@@ -130,13 +139,14 @@ private
    end record;
 
    type Zip_Create_info is record
-      Stream    : Zipstream_Class_Access;
-      Compress  : Zip.Compress.Compression_Method;
-      Contains  : Pdir_entries:= null;
+      Stream     : Zipstream_Class_Access;
+      Compress   : Zip.Compress.Compression_Method;
+      Contains   : Pdir_entries:= null;
       --  'Contains' has unused room, to avoid reallocating each time:
-      Last_entry: Natural:= 0;
+      Last_entry : Natural:= 0;
+      Duplicates : Duplicate_name_policy;
       --  We set up a name dictionary just for avoiding duplicate entries:
-      dir       : p_Dir_node;
+      dir        : p_Dir_node:= null;
    end record;
 
 end Zip.Create;

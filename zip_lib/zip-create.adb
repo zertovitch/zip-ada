@@ -9,7 +9,8 @@ package body Zip.Create is
    procedure Create(Info          : out Zip_Create_info;
                     Z_Stream      : in Zipstream_Class_Access;
                     Name          : String;
-                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink
+                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink;
+                    Duplicates    : Duplicate_name_policy:= admit_duplicates
    )
    is
    begin
@@ -24,6 +25,7 @@ package body Zip.Create is
       if Z_Stream.all in File_Zipstream'Class then
         Zip_Streams.Create (File_Zipstream(Z_Stream.all), Zip_Streams.Out_File);
       end if;
+      Info.Duplicates:= Duplicates;
    end Create;
 
    function Is_Created(Info: Zip_Create_info) return Boolean is
@@ -160,8 +162,10 @@ package body Zip.Create is
           entry_name(i):= '/';
         end if;
       end loop;
-      --  Check for duplicates; raises Duplicate_name in this case.
-      Insert_to_name_dictionary (entry_name, Info.dir);
+      if Info.Duplicates = error_on_duplicate then
+        --  Check for duplicates; raises Duplicate_name in this case.
+        Insert_to_name_dictionary (entry_name, Info.dir);
+      end if;
       Add_catalogue_entry (Info);
       Last:= Info.Last_entry;
       declare
@@ -318,8 +322,10 @@ package body Zip.Create is
       begin
         String'Read(Stream'Access, name);
         String'Read(Stream'Access, extra);
-        --  Check for duplicates; raises Duplicate_name in this case:
-        Insert_to_name_dictionary (name, Info.dir);
+        if Info.Duplicates = error_on_duplicate then
+          --  Check for duplicates; raises Duplicate_name in this case:
+          Insert_to_name_dictionary (name, Info.dir);
+        end if;
         Add_catalogue_entry (Info);
         Info.Contains (Info.Last_entry).head.local_header_offset :=
           Unsigned_32 (Index (Info.Stream.all)) - 1;
