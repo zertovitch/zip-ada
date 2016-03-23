@@ -189,7 +189,7 @@ procedure ZipAda95 is
       end if;
       Put_Line("Creating archive " & arg_zip);
       T0:= Clock;
-      Create(Info, MyStream'Unchecked_Access, arg_zip, method, error_on_duplicate);
+      Create(Info, MyStream'Unchecked_Access, arg_zip, method, Zip.error_on_duplicate);
     else -- First real argument has already been used for archive's name
       if To_Upper(arg) = To_Upper(Name(Info)) then
         Put_Line("  ** Warning: skipping archive's name as entry: " & arg);

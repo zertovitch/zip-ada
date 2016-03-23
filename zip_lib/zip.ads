@@ -58,20 +58,27 @@ package Zip is
   -- fast searching                                                    --
   -----------------------------------------------------------------------
 
+   type Duplicate_name_policy is
+     ( admit_duplicates,    --  two entries in the Zip archive may have the same full name
+       error_on_duplicate   --  raise exception on attempt to add twice the same entry name
+     );
+
   -- Load from a file
 
   procedure Load(
-    info           : out Zip_info;
-    from           : in  String; -- Zip file name
-    case_sensitive : in  Boolean:= False
+    info            : out Zip_info;
+    from            : in  String; -- Zip file name
+    case_sensitive  : in  Boolean:= False;
+    duplicate_names : in  Duplicate_name_policy:= error_on_duplicate
   );
 
   -- Load from a stream
 
   procedure Load(
-    info           :    out Zip_info;
-    from           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    case_sensitive : in     Boolean:= False
+    info            :    out Zip_info;
+    from            : in out Zip_Streams.Root_Zipstream_Type'Class;
+    case_sensitive  : in     Boolean:= False;
+    duplicate_names : in     Duplicate_name_policy:= error_on_duplicate
   );
 
   Zip_file_Error,
@@ -355,7 +362,7 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "50 preview 10a";
+  version   : constant String:= "50 preview 10b";
   reference : constant String:= "xx-yyy-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^

@@ -147,9 +147,10 @@ package body Zip is
   -------------------------------------------------------------
 
   procedure Load(
-    info           :    out Zip_info;
-    from           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    case_sensitive : in     Boolean:= False
+    info            :    out Zip_info;
+    from            : in out Zip_Streams.Root_Zipstream_Type'Class;
+    case_sensitive  : in     Boolean:= False;
+    duplicate_names : in     Duplicate_name_policy:= error_on_duplicate
   )
   is
     procedure Insert(
@@ -164,46 +165,63 @@ package body Zip is
       name_encoding    : Zip_name_encoding;
       read_only        : Boolean;
       encrypted_2_x    : Boolean;
-      node             : in out p_Dir_node
+      root_node        : in out p_Dir_node
       )
     is
+      procedure Insert_into_tree(node: in out p_Dir_node) is
+        use type Zip_Streams.ZS_Size_Type;
+      begin
+        if node = null then
+          node:= new Dir_node'
+            ( (name_len          => file_name'Length,
+               left              => null,
+               right             => null,
+               dico_name         => dico_name,
+               file_name         => file_name,
+               file_index        => file_index,
+               comp_size         => comp_size,
+               uncomp_size       => uncomp_size,
+               crc_32            => crc_32,
+               date_time         => date_time,
+               method            => method,
+               name_encoding     => name_encoding,
+               read_only         => read_only,
+               encrypted_2_x     => encrypted_2_x,
+               user_code         => 0
+               )
+            );
+        elsif dico_name > node.dico_name then
+          Insert_into_tree(node.right);
+        elsif dico_name < node.dico_name then
+          Insert_into_tree(node.left);
+        else
+          --  Here we have a case where the entry name already exists in the dictionary.
+          case duplicate_names is
+            when error_on_duplicate =>
+              Ada.Exceptions.Raise_Exception
+                (Duplicate_name'Identity,
+                 "Same full entry name (in dictionary: " & dico_name &
+                 ") appears twice in archive directory; " & 
+                 "procedure Load was called with strict name policy."
+                );
+            when admit_duplicates =>
+              if file_index > node.file_index then
+                Insert_into_tree(node.right);
+              elsif file_index < node.file_index then
+                Insert_into_tree(node.left);
+              else
+                Ada.Exceptions.Raise_Exception
+                  (Duplicate_name'Identity,
+                   "Archive directory corrupt: same full entry name (in dictionary: " &
+                   dico_name & "), with same data position, appear twice."
+                  );
+              end if;
+          end case;
+        end if;
+      end Insert_into_tree;
+      --
     begin
-      if node = null then
-        node:= new Dir_node'
-          ( (name_len          => file_name'Length,
-             left              => null,
-             right             => null,
-             dico_name         => dico_name,
-             file_name         => file_name,
-             file_index        => file_index,
-             comp_size         => comp_size,
-             uncomp_size       => uncomp_size,
-             crc_32            => crc_32,
-             date_time         => date_time,
-             method            => method,
-             name_encoding     => name_encoding,
-             read_only         => read_only,
-             encrypted_2_x     => encrypted_2_x,
-             user_code         => 0
-             )
-          );
-      elsif dico_name > node.dico_name then
-        Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
-          crc_32, date_time, method, name_encoding,
-          read_only, encrypted_2_x,
-          node.right );
-      elsif dico_name < node.dico_name then
-        Insert( dico_name, file_name, file_index, comp_size, uncomp_size,
-          crc_32, date_time, method, name_encoding,
-          read_only, encrypted_2_x,
-          node.left );
-      else
-        Ada.Exceptions.Raise_Exception
-          (Duplicate_name'Identity,
-           "Name (in dictionary: " & dico_name &
-           ") was already in at insertion.");
-        raise Duplicate_name;
-      end if;
+      Insert_into_tree(root_node);
     end Insert;
 
     the_end: Zip.Headers.End_of_Central_Dir;
@@ -262,7 +280,7 @@ package body Zip is
                 read_only   => header.made_by_version / 256 = 0 and -- DOS-like
                                (header.external_attributes and 1) = 1,
                 encrypted_2_x => (header.short_info.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0,
-                node        => p );
+                root_node     => p );
         -- Since the files are usually well ordered, the tree as inserted
         -- is very unbalanced; we need to rebalance it from time to time
         -- during loading, otherwise the insertion slows down dramatically
@@ -288,10 +306,12 @@ package body Zip is
   -- Load Zip_info from a file containing the .zip archive --
   -----------------------------------------------------------
 
-  procedure Load
-   (info           : out Zip_info;
-    from           : in  String; -- Zip file name
-    case_sensitive : in  Boolean:= False)
+  procedure Load(
+    info            : out Zip_info;
+    from            : in  String; -- Zip file name
+    case_sensitive  : in  Boolean:= False;
+    duplicate_names : in  Duplicate_name_policy:= error_on_duplicate
+  )
   is
     use Zip_Streams;
     MyStream   : aliased File_Zipstream;
@@ -308,7 +328,8 @@ package body Zip is
     Load(
       info,
       MyStream,
-      case_sensitive
+      case_sensitive,
+      duplicate_names
     );
     Close (MyStream);
     Dispose(info.zip_file_name);
@@ -598,7 +619,7 @@ package body Zip is
   )
   is
     aux: p_Dir_node:= info.dir_binary_tree;
-    up_name: String:= Normalize(name, info.case_sensitive);
+    up_name: constant String:= Normalize(name, info.case_sensitive);
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
@@ -630,7 +651,7 @@ package body Zip is
   return Boolean
   is
     aux: p_Dir_node:= info.dir_binary_tree;
-    up_name: String:= Normalize(name, info.case_sensitive);
+    up_name: constant String:= Normalize(name, info.case_sensitive);
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
@@ -654,7 +675,7 @@ package body Zip is
   )
   is
     aux: p_Dir_node:= info.dir_binary_tree;
-    up_name: String:= Normalize(name, info.case_sensitive);
+    up_name: constant String:= Normalize(name, info.case_sensitive);
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
@@ -682,7 +703,7 @@ package body Zip is
   return Integer
   is
     aux: p_Dir_node:= info.dir_binary_tree;
-    up_name: String:= Normalize(name, info.case_sensitive);
+    up_name: constant String:= Normalize(name, info.case_sensitive);
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;

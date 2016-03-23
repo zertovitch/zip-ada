@@ -6,7 +6,7 @@
 --  Change log:
 --  ==========
 --
---  22-Mar-2016: GdM: Added Duplicate_name_policy
+--  23-Mar-2016: GdM: Create with Duplicate_name_policy
 --  14-Feb-2015: GdM: Added "Is_Created" function
 --  13-Feb-2015: GdM: Added "Password" parameter
 --  30-Oct-2012: GdM: Removed all profiles using Zip_Streams' objects
@@ -32,11 +32,6 @@ with Zip_Streams; use Zip_Streams;
 package Zip.Create is
 
    type Zip_Create_info is private;
-
-   type Duplicate_name_policy is
-     ( admit_duplicates,    --  two entries in the Zip archive may have the same full name
-       error_on_duplicate   --  raise exception on attempt to add twice the same entry name
-     );
 
    -- Create the Zip archive; create the file if the stream is a file
 
