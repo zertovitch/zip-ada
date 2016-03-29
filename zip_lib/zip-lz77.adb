@@ -8,11 +8,15 @@
 --  Variant 1/ is working since 2009. Two problems: it is slow and not
 --     well adapted to the Deflate format (mediocre compression).
 --
---  Variant 2/ is much faster, and better for Deflate. Added 05-Mar-2016.
+--  Variant 2/ is much faster, and better suited for Deflate. Added 05-Mar-2016.
+--     The code is tailored and optimized for a single set of
+--     the String_buffer_size, Look_Ahead, Threshold LZ77 parameters.
 
 --  To do:
 --    - LZ77 / IZ: similar to the test with TOO_FAR, try to cluster distances around
 --        values needing less extra bits (may not work at all...)
+--    - LZ77 / IZ: tune TOO_FAR (max: 32767), see http://optipng.sf.net/pngtech/too_far.html
+--        "TOO_FAR in zlib Is Not Too Far" for discussion
 --    - LZ77 (for Deflate): try to get > 258 lengths and split into 258 + something.
 --        Length 258 is encoded with no extra bit, could be good...
 --    - LZ77: try yet another LZ77, e.g. from 7-Zip, or program a new one with

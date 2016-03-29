@@ -8,7 +8,9 @@
 --    - Taillaule: compare slider to random and fixed in addition to initial
 --    - Taillaule: try L_sup distance
 --    - Taillaule: restrict BL_Vector to short LZ distances (long distances perhaps too random)
---    - Taillaule: check LZ distances on literals only too (consider distances & lengths as noise)
+--    - Taillaule: check LZ distances on literals only, too (consider distances & lengths as noise)
+--    - Taillaule: add (with an OR condition) the criteria of trees.c for selecting
+--        "fixed" or stored block.
 --    - Taillaule: use a corpus of files badly compressed by our Deflate comparatively
 --        to other Deflates (e.g. 7Z seems better with databases)
 --    - Add DeflOpt to slowest method, or approximate it by tweaking

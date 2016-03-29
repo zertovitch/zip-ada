@@ -25,13 +25,18 @@ procedure Comp_Zip is
 
   quiet: Natural:= 0;
 
-begin
-  if Argument_Count < 2 then
+  procedure Blurb is
+  begin
     Put_Line("Comp_Zip * compare two zip archive files, incl. contents");
     Put_Line("Demo for the Zip-Ada library, by G. de Montmollin");
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
     Put_Line("URL: " & Zip.web);
     New_Line;
+  end Blurb;
+
+begin
+  if Argument_Count < 2 then
+    Blurb;
     Put_Line("Usage: comp_zip archive1[.zip] archive2[.zip] [options]");
     New_Line;
     Put_Line("Options: -q1: (quiet level 1): summary only");
@@ -60,6 +65,9 @@ begin
     end;
   end loop;
   --
+  if quiet = 0 then
+    Blurb;
+  end if;
   Comp_Zip_Prc(z(1), z(2), quiet);
   --
 end Comp_Zip;
