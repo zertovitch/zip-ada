@@ -9,10 +9,12 @@ file format. It supplies:
  - decompression for the following sub-formats ("methods"):
      Store, Reduce, Shrink (LZW), Implode, Deflate, BZip2 and LZMA
  - encryption and decryption (portable Zip 2.0 encryption scheme)
- - unconditional portability (see below a list of in-use platforms)
+ - unconditional portability - within limits of compiler's provided
+     integer types and target architecture capacity; see below a list
+	 of in-use platforms
  - input (archive to decompress or data to compress) can be any data stream
  - output (archive to build or data to extract) can be any data stream
- - Zip_info and Zip_Create_info to handle quickly and easily archives
+ - types Zip_info and Zip_Create_info to handle archives quickly and easily 
  - cross format compatibility with the most various tools and file formats
      based on the Zip format: 7-zip, Info-Zip's Zip, WinZip, PKZip, Java's JARs,
      OpenDocument files, MS Office 2007+, Nokia themes, and many others
@@ -127,14 +129,13 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '50', xx-yyy-2016:
-  - Shrink is slightly faster
-  - New compression features:
+* Changes in '50', 31-Mar-2016:
+  - Zip.Compress.Shrink is slightly faster
+  - Zip.Compress.Deflate has new compression features:
     - Deflate_Fixed is much faster, with slightly better compression
-    - added Deflate_1: compression level similar to zlib, level 6
-    - added Deflate_2: compression level similar to zlib, level 9
-    - added Deflate_3: compression level similar to 7-Zip,
-        method: deflate, level 5
+    - Deflate_1 was added: strength similar to zlib, level 6
+    - Deflate_2 was added: strength similar to zlib, level 9
+    - Deflate_3 was added: strength similar to 7-Zip, method=deflate, level 5
 
 * Changes in '49', 21-Mar-2015:
   - encryption implemented (portable Zip 2.0 encryption scheme)
@@ -290,7 +291,6 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 
 * Changes in '24', 27-Mar-2008:
   - Added case-sensitivity to UnZip.Streams.Open(...)
-  - tl parameter is 'out' from 'in out'
   - UnZip.Decompress: hinted compressed size limited to Type'Last-2
       to avoid modular type wraparound
   - Replaced loop in UnZip.Streams.Read by slice copies
@@ -456,18 +456,8 @@ Open bugs (as of v.49)
     
 To do
 =====
-  - more profiling - see prof_za.cmd and test/prof.cmd
-  - use tasking for decoding in UnZip.Streams, instead of storing
-      the whole decoded data in a buffer (this exercise may be difficult!)
-  - a Freshen_Zip tool that freshen files from an archive, or files
-      to an archive, or both (i.e. like "zip -f" and/or "unzip -f" combined);
-      possible with Zip.Create's Add_Compressed_Stream.
 
-To do further
-=============
-  - Make a public access to UnZip.Decompress, as a zlib proxy
-      (see the Zada project)
-  - Zip.Compress with a strong compression - LZMA for instance ?
+Topics are in file za_todo.txt
 
 Note on portability
 ===================

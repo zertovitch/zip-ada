@@ -1,14 +1,17 @@
+- Zip.Compress with a strong compression - LZMA top priority;
+      started as standalone encoder in lzma_enc.adb
+
 - Zip.Compress.Deflate: see specific "to do"'s in package's body
 - Zip.LZ77: see specific "to do"'s in package's body
 
 - tools: comp_zip: optionally, check only CRC
+- tools: a Freshen_Zip tool that freshen files from an archive, or files
+      to an archive, or both (i.e. like "zip -f" and/or "unzip -f" combined);
+      possible with Zip.Create's Add_Compressed_Stream.
+	  NB: AZip does the archive update part; so a command-line invocation
+	  of AZip would fit this need.
+
+- Make a public access to UnZip.Decompress, e.g. for a zlib proxy
+      (see the Zada project)
 
 - more profiling - see prof_za.cmd and test/prof.cmd
-
-  OK:
-    2**n expanded to 
-    interfaces__unsigned_32($system__exp_uns__exp_unsigned(2, n) and 16#FFFF_FFFF#)
-    ( System.Exp_Uns.Exp_Unsigned)
-    instead of shift_left(1,n)
-  25% gain un uza -t
-  12% gain on za
