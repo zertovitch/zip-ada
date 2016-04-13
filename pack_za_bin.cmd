@@ -14,9 +14,10 @@ upx --ultra-brute bunzip.exe
 upx --ultra-brute lzma_dec.exe
 :skip_upx
 
-set version=47
+set version=50
 
-zip -9 zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe lzma_dec.exe
+rem zip -9       zipada_iz9-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe lzma_dec.exe
+zipada -ed3 zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe lzma_dec.exe
 
 rem rezip -defl -comp zipada%version%-bin-win32.zip
 rem del zipada%version%-bin-win32.zip
