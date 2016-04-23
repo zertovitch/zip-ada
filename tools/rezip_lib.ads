@@ -16,11 +16,11 @@ with Zip;
 package Rezip_lib is
 
   type Zip_format_set is private;
-  
+
   all_formats        : constant Zip_format_set;
   deflate_or_store   : constant Zip_format_set;
   fast_decompression : constant Zip_format_set;
-  
+
   procedure Rezip(
     from_zip_file      : String;
     to_zip_file        : String;
@@ -47,5 +47,5 @@ private
     (Zip.store .. Zip.deflate_e | Zip.lzma => True,
      Zip.bzip2 => False,
      others => False);
-  
+
 end Rezip_lib;

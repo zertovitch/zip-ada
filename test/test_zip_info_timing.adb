@@ -1,7 +1,7 @@
 with Zip, Ada.Calendar, Ada.Text_IO;
 
 procedure Test_Zip_Info_timing is
-  zi: Zip.Zip_Info;
+  zi: Zip.Zip_info;
   t1, t2: Ada.Calendar.Time;
   use Ada.Calendar;
 begin

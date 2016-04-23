@@ -14,7 +14,6 @@
 --                   http://gautiersblog.blogspot.com/
 ------------------------------------------------------------------------------
 
-
 with IO_Exceptions, Text_IO;
    -- ^ These are standard renamings of Ada.Text_IO & Ada.IO_Exceptions
 
@@ -160,7 +159,6 @@ package Dual_IO is
                     Aft  : in Field := Default_Aft;
                     Exp  : in Field := Default_Exp);
    end Fixed_IO;
-
 
    -- Generic package for Input-Output of Decimal Types
 

@@ -63,7 +63,7 @@ procedure Demo_csv_into_zip is
     Windstorm  => "WS"
    );
 
-  groupcountries_to_continent: constant array(Groupcountries) of Continent:=
+  groupcountries_to_continent: constant array(GroupCountries) of Continent:=
   ( France_Benelux => Europe,
     Northern_Europe => Europe,
     Central_and_Eastern_Europe => Europe,
@@ -93,7 +93,7 @@ procedure Demo_csv_into_zip is
     separator: constant Character:= ';';
   begin
     Create(f, Out_File, to_file);
-    Put_Line(f, "Region: " & To_Lower(Groupcountries'Image(g)));
+    Put_Line(f, "Region: " & To_Lower(GroupCountries'Image(g)));
     Put_Line(f, "Continent: " & To_Lower(Continent'Image(groupcountries_to_continent(g))));
     Put_Line(f, "Peril type: " & To_Lower(Peril'Image(p)));
     New_Line(f);
@@ -118,7 +118,7 @@ procedure Demo_csv_into_zip is
       To_Lower(
         Peril'Image(p) & '/' &
         Continent'Image(groupcountries_to_continent(g)) & '/' &
-        Groupcountries'Image(g) &
+        GroupCountries'Image(g) &
         '_' & Peril_abbr(p) & ".csv"
       );
   begin
@@ -140,7 +140,7 @@ procedure Demo_csv_into_zip is
       "detailed_results.zip"
     );
     for p in Peril loop
-      for g in Groupcountries loop
+      for g in GroupCountries loop
         Pack_results(g,p,archive);
       end loop;
     end loop;

@@ -67,7 +67,7 @@ procedure Test_Stream_Performance is
     for i in First..Last loop
       b(Natural(i)):= Unsigned_8(SE_Buffer(i));
     end loop;
-    last_read:= Natural(last);
+    last_read:= Natural(Last);
   end Read_SE_Copy;
 
   procedure Write_SE_Copy( b: in Buffer ) is
@@ -135,7 +135,7 @@ procedure Test_Stream_Performance is
   begin
     Open(f_in, In_File, name);
     Create(f_out, Out_File, name & "_$$$_" & label & ".tmp");
-    while not End_of_File(f_in) loop
+    while not End_Of_File(f_in) loop
       Read(b,l);
       Write(b(1..l));
     end loop;

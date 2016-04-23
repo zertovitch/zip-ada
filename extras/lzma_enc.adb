@@ -18,7 +18,7 @@ with GNAT.Traceback.Symbolic;
 procedure LZMA_Enc is
 
   subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
-  
+
   subtype Byte is Unsigned_8;
   subtype UInt16 is Unsigned_16;
   subtype UInt32 is Unsigned_32;
@@ -29,7 +29,7 @@ procedure LZMA_Enc is
   subtype PB_range is Integer range 0..4;
 
   LZMA_DIC_MIN : constant := 2 ** 12; -- 4096
-  
+
   type LZMA_Params_Info is record
     header_with_size     : Boolean;  -- header is either 5 bytes or 13 bytes (with size specified)
     unpackSize           : Data_Bytes_Count;
@@ -40,7 +40,6 @@ procedure LZMA_Enc is
     lp                   : LP_range:= 0; -- the number of "literal pos" bits
     pb                   : PB_range:= 2; -- the number of "pos" bits
   end record;
-
 
   procedure Encode_LZMA_stream(
     lzma_params: LZMA_Params_Info;
@@ -57,7 +56,7 @@ procedure LZMA_Enc is
     function Read_byte return Byte is
       b: Byte;
     begin
-      Byte'Read(s_in, b); -- !! non-buffered 
+      Byte'Read(s_in, b); -- !! non-buffered
       return b;
     exception
       when Ada.Streams.Stream_IO.End_Error =>
@@ -72,7 +71,7 @@ procedure LZMA_Enc is
 
     procedure Put_byte(b : Byte) is
     begin
-      Byte'Write(s_out, b);  -- !! non-buffered 
+      Byte'Write(s_out, b);  -- !! non-buffered
     end;
 
     --
@@ -87,9 +86,7 @@ procedure LZMA_Enc is
 
     type Transition is array(State_range) of State_range;
 
-
     Update_State_Literal  : constant Transition:= (0, 0, 0, 0, 1, 2, 3,  4,  5,  6,  4,  5);
-
 
     procedure Write_literal_byte( b: Byte ) is
     begin
@@ -133,13 +130,13 @@ procedure LZMA_Enc is
 
   begin
     Write_LZMA_header;
-    -- Whole processing here: 
+    -- Whole processing here:
     My_LZ77;
   end Encode_LZMA_stream;
 
   lzma_params: LZMA_Params_Info;
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
-  
+
   procedure Print_Data_Bytes_Count(title: String; v: Data_Bytes_Count) is
     package CIO is new Integer_IO(Data_Bytes_Count);
   begin
@@ -166,9 +163,9 @@ begin
   lzma_params.unpackSizeDefined := True;
   Create(f_out,Out_File, Argument(2));
   Put_Line(
-    "lc="   & Natural'Image(lzma_params.lc) & 
+    "lc="   & Natural'Image(lzma_params.lc) &
     ", lp=" & Natural'Image(lzma_params.lp) &
-    ", pb=" & Natural'Image(lzma_params.pb) 
+    ", pb=" & Natural'Image(lzma_params.pb)
   );
   Put_Line("Dictionary size =" & Unsigned_32'Image(lzma_params.dictSize));
   New_Line;
@@ -179,13 +176,13 @@ begin
     Put_Line("Uncompressed size not defined, end marker has been emitted.");
   end if;
   New_Line;
-  
+
   Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in) - 1));
   Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out) - 1));
-  
+
   Close(f_in);
   Close(f_out);
-  
+
 exception
   when E: others =>
     New_Line(Standard_Error);
@@ -196,6 +193,6 @@ exception
     Put_Line(Standard_Error, " > Message for exception . . .: " &
              Ada.Exceptions.Exception_Message(E) );
     Put_Line(Standard_Error, " > Trace-back of call stack: " );
-    Put_Line(Standard_Error, GNAT.Traceback.Symbolic.Symbolic_Traceback(E) );  
-  
+    Put_Line(Standard_Error, GNAT.Traceback.Symbolic.Symbolic_Traceback(E) );
+
 end LZMA_Enc;

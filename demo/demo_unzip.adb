@@ -1,6 +1,6 @@
 with Ada.Text_IO;                       use Ada.Text_IO;
 with UnZip.Streams;                     use UnZip.Streams, UnZip;
-with Demo_Zip;
+with Demo_zip;
 
 procedure Demo_UnZip is
   f: Zipped_File_Type;
@@ -8,7 +8,7 @@ procedure Demo_UnZip is
   c: Character;
 begin
   --  Make sure we have the Zip file for the demo...
-  Demo_Zip;
+  Demo_zip;
   --
   Extract("mini_zip.zip", "demo/demo_unzip.adb", "demo_unzip_$unzipped$.adb");
   --
@@ -16,7 +16,7 @@ begin
   --
   Open(f, "mini_zip.zip", "demo/demo_unzip.adb");
   s:= Stream(f);
-  while not End_of_file(f) loop
+  while not End_Of_File(f) loop
     Character'Read(s,c);
     Put(c);
   end loop;

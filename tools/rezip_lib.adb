@@ -156,7 +156,7 @@ package body Rezip_lib is
       dummy_crc      : Unsigned_32;
       use UnZip;
     begin
-      Zip.Find_Offset(
+      Zip.Find_offset(
         info           => archive,
         name           => data_name,
         name_encoding  => dummy_encoding,
@@ -176,7 +176,7 @@ package body Rezip_lib is
       );
       -- * Get the data, compressed
       Ada.Streams.Stream_IO.Create(file_out, Out_File, rip_rename);
-      Zip.Copy_Chunk(input, Stream(file_out).all, Integer(comp_size));
+      Zip.Copy_chunk(input, Stream(file_out).all, Integer(comp_size));
       Close(file_out);
       if unzip_rename /= "" then
         -- * Get the data, uncompressed
@@ -470,7 +470,7 @@ package body Rezip_lib is
           size:= header.dd.compressed_size;
           zfm := header.zip_type;
           if Exists(rand_win) then
-            Delete_file(rand_win);
+            Delete_File(rand_win);
           end if;
           Rename(out_name, rand_win);
           options_winner:= info.expanded_options;
@@ -492,7 +492,7 @@ package body Rezip_lib is
         if attempt >= randomized_stable then
           if size_memory(randomized_stable) = size_memory(1) then
             if Exists(out_name) then
-              Delete_file(out_name);
+              Delete_File(out_name);
             end if;
             Rename(rand_win, out_name);
             info.expanded_options:= options_winner;
@@ -526,7 +526,7 @@ package body Rezip_lib is
         input_size_known => True,
         input_size       => e.head.short_info.dd.uncompressed_size,
         method           => Approach_to_Method(a),
-        feedback         => My_Feedback'Access,
+        feedback         => My_feedback'Access,
         password         => "",
         CRC              => e.head.short_info.dd.crc_32,
         -- we take the occasion to compute the CRC if not
@@ -802,7 +802,7 @@ package body Rezip_lib is
           end if;
         end loop;
         -- Recall winner approach, method and size:
-        Put(summary,"<td>" & Img(choice, HTML => True) & "</td>");
+        Put(summary,"<td>" & Img(choice, html => True) & "</td>");
         Put(summary,
           "<td bgcolor=#fafa64>" &
           To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(choice).zfm))) &
@@ -885,7 +885,6 @@ package body Rezip_lib is
           sg(sg'Last-2..sg'Last-1) &
           sb(sb'Last-2..sb'Last-1);
       end Webcolor;
-
 
     begin -- Repack_contents
       T0:= Clock;

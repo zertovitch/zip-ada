@@ -16,17 +16,17 @@ procedure Test_UnZ_Streams is
           Archive_Name   => a,
           Name           => n,
           Password       => "tralala",
-          Case_Sensitive => False
+          Case_sensitive => False
     );
     s:= Stream(f);
-    while not End_of_file(f) loop -- We just output the contents of file
+    while not End_Of_File(f) loop -- We just output the contents of file
       Character'Read(s,c);        -- named in 'n' to standard output
       Put(c);
     end loop;
     Close(f);
     --
   exception
-    when Zip.Zip_file_open_error =>
+    when Zip.Zip_file_open_Error =>
       Put( "Can't open archive [" & a & ']' );
     when Zip.File_name_not_found =>
       Put( "Cannot find [" & n & "] in archive [" & a & ']' );
@@ -36,7 +36,7 @@ procedure Test_UnZ_Streams is
 
   procedure Test_Output_Stream is
     o: Ada.Streams.Stream_IO.File_Type;
-    z: Zip.Zip_Info;
+    z: Zip.Zip_info;
     a: constant String:= "detailed_results.zip"; -- Created by Demo_csv_into_zip
     n: constant String:= "flood/overseas/australasia_fd.csv";
   begin
@@ -52,7 +52,7 @@ procedure Test_UnZ_Streams is
     );
     Close(o);
   exception
-    when Zip.Zip_file_open_error =>
+    when Zip.Zip_file_open_Error =>
       Put( "Can't open archive [" & a & ']' );
     when Zip.File_name_not_found =>
       Put( "Cannot find [" & n & "] in archive [" & a & ']' );

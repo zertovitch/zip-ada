@@ -38,7 +38,7 @@ procedure Find_Zip is
   begin
     Open( f, z, name );
     s:= Stream(f);
-    while not End_of_file(f) loop
+    while not End_Of_File(f) loop
       Character'Read(s,c);
       if ignore_case then
         c:= To_Upper(c);
@@ -93,7 +93,7 @@ begin
   begin
     Zip.Load( z, n );
   exception
-    when Zip.Zip_file_open_error =>
+    when Zip.Zip_file_open_Error =>
       Put( "Can't open archive [" & n & ']' ); raise;
     when UnZip.Wrong_password      =>
       Put( "Archive has a password" ); raise;
@@ -102,7 +102,7 @@ begin
     s: String:= Argument(2);
   begin
     Put_Line("Searching string [" & s & "]");
-    if ignore_Case then
+    if ignore_case then
       s:= To_Upper(s);
     end if;
     stl:= s'Length;

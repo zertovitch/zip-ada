@@ -59,7 +59,7 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
       exception
         when Zip.File_name_not_found =>
           if quiet = 0 then
-            Put( "   # Not found in archive [" & Zip.Zip_Name(z(i)) & ']' );
+            Put( "   # Not found in archive [" & Zip.Zip_name(z(i)) & ']' );
           end if;
           if i = 1 then
             Put_Line("-- internal error!");
@@ -82,10 +82,10 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
       s(i):= Stream(f(i));
     end loop;
     -- File found, now the comparison:
-    while not End_of_file(f(1)) loop
-      if End_of_file(f(2)) then
+    while not End_Of_File(f(1)) loop
+      if End_Of_File(f(2)) then
         if quiet = 0 then
-          Put_Line("   # Shorter in [" & Zip.Zip_Name(z(2)) & "] at position" &
+          Put_Line("   # Shorter in [" & Zip.Zip_name(z(2)) & "] at position" &
                    Long_Integer'Image(p) );
         end if;
         Close(f(1));
@@ -108,9 +108,9 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
       end if;
       p:= p+1;
     end loop;
-    if not End_of_file(f(2)) then
+    if not End_Of_File(f(2)) then
       if quiet = 0 then
-        Put_Line("   # Longer in [" & Zip.Zip_Name(z(2)) & "]" );
+        Put_Line("   # Longer in [" & Zip.Zip_name(z(2)) & "]" );
       end if;
       Close(f(1));
       Close(f(2));
@@ -132,14 +132,14 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
 begin
   z(1):= z1;
   z(2):= z2;
-  Put_Line("* Comparing [" & Zip.Zip_Name(z(1)) & "] and [" & Zip.Zip_Name(z(2)) & "]");
+  Put_Line("* Comparing [" & Zip.Zip_name(z(1)) & "] and [" & Zip.Zip_name(z(2)) & "]");
   Compare_all_files(z(1));
   total_2:= Zip.Entries(z(2));
   common:= total_1 - missing_1_in_2;
   if quiet < 2 then
     Put_Line("* === Results ===");
-    Put_Line("  1st archive: [" & Zip.Zip_Name(z(1)) & "], total files:" & Natural'Image(total_1));
-    Put_Line("  2nd archive: [" & Zip.Zip_Name(z(2)) & "], total files:" & Natural'Image(total_2));
+    Put_Line("  1st archive: [" & Zip.Zip_name(z(1)) & "], total files:" & Natural'Image(total_1));
+    Put_Line("  2nd archive: [" & Zip.Zip_name(z(2)) & "], total files:" & Natural'Image(total_2));
     Put_Line("  Total files compared: " & Natural'Image(common));
     Put_Line("  Total of correct bytes: " & Long_Integer'Image(total_bytes));
   end if;

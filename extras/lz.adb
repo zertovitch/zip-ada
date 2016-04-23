@@ -47,9 +47,9 @@ procedure  LZ  is
     Read( Infile, B );
     if I = 1 then
       Display_Progress(0.0);
-    elsif I = ISize then
+    elsif I = Isize then
       Display_Progress(1.0);
-    elsif IDot=0 or else I mod IDot = 0 then
+    elsif Idot=0 or else I mod Idot = 0 then
       Display_Progress(Float(I) / Float(Isize));
     end if;
     return B;
@@ -57,7 +57,7 @@ procedure  LZ  is
 
   function More_bytes return Boolean is
   begin
-    return not End_of_File( Infile );
+    return not End_Of_File( Infile );
   end More_bytes;
 
   procedure Write_IO_Byte( B: Unsigned_8 ) is
@@ -102,7 +102,7 @@ begin
   end;
   Byte_IO.Open  ( Infile,  Byte_IO.In_File, Argument(2) );
   Isize:= Byte_IO.Size(Infile);
-  Idot:= Isize / dots;
+  Idot:= Isize / Dots;
   Byte_IO.Create( Outfile, Name => Argument(3) );
   Put(" In:"); CIO.Put( Isize ); Put("  [");
   T0:= Clock;

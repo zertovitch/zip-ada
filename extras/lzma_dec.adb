@@ -10,7 +10,7 @@ with Interfaces;                        use Interfaces;
 procedure LZMA_Dec is
 
   subtype Byte is Unsigned_8;
-  
+
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
 
   -- NB: The Byte I/O below is not buffered, so it is very slow.
@@ -44,7 +44,7 @@ procedure LZMA_Dec is
   lzma_decoder: LZMA_Decoder_Info;
   res: LZMA_Result;
 
-  use type BIO.Count; 
+  use type BIO.Count;
 
 begin
   New_Line;
@@ -58,20 +58,20 @@ begin
   end if;
   Open(f_in, In_File, Argument(1));
   Create(f_out,Out_File, Argument(2));
-  
+
   Decode(
-    lzma_decoder, 
-    ( has_size               => True, 
-      given_size             => dummy_size, 
-      marker_expected        => False, 
+    lzma_decoder,
+    ( has_size               => True,
+      given_size             => dummy_size,
+      marker_expected        => False,
       fail_on_bad_range_code => False),
     res
   );
 
   Put_Line(
-    "lc="   & Natural'Image(Literal_context_bits(lzma_decoder)) & 
+    "lc="   & Natural'Image(Literal_context_bits(lzma_decoder)) &
     ", lp=" & Natural'Image(Literal_pos_bits(lzma_decoder)) &
-    ", pb=" & Natural'Image(Pos_bits(lzma_decoder)) 
+    ", pb=" & Natural'Image(Pos_bits(lzma_decoder))
   );
   Put_Line("Dictionary size in properties =" & Unsigned_32'Image(Dictionary_size_in_properties(lzma_decoder)));
   Put_Line("Dictionary size for decoding  =" & Unsigned_32'Image(Dictionary_size(lzma_decoder)));
@@ -83,7 +83,7 @@ begin
     Put_Line("Uncompressed size not defined, end marker is expected.");
   end if;
   New_Line;
-  
+
   Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in) - 1));
   Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out) - 1));
   case res is
@@ -101,7 +101,7 @@ begin
   if Range_decoder_corrupted(lzma_decoder) then
     Put_Line("Warning: LZMA stream is corrupted");
   end if;
-  
+
   Close(f_in);
   Close(f_out);
 end LZMA_Dec;
