@@ -614,7 +614,6 @@ package body UnZip.Decompress is
         Code_Increase_size: constant:= 1;
         Code_Clear_table  : constant:= 2;
 
-
         S: UnZip.File_size_type:= UnZ_Glob.uncompsize;
         -- Fix Jan-2009: replaces a remaining bits counter as Unsigned_*32*...
 

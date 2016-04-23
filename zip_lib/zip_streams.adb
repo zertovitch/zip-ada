@@ -61,7 +61,7 @@ package body Zip_Streams is
      S.Is_Read_Only := Value;
    end Set_Read_Only_Flag;
 
-   function Is_Read_only(S : in Root_Zipstream_Type)
+   function Is_Read_Only(S : in Root_Zipstream_Type)
                          return Boolean
    is
    begin

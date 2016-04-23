@@ -10,7 +10,7 @@
 --  Created 9-Dec-2007
 --
 --  This package facilitates the storage or compression of data.
--- 
+--
 --  Note that unlike decompression where the decoding is unique,
 --  there is a quasi indefinite number of ways of compressing data into
 --  most Zip-supported formats, including LZW (Shrink), Reduce, or Deflate.

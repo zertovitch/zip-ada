@@ -34,4 +34,3 @@ procedure Length_limited_Huffman_code_lengths(
   frequencies : in  Count_Array;
   bit_lengths : out Length_Array
 );
-

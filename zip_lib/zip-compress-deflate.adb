@@ -22,7 +22,7 @@
 --        in UnZip.Decompress.
 --
 --  Change log:
--- 
+--
 --  20-Feb-2016: (rev.305) Start of smarter techniques for "Dynamic" encoding: Taillaule algorithm
 --   4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
 --
@@ -58,11 +58,11 @@ is
 
   --  Options for testing.
   --  All should be on False for normal use of this procedure.
-  
+
   bypass_LZ77         : constant Boolean:= False;  --  Use LZ data encoded by another program
   deactivate_scanning : constant Boolean:= False;  --  Impact analysis of the scanning method
   trace               : constant Boolean:= False;  --  Log file with details
-  
+
   --  A log file is used when trace = True.
   log         : File_Type;
   log_name    : constant String:= "Zip.Compress.Deflate.zcd";  --  A CSV with an unusual extension
@@ -272,13 +272,13 @@ is
     end loop;
     return u;
   end "+";
-  
+
   subtype Stats_lit_len_type is Stats_type(Alphabet_lit_len);
   subtype Stats_dis_type is Stats_type(Alphabet_dis);
 
   --  Phase (B) : we turn statistics into Huffman bit lengths.
   function Build_descriptors(
-    stats_lit_len  : Stats_lit_len_type; 
+    stats_lit_len  : Stats_lit_len_type;
     stats_dis      : Stats_dis_type
   )
   return Deflate_Huff_descriptors
@@ -320,7 +320,7 @@ is
   end Build_descriptors;
 
   End_Of_Block: constant:= 256;
-  
+
   random_data_lit_len: constant Stats_lit_len_type:=
     (0 .. 255     => 30000,
      End_Of_Block => 1,
@@ -337,7 +337,7 @@ is
   --  Bit length vector. Convention: 16 is unused bit length (close to the bit length for the
   --  rarest symbols, 15, and far from the bit length for the most frequent symbols, 1).
   --  Deflate uses 0 for unused.
-  type BL_vector is array(1..288+32) of Integer range 1..16; 
+  type BL_vector is array(1..288+32) of Integer range 1..16;
 
   function Convert(h: Deflate_Huff_descriptors) return BL_vector is
     bv: BL_vector;
@@ -402,8 +402,8 @@ is
         dist  := L2_distance_square(Convert(h1), Convert(h2));
     end case;
     if trace then
-      Put_Line(log, 
-        "Checking similarity" & sep & sep & sep & sep & sep & 
+      Put_Line(log,
+        "Checking similarity" & sep & sep & sep & sep & sep &
         Distance_type'Image(dist_kind) & sep &
         "Distance (ev. **2):" & sep & sep & sep & sep & Integer'Image(dist) & sep & sep &
         "Threshold (ev. **2):" & sep & sep & Integer'Image(thres) & sep & sep &
@@ -425,9 +425,9 @@ is
         return False;  --  Code used in new but not in old
       end if;
     end loop;
-    return True;      
+    return True;
   end Recyclable;
-  
+
   --  Phase (C): the Prepare_Huffman_codes procedure finds the Huffman code for each
   --  value, given the bit length imposed as input.
   procedure Prepare_Huffman_codes(hd: in out Huff_descriptor) is
@@ -472,7 +472,7 @@ is
     Prepare_Huffman_codes(dhd_var.dis);
     return dhd_var;
   end Prepare_Huffman_codes;
-  
+
   --  Emit a variable length Huffman code
   procedure Put_Huffman_code(lc: Length_code_pair) is
   pragma Inline(Put_Huffman_code);
@@ -481,7 +481,7 @@ is
     --  the code lengths (LLHCL) any single occurrence in the statistics
     --  will trigger the build of a code length of 1 or more.
     Put_code(
-      code      => U32(lc.code), 
+      code      => U32(lc.code),
       code_size => Code_size_type(lc.length)  --  Range check for length 0 (if enabled).
     );
   end Put_Huffman_code;
@@ -667,33 +667,33 @@ is
 
   Deflate_code_for_LZ_length: constant array(Length_range) of Natural:=
     (  3  => 257,          -- Codes 257..264, with no extra bit
-       4  => 258, 
-       5  => 259, 
-       6  => 260, 
-       7  => 261, 
-       8  => 262, 
-       9  => 263, 
-       10 => 264, 
+       4  => 258,
+       5  => 259,
+       6  => 260,
+       7  => 261,
+       8  => 262,
+       9  => 263,
+       10 => 264,
        11  .. 12  => 265,  -- Codes 265..268, with 1 extra bit
-       13  .. 14  => 266, 
-       15  .. 16  => 267, 
-       17  .. 18  => 268, 
+       13  .. 14  => 266,
+       15  .. 16  => 267,
+       17  .. 18  => 268,
        19  .. 22  => 269,  -- Codes 269..272, with 2 extra bits
-       23  .. 26  => 270,   
-       27  .. 30  => 271, 
-       31  .. 34  => 272, 
+       23  .. 26  => 270,
+       27  .. 30  => 271,
+       31  .. 34  => 272,
        35  .. 42  => 273,  -- Codes 273..276, with 3 extra bits
-       43  .. 50  => 274, 
-       51  .. 58  => 275, 
-       59  .. 66  => 276, 
+       43  .. 50  => 274,
+       51  .. 58  => 275,
+       59  .. 66  => 276,
        67  .. 82  => 277,  -- Codes 277..280, with 4 extra bits
-       83  .. 98  => 278, 
-       99  .. 114 => 279, 
-       115 .. 130 => 280, 
+       83  .. 98  => 278,
+       99  .. 114 => 279,
+       115 .. 130 => 280,
        131 .. 162 => 281,  -- Codes 281..284, with 5 extra bits
-       163 .. 194 => 282, 
-       195 .. 226 => 283, 
-       227 .. 257 => 284, 
+       163 .. 194 => 282,
+       195 .. 226 => 283,
+       227 .. 257 => 284,
        258 => 285          -- Code 285, with no extra bit
      );
 
@@ -706,13 +706,13 @@ is
      131..257    => 131);
 
   extra_bits_for_lz_length: constant array(Length_range) of Natural:=
-    (3..10 | 258 => 0, 
+    (3..10 | 258 => 0,
      11..18      => 1,
      19..34      => 2,
      35..66      => 3,
      67..130     => 4,
      131..257    => 5);
-  
+
   procedure Put_DL_code( distance: Distance_range; length: Length_range ) is
     extra_bits: Natural;
   begin
@@ -727,7 +727,7 @@ is
       Put_code(
         U32(length - extra_bits_for_lz_length_offset(length))
           and
-        (Shift_Left(U32'(1), extra_bits) - 1), 
+        (Shift_Left(U32'(1), extra_bits) - 1),
         extra_bits);
     end if;
     --                            Distance Codes
@@ -837,7 +837,7 @@ is
   max_expand: constant:= 14;  --  *Tuned* Sometimes it is better to store data and expand short strings
   code_for_max_expand: constant:= 266;
   subtype Expanded_data is Byte_Buffer(1..max_expand);
-  
+
   type LZ_atom_kind is (plain_byte, distance_length);
   type LZ_atom is record
     kind          : LZ_atom_kind;
@@ -919,7 +919,7 @@ is
   --  Send a LZ buffer completely decoded as literals (LZ compression is discarded)
   procedure Expand_LZ_buffer(lzb: LZ_buffer_type; last_block: Boolean) is
     b1, b2: Byte;
-    to_be_sent: Natural_M32:= 0;  
+    to_be_sent: Natural_M32:= 0;
     --  to_be_sent is not always equal to lzb'Length: sometimes you have a DL code
     mid: LZ_buffer_index_type;
   begin
@@ -973,7 +973,7 @@ is
 
   subtype Long_length_codes is
     Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
-  zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0); 
+  zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0);
 
   old_stats_lit_len : Stats_lit_len_type;
   old_stats_dis     : Stats_dis_type;
@@ -984,7 +984,7 @@ is
   --   or  * the continuation of previous "dynamic" block
   --   or  * a new "fixed" block, if lz data are close enough to the "fixed" descriptor
   --   or  * a new "stored" block, if lz data are random enough
-  
+
   procedure Send_as_block(lzb: LZ_buffer_type; last_block: Boolean) is
     new_descr: Deflate_Huff_descriptors;
     --
@@ -1051,7 +1051,7 @@ is
       Expand_LZ_buffer(lzb, last_block);
     elsif  (  last_block_type = fixed
                 or else
-             (last_block_type = dynamic and then Recyclable(curr_descr, new_descr)) 
+             (last_block_type = dynamic and then Recyclable(curr_descr, new_descr))
            )
           and then
             Similar(new_descr, curr_descr, L1, opti_recycle, "Compare to previous, for recycling")
@@ -1061,18 +1061,18 @@ is
       end if;
       Put_LZ_buffer(lzb);
     elsif lzb'Length < opti_size_fix or else  --  Very small block
-          Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix, "Compare to fixed") 
+          Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix, "Compare to fixed")
     then
       Send_fixed_block;
-    -- 
+    --
     --  Past this point we have exhausted all possibilities to avoid sending a new
     --  header with compression structures. We have to lose some space, but it is for saving
     --  more space with a better Huffman encoding of data.
     --
-    elsif last_block_type = dynamic and then 
+    elsif last_block_type = dynamic and then
           Similar(new_descr, curr_descr, L1, opti_merge, "Compare to previous, for stats merging")
     then
-      Send_dynamic_block(merge => True);  
+      Send_dynamic_block(merge => True);
       --  Similar: we merge statistics. Not optimal for this block, but helps further recycling
       --  Bet: we have a string of similar blocks; better have less non-zero statistics to avoid
       --  non-recyclable cases. NB !! this will disappear by merging at prior level, with
@@ -1102,7 +1102,7 @@ is
   ---------------------------------------------------------------------------------
   --  Scanning and sampling: the really sexy part of the Taillaule algorithm...  --
   ---------------------------------------------------------------------------------
-  
+
   --  We examine similarities in the LZ data flow at different step sizes.
   --  If the optimal Huffman encoding for this portion is very different, we choose to
   --  cut current block and start a new one. The shorter the step, the higher the threshold
@@ -1141,7 +1141,7 @@ is
     Get_statistics(lzb, stats_lit_len, stats_dis);
     return Build_descriptors(stats_lit_len, stats_dis);
   end Build_descriptors;
-    
+
   procedure Scan_and_send_from_main_buffer(from, to: LZ_buffer_index_type; last_flush: Boolean) is
     initial_hd, sliding_hd: Deflate_Huff_descriptors;  --  These descriptors are *not* used for compressing.
     start, slide_mid, send_from: LZ_buffer_index_type;
@@ -1190,18 +1190,18 @@ is
             sliding_hd_computed:= True;
           end if;
           if not Similar(
-            initial_hd, 
-            sliding_hd, 
-            step_choice(level).metric, 
-            step_choice(level).cutting_threshold, 
-            "Compare sliding to initial (step size=" & 
+            initial_hd,
+            sliding_hd,
+            step_choice(level).metric,
+            step_choice(level).cutting_threshold,
+            "Compare sliding to initial (step size=" &
             LZ_buffer_index_type'Image(step_choice(level).slider_step) & ')'
-          ) 
+          )
           then
             if trace then
-              Put_Line(log, 
-                "### Cutting @ " & LZ_buffer_index_type'Image(slide_mid) & 
-                "  ('from' is" & LZ_buffer_index_type'Image(from) & 
+              Put_Line(log,
+                "### Cutting @ " & LZ_buffer_index_type'Image(slide_mid) &
+                "  ('from' is" & LZ_buffer_index_type'Image(from) &
                 ", 'to' is" & LZ_buffer_index_type'Image(to) & ')'
               );
             end if;
@@ -1212,7 +1212,7 @@ is
           end if;
         end if;
       end loop Browse_step_level;
-      --  Exit before an eventual increment of slide_mid that would loop over (mod n). 
+      --  Exit before an eventual increment of slide_mid that would loop over (mod n).
       exit when Integer_M32(slide_mid) + min_step + half_slider_size >= Integer_M32(to);
       slide_mid:= slide_mid + min_step;
     end loop Scan_LZ_data;
@@ -1223,7 +1223,7 @@ is
       Send_as_block(lz_buffer(send_from .. to), last_block => last_flush);
     end if;
   end Scan_and_send_from_main_buffer;
-    
+
   procedure Flush_half_buffer(last_flush: Boolean) is
     last_idx: constant LZ_buffer_index_type:= lz_buffer_index-1;
     n_div_2: constant:= LZ_buffer_size / 2;
@@ -1323,7 +1323,7 @@ is
     String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_e
     type Text_buffer_index is mod String_buffer_size;
     type Text_buffer is array ( Text_buffer_index ) of Byte;
-    Text_Buf: Text_Buffer;
+    Text_Buf: Text_buffer;
     R: Text_buffer_index;
 
     --  If the DLE coding doesn't fit the format constraints, we need
@@ -1353,7 +1353,7 @@ is
       else
         if trace then
           Put_Line(log,
-            "<> Too bad, cannot encode this distance-length pair, " & 
+            "<> Too bad, cannot encode this distance-length pair, " &
             "then we have to expand to output (dist = " & Integer'Image(distance) &
             " len=" & Integer'Image(length) & ")"
           );
@@ -1386,7 +1386,7 @@ is
           Read_byte          => Read_byte,
           More_bytes         => More_bytes,
           Write_byte         => LZ77_emits_literal_byte,
-          Write_code         => LZ77_emits_DL_code 
+          Write_code         => LZ77_emits_DL_code
         );
 
     --  The following is for research purposes: compare different LZ77 variants and see
@@ -1421,7 +1421,7 @@ is
       end loop;
       Close(LZ77_dump);
     end Read_LZ77_codes;
-        
+
   begin  --  Encode
     Read_Block;
     R:= Text_buffer_index(String_buffer_size - Look_Ahead);

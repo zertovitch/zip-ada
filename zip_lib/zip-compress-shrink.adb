@@ -107,7 +107,7 @@ is
 
   Min_bits: constant:= 9;    --  Starting code size of 9 bits
   Max_bits: constant:= 13;   --  Maximum code size of 13 bits
-  
+
   subtype Code_size_type is Integer range 1..Max_bits;
   code_size: Code_size_type;     --  Size of codes (in bits) currently being written
 
@@ -356,8 +356,8 @@ is
     if First_atom then            --  If just getting started ...
       bit_buffer:= 0;
       valid_bits:= 0;
-      Code_size := Min_bits;   --    Initialize code size to minimum
-      Max_code  := 2 ** Code_size - 1;
+      code_size := Min_bits;   --    Initialize code size to minimum
+      Max_code  := 2 ** code_size - 1;
       Last_code := Suffix;      --    get first character from input,
       First_atom  := False;       --    and reset the first char flag.
     elsif Suffix = UNUSED then --  Nothing to crunch... must be EOF on input
@@ -384,7 +384,7 @@ is
         Table_Add(Last_code, Suffix);  --  Attempt to add to code table
         Last_code:= Suffix;           --  Reset Last_code code for new char
         if (
-             Code_size < Max_bits and
+             code_size < Max_bits and
              not Table_full
              -- 12-Dec-2007: the Pascal code had an out-of-range access
              --  with Free_list(Next_free) below when the table was full!
@@ -401,8 +401,8 @@ is
           --  Time to increase the code size and change the max. code
           Put_code(SPECIAL);
           Put_code(INCSIZE);
-          Code_size:= Code_size + 1;
-          Max_code:= 2 **  Code_size - 1;
+          code_size:= code_size + 1;
+          Max_code:= 2 **  code_size - 1;
         end if;
       end if;
     end if;

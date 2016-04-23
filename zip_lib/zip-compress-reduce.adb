@@ -570,7 +570,7 @@ is
       new LZ77 (String_buffer_size => String_buffer_size,
                 Look_Ahead         => Look_Ahead,
                 Threshold          => Threshold,
-                Method             => LZHuf,  
+                Method             => LZHuf,
                 --  NB: Method IZ_9 needs exactly the same set of LZ77 parameters as in
                 --      Deflate. Then the compression is worse, though much faster.
                 Read_byte          => Read_byte,

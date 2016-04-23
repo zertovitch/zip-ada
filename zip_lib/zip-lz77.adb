@@ -21,9 +21,9 @@
 --        Length 258 is encoded with no extra bit, could be good...
 --    - LZ77: try yet another LZ77, e.g. from 7-Zip, or program a new one with
 --        hash chains etc.
-  
+
 procedure Zip.LZ77 is
-  
+
   -----------------------
   --  LZHuf algorithm  --
   -----------------------
@@ -361,7 +361,7 @@ procedure Zip.LZ77 is
       exit when Len=0;
     end loop;
   end LZ77_using_LZHuf;
-  
+
   --------------------------
   --  Info-Zip algorithm  --
   --------------------------
@@ -387,7 +387,7 @@ procedure Zip.LZ77 is
   --
   --  About hashing: chapter 6.4 of The Art of Computer Programming, Volume 3, D.E. Knuth
   --  Rabin and Karp algorithm: http://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm
-  
+
   --  Compression level: 0: store, 1: best speed, 9: best compression, 10: variant of level 9
   --  Ada code: only levels 4 to 10 are supported.
 
@@ -444,7 +444,7 @@ procedure Zip.LZ77 is
     match_start: Natural_M32;   --  start of matching string [was: unsigned]
     eofile     : Boolean;       --  flag set at end of input file [was: int]
     lookahead  : Natural_M32;   --  number of valid bytes ahead in window  [was: unsigned]
-    max_chain_length : unsigned; 
+    max_chain_length : unsigned;
     --  To speed up deflation, hash chains are never searched beyond this length.
     --  A higher limit improves compression ratio but degrades the speed.
     max_lazy_match: Natural_M32;  --  [was: unsigned]
@@ -464,7 +464,7 @@ procedure Zip.LZ77 is
       nice_length  : Integer_M32;  --  quit search above this match length
       max_chain    : ush;
     end record;
-    
+
     configuration_table: constant array(0..10) of config:= (
     --  good lazy nice chain
         (0,    0,  0,    0),    --  0: store only
@@ -478,25 +478,25 @@ procedure Zip.LZ77 is
         (32, 128, 258, 1024),
         (32, 258, 258, 4096),   --  9: maximum compression
         (34, 258, 258, 4096));  --  "secret" variant of level 9
-    
+
     --  Update a hash value with the given input byte
     --  IN  assertion: all calls to to UPDATE_HASH are made with consecutive
     --     input characters, so that a running hash key can be computed from the
     --     previous key instead of complete recalculation each time.
-    
+
     procedure UPDATE_HASH(h: in out unsigned; c: Byte) is
     pragma Inline(UPDATE_HASH);
     begin
       h := (unsigned(Shift_Left(Unsigned_32(h), H_SHIFT)) xor unsigned(c)) and HASH_MASK;
     end UPDATE_HASH;
-    
+
     --  Insert string starting at s in the dictionary and set match_head to the previous head
     --  of the hash chain (the most recent string with same hash key). Return
     --  the previous length of the hash chain.
     --  IN  assertion: all calls to to INSERT_STRING are made with consecutive
     --     input characters and the first MIN_MATCH bytes of s are valid
     --     (except for the last MIN_MATCH-1 bytes of the input file).
-    
+
     procedure INSERT_STRING(s: Integer_M32; match_head: out Natural_M32) is
     pragma Inline(INSERT_STRING);
     begin
@@ -505,7 +505,7 @@ procedure Zip.LZ77 is
       prev(unsigned(s) and WMASK):= Pos(match_head);
       head(ins_h) := Pos(s);
     end INSERT_STRING;
-    
+
     procedure Read_buf(from: Integer_M32; amount: unsigned; actual: out Integer_M32) is
       need: unsigned:= amount;
     begin
@@ -518,10 +518,10 @@ procedure Zip.LZ77 is
       end loop;
       --  put_line("Read buffer: actual:" & actual'img);
     end Read_buf;
-    
+
     --  Fill the window when the lookahead becomes insufficient.
     --  Updates strstart and lookahead, and sets eofile if end of input file.
-    --  
+    --
     --  IN assertion: lookahead < MIN_LOOKAHEAD && strstart + lookahead > 0
     --  OUT assertions: strstart <= window_size-MIN_LOOKAHEAD
     --     At least one byte has been read, or eofile is set; file reads are
@@ -593,18 +593,18 @@ procedure Zip.LZ77 is
       end loop;
       --  put_line("Fill done - eofile = " & eofile'img);
     end Fill_window;
-    
+
     --  Initialize the "longest match" routines for a new file
-    --  
+    --
     --  IN assertion: window_size is > 0 if the input file is already read or
     --     mapped in the window array, 0 otherwise. In the first case,
     --     window_size is sufficient to contain the whole input file plus
     --     MIN_LOOKAHEAD bytes (to avoid referencing memory beyond the end
     --     of window when looking for matches towards the end).
-    
+
     procedure LM_Init (pack_level: Natural) is
     begin
-      --  Do not slide the window if the whole input is already in memory (window_size > 0)    
+      --  Do not slide the window if the whole input is already in memory (window_size > 0)
       sliding := False;
       if window_size = 0 then
         sliding := True;
@@ -638,15 +638,15 @@ procedure Zip.LZ77 is
       --  If lookahead < MIN_MATCH, ins_h is garbage, but this is
       --  not important since only literal bytes will be emitted.
     end LM_Init;
-    
+
     --  Set match_start to the longest match starting at the given string and
     --  return its length. Matches shorter or equal to prev_length are discarded,
     --  in which case the result is equal to prev_length and match_start is
     --  garbage.
     --  IN assertions: current_match is the head of the hash chain for the current
     --    string (strstart) and its distance is <= MAX_DIST, and prev_length >= 1
-    
-    procedure Longest_Match(current_match: in out Integer_M32; longest: out Integer_M32) is 
+
+    procedure Longest_Match(current_match: in out Integer_M32; longest: out Integer_M32) is
       chain_length : unsigned := max_chain_length;  --  max hash chain length
       scan         : Integer_M32 := strstart;       --  current string
       match        : Integer_M32;                   --  matched string
@@ -732,7 +732,7 @@ procedure Zip.LZ77 is
               match:= match + 1;
               exit when window(scan) /= window(match) or else scan >= strend;
             end loop;
-          end if;            
+          end if;
           --  Assert(scan <= window+(unsigned)(window_size-1), "wild scan");
           len := MAX_MATCH - (strend - scan);
           scan := strend - MAX_MATCH;
@@ -750,7 +750,7 @@ procedure Zip.LZ77 is
       end loop;
       longest:= best_len;
     end Longest_Match;
-    
+
     procedure LZ77_part_of_IZ_Deflate is
       hash_head : Natural_M32:= NIL;              --  head of hash chain
       prev_match: Natural_M32;                    --  previous match  [was: IPos]
@@ -772,9 +772,9 @@ procedure Zip.LZ77 is
         prev_length  := match_length;
         prev_match   := match_start;
         match_length := MIN_MATCH - 1;
-        if hash_head /= NIL and then 
+        if hash_head /= NIL and then
            prev_length < max_lazy_match and then
-           strstart - hash_head <= MAX_DIST 
+           strstart - hash_head <= MAX_DIST
         then
           --  To simplify the code, we prevent matches with the string
           --  of window index 0 (in particular we have to avoid a match
@@ -858,7 +858,7 @@ procedure Zip.LZ77 is
         Write_byte(window(strstart-1));
       end if;
     end LZ77_part_of_IZ_Deflate;
-    
+
     Code_too_clever: exception;
   begin
     if Look_Ahead /= 258 or String_buffer_size /= 2 ** 15 or Threshold /= 2 then
@@ -870,10 +870,10 @@ procedure Zip.LZ77 is
   end LZ77_using_IZ;
 
 begin
-  case method is
+  case Method is
     when LZHuf =>
       LZ77_using_LZHuf;
     when IZ_4 .. IZ_10 =>
-      LZ77_using_IZ( 4 + LZ77_method'Pos(method) -  LZ77_method'Pos(IZ_4) );
+      LZ77_using_IZ( 4 + LZ77_method'Pos(Method) -  LZ77_method'Pos(IZ_4) );
   end case;
 end Zip.LZ77;

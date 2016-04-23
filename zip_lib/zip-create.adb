@@ -133,7 +133,7 @@ package body Zip.Create is
    begin
      Clear(Info.dir);
    end Clear_name_dictionary;
-   
+
    procedure Add_Stream (Info     : in out Zip_Create_info;
                          Stream   : in out Root_Zipstream_Type'Class;
                          Password : in     String:= "")
@@ -259,7 +259,7 @@ package body Zip.Create is
         Delete(fd);
      end if;
    exception
-     when User_Abort =>
+     when User_abort =>
        if Is_Open(temp_zip_stream) then
          Close(temp_zip_stream);
        end if;
@@ -334,11 +334,11 @@ package body Zip.Create is
         Zip.Headers.Write(Info.Stream.all, lh);  --  Copy local header to new stream
         String'Write(Info.Stream, name);         --  Copy entry name to new stream
       end;
-      Zip.Copy_Chunk(
+      Zip.Copy_chunk(
         Stream,
         Info.Stream.all,
         Integer(lh.dd.compressed_size),
-        feedback => Feedback
+        Feedback => Feedback
       );
       Info.Contains (Info.Last_entry).head.short_info:= lh;
    end Add_Compressed_Stream;

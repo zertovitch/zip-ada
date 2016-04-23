@@ -201,7 +201,7 @@ package body Zip is
               Ada.Exceptions.Raise_Exception
                 (Duplicate_name'Identity,
                  "Same full entry name (in dictionary: " & dico_name &
-                 ") appears twice in archive directory; " & 
+                 ") appears twice in archive directory; " &
                  "procedure Load was called with strict name policy."
                 );
             when admit_duplicates =>
@@ -897,7 +897,7 @@ package body Zip is
       end if;
       Zip.BlockRead(from, buf(1..Integer'Min(remains, buf'Last)), actually_read);
       if actually_read = 0 then -- premature end, unexpected
-        raise Zip.Zip_File_Error;
+        raise Zip.Zip_file_Error;
       end if;
       remains:= remains - actually_read;
       Zip.BlockWrite(into, buf(1..actually_read));

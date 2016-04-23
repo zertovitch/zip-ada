@@ -14,7 +14,7 @@ package body UnZip.Streams is
                                  p_Stream_Element_Array );
 
    procedure Dispose is new
-     Ada.Unchecked_Deallocation( Unzip_Stream_Type,
+     Ada.Unchecked_Deallocation( UnZip_Stream_Type,
                                  Zipped_File_Type );
 
   --------------------------------------------------
@@ -206,7 +206,7 @@ package body UnZip.Streams is
     use Zip_Streams, Ada.Streams;
     zip_stream   : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
-    use_a_file   : constant Boolean:= Zip.Zip_Stream(Archive_Info) = null;
+    use_a_file   : constant Boolean:= Zip.Zip_stream(Archive_Info) = null;
   begin
     if File = null then
       File:= new UnZip_Stream_Type;
@@ -218,7 +218,7 @@ package body UnZip.Streams is
       Set_Name (zip_stream , Zip.Zip_name(Archive_Info));
       Open (zip_stream, In_File);
     else -- use the given stream
-      input_stream:= Zip.Zip_Stream(Archive_Info);
+      input_stream:= Zip.Zip_stream(Archive_Info);
     end if;
     --
     File.archive_info:= Archive_Info;
@@ -229,7 +229,7 @@ package body UnZip.Streams is
         input_stream.all,
         Name,
         Password,
-        File.Uncompressed,
+        File.uncompressed,
         null
       );
       if use_a_file then
@@ -289,7 +289,7 @@ package body UnZip.Streams is
   ------------------------------------------
 
   procedure Read
-    (Stream : in out Unzip_Stream_Type;
+    (Stream : in out UnZip_Stream_Type;
      Item   :    out Ada.Streams.Stream_Element_Array;
      Last   :    out Ada.Streams.Stream_Element_Offset)
   is
@@ -335,14 +335,13 @@ package body UnZip.Streams is
     end if;
   end Read;
 
-
   function Stream (File : Zipped_File_Type) return Stream_Access is
   begin
     return Stream_Access(File);
   end Stream;
 
   procedure Write
-    (Stream : in out Unzip_Stream_Type;
+    (Stream : in out UnZip_Stream_Type;
      Item   : in     Ada.Streams.Stream_Element_Array)
   is
     write_not_supported: exception;
@@ -360,20 +359,20 @@ package body UnZip.Streams is
     use Zip_Streams, Ada.Streams;
     zip_stream   : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
-    use_a_file   : constant Boolean:= Zip.Zip_Stream(Archive_Info) = null;
+    use_a_file   : constant Boolean:= Zip.Zip_stream(Archive_Info) = null;
   begin
     if use_a_file then
       input_stream:= zip_stream'Unchecked_Access;
       Set_Name (zip_stream , Zip.Zip_name(Archive_Info));
       Open (zip_stream, In_File);
     else -- use the given stream
-      input_stream:= Zip.Zip_Stream(Archive_Info);
+      input_stream:= Zip.Zip_stream(Archive_Info);
     end if;
     declare
       dummy_mem_ptr: p_Stream_Element_Array;
     begin
       S_Extract(
-        Archive_info,
+        Archive_Info,
         input_stream.all,
         Name,
         Password,

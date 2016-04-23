@@ -97,7 +97,6 @@ package UnZip is
 
   null_routines: constant FS_routines_type:= (null,null,null,null);
 
-
   ----------------------------------
   -- Simple extraction procedures --
   ----------------------------------
@@ -188,7 +187,6 @@ package UnZip is
                 action          : out Name_conflict_intervention;
                 new_name        : out String;
                 new_name_length : out Natural );
-
 
   type Get_password_proc is access
     procedure(password: out Ada.Strings.Unbounded.Unbounded_String);
