@@ -1123,7 +1123,7 @@ package body Rezip_lib is
 
     -- This is for randomizing the above seed_iterator.
     subtype Seed_Range is Integer range 1..1_000_000;
-    package Rnd_seed is new Ada.Numerics.Discrete_Random(Seed_range);
+    package Rnd_seed is new Ada.Numerics.Discrete_Random(Seed_Range);
     gen_seed: Rnd_seed.Generator;
 
   begin
