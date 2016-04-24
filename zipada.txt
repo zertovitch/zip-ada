@@ -105,7 +105,7 @@ Contents
 
   There are also the following project files for building them
   with various systems:
-  - ZipAda.gpr for GNAT or the GNAT Programming Studio
+  - ZipAda.gpr for GNAT's gprbuild or the GNAT Programming Studio
   - ZipAda_ObjectAda.prj for ObjectAda 7.2.2 and later (this is the
       project file for the ObjectAda's IDE)
   - UnZipAda_A#.sln for Microsoft Visual Studio and A# (uses files
