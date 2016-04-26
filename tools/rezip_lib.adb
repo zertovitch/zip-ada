@@ -63,7 +63,10 @@ package body Rezip_lib is
 
   NN: constant Unbounded_String:= Null_Unbounded_String;
 
-  kzip_limit: constant:= 10_000_000;
+  --  Give up recompression above a certain data size for some external packers like KZip
+  --  or Zopfli.
+  --
+  kzip_zopfli_limit: constant:= 10_000_000;
 
   type Approach is (
     original,
@@ -96,11 +99,11 @@ package body Rezip_lib is
          NN, 21, Zip.deflate_e, 0, False),
       -- KZip:
       (U("kzip"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
-         U("/rn /b0"), NN, 20, Zip.deflate, kzip_limit, True),
+         U("/rn /b0"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       (U("kzip"),U("KZIP"),NN,
-         U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_limit, True),
+         U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       (U("kzip"),U("KZIP"),NN,
-         U("/rn /b#RAND#(128,2048)"), NN, 20, Zip.deflate, kzip_limit, True),
+         U("/rn /b#RAND#(128,2048)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       -- Zip 3.0 or later; BZip2:
       (U("zip"), U("Zip"), U("http://info-zip.org/"),
          U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
@@ -118,7 +121,7 @@ package body Rezip_lib is
          U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False),
       -- AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U("advzip"), U("AdvZip"), U("http://advancemame.sf.net/comp-readme.html"),
-         U("-a -4"), NN, 20, Zip.deflate, kzip_limit, False)
+         U("-a -4"), NN, 20, Zip.deflate, kzip_zopfli_limit, False)
     );
 
   defl_opt: constant Zipper_specification:=
@@ -330,14 +333,16 @@ package body Rezip_lib is
         new Ada.Unchecked_Deallocation(Argument_List, Argument_List_Access);
       list: Argument_List_Access;
       ok: Boolean;
-      Cannot_call_external: exception;
     begin
       Dual_IO.Put_Line(packer & " [" & args & ']');
       list:= Argument_String_To_List(args);
       GNAT.OS_Lib.Spawn(packer, list.all, ok);
       Dispose(list);
       if not ok then
-        raise Cannot_call_external;
+        Dual_IO.Put_Line(
+          "Warning: cannot call " & packer &
+          ". Is it callable through the ""path"" ?"
+        );
       end if;
     end Call_external;
 

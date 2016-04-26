@@ -26,8 +26,8 @@ procedure ReZip is
   begin
     Ada.Text_IO.Put_Line("Usage: rezip [options] archive(s)[.zip]");
     Ada.Text_IO.New_Line;
-    Ada.Text_IO.Put_Line("options:  -defl:     repack archive only with Deflate method (most compatible)");
-    Ada.Text_IO.Put_Line("          -fast_dec: repack archive only with fast decompressing methods");
+    Ada.Text_IO.Put_Line("options:  -defl:     repack archive only with Deflate subformat (most compatible)");
+    Ada.Text_IO.Put_Line("          -fast_dec: repack archive only with fast decompressing subformats");
     Ada.Text_IO.Put_Line("          -touch:    set time stamps to now");
     Ada.Text_IO.Put_Line("          -lower:    set full file names to lower case");
     Ada.Text_IO.Put_Line("          -del_comm: delete comment");
@@ -37,7 +37,8 @@ procedure ReZip is
     Ada.Text_IO.Put_Line("                          having randomization, and stop when size is stable");
     Ada.Text_IO.Put_Line("                          after n attempts");
     Ada.Text_IO.New_Line;
-    Ada.Text_IO.Put_Line("external packers (available for Windows and Linux):");
+    Ada.Text_IO.Put_Line("external packers (available for Windows and Linux) used;");
+    Ada.Text_IO.Put_Line("must be callable through the ""path"" :");
     Ada.Text_IO.New_Line;
     Rezip_lib.Show_external_packer_list;
     Ada.Text_IO.New_Line;
