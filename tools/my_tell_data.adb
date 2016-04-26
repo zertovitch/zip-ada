@@ -13,7 +13,7 @@ procedure My_tell_data
             ( name               : String;
               compressed_bytes   : UnZip.File_size_type;
               uncompressed_bytes : UnZip.File_size_type;
-              method             : UnZip.pkzip_method ) is
+              method             : UnZip.PKZip_method ) is
 
   package MIO is new Modular_IO(UnZip.File_size_type);
 
@@ -29,7 +29,7 @@ procedure My_tell_data
 
 begin
   New_Line;
-  if Summary.Total_Entries = 0 then
+  if Summary.total_entries = 0 then
     Put_Line(" Name                      Method    Compressed size      Uncompressed size");
     Put_Line(" ------------------------- --------- ---------------      -----------------");
   end if;
@@ -37,7 +37,7 @@ begin
   My_dots.done_dots:= 0;
   declare
     maxlen: constant:= 24;
-    cut: constant String:= Cutname( name, maxlen );
+    cut: constant String:= CutName( name, maxlen );
   begin
     Put( cut );
     for l in cut'Length .. maxlen loop

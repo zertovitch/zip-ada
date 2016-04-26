@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --  File:            Mygetpas.adb or My_get_password.adb
---  Description:     part of Unzipada demo
+--  Description:     part of UnZipada demo
 ------------------------------------------------------------------------------
 
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -9,7 +9,7 @@ with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 procedure My_get_password(password: out Unbounded_String) is
   c: Character;
 begin
-  New_line;
+  New_Line;
   Put_Line(" Current password is incorrect.");
   Put(" Password please : ");
   -- Fake "Get_line( password );" without echo.
@@ -25,7 +25,7 @@ begin
     password:= password & c;
   end loop;
 
-  New_line;
+  New_Line;
 
   -- Cosmetic : position for the [.....]
   Put("                                                                    ");

@@ -15,7 +15,6 @@ with Win32.crt.Utime;
 
 package body Ada_Directories_Extensions is
 
-
    type utimbuf_ptr is access all Win32.crt.Utime.utimbuf;
    pragma Convention (C, utimbuf_ptr);
 
@@ -81,8 +80,8 @@ package body Ada_Directories_Extensions is
       declare
          Tm : aliased Win32.crt.Time.tm := To_tm (To);
          Buffer : aliased Win32.crt.Utime.utimbuf :=
-            (acTime => Win32.crt.Time.mktime (Tm'Access),
-             modTime => File_Stat.st_mtime);
+            (actime => Win32.crt.Time.mktime (Tm'Access),
+             modtime => File_Stat.st_mtime);
          Ok : constant Interfaces.C.int :=
             utime (New_String (Full_Name (Name)),
                    Buffer'Unchecked_Access);
@@ -126,8 +125,8 @@ package body Ada_Directories_Extensions is
       declare
          Tm : aliased Win32.crt.Time.tm := To_tm (To);
          Buffer : aliased Win32.crt.Utime.utimbuf :=
-            (acTime => File_Stat.st_atime,
-             modTime => Win32.crt.Time.mktime (Tm'Access));
+            (actime => File_Stat.st_atime,
+             modtime => Win32.crt.Time.mktime (Tm'Access));
          Ok : constant Interfaces.C.int :=
             utime (New_String (Full_Name (Name)),
                    Buffer'Unchecked_Access);
@@ -174,8 +173,8 @@ package body Ada_Directories_Extensions is
          Atm : aliased Win32.crt.Time.tm := To_tm (Access_Time);
          Mtm : aliased Win32.crt.Time.tm := To_tm (Modification_Time);
          Buffer : aliased Win32.crt.Utime.utimbuf :=
-            (acTime => Win32.crt.Time.mktime (Atm'Access),
-             modTime => Win32.crt.Time.mktime (Mtm'Access));
+            (actime => Win32.crt.Time.mktime (Atm'Access),
+             modtime => Win32.crt.Time.mktime (Mtm'Access));
          Ok : constant Interfaces.C.int :=
             utime (New_String (Full_Name (Name)),
                    Buffer'Unchecked_Access);
@@ -243,7 +242,7 @@ package body Ada_Directories_Extensions is
               tm_wday  => Win32.INT (GNAT.Calendar.Day_Name'Pos
                                         (GNAT.Calendar.Day_Of_Week (From))),
               tm_yday  => Win32.INT (GNAT.Calendar.Day_In_Year (From)),
-              tm_isdst => -1); 
+              tm_isdst => -1);
    end To_tm;
 
    --------------
