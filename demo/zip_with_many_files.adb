@@ -15,7 +15,7 @@ procedure Zip_with_many_files is
   stream  : aliased File_Zipstream;
   archive : Zip_Create_info;
 
-  procedure Add_one_entry(file_name: String; rep: Positive) is
+  procedure Add_one_entry(file_name: String; rep: Natural) is
   begin
     Zip.Create.Add_String(
       Info              => archive,
@@ -27,8 +27,8 @@ procedure Zip_with_many_files is
 begin
   Create(archive, stream'Unchecked_Access, "Large.zip", Zip.Compress.Deflate_1);
   for i in 1..65_535 loop
-    Add_one_entry( 
-      "Entry #" & Integer'Image(i) & ".txt", 
+    Add_one_entry(
+      "Entry #" & Integer'Image(i) & ".txt",
       Integer'Max(0, i / 100 - 10)  --  Obtain a certain number of incompressible entries.
     );
   end loop;

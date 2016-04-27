@@ -26,4 +26,3 @@ package body Summary is
   end Nice_image;
 
 end Summary;
-
