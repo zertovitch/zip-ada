@@ -1,3 +1,5 @@
-svn diff --diff-cmd diff -x "-i -b -B" %1
+rem SVN diff, with blank space neutral, and case insensitive.
 
-echo Command used was... svn diff --diff-cmd diff -x "-i -b -B" %1
+svn diff --diff-cmd diff -x "-i -b -B" %1 %2 %3
+
+echo Command used was... svn diff --diff-cmd diff -x "-i -b -B" %1 %2 %3

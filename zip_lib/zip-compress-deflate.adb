@@ -1499,6 +1499,7 @@ begin
   compression_ok:= True;
 exception
   when Compression_unefficient =>
+    Dispose(lz_buffer);  --  Hot fix 50_f1.
     if trace then
       Close(log);
     end if;

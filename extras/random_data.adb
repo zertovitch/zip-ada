@@ -1,7 +1,9 @@
--- Syntax: random_data [n [name]]
+-- Syntax: random_data [n [name [min max]]]
 -- Default:
 --   n = 100
 --   name = random.bin
+--   min = 0
+--   max = 255
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 
@@ -14,9 +16,19 @@ procedure Random_Data is
   package BIO is new Ada.Sequential_IO(Byte);
   use BIO;
   f: File_Type;
-  package Byte_soup is new Ada.Numerics.Discrete_Random(Byte);
-  use Byte_soup;
-  cg: Generator;
+  min: Byte:= 0;
+  max: Byte:= 255;
+  procedure Spit_random is
+    subtype Subyte is Byte range min .. max;
+    package Byte_soup is new Ada.Numerics.Discrete_Random(Subyte);
+    use Byte_soup;
+    cg: Generator;
+  begin
+    Reset(cg);
+    for i in 1..n loop
+      Write(f, Random(cg));
+    end loop;
+  end Spit_random;
 begin
   if Argument_Count >= 1 then
     n:= Integer'Value(Argument(1));
@@ -26,9 +38,10 @@ begin
   else
     Create(f, Out_File, "random.bin");
   end if;
-  Reset(cg);
-  for i in 1..n loop
-    Write(f, Random(cg));
-  end loop;
+  if Argument_Count >= 4 then
+    min:= Byte'Value(Argument(3));
+    max:= Byte'Value(Argument(4));
+  end if;
+  Spit_random;
   Close(f);
 end Random_Data;
