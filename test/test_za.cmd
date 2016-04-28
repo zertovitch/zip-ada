@@ -13,6 +13,7 @@ copy /b ..\zipada.exe .
 copy /b ..\random_data.exe .
 
 rem Have a badly compressible file (random.bin), a bit more than 2**n because of rare repetitions
+if not exist rnd_1.bin for /l %%i in (0,10,100) do random_data %%i rnd_%%i.bin
 if not exist random.bin random_data 8300
 if not exist random_and_text.mix copy /b random.bin+*.txt random_and_text.mix
 if exist test_rz.ReZip.html del test_rz.ReZip.html
@@ -34,7 +35,9 @@ zip        -9                test_ifz9     %files%
 7z a -tzip -mx=9 -mm=deflate test_7z_d     %files%
 
 if not "%1" == "full" goto skip
-rem  --  Now if you need a coffee, it's the right time to have one or two...
+echo  --
+echo  --  If you need a coffee now, it's the right time to have one or two...
+echo  --
 zipada     -er1              test_zar1     %files%
 zipada     -er2              test_zar2     %files%
 zipada     -er3              test_zar3     %files%

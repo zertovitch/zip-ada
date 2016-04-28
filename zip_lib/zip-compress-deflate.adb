@@ -74,7 +74,11 @@ is
 
   --  Define data types needed to implement input and output file buffers
 
-  InBuf, OutBuf: Byte_Buffer(1..buffer_size);
+  procedure Dispose_Buffer is
+    new Ada.Unchecked_Deallocation(Byte_Buffer, p_Byte_Buffer);
+
+  InBuf: p_Byte_Buffer;  --  I/O buffers
+  OutBuf: p_Byte_Buffer;
 
   InBufIdx : Positive;      --  Points to next char in buffer to be read
   OutBufIdx: Positive := 1; --  Points to next free space in output buffer
@@ -86,7 +90,7 @@ is
   begin
     Zip.BlockRead(
       stream        => input,
-      buffer        => InBuf,
+      buffer        => InBuf.all,
       actually_read => MaxInBufIdx
     );
     InputEoF:= MaxInBufIdx = 0;
@@ -95,7 +99,7 @@ is
 
   -- Exception for the case where compression works but produces
   -- a bigger file than the file to be compressed (data is too "random").
-  Compression_unefficient: exception;
+  Compression_inefficient: exception;
 
   procedure Write_Block is
     amount: constant Integer:= OutBufIdx-1;
@@ -106,7 +110,7 @@ is
       -- Useless to go further.
       -- Stop immediately before growing the file more than the
       -- uncompressed size.
-      raise Compression_unefficient;
+      raise Compression_inefficient;
     end if;
     Encode(crypto, OutBuf(1 .. amount));
     Zip.BlockWrite(output, OutBuf(1 .. amount));
@@ -1487,21 +1491,29 @@ begin
     end if;
     New_Line(log);
   end if;
+  --  Allocate input and output buffers ...
+  if input_size_known then
+    InBuf:= new Byte_Buffer
+      (1..Integer'Min(Integer'Max(8, Integer(input_size)), buffer_size));
+  else
+    InBuf := new Byte_Buffer (1 .. buffer_size);
+  end if;
+  OutBuf:= new Byte_Buffer(1..buffer_size);
   output_size:= 0;
   lz_buffer:= new Full_range_LZ_buffer_type;
-  Encode;
-  Flush_bit_buffer;
-  Flush_byte_buffer;
-  Dispose(lz_buffer);
+  begin
+    Encode;
+    compression_ok:= True;
+    Flush_bit_buffer;
+    Flush_byte_buffer;
+  exception
+    when Compression_inefficient =>  --  Escaped from Encode
+      compression_ok:= False;
+  end;
+  Dispose (lz_buffer);
+  Dispose_Buffer (InBuf);
+  Dispose_Buffer (OutBuf);
   if trace then
     Close(log);
   end if;
-  compression_ok:= True;
-exception
-  when Compression_unefficient =>
-    Dispose(lz_buffer);  --  Hot fix 50_f1.
-    if trace then
-      Close(log);
-    end if;
-    compression_ok:= False;
 end Zip.Compress.Deflate;
