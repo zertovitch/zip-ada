@@ -12,6 +12,7 @@ with Zip.LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
 
 with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Unchecked_Deallocation;
 
 procedure Zip.Compress.Reduce
  (input,
@@ -63,7 +64,11 @@ is
 
   --  Define data types needed to implement input and output file buffers
 
-  InBuf, OutBuf: Byte_Buffer(1..buffer_size);
+  procedure Dispose is
+    new Ada.Unchecked_Deallocation(Byte_Buffer, p_Byte_Buffer);
+
+  InBuf: p_Byte_Buffer;  --  I/O buffers
+  OutBuf: p_Byte_Buffer;
 
   InBufIdx: Positive;  --  Points to next char in buffer to be read
   OutBufIdx: Positive; --  Points to next free space in output buffer
@@ -75,7 +80,7 @@ is
   begin
     Zip.BlockRead(
       stream        => input,
-      buffer        => InBuf,
+      buffer        => InBuf.all,
       actually_read => MaxInBufIdx
     );
     InputEoF:= MaxInBufIdx = 0;
@@ -84,7 +89,7 @@ is
 
   -- Exception for the case where compression works but produces
   -- a bigger file than the file to be compressed (data is too "random").
-  Compression_unefficient: exception;
+  Compression_inefficient: exception;
 
   procedure Write_Block is
     amount: constant Integer:= OutBufIdx-1;
@@ -95,7 +100,7 @@ is
       -- Useless to go further.
       -- Stop immediately before growing the file more than the
       -- uncompressed size.
-      raise Compression_unefficient;
+      raise Compression_inefficient;
     end if;
     Encode(crypto, OutBuf(1 .. amount));
     Zip.BlockWrite(output, OutBuf(1 .. amount));
@@ -613,6 +618,14 @@ is
   mem: ZS_Index_Type;
 
 begin
+  --  Allocate input and output buffers.
+  if input_size_known then
+    InBuf:= new Byte_Buffer
+      (1..Integer'Min(Integer'Max(8,Integer(input_size)), buffer_size));
+  else
+    InBuf:= new Byte_Buffer(1..buffer_size);
+  end if;
+  OutBuf:= new Byte_Buffer(1..buffer_size);
   OutBufIdx := 1;
   output_size:= 0;
   mem:= Index(input);
@@ -626,10 +639,14 @@ begin
   Save_Followers;  --  Emit the compression structure before the compressed message
   lz77_size:= lz77_pos;
   lz77_pos:= 0;
-  Compress;  --  Emit the compressed message
-  Flush_output;
-  compression_ok:= True;
-exception
-  when Compression_unefficient =>
-    compression_ok:= False;
+  begin
+    Compress;  --  Emit the compressed message
+    Flush_output;
+    compression_ok:= True;
+  exception
+    when Compression_inefficient =>
+      compression_ok:= False;
+  end;
+  Dispose(InBuf);
+  Dispose(OutBuf);
 end Zip.Compress.Reduce;
