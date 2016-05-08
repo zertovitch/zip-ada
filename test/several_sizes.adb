@@ -18,6 +18,7 @@ procedure Several_sizes is
     Last: Stream_Element_Offset;
     SE_Buffer : Stream_Element_Array (1..b'Length);
     for SE_Buffer'Address use b'Address;
+    pragma Import (Ada, SE_Buffer);
   begin
     Read(Stream(f_in).all, SE_Buffer, Last);
     last_read:= b'First + Natural(Last) - 1;
@@ -27,6 +28,7 @@ procedure Several_sizes is
     use Ada.Streams;
     SE_Buffer : Stream_Element_Array (1..b'Length);
     for SE_Buffer'Address use b'Address;
+    pragma Import (Ada, SE_Buffer);
   begin
     Write(Stream(f_out).all, SE_Buffer);
   end Write;
@@ -49,7 +51,7 @@ procedure Several_sizes is
     rest:= limit;
     Open(f_in, In_File, name);
     Create(f_out, Out_File, s(7..15) & ".tmp");
-    while not End_of_File(f_in) loop
+    while not End_Of_File(f_in) loop
       Read(b,l);
       if rest < l then
         Write(b(1..rest));

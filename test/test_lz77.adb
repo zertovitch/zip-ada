@@ -20,7 +20,7 @@ procedure Test_LZ77 is
 
   function More_bytes return Boolean is
   begin
-    return not End_of_File(f_in);
+    return not End_Of_File(f_in);
   end More_bytes;
 
   ----- LZSS Parameters -----
