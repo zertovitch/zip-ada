@@ -22,16 +22,16 @@ procedure Test_LLHC is
         LLHCL(freq, len);
       end;
       New_Line;
-      Put("Maximum Huffman code length (constraint):");
+      Put("Maximum Huffman binary code length (constraint):");
       Put(m, 3);
       Put_Line(" bits");
       Put_Line("------------------------------------");
       for c in len'Range loop
-        Put("    " & c & " freq =");
+        Put("    " & c & " frequency (input) =");
         Put(freq(c), 3);
-        Put(" length =");
+        Put(" code length (output) =");
         Put(len(c), 3);
-        New_Line;
+        Put_Line(" bits");
       end loop;
     end loop;
   end Test_1;
@@ -52,11 +52,11 @@ procedure Test_LLHC is
     for a in Alphabet loop
       Put("    ");
       Put(a, 3);
-      Put(" freq =");
+      Put(" frequency (input) =");
       Put(freq(a), 5);
-      Put(" length =");
+      Put(" code length (output) =");
       Put(len(a), 3);
-      New_Line;
+      Put_Line(" bits");
     end loop;
   end Test_2;
   --
@@ -128,17 +128,17 @@ procedure Test_LLHC is
         285 => 6,         286 => 0,         287 => 0
     );
     New_Line;
-    Put_Line("Deflate alphabet for literal & length");
-    Put_Line("-------------------------------------");
+    Put_Line("Deflate alphabet for literal & LZ length");
+    Put_Line("----------------------------------------");
     LLHCL(freq, len);
     for a in Alphabet loop
       Put("    ");
       Put(a, 3);
-      Put(" freq =");
+      Put(" frequency (input) =");
       Put(freq(a), 5);
-      Put(" length =");
+      Put(" code length (output) =");
       Put(len(a), 3);
-      New_Line;
+      Put_Line(" bits");
     end loop;
   end Test_3;
 begin

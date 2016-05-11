@@ -23,6 +23,7 @@
 --
 --  Change log:
 --
+--  16-Mar-2016: Taillaule algorithm: first version ready for release.
 --  20-Feb-2016: (rev.305) Start of smarter techniques for "Dynamic" encoding: Taillaule algorithm
 --   4-Feb-2016: Start of "Dynamic" encoding format (compression structure sent before block)
 --
@@ -1403,7 +1404,7 @@ is
       a, b: Integer;
       dummy: Byte;
     begin
-      --  Pretend we compress given file (compute CRC, consume stream).
+      --  Pretend we compress given file (compute CRC, consume entire stream).
       while More_bytes loop
         dummy:= Read_byte;
       end loop;
@@ -1444,11 +1445,11 @@ is
         null;  --  No start data sent, all is delayed
     end case;
     if bypass_LZ77 then
-      Read_LZ77_codes;
+      Read_LZ77_codes;  --  Apply our scanning algo on a LZ77 stream made by a third-party tool.
     else
-      -----------------------------------------------
-      --  The whole compression is happening here: --
-      -----------------------------------------------
+      ----------------------------------------------------------------
+      --  The whole compression is happening in the following line: --
+      ----------------------------------------------------------------
       My_LZ77;
     end if;
     --  Done. Send the code signaling the end of compressed data block:
