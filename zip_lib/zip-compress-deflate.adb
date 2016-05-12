@@ -1047,11 +1047,11 @@ is
     Get_statistics(lzb, stats_lit_len, stats_dis);
     new_descr:= Build_descriptors(stats_lit_len, stats_dis);
     if Similar(new_descr, random_data_descriptors, L1, opti_random, "Compare to random") and then
+       --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0:
        stats_lit_len(Long_length_codes) = zero_bl_long_lengths
-       --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0
     then
       if trace then
-        Put_Line(log, "### Random enough - use stored");
+        Put_Line(log, "### Too random - use stored");
       end if;
       Expand_LZ_buffer(lzb, last_block);
     elsif  (  last_block_type = fixed
@@ -1148,7 +1148,8 @@ is
   end Build_descriptors;
 
   procedure Scan_and_send_from_main_buffer(from, to: LZ_buffer_index_type; last_flush: Boolean) is
-    initial_hd, sliding_hd: Deflate_Huff_descriptors;  --  These descriptors are *not* used for compressing.
+    --  The following descriptors are *not* used for compressing, but for detecting similarities.
+    initial_hd, sliding_hd: Deflate_Huff_descriptors;
     start, slide_mid, send_from: LZ_buffer_index_type;
     sliding_hd_computed: Boolean;
   begin
@@ -1339,17 +1340,22 @@ is
     procedure LZ77_emits_DL_code( distance, length: Integer ) is
       --  NB: no worry, all arithmetics in Text_buffer_index are modulo String_buffer_size.
       b: Byte;
-      copy_start: constant Text_buffer_index:= R - Text_buffer_index(distance);
+      copy_start: Text_buffer_index;
       expand: Expanded_data;
       ie: Positive:= 1;
     begin
+      if distance = String_buffer_size then  --  Happens with 7-Zip, cannot happen with Info-Zip.
+        copy_start:= R;
+      else
+        copy_start:= R - Text_buffer_index(distance);
+      end if;
       --  Expand into the circular text buffer to have it up to date
       for K in 0..Text_buffer_index(length-1) loop
         b:= Text_Buf(copy_start + K);
         Text_Buf(R):= b;
         R:= R + 1;
-        if ie <= max_expand then  --  also memorize short sequences for LZ buffering
-          expand(ie):= b;
+        if ie <= max_expand then  --  Also memorize short sequences for LZ buffer
+          expand(ie):= b;         --  for the case a block needs to be stored in clear.
           ie:= ie + 1;
         end if;
       end loop;

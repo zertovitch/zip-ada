@@ -429,9 +429,10 @@ procedure Zip.LZ77 is
     ins_h: unsigned;   --  hash index of string to be inserted
     MIN_MATCH: constant Integer_M32:= Integer_M32(Threshold) + 1;  --  Deflate: 3
     MAX_MATCH: constant Integer_M32:= Integer_M32(Look_Ahead);     --  Deflate: 258
-    MIN_LOOKAHEAD: constant Integer_M32:= MAX_MATCH + MIN_MATCH + 1;
     --  Minimum amount of lookahead, except at the end of the input file.
-    MAX_DIST : constant Integer_M32:= WSIZE - MIN_LOOKAHEAD;
+    MIN_LOOKAHEAD: constant Integer_M32:= MAX_MATCH + MIN_MATCH + 1;  --  Deflate: 262
+    --  This LZ77 compression doesn't use the full possible distance range: 32507..32768 unused!
+    MAX_DIST : constant Integer_M32:= WSIZE - MIN_LOOKAHEAD;  --  Deflate: 32506
     H_SHIFT: constant Integer:= Integer((HASH_BITS + MIN_MATCH - 1) / MIN_MATCH);
     --  Number of bits by which ins_h and del_h must be shifted at each
     --  input step. It must be such that after MIN_MATCH steps, the oldest
