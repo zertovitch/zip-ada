@@ -1,7 +1,7 @@
 --  The "Deflate" method combines a LZ77 compression
 --  method with some Huffman encoding gymnastics.
 --
---  Magic numbers adjusted through experimentation are marked with: *Tuned*
+--  Magic numbers in this procedure are adjusted through experimentation and marked with: *Tuned*
 --
 --  To do:
 --    - Taillaule: try with slider and/or initial lz window not centered
@@ -20,8 +20,11 @@
 --    - Improve LZ77 compression: see Zip.LZ77 to-do list; check with bypass_LZ77 below
 --        and various programs based on LZ77 using the trace >= some and the LZ77 dump
 --        in UnZip.Decompress.
+--    - LZ77 optimizer: for two consecutive LZ codes, try to merge them, or to unbalance them
+--        with one having length = 258 (short code without extra bits in Deflate).
 --
 --  Change log:
+--------------
 --
 --  16-Mar-2016: Taillaule algorithm: first version ready for release.
 --  20-Feb-2016: (rev.305) Start of smarter techniques for "Dynamic" encoding: Taillaule algorithm
