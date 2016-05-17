@@ -38,7 +38,7 @@ package Zip.Create is
    procedure Create(Info          : out Zip_Create_info;
                     Z_Stream      : in Zipstream_Class_Access;
                     Name          : String;
-                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Shrink;
+                    Compress      : Zip.Compress.Compression_Method:= Zip.Compress.Deflate_1;
                     Duplicates    : Duplicate_name_policy:= admit_duplicates
    );
 
