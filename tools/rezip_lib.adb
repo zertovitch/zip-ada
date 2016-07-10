@@ -258,7 +258,7 @@ package body Rezip_lib is
           if html and t(i) = ':' then t(i):= ' '; end if; -- break too long lines
         end loop;
         return t;
-      end;
+      end Repl;
     begin
       if a in External then
         return "External: " & S(ext(a).title) & ", " & Repl(S(ext(a).expanded_options));
@@ -1163,6 +1163,6 @@ package body Rezip_lib is
       end if;
     end loop;
     Display(defl_opt);
-  end;
+  end Show_external_packer_list;
 
 end Rezip_lib;

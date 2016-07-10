@@ -72,7 +72,7 @@ procedure LZMA_Enc is
     procedure Put_byte(b : Byte) is
     begin
       Byte'Write(s_out, b);  -- !! non-buffered
-    end;
+    end Put_byte;
 
     --
     -- Finite State Machine to shortcut the LZ stream

@@ -1188,7 +1188,7 @@ is
     slide_mid:= from + min_step;
     Scan_LZ_data:
     while Integer_M32(slide_mid) + half_slider_size < Integer_M32(to) loop
-      exit when deactivate_scanning;
+      exit Scan_LZ_data when deactivate_scanning;
       sliding_hd_computed:= False;
       Browse_step_level:
       for level in step_choice'Range loop
@@ -1222,7 +1222,7 @@ is
         end if;
       end loop Browse_step_level;
       --  Exit before an eventual increment of slide_mid that would loop over (mod n).
-      exit when Integer_M32(slide_mid) + min_step + half_slider_size >= Integer_M32(to);
+      exit Scan_LZ_data when Integer_M32(slide_mid) + min_step + half_slider_size >= Integer_M32(to);
       slide_mid:= slide_mid + min_step;
     end loop Scan_LZ_data;
     --

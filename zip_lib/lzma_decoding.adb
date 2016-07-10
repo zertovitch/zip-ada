@@ -191,7 +191,7 @@ package body LZMA_Decoding is
     pragma Inline(Is_Empty);
     begin
       return out_win.pos = 0 and then not out_win.is_full;
-    end;
+    end Is_Empty;
 
     procedure Put_Byte_Q(b: Byte) is
     pragma Inline(Put_Byte_Q);
@@ -289,7 +289,7 @@ package body LZMA_Decoding is
     pragma Inline(Is_Finished_OK);
     begin
       return loc_range_dec.code = 0;
-    end;
+    end Is_Finished_OK;
 
     procedure Process_Distance_and_Length is
     pragma Inline(Process_Distance_and_Length);
@@ -460,7 +460,7 @@ package body LZMA_Decoding is
       pragma Inline(Check_Distance);
       begin
         return rep0 <= out_win.pos or out_win.is_full;
-      end;
+      end Check_Distance;
       --
       isError: Boolean;
       dist: UInt32;
@@ -564,7 +564,7 @@ package body LZMA_Decoding is
     begin
       Dispose(out_win.buf);
       o.range_dec_corrupted:= loc_range_dec.corrupted;
-    end;
+    end Finalize;
 
   begin
     Create(out_win, o.dictSize);
@@ -666,46 +666,46 @@ package body LZMA_Decoding is
     res: LZMA_Result;
   begin
     Decode(o, hints, res);
-  end;
+  end Decompress;
 
   function Literal_context_bits(o: LZMA_Decoder_Info) return Natural is
   begin
     return o.lc;
-  end;
+  end Literal_context_bits;
 
   function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural is
   begin
     return o.lp;
-  end;
+  end Literal_pos_bits;
 
   function Pos_bits(o: LZMA_Decoder_Info) return Natural is
   begin
     return o.pb;
-  end;
+  end Pos_bits;
 
   function Unpack_size_defined(o: LZMA_Decoder_Info) return Boolean is
   begin
     return o.unpackSizeDefined;
-  end;
+  end Unpack_size_defined;
 
   function Unpack_size_as_defined(o: LZMA_Decoder_Info) return Data_Bytes_Count is
   begin
     return o.unpackSize_as_defined;
-  end;
+  end Unpack_size_as_defined;
 
   function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
     return o.dictSize;
-  end;
+  end Dictionary_size;
 
   function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
     return o.dictSizeInProperties;
-  end;
+  end Dictionary_size_in_properties;
 
   function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean is
   begin
     return o.range_dec_corrupted;
-  end;
+  end Range_decoder_corrupted;
 
 end LZMA_Decoding;

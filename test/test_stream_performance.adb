@@ -121,7 +121,7 @@ procedure Test_Stream_Performance is
   function name return String is
   begin
     return Argument(1);
-  end;
+  end name;
 
   generic
     label: String;
@@ -141,7 +141,7 @@ procedure Test_Stream_Performance is
     end loop;
     Close(f_out);
     Close(f_in);
-  end;
+  end Test;
 
   procedure Test_Attribute is new Test("Attribute", Read_Attribute, Write_Attribute);
   procedure Test_SE_Copy is new Test("SE_Copy", Read_SE_Copy, Write_SE_Copy);
@@ -189,4 +189,4 @@ begin
   All_Tests(128 * 1024); -- 128 KB
   All_Tests(256 * 1024); -- 256 KB
   All_Tests(1024 * 1024); -- 1 MB
-end;
+end Test_Stream_Performance;

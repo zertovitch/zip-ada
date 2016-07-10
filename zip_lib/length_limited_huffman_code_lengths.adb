@@ -175,7 +175,7 @@ is
   function "<"(a, b: Leaf_Node) return Boolean is
   begin
     return a.weight < b.weight;
-  end;
+  end "<";
 
   procedure Quick_sort (a: in out Leaf_array) is
     n: constant Index_Type:= a'Length;

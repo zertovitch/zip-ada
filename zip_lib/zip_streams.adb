@@ -45,14 +45,14 @@ package body Zip_Streams is
    is
    begin
      S.Is_Unicode_Name := Value;
-   end;
+   end Set_Unicode_Name_Flag;
 
    function Is_Unicode_Name(S : in Root_Zipstream_Type)
                             return Boolean
    is
    begin
      return S.Is_Unicode_Name;
-   end;
+   end Is_Unicode_Name;
 
    procedure Set_Read_Only_Flag (S     : out Root_Zipstream_Type;
                                  Value : in Boolean)

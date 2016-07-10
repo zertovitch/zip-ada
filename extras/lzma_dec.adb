@@ -21,12 +21,12 @@ procedure LZMA_Dec is
   begin
     Byte'Read(Stream(f_in), b);
     return b;
-  end;
+  end Read_Byte;
 
   procedure Write_Byte(b: Byte) is
   begin
     Byte'Write(Stream(f_out), b);
-  end;
+  end Write_Byte;
 
   package My_LZMA_Decoding is new LZMA_Decoding(Read_Byte, Write_Byte);
   use My_LZMA_Decoding;

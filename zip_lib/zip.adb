@@ -435,7 +435,7 @@ package body Zip is
     pragma Inline(My_Action_private);
     begin
       Action(dn.file_name);
-    end;
+    end My_Action_private;
     procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
     My_Traverse_private(z);
@@ -446,7 +446,7 @@ package body Zip is
     pragma Inline(My_Action_private);
     begin
       Action(dn.file_name, dn.name_encoding);
-    end;
+    end My_Action_private;
     procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
     My_Traverse_private(z);
@@ -469,7 +469,7 @@ package body Zip is
         dn.encrypted_2_x,
         dn.user_code
       );
-    end;
+    end My_Action_private;
     procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
     My_Traverse_private(z);

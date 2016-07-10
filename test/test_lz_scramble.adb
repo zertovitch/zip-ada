@@ -6,4 +6,4 @@ begin
   for i in 1..78 loop
     Put_Line(LZ_Scramble(i));
   end loop;
-end;
+end Test_LZ_Scramble;
