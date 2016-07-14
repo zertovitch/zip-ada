@@ -269,17 +269,6 @@ is
 
   type Count_type is range 0..File_size_type'Last/2-1;
   type Stats_type is array(Natural range <>) of Count_type;
-  function "+"(s,t: Stats_type) return Stats_type is
-    u: Stats_type(s'Range);
-  begin
-    if s'Length /= t'Length or else s'First /= t'First then
-      raise Constraint_Error;
-    end if;
-    for i in u'Range loop
-      u(i):= s(i) + t(i);
-    end loop;
-    return u;
-  end "+";
 
   subtype Stats_lit_len_type is Stats_type(Alphabet_lit_len);
   subtype Stats_dis_type is Stats_type(Alphabet_dis);
@@ -983,15 +972,13 @@ is
     Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
   zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0);
 
-  old_stats_lit_len : Stats_lit_len_type;
-  old_stats_dis     : Stats_dis_type;
-
   --  Send_as_block.
+  --
   --  lzb (can be a slice of the principal buffer) will be sent as:
-  --       * a new "dynamic" block, preceded by a compression structure header
-  --   or  * the continuation of previous "dynamic" block
-  --   or  * a new "fixed" block, if lz data are close enough to the "fixed" descriptor
-  --   or  * a new "stored" block, if lz data are random enough
+  --        * a new "dynamic" block, preceded by a compression structure header
+  --    or  * the continuation of previous "dynamic" block
+  --    or  * a new "fixed" block, if lz data's Huffman descriptor is close enough to "fixed"
+  --    or  * a new "stored" block, if lz data are too random
 
   procedure Send_as_block(lzb: LZ_buffer_type; last_block: Boolean) is
     new_descr: Deflate_Huff_descriptors;
@@ -999,15 +986,11 @@ is
     procedure Send_fixed_block is
     begin
       if last_block_type = fixed then
-        --  Cool, we don't need to do anything: the Huffman codes are already
+        --  Cool, we don't need to mark a block boundary: the Huffman codes are already
         --  the expected ones. We can just continue sending the LZ atoms.
         null;
       else
-        if trace then
-          Put_Line(log, "### New fixed block");
-        end if;
         Mark_new_block(last_block_for_stream => last_block);
-        -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
         curr_descr:= Deflate_fixed_descriptors;
         Put_code(code => 1, code_size => 2);  --  Signals a "fixed" block
         last_block_type:= fixed;
@@ -1018,34 +1001,20 @@ is
     stats_lit_len: Stats_lit_len_type;
     stats_dis: Stats_dis_type;
     --
-    procedure Send_dynamic_block(merge: Boolean) is
+    procedure Send_dynamic_block is
     begin
-      if trace then
-        if merge then
-          Put_Line(log, "### New dynamic block, stats merged with previous");
-        else
-          Put_Line(log, "### New dynamic block with own stats");
-        end if;
-      end if;
-      if merge then
-        stats_lit_len := stats_lit_len + old_stats_lit_len;
-        stats_dis     := stats_dis     + old_stats_dis;
-        new_descr:= Build_descriptors(stats_lit_len, stats_dis);
-      end if;
       Mark_new_block(last_block_for_stream => last_block);
-      -- ^ Eventually, last_block_for_stream will be last block of last flush in a later version
       curr_descr:= Prepare_Huffman_codes(new_descr);
       Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
       Put_compression_structure(curr_descr);
       Put_LZ_buffer(lzb);
       last_block_type:= dynamic;
     end Send_dynamic_block;
-    -- *Tuned*
+    -- *Tuned* thresholds
     opti_random    : constant:= 333;
     opti_recycle   : constant:= 62;
     opti_fix       : constant:= 230;
     opti_size_fix  : constant:= 111;
-    opti_merge     : constant:= 0;  --  merge stats, not blocks (we will discard this "feature" !!)
   begin
     Get_statistics(lzb, stats_lit_len, stats_dis);
     new_descr:= Build_descriptors(stats_lit_len, stats_dis);
@@ -1054,7 +1023,7 @@ is
        stats_lit_len(Long_length_codes) = zero_bl_long_lengths
     then
       if trace then
-        Put_Line(log, "### Too random - use stored");
+        Put_Line(log, "### Too random - use ""stored"" block");
       end if;
       Expand_LZ_buffer(lzb, last_block);
     elsif  (  last_block_type = fixed
@@ -1068,30 +1037,25 @@ is
         Put_Line(log, "### Recycle: continue using existing dynamic compression structures");
       end if;
       Put_LZ_buffer(lzb);
-    elsif lzb'Length < opti_size_fix or else  --  Very small block
-          Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix, "Compare to fixed")
+    elsif   lzb'Length < opti_size_fix  --  Very small block
+          or else
+            Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix,
+              "Compare to ""fixed"" descriptor")
     then
+      if trace then
+        Put_Line(log, "### New ""fixed"" block");
+      end if;
       Send_fixed_block;
-    --
-    --  Past this point we have exhausted all possibilities to avoid sending a new
-    --  header with compression structures. We have to lose some space, but it is for saving
-    --  more space with a better Huffman encoding of data.
-    --
-    elsif last_block_type = dynamic and then
-          Similar(new_descr, curr_descr, L1, opti_merge, "Compare to previous, for stats merging")
-    then
-      Send_dynamic_block(merge => True);
-      --  Similar: we merge statistics. Not optimal for this block, but helps further recycling
-      --  Bet: we have a string of similar blocks; better have less non-zero statistics to avoid
-      --  non-recyclable cases. NB !! this will disappear by merging at prior level, with
-      --  merging of blocks and optimal bit lengths for each block sent.
     else
-      Send_dynamic_block(merge => False);  --  Block is clearly different from last block
+      --  We have exhausted all possibilities to avoid sending a new "dynamic"
+      --  header with compression structures. We have to lose some space, but
+      --  it is for saving more space with a better Huffman encoding of data.
+      if trace then
+        Put_Line(log, "### New ""dynamic"" block with own stats");
+      end if;
+      Send_dynamic_block;
     end if;
-    if last_block_type = dynamic then
-      old_stats_lit_len := stats_lit_len;
-      old_stats_dis     := stats_dis;
-    end if;
+
   end Send_as_block;
 
   subtype Full_range_LZ_buffer_type is LZ_buffer_type(LZ_buffer_index_type);
