@@ -149,7 +149,8 @@ procedure LZMA_Enc is
 
 begin
   New_Line;
-  Put_Line("LZMA_Enc, translated from the LZMA Reference Decoder 9.31 by Igor Pavlov.");
+  Put_Line("LZMA_Enc: a standalone LZMA encoder.");
+  Put_Line("DRAFT - not yet functional");
   if Argument_Count = 0 then
     Put_Line("Use: lzma_enc infile outfile.lzma");
     return;

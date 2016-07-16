@@ -1,4 +1,5 @@
--- LZMA_Decoding - a generic LZMA decoder.
+-- LZMA_Decoding - a standalone, generic LZMA decoder.
+--
 -- Based on a translation of LzmaSpec.cpp, the LZMA Reference Decoder, by Igor Pavlov.
 -- Public domain.
 

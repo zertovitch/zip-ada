@@ -1,5 +1,5 @@
+-- BZip2.Decoding - a standalone, generic BZip2 decoding package.
 --
--- BZip2.Decoding
 --    Decompress: decompression of bzip2 data streams.
 --
 -- bzip2 compresses files using the Burrows-Wheeler block-sorting text
