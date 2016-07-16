@@ -4,7 +4,7 @@
 
 -- Standalone, command-line, experimental LZMA encoder (for .lzma files).
 
-with Zip.LZ77;
+with LZ77;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -100,9 +100,9 @@ procedure LZMA_Enc is
     end Write_DL_code;
 
     procedure My_LZ77 is
-      new Zip.LZ77(
+      new LZ77.Encode(
         String_buffer_size, Look_Ahead, Threshold,
-        Zip.IZ_9,
+        LZ77.IZ_9,
         Read_byte, More_bytes,
         Write_literal_byte, Write_DL_code
       );

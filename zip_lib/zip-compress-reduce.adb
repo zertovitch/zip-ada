@@ -8,7 +8,7 @@
 --  7-Feb-2009: GdM: added a cache for LZ77 output to make 2nd phase faster
 
 with Interfaces; use Interfaces;
-with Zip.LZ77, Zip.CRC_Crypto;
+with LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
 
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -572,10 +572,11 @@ is
     end Write_DL_code;
 
     procedure My_LZ77 is
-      new LZ77 (String_buffer_size => String_buffer_size,
+      new LZ77.Encode
+               (String_buffer_size => String_buffer_size,
                 Look_Ahead         => Look_Ahead,
                 Threshold          => Threshold,
-                Method             => LZHuf,
+                Method             => LZ77.LZHuf,
                 --  NB: Method IZ_9 needs exactly the same set of LZ77 parameters as in
                 --      Deflate. Then the compression is worse, though much faster.
                 Read_byte          => Read_byte,

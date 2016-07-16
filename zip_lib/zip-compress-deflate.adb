@@ -34,7 +34,7 @@
 --  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
 --  17-Feb-2011: Created.
 
-with Zip.LZ77, Zip.CRC_Crypto;
+with LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
 
 with Length_limited_Huffman_code_lengths;
@@ -1349,14 +1349,14 @@ is
       Put_or_delay_literal_byte(b);
     end LZ77_emits_literal_byte;
 
-    LZ77_choice: constant array(Deflation_Method) of LZ77_method:=
-      (Deflate_Fixed  => IZ_4,
-       Deflate_1      => IZ_6,  --  level 6 is the default in Info-Zip's zip.exe
-       Deflate_2      => IZ_8,
-       Deflate_3      => IZ_10);
+    LZ77_choice: constant array(Deflation_Method) of LZ77.Method_Type:=
+      (Deflate_Fixed  => LZ77.IZ_4,
+       Deflate_1      => LZ77.IZ_6,  --  level 6 is the default in Info-Zip's zip.exe
+       Deflate_2      => LZ77.IZ_8,
+       Deflate_3      => LZ77.IZ_10);
 
     procedure My_LZ77 is
-      new LZ77
+      new LZ77.Encode
         ( String_buffer_size => String_buffer_size,
           Look_Ahead         => Look_Ahead,
           Threshold          => 2,  --  From a string match length > 2, a DL code is sent
