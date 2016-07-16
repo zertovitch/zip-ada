@@ -1,4 +1,4 @@
--- See bzip2.ads for legal stuff
+-- See bzip2_decoding.ads for legal stuff
 --
 -- Documentation pointers:
 --
@@ -13,7 +13,7 @@
 
 with Ada.Unchecked_Deallocation;
 
-package body BZip2 is
+package body BZip2_Decoding is
 
   procedure Decompress is
 
@@ -760,4 +760,4 @@ package body BZip2 is
     Dispose(tt);
   end Decompress;
 
-end BZip2;
+end BZip2_Decoding;

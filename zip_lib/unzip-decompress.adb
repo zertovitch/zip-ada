@@ -1,4 +1,4 @@
-with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2, LZMA_Decoding;
+with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2_Decoding, LZMA_Decoding;
 
 with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
@@ -1786,7 +1786,7 @@ package body UnZip.Decompress is
             UnZ_IO.Flush_if_full(UnZ_Glob.slide_index);
           end loop;
         end Write;
-        package My_BZip2 is new BZip2
+        package My_BZip2 is new BZip2_Decoding
           ( Buffer    => BZ_Buffer,
             check_CRC => False, -- Already done by UnZ_IO
             Read      => Read,

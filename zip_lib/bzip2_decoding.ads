@@ -1,5 +1,6 @@
 --
--- BZip2.Decompress - decompression of bzip2 data streams.
+-- BZip2.Decoding
+--    Decompress: decompression of bzip2 data streams.
 --
 -- bzip2 compresses files using the Burrows-Wheeler block-sorting text
 -- compression algorithm, and Huffman coding. Compression is generally
@@ -56,8 +57,8 @@
 -- arithmetics. The only pointer is tt, for dynamically allocating the biggest
 -- decoding array.
 -- With the appropriate options, the performance is very close to
--- the bzip2 tool in C: it takes around 7%-11% more time according to data
--- to be decompressed. Add 5% when CRC checking is enabled.
+-- the bzip2 tool in C: it takes around 7%-11% more time depending on data
+-- to be decompressed (tested in 2009). Add some 5% when CRC checking is enabled.
 -- These timings are obtained with bunzip.adb compiled on GNAT 2008, Win32,
 -- with the -O2 -gnatpn -fpeel-loops -funroll-loops -fweb -frename-registers
 -- options, average on several runs (see bz_test.cmd).
@@ -80,7 +81,7 @@ generic
   -- Output:
   with procedure Write(buf: in Buffer);
 
-package BZip2 is
+package BZip2_Decoding is
 
   bad_header_magic,
   bad_block_magic,
@@ -90,4 +91,4 @@ package BZip2 is
 
   procedure Decompress;
 
-end BZip2;
+end BZip2_Decoding;
