@@ -1,13 +1,13 @@
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Sequential_IO;
 with Ada.Text_IO;                       use Ada.Text_IO;
-with Zip.LZ77;
+with LZ77;
 
 procedure Test_LZ77 is
 
-  package BIO is new Ada.Sequential_IO (Zip.Byte);
+  package BIO is new Ada.Sequential_IO (LZ77.Byte);
 
-  use Zip, BIO;
+  use LZ77, BIO;
 
   f_in, f_out: BIO.File_Type;
 
@@ -62,7 +62,7 @@ procedure Test_LZ77 is
   end Write_code;
 
   procedure My_LZ77 is
-    new Zip.LZ77(
+    new LZ77.Encode(
       String_buffer_size, Look_Ahead, Threshold,
       LZHuf,
       Read_byte, More_bytes,
