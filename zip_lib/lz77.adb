@@ -13,6 +13,7 @@
 --     the String_buffer_size, Look_Ahead, Threshold LZ77 parameters.
 
 --  To do:
+--
 --    - LZ77 / IZ: similar to the test with TOO_FAR, try to cluster distances around
 --        values needing less extra bits (may not work at all...)
 --    - LZ77 / IZ: tune TOO_FAR (max: 32767), see http://optipng.sf.net/pngtech/too_far.html

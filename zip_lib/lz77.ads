@@ -9,7 +9,9 @@ package LZ77 is
   ----------------
 
   type Method_Type is (
+    --  Use the LZHuf algorithm (see body for details)
     LZHuf,
+    --  Use the Info-Zip algorithm, levels 4-10 (see body for details)
     IZ_4,
     IZ_5,
     IZ_6,
