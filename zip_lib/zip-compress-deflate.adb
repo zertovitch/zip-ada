@@ -10,7 +10,8 @@
 --    - Taillaule: restrict BL_Vector to short LZ distances (long distances perhaps too random)
 --    - Taillaule: check LZ distances on literals only, too (consider distances & lengths as noise)
 --    - Taillaule: add (with an OR condition) the criteria of trees.c for selecting
---        "fixed" or stored block.
+--        "fixed" or stored block; it is using the exact byte counts of each variant,
+--        see flush_block in trees.c.
 --    - Taillaule: use a corpus of files badly compressed by our Deflate comparatively
 --        to other Deflates (e.g. 7Z seems better with databases)
 --    - Add DeflOpt to slowest method, or approximate it by tweaking
@@ -551,7 +552,11 @@ is
           rep:= rep + 1;
         end loop;
         --  Now rep is the number of repetitions of current atom, including itself.
-        if idx > 1 and then cs_bl(idx) = cs_bl(idx-1) and then rep >= 3 then
+        if idx > 1 and then cs_bl(idx) = cs_bl(idx-1) and then rep >= 3 
+            --  Better repeat a long sequence of zeros with codes 17 or 18
+            --  just after a 138-long previous sequence.
+          and then not (cs_bl(idx) = 0 and then rep > 6)
+        then
           rep:= Integer'Min(rep, 6);
           Emit_data_compression_atom(16, U32(rep-3), 2);    -- 16: "Repeat previous 3 to 6 times"
           idx:= idx + rep;
