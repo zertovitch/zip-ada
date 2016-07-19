@@ -489,7 +489,12 @@ is
   --  But this information takes some room. Fortunately Deflate allows for compressing it
   --  with a combination of Huffman and Run-Length (RLE) encoding to make this header smaller.
   --
-  procedure Put_compression_structure(dhd: Deflate_Huff_descriptors) is
+  procedure Put_compression_structure(
+    dhd           :        Deflate_Huff_descriptors;
+    cost_analysis :        Boolean;  --  True: just simulate the whole and count needed bits
+    bits          : in out Count_type
+  )
+  is
     subtype Alphabet is Integer range 0..18;
     type Alpha_Array is new Bit_length_array(Alphabet);
     truc_freq, truc_bl: Alpha_Array;
@@ -552,7 +557,7 @@ is
           rep:= rep + 1;
         end loop;
         --  Now rep is the number of repetitions of current atom, including itself.
-        if idx > 1 and then cs_bl(idx) = cs_bl(idx-1) and then rep >= 3 
+        if idx > 1 and then cs_bl(idx) = cs_bl(idx-1) and then rep >= 3
             --  Better repeat a long sequence of zeros with codes 17 or 18
             --  just after a 138-long previous sequence.
           and then not (cs_bl(idx) = 0 and then rep > 6)
@@ -593,18 +598,25 @@ is
     --  We turn these counts into bit lengths for the local tree
     --  that helps us to store the compression structure in a more compact form.
     LLHCL(truc_freq, truc_bl);  --  Call the magic algorithm for setting up Huffman lengths
-    for a in Alphabet loop
-      truc(a).length:= truc_bl(a);
-    end loop;
-    Prepare_Huffman_codes(truc);
     --  At least lengths for codes 16, 17, 18, 0 will always be sent,
     --  even if all other bit lengths are 0 because codes 1 to 15 are unused.
     a_non_zero:= 3;
     for a in Alphabet loop
-      if a > a_non_zero and then truc(bit_order_for_dynamic_block(a)).length > 0 then
+      if a > a_non_zero and then truc_bl(bit_order_for_dynamic_block(a)) > 0 then
         a_non_zero:= a;
       end if;
     end loop;
+    if cost_analysis then
+      bits:= bits + 14 + (1 + Count_type(a_non_zero)) * 3;
+      for a in Alphabet loop
+        bits:= bits + Count_type(truc_freq(a) * truc_bl(a));
+      end loop;
+      return;
+    end if;
+    for a in Alphabet loop
+      truc(a).length:= truc_bl(a);
+    end loop;
+    Prepare_Huffman_codes(truc);
     --  Output of the compression structure
     Put_code(U32(max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
     Put_code(U32(max_used_dis_code), 5);
@@ -667,7 +679,7 @@ is
   --  Example: the code # 266 means the LZ length (# of message bytes to be copied)
   --           shall be 13 or 14, depending on the extra bit value.
 
-  Deflate_code_for_LZ_length: constant array(Length_range) of Natural:=
+  deflate_code_for_lz_length: constant array(Length_range) of Natural:=
     (  3  => 257,          -- Codes 257..264, with no extra bit
        4  => 258,
        5  => 259,
@@ -718,7 +730,7 @@ is
   procedure Put_DL_code( distance: Distance_range; length: Length_range ) is
     extra_bits: Natural;
   begin
-    Put_Huffman_code(curr_descr.lit_len(Deflate_code_for_LZ_length(length)));
+    Put_Huffman_code(curr_descr.lit_len(deflate_code_for_lz_length(length)));
     --  Extra bits are needed to differentiate lengths sharing the same code.
     extra_bits:= extra_bits_for_lz_length(length);
     if extra_bits > 0 then
@@ -877,12 +889,12 @@ is
       case lzb(i).kind is
         when plain_byte =>
           lit_len:= Alphabet_lit_len(lzb(i).plain);
-          stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;          --  +1 for this literal
+          stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;        --  +1 for this literal
         when distance_length =>
-          lit_len:= Deflate_code_for_LZ_length(lzb(i).lz_length);
-          stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;          --  +1 for this length
+          lit_len:= deflate_code_for_lz_length(lzb(i).lz_length);
+          stats_lit_len(lit_len):= stats_lit_len(lit_len) + 1;        --  +1 for this length code
           dis:= Deflate_code_for_LZ_distance(lzb(i).lz_distance);
-          stats_dis(dis):= stats_dis(dis) + 1;                          --  +1 for this distance
+          stats_dis(dis):= stats_dis(dis) + 1;                        --  +1 for this distance code
       end case;
     end loop;
   end Get_statistics;
@@ -973,6 +985,35 @@ is
     end loop;
   end Expand_LZ_buffer;
 
+  --  Extra bits that need to be sent after various Deflate codes
+
+  extra_bits_for_lz_length_code: constant array(257 .. 285) of Natural:=
+    ( 257 .. 264 => 0,
+      265 .. 268 => 1,
+      269 .. 272 => 2,
+      273 .. 276 => 3,
+      277 .. 280 => 4,
+      281 .. 284 => 5,
+      285        => 0
+    );
+
+  extra_bits_for_lz_distance_code: constant array(0 .. 29) of Natural:=
+    ( 0 ..  3 =>  0,
+      4 ..  5 =>  1,
+      6 ..  7 =>  2,
+      8 ..  9 =>  3,
+     10 .. 11 =>  4,
+     12 .. 13 =>  5,
+     14 .. 15 =>  6,
+     16 .. 17 =>  7,
+     18 .. 19 =>  8,
+     20 .. 21 =>  9,
+     22 .. 23 => 10,
+     24 .. 25 => 11,
+     26 .. 27 => 12,
+     28 .. 29 => 13
+    );
+
   subtype Long_length_codes is
     Alphabet_lit_len range code_for_max_expand+1 .. Alphabet_lit_len'Last;
   zero_bl_long_lengths: constant Stats_type(Long_length_codes):= (others => 0);
@@ -1007,11 +1048,12 @@ is
     stats_dis: Stats_dis_type;
     --
     procedure Send_dynamic_block is
+      dummy: Count_type;
     begin
       Mark_new_block(last_block_for_stream => last_block);
       curr_descr:= Prepare_Huffman_codes(new_descr);
       Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
-      Put_compression_structure(curr_descr);
+      Put_compression_structure(curr_descr, cost_analysis => False, bits => dummy);
       Put_LZ_buffer(lzb);
       last_block_type:= dynamic;
     end Send_dynamic_block;
@@ -1020,26 +1062,95 @@ is
     opti_recycle   : constant:= 62;
     opti_fix       : constant:= 230;
     opti_size_fix  : constant:= 111;
+    --
+    stored_format_bits,
+    fixed_format_bits,
+    dynamic_format_bits,
+    recycled_format_bits: Count_type:= 0;
+    stored_format_possible: Boolean;
+    recycling_possible: Boolean;  --  Can we recycle current Huffman codes ?
+    --
+    procedure Compute_sizes_of_variants is
+      c     : Count_type;
+      extra : Natural;
+    begin
+      --  We count bits taken by literals, for each block format variant.
+      for i in 0 .. 255 loop
+        c:= stats_lit_len(i);  --  This literal appears c times in the LZ buffer
+        stored_format_bits   := stored_format_bits   + 8 * c;
+        fixed_format_bits    := fixed_format_bits    + Count_type(default_lit_len_bl(i)) * c;
+        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).length) * c;
+        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).length) * c;
+      end loop;
+      --  We count bits taken by DL codes.
+      if stored_format_possible then
+        for i in lzb'Range loop
+          case lzb(i).kind is
+            when plain_byte =>
+              null;  --  Already counted
+            when distance_length =>
+               --  In the stored format, DL codes are expanded
+              stored_format_bits:= stored_format_bits + 8 * Count_type(lzb(i).lz_length);
+          end case;
+        end loop;
+      end if;
+      --  For compressed formats, count Huffman bits and extra bits
+      for i in 257 .. 285 loop
+        c:= stats_lit_len(i);  --  This length code appears c times in the LZ buffer
+        extra:= extra_bits_for_lz_length_code(i);
+        fixed_format_bits    := fixed_format_bits    + Count_type(default_lit_len_bl(i) + extra) * c;
+        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).length + extra) * c;
+        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).length + extra) * c;
+      end loop;
+      for i in 0 .. 29 loop
+        c:= stats_dis(i);  --  This distance code appears c times in the LZ buffer
+        extra:= extra_bits_for_lz_distance_code(i);
+        fixed_format_bits    := fixed_format_bits    + Count_type(default_dis_bl(i) + extra) * c;
+        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.dis(i).length + extra) * c;
+        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.dis(i).length + extra) * c;
+      end loop;
+      --  Supplemental bits to be counted
+      --
+      stored_format_bits:= stored_format_bits +
+        (1 + (stored_format_bits / 8) / 65_535)  --  Number of stored blocks needed
+        * 5  -- 5 bytes per header
+        * 8; -- ... converted into bits
+      --
+      c:= 1;  --  Is-last-block flag
+      if block_to_finish and last_block_type in fixed .. dynamic then
+        c:= c + Count_type(curr_descr.lit_len(End_Of_Block).length);
+      end if;
+      stored_format_bits  := stored_format_bits + c;
+      fixed_format_bits   := fixed_format_bits + c + 2;
+      dynamic_format_bits := dynamic_format_bits + c + 2;
+      Put_compression_structure(new_descr, cost_analysis => True, bits => dynamic_format_bits);
+    end Compute_sizes_of_variants;
+    --
   begin
     Get_statistics(lzb, stats_lit_len, stats_dis);
     new_descr:= Build_descriptors(stats_lit_len, stats_dis);
+    stored_format_possible:= stats_lit_len(Long_length_codes) = zero_bl_long_lengths;
+    recycling_possible:=
+      (  last_block_type = fixed
+             or else
+         (last_block_type = dynamic and then Recyclable(curr_descr, new_descr))
+      )
+        and then
+      Similar(new_descr, curr_descr, L1, opti_recycle, "Compare to previous, for recycling");
+    --
+    --  Selection stored / fixed / dynamic
+    --
     if Similar(new_descr, random_data_descriptors, L1, opti_random, "Compare to random") and then
        --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0:
-       stats_lit_len(Long_length_codes) = zero_bl_long_lengths
+       stored_format_possible
     then
       if trace then
         Put_Line(log, "### Too random - use ""stored"" block");
       end if;
       Expand_LZ_buffer(lzb, last_block);
-    elsif  (  last_block_type = fixed
-                or else
-             (last_block_type = dynamic and then Recyclable(curr_descr, new_descr))
-           )
-          and then
-            Similar(new_descr, curr_descr, L1, opti_recycle, "Compare to previous, for recycling")
-    then
+    elsif recycling_possible then
       if trace then
-        Put_Line(log, "### Recycle: continue using existing dynamic compression structures");
+        Put_Line(log, "### Recycle: continue using existing Huffman compression structures");
       end if;
       Put_LZ_buffer(lzb);
     elsif   lzb'Length < opti_size_fix  --  Very small block
