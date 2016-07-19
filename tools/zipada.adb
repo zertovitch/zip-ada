@@ -239,6 +239,7 @@ procedure ZipAda is
         end if;
       end if;
       Put_Line("Creating archive " & arg_zip);
+      Put_Line("Method: " & Compression_Method'Image(method));
       T0:= Clock;
       Create(Info, MyStream'Unchecked_Access, arg_zip, method, Zip.error_on_duplicate);
     else -- First real argument has already been used for archive's name

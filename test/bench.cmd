@@ -47,9 +47,10 @@ cd ..
 rem Wrapping it all - update archive with all archives 
 rem Funnily, upon zipping bench_matrix_*.zip, level 1-8 stores everything, but level 9 deflates to 26% !
 
-zip -9 all_bench_%1 bench_%1_*.zip
+zip -9 all_bench_%1.zip bench_%1_*.zip
 dir bench_%1_*.zip
 del bench_%1_*.zip
+unzip -l all_bench_%1.zip
 
 goto fin
 

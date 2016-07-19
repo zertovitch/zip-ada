@@ -9,9 +9,6 @@
 --    - Taillaule: try L_sup distance
 --    - Taillaule: restrict BL_Vector to short LZ distances (long distances perhaps too random)
 --    - Taillaule: check LZ distances on literals only, too (consider distances & lengths as noise)
---    - Taillaule: add (with an OR condition) the criteria of trees.c for selecting
---        "fixed" or stored block; it is using the exact byte counts of each variant,
---        see flush_block in trees.c.
 --    - Taillaule: use a corpus of files badly compressed by our Deflate comparatively
 --        to other Deflates (e.g. 7Z seems better with databases)
 --    - Add DeflOpt to slowest method, or approximate it by tweaking
@@ -319,16 +316,6 @@ is
 
   End_Of_Block: constant:= 256;
 
-  random_data_lit_len: constant Stats_lit_len_type:=
-    (0 .. 255     => 30000,
-     End_Of_Block => 1,
-     others       => 0);  --  No length code used, because no repeated slice, because random
-  random_data_dis: constant Stats_dis_type:=
-    (others => 0);  --  No distance code used, because no repeated slice, because random
-
-  random_data_descriptors: constant Deflate_Huff_descriptors:=
-    Build_descriptors( random_data_lit_len, random_data_dis);
-
   --  Here is the original part in the Taillaule algorithm: use of basic
   --  topology (L1, L2 distances) to check similarities between Huffman code sets.
 
@@ -607,7 +594,7 @@ is
       end if;
     end loop;
     if cost_analysis then
-      bits:= bits + 14 + (1 + Count_type(a_non_zero)) * 3;
+      bits:= bits + 14 + Count_type(1 + a_non_zero) * 3;
       for a in Alphabet loop
         bits:= bits + Count_type(truc_freq(a) * truc_bl(a));
       end loop;
@@ -1057,11 +1044,6 @@ is
       Put_LZ_buffer(lzb);
       last_block_type:= dynamic;
     end Send_dynamic_block;
-    -- *Tuned* thresholds
-    opti_random    : constant:= 333;
-    opti_recycle   : constant:= 62;
-    opti_fix       : constant:= 230;
-    opti_size_fix  : constant:= 111;
     --
     stored_format_bits,
     fixed_format_bits,
@@ -1126,38 +1108,42 @@ is
       Put_compression_structure(new_descr, cost_analysis => True, bits => dynamic_format_bits);
     end Compute_sizes_of_variants;
     --
+    optimal_format_bits: Count_type;
   begin
     Get_statistics(lzb, stats_lit_len, stats_dis);
     new_descr:= Build_descriptors(stats_lit_len, stats_dis);
+    --  For "stored" block format, prevent expansion of DL codes with length > max_expand.
+    --  We check stats are all 0:
     stored_format_possible:= stats_lit_len(Long_length_codes) = zero_bl_long_lengths;
     recycling_possible:=
-      (  last_block_type = fixed
-             or else
-         (last_block_type = dynamic and then Recyclable(curr_descr, new_descr))
-      )
-        and then
-      Similar(new_descr, curr_descr, L1, opti_recycle, "Compare to previous, for recycling");
+      last_block_type = fixed
+        or else
+      (last_block_type = dynamic and then Recyclable(curr_descr, new_descr));
+    Compute_sizes_of_variants;
+    if not stored_format_possible then
+      stored_format_bits:= Count_type'Last;
+    end if;
+    if not recycling_possible then
+      recycled_format_bits:= Count_type'Last;
+    end if;
+    optimal_format_bits:= Count_type'Min(
+      Count_type'Min(stored_format_bits, fixed_format_bits),
+      Count_type'Min(dynamic_format_bits, recycled_format_bits)
+    );
     --
-    --  Selection stored / fixed / dynamic
+    --  Selection of block format: stored, recycle, fixed, or dynamic
     --
-    if Similar(new_descr, random_data_descriptors, L1, opti_random, "Compare to random") and then
-       --  Prevent expansion of DL codes with length > max_expand: we check stats are all 0:
-       stored_format_possible
-    then
+    if stored_format_bits = optimal_format_bits then
       if trace then
         Put_Line(log, "### Too random - use ""stored"" block");
       end if;
       Expand_LZ_buffer(lzb, last_block);
-    elsif recycling_possible then
+    elsif recycled_format_bits = optimal_format_bits then
       if trace then
         Put_Line(log, "### Recycle: continue using existing Huffman compression structures");
       end if;
       Put_LZ_buffer(lzb);
-    elsif   lzb'Length < opti_size_fix  --  Very small block
-          or else
-            Similar(new_descr, Deflate_fixed_descriptors, L1, opti_fix,
-              "Compare to ""fixed"" descriptor")
-    then
+    elsif fixed_format_bits  = optimal_format_bits then
       if trace then
         Put_Line(log, "### New ""fixed"" block");
       end if;
