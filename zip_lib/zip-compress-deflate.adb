@@ -1036,7 +1036,7 @@ is
     stats_dis: Stats_dis_type;
     --
     procedure Send_dynamic_block is
-      dummy: Count_type;
+      dummy: Count_type:= 0;
     begin
       Mark_new_block(last_block_for_stream => last_block);
       curr_descr:= Prepare_Huffman_codes(new_descr);
@@ -1117,7 +1117,7 @@ is
     --  We check stats are all 0:
     stored_format_possible:= stats_lit_len(Long_length_codes) = zero_bl_long_lengths;
     recycling_possible:=
-      last_block_type = fixed
+      last_block_type = fixed  --  The "fixed" alphabets use all symbols, then always recyclable.
         or else
       (last_block_type = dynamic and then Recyclable(curr_descr, new_descr));
     Compute_sizes_of_variants;
@@ -1132,33 +1132,29 @@ is
       Count_type'Min(dynamic_format_bits, recycled_format_bits)
     );
     --
-    --  Selection of block format: stored, recycle, fixed, or dynamic
+    --  Selection of the block format with smallest size.
     --
-    if stored_format_bits = optimal_format_bits then
+    if fixed_format_bits = optimal_format_bits then
       if trace then
-        Put_Line(log, "### Too random - use ""stored"" block");
+        Put_Line(log, "### New ""fixed"" block");
       end if;
-      Expand_LZ_buffer(lzb, last_block);
+      Send_fixed_block;
+    elsif dynamic_format_bits = optimal_format_bits then
+      if trace then
+        Put_Line(log, "### New ""dynamic"" block with compression structure header");
+      end if;
+      Send_dynamic_block;
     elsif recycled_format_bits = optimal_format_bits then
       if trace then
         Put_Line(log, "### Recycle: continue using existing Huffman compression structures");
       end if;
       Put_LZ_buffer(lzb);
-    elsif fixed_format_bits  = optimal_format_bits then
+    else  --  We have stored_format_bits = optimal_format_bits
       if trace then
-        Put_Line(log, "### New ""fixed"" block");
+        Put_Line(log, "### Too random - use ""stored"" block");
       end if;
-      Send_fixed_block;
-    else
-      --  We have exhausted all possibilities to avoid sending a new "dynamic"
-      --  header with compression structures. We have to lose some space, but
-      --  it is for saving more space with a better Huffman encoding of data.
-      if trace then
-        Put_Line(log, "### New ""dynamic"" block with own stats");
-      end if;
-      Send_dynamic_block;
+      Expand_LZ_buffer(lzb, last_block);
     end if;
-
   end Send_as_block;
 
   subtype Full_range_LZ_buffer_type is LZ_buffer_type(LZ_buffer_index_type);
