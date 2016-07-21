@@ -18,8 +18,6 @@
 --    - Improve LZ77 compression: see Zip.LZ77 to-do list; check with bypass_LZ77 below
 --        and various programs based on LZ77 using the trace >= some and the LZ77 dump
 --        in UnZip.Decompress.
---    - LZ77 optimizer: for two consecutive LZ codes, try to merge them, or to unbalance them
---        with one having length = 258 (short code without extra bits in Deflate).
 --
 --  Change log:
 --------------
@@ -316,7 +314,7 @@ is
 
   End_Of_Block: constant:= 256;
 
-  --  Here is the original part in the Taillaule algorithm: use of basic
+  --  Here is one original part in the Taillaule algorithm: use of basic
   --  topology (L1, L2 distances) to check similarities between Huffman code sets.
 
   --  Bit length vector. Convention: 16 is unused bit length (close to the bit length for the
@@ -398,16 +396,19 @@ is
     return dist < thres;
   end Similar;
 
+  --  Another original part in the Taillaule algorithm: the possibility of recycling
+  --  Huffman codes. It is possible only if previous block was not stored and if
+  --  the new block's used alphabets are included in the old block's used alphabets.
   function Recyclable(h_old, h_new: Deflate_Huff_descriptors) return Boolean is
   begin
     for i in h_old.lit_len'Range loop
       if h_old.lit_len(i).length = 0 and h_new.lit_len(i).length > 0 then
-        return False;  --  Code used in new but not in old
+        return False;  --  Code used in new, but not in old
       end if;
     end loop;
     for i in h_old.dis'Range loop
       if h_old.dis(i).length = 0 and h_new.dis(i).length > 0 then
-        return False;  --  Code used in new but not in old
+        return False;  --  Code used in new, but not in old
       end if;
     end loop;
     return True;

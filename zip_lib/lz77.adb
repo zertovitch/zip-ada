@@ -18,8 +18,6 @@
 --        values needing less extra bits (may not work at all...)
 --    - LZ77 / IZ: tune TOO_FAR (max: 32767), see http://optipng.sf.net/pngtech/too_far.html
 --        "TOO_FAR in zlib Is Not Too Far" for discussion
---    - LZ77 (for Deflate): try to get > 258 lengths and split into 258 + something.
---        Length 258 is encoded with no extra bit, could be good...
 --    - LZ77: try yet another LZ77, e.g. from 7-Zip, or program a new one with
 --        hash chains etc.
 
