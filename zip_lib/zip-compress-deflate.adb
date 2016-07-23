@@ -188,8 +188,8 @@ is
   subtype Huffman_code_range is Integer range invalid .. Integer'Last;
 
   type Length_code_pair is record
-    length : Natural;                       --  Huffman code length, in bits
-    code   : Huffman_code_range:= invalid;  --  The code itself
+    bit_length : Natural;                       --  Huffman code length, in bits
+    code       : Huffman_code_range:= invalid;  --  The code itself
   end record;
 
   procedure Invert(lc: in out Length_code_pair) is
@@ -197,7 +197,7 @@ is
     a: Natural:= lc.code;
     b: Natural:= 0;
   begin
-    for i in 1..lc.length loop
+    for i in 1..lc.bit_length loop
       b:= b * 2 + a mod 2;
       a:= a / 2;
     end loop;
@@ -246,13 +246,13 @@ is
     new_d: Deflate_Huff_descriptors;
   begin
     for i in new_d.lit_len'Range loop
-      new_d.lit_len(i):= (length => bl_for_lit_len(i), code => invalid);
+      new_d.lit_len(i):= (bit_length => bl_for_lit_len(i), code => invalid);
       if trace and then Is_Open(log) then
         Put(log, Integer'Image(bl_for_lit_len(i)) & sep);
       end if;
     end loop;
     for i in new_d.dis'Range loop
-      new_d.dis(i):= (length => bl_for_dis(i), code => invalid);
+      new_d.dis(i):= (bit_length => bl_for_dis(i), code => invalid);
       if trace and then Is_Open(log) then
         Put(log, Integer'Image(bl_for_dis(i)) & sep);
       end if;
@@ -327,18 +327,18 @@ is
     j: Positive:= 1;
   begin
     for i in h.lit_len'Range loop
-      if h.lit_len(i).length = 0 then
+      if h.lit_len(i).bit_length = 0 then
         bv(j):= 16;
       else
-        bv(j):= h.lit_len(i).length;
+        bv(j):= h.lit_len(i).bit_length;
       end if;
       j:= j + 1;
     end loop;
     for i in h.dis'Range loop
-      if h.dis(i).length = 0 then
+      if h.dis(i).bit_length = 0 then
         bv(j):= 16;
       else
-        bv(j):= h.dis(i).length;
+        bv(j):= h.dis(i).bit_length;
       end if;
       j:= j + 1;
     end loop;
@@ -402,12 +402,12 @@ is
   function Recyclable(h_old, h_new: Deflate_Huff_descriptors) return Boolean is
   begin
     for i in h_old.lit_len'Range loop
-      if h_old.lit_len(i).length = 0 and h_new.lit_len(i).length > 0 then
+      if h_old.lit_len(i).bit_length = 0 and h_new.lit_len(i).bit_length > 0 then
         return False;  --  Code used in new, but not in old
       end if;
     end loop;
     for i in h_old.dis'Range loop
-      if h_old.dis(i).length = 0 and h_new.dis(i).length > 0 then
+      if h_old.dis(i).bit_length = 0 and h_new.dis(i).bit_length > 0 then
         return False;  --  Code used in new, but not in old
       end if;
     end loop;
@@ -425,7 +425,7 @@ is
     --  Algorithm from RFC 1951, section 3.2.2.
     --  Step 1)
     for i in hd'Range loop
-      bl:= hd(i).length;
+      bl:= hd(i).bit_length;
       bl_count(bl):= bl_count(bl) + 1;  --  One more code to be defined with bit length bl
     end loop;
     --  Step 2)
@@ -435,7 +435,7 @@ is
     end loop;
     --  Step 3)
     for n in hd'Range loop
-      bl:= hd(n).length;
+      bl:= hd(n).bit_length;
       if bl > 0 then
         hd(n).code:= next_code(bl);
         next_code(bl):= next_code(bl) + 1;
@@ -468,7 +468,7 @@ is
     --  will trigger the build of a code length of 1 or more.
     Put_code(
       code      => U32(lc.code),
-      code_size => Code_size_type(lc.length)  --  Range check for length 0 (if enabled).
+      code_size => Code_size_type(lc.bit_length)  --  Range check for length 0 (if enabled).
     );
   end Put_Huffman_code;
 
@@ -514,13 +514,13 @@ is
     begin
       if mode = simulate then
         for a in reverse Alphabet_lit_len loop
-          if dhd.lit_len(a).length > 0 then
+          if dhd.lit_len(a).bit_length > 0 then
             max_used_lln_code:= a;
             exit;
           end if;
         end loop;
         for a in reverse Alphabet_dis loop
-          if dhd.dis(a).length > 0 then
+          if dhd.dis(a).bit_length > 0 then
             max_used_dis_code:= a;
             exit;
           end if;
@@ -529,11 +529,11 @@ is
       --  Copy bit lengths for both trees into one array
       for a in 0..max_used_lln_code loop
         idx:= idx + 1;
-        cs_bl(idx):= dhd.lit_len(a).length;
+        cs_bl(idx):= dhd.lit_len(a).bit_length;
       end loop;
       for a in 0..max_used_dis_code loop
         idx:= idx + 1;
-        cs_bl(idx):= dhd.dis(a).length;
+        cs_bl(idx):= dhd.dis(a).bit_length;
       end loop;
       last_cs_bl:= idx;
       --  Emit the bit lengths, with some RLE encoding (Appnote: 5.5.3; RFC 1951: 3.2.7)
@@ -602,7 +602,7 @@ is
       return;
     end if;
     for a in Alphabet loop
-      truc(a).length:= truc_bl(a);
+      truc(a).bit_length:= truc_bl(a);
     end loop;
     Prepare_Huffman_codes(truc);
     --  Output of the compression structure
@@ -612,7 +612,7 @@ is
     --  Save the local alphabet's Huffman lengths. It's the compression structure
     --  for compressing the data compression structure. Easy, isn't it ?
     for a in 0..a_non_zero loop
-      Put_code(U32(truc(bit_order_for_dynamic_block(a)).length), 3);
+      Put_code(U32(truc(bit_order_for_dynamic_block(a)).bit_length), 3);
     end loop;
     --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
     Emit_data_compression_structures(effective);
@@ -1062,8 +1062,8 @@ is
         c:= stats_lit_len(i);  --  This literal appears c times in the LZ buffer
         stored_format_bits   := stored_format_bits   + 8 * c;
         fixed_format_bits    := fixed_format_bits    + Count_type(default_lit_len_bl(i)) * c;
-        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).length) * c;
-        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).length) * c;
+        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).bit_length) * c;
+        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).bit_length) * c;
       end loop;
       --  We count bits taken by DL codes.
       if stored_format_possible then
@@ -1082,15 +1082,15 @@ is
         c:= stats_lit_len(i);  --  This length code appears c times in the LZ buffer
         extra:= extra_bits_for_lz_length_code(i);
         fixed_format_bits    := fixed_format_bits    + Count_type(default_lit_len_bl(i) + extra) * c;
-        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).length + extra) * c;
-        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).length + extra) * c;
+        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).bit_length + extra) * c;
+        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).bit_length + extra) * c;
       end loop;
       for i in 0 .. 29 loop
         c:= stats_dis(i);  --  This distance code appears c times in the LZ buffer
         extra:= extra_bits_for_lz_distance_code(i);
         fixed_format_bits    := fixed_format_bits    + Count_type(default_dis_bl(i) + extra) * c;
-        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.dis(i).length + extra) * c;
-        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.dis(i).length + extra) * c;
+        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.dis(i).bit_length + extra) * c;
+        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.dis(i).bit_length + extra) * c;
       end loop;
       --  Supplemental bits to be counted
       --
@@ -1101,7 +1101,7 @@ is
       --
       c:= 1;  --  Is-last-block flag
       if block_to_finish and last_block_type in fixed .. dynamic then
-        c:= c + Count_type(curr_descr.lit_len(End_Of_Block).length);
+        c:= c + Count_type(curr_descr.lit_len(End_Of_Block).bit_length);
       end if;
       stored_format_bits  := stored_format_bits + c;
       fixed_format_bits   := fixed_format_bits + c + 2;
