@@ -266,6 +266,97 @@ is
   type Count_type is range 0..File_size_type'Last/2-1;
   type Stats_type is array(Natural range <>) of Count_type;
 
+  --  The following is a translation of Zopfli's OptimizeHuffmanForRle (v. 11-May-2016).
+  --  Possible gain: shorten the compression header with the Huffman trees' bit lengths.
+  --  Possible loss: since the stats do not correspond anymore exactly to the data
+  --  to be compressed, the Huffman trees might be suboptimal.
+  --
+  --  Zopfli comment:
+  --  Changes the population counts in a way that the consequent Huffman tree
+  --  compression, especially its rle-part, will be more likely to compress this data
+  --  more efficiently.
+  --
+  procedure Tweak_for_better_RLE(counts: in out Stats_type) is
+    length: Integer:= counts'Length;
+    stride: Integer;
+    symbol, sum, limit, count: Count_type;
+    good_for_rle: array(counts'Range) of Boolean:= (others => False);
+  begin
+    --  1) We don't want to touch the trailing zeros. We may break the
+    --     rules of the format by adding more data in the distance codes.
+    loop
+      if length = 0 then
+        return;
+      end if;
+      exit when counts(length - 1) /= 0;
+      length:= length - 1;
+    end loop;
+    --  Now counts[0..length - 1] does not have trailing zeros.
+    --
+    --  2) Let's mark all population counts that already can be encoded with an rle code.
+    --
+    --  Let's not spoil any of the existing good rle codes.
+    --  Mark any seq of 0's that is longer than 5 as a good_for_rle.
+    --  Mark any seq of non-0's that is longer than 7 as a good_for_rle.
+    symbol := counts(0);
+    stride := 0;
+    for i in 0 .. length loop
+      if i = length or else counts(i) /= symbol then
+        if (symbol = 0 and then stride >= 5) or else (symbol /= 0 and then stride >= 7) then
+          for k in 0 .. stride - 1 loop
+            good_for_rle(i - k - 1) := True;
+          end loop;
+        end if;
+        stride := 1;
+        if i /= length then
+          symbol := counts(i);
+        end if;
+      else
+        stride:= stride + 1;
+      end if;
+    end loop;
+
+    --  3) Let's replace those population counts that lead to more rle codes.
+    stride := 0;
+    limit := counts(0);
+    sum := 0;
+    for i in 0 .. length loop
+      if i = length or else good_for_rle(i)
+          --  Heuristic for selecting the stride ranges to collapse.
+          or else abs(counts(i) - limit) >= 4
+        then
+          if stride >= 4 or else (stride >= 3 and then sum = 0) then
+            --  The stride must end, collapse what we have, if we have enough (4).
+            count := Count_type'Max(1, (sum + Count_type(stride) / 2) / Count_type(stride));
+            if sum = 0 then
+              --  Don't make an all zeros stride to be upgraded to ones.
+            count := 0;
+            end if;
+            for k in 0 .. stride - 1 loop
+              --  We don't want to change value at counts[i],
+              --  that is already belonging to the next stride. Thus - 1.
+              counts(i - k - 1) := count;
+            end loop;
+          end if;
+          stride := 0;
+          sum := 0;
+          if i < length - 3 then
+            --  All interesting strides have a count of at least 4, at least when non-zeros.
+            limit := (counts(i) + counts(i + 1) +
+                      counts(i + 2) + counts(i + 3) + 2) / 4;
+          elsif i < length then
+            limit := counts(i);
+          else
+            limit := 0;
+          end if;
+      end if;
+      stride := stride + 1;
+      if i /= length then
+        sum := sum + counts(i);
+      end if;
+    end loop;
+  end Tweak_for_better_RLE;
+
   subtype Stats_lit_len_type is Stats_type(Alphabet_lit_len);
   subtype Stats_dis_type is Stats_type(Alphabet_dis);
 
@@ -311,8 +402,6 @@ is
     LLHCL_dis(stats_dis_copy, bl_for_dis);         --    up Huffman lengths of both trees
     return Build_descriptors(bl_for_lit_len, bl_for_dis);
   end Build_descriptors;
-
-  End_Of_Block: constant:= 256;
 
   --  Here is one original part in the Taillaule algorithm: use of basic
   --  topology (L1, L2 distances) to check similarities between Huffman code sets.
@@ -617,6 +706,8 @@ is
     --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
     Emit_data_compression_structures(effective);
   end Put_compression_structure;
+
+  End_Of_Block: constant:= 256;
 
   --  Default Huffman trees, for "fixed" blocks, as defined in appnote.txt or RFC 1951
   default_lit_len_bl: constant Bit_length_array_lit_len:=
@@ -1114,7 +1205,7 @@ is
     Get_statistics(lzb, stats_lit_len, stats_dis);
     new_descr:= Build_descriptors(stats_lit_len, stats_dis);
     --  For "stored" block format, prevent expansion of DL codes with length > max_expand.
-    --  We check stats are all 0:
+    --  We check stats are all 0 for long length codes:
     stored_format_possible:= stats_lit_len(Long_length_codes) = zero_bl_long_lengths;
     recycling_possible:=
       last_block_type = fixed  --  The "fixed" alphabets use all symbols, then always recyclable.
