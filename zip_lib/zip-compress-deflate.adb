@@ -291,7 +291,7 @@ is
       exit when counts(length - 1) /= 0;
       length:= length - 1;
     end loop;
-    --  Now counts[0..length - 1] does not have trailing zeros.
+    --  Now counts(0..length - 1) does not have trailing zeros.
     --
     --  2) Let's mark all population counts that already can be encoded with an rle code.
     --
@@ -315,7 +315,6 @@ is
         stride:= stride + 1;
       end if;
     end loop;
-
     --  3) Let's replace those population counts that lead to more rle codes.
     stride := 0;
     limit := counts(0);
@@ -324,31 +323,31 @@ is
       if i = length or else good_for_rle(i)
           --  Heuristic for selecting the stride ranges to collapse.
           or else abs(counts(i) - limit) >= 4
-        then
-          if stride >= 4 or else (stride >= 3 and then sum = 0) then
-            --  The stride must end, collapse what we have, if we have enough (4).
-            count := Count_type'Max(1, (sum + Count_type(stride) / 2) / Count_type(stride));
-            if sum = 0 then
-              --  Don't make an all zeros stride to be upgraded to ones.
+      then
+        if stride >= 4 or else (stride >= 3 and then sum = 0) then
+          --  The stride must end, collapse what we have, if we have enough (4).
+          count := Count_type'Max(1, (sum + Count_type(stride) / 2) / Count_type(stride));
+          if sum = 0 then
+            --  Don't make an all zeros stride to be upgraded to ones.
             count := 0;
-            end if;
-            for k in 0 .. stride - 1 loop
-              --  We don't want to change value at counts[i],
-              --  that is already belonging to the next stride. Thus - 1.
-              counts(i - k - 1) := count;
-            end loop;
           end if;
-          stride := 0;
-          sum := 0;
-          if i < length - 3 then
-            --  All interesting strides have a count of at least 4, at least when non-zeros.
-            limit := (counts(i) + counts(i + 1) +
-                      counts(i + 2) + counts(i + 3) + 2) / 4;
-          elsif i < length then
-            limit := counts(i);
-          else
-            limit := 0;
-          end if;
+          for k in 0 .. stride - 1 loop
+            --  We don't want to change value at counts(i),
+            --  that is already belonging to the next stride. Thus - 1.
+            counts(i - k - 1) := count;
+          end loop;
+        end if;
+        stride := 0;
+        sum := 0;
+        if i < length - 3 then
+          --  All interesting strides have a count of at least 4, at least when non-zeros.
+          limit := (counts(i) + counts(i + 1) +
+                    counts(i + 2) + counts(i + 3) + 2) / 4;
+        elsif i < length then
+          limit := counts(i);
+        else
+          limit := 0;
+        end if;
       end if;
       stride := stride + 1;
       if i /= length then
@@ -1106,7 +1105,7 @@ is
   --    or  * a new "stored" block, if lz data are too random
 
   procedure Send_as_block(lzb: LZ_buffer_type; last_block: Boolean) is
-    new_descr: Deflate_Huff_descriptors;
+    new_descr, new_descr_2: Deflate_Huff_descriptors;
     --
     procedure Send_fixed_block is
     begin
@@ -1123,14 +1122,14 @@ is
       Put_LZ_buffer(lzb);
     end Send_fixed_block;
     --
-    stats_lit_len: Stats_lit_len_type;
-    stats_dis: Stats_dis_type;
+    stats_lit_len, stats_lit_len_2: Stats_lit_len_type;
+    stats_dis, stats_dis_2: Stats_dis_type;
     --
-    procedure Send_dynamic_block is
+    procedure Send_dynamic_block(dyn: Deflate_Huff_descriptors) is
       dummy: Count_type:= 0;
     begin
       Mark_new_block(last_block_for_stream => last_block);
-      curr_descr:= Prepare_Huffman_codes(new_descr);
+      curr_descr:= Prepare_Huffman_codes(dyn);
       Put_code(code => 2, code_size => 2);  --  Signals a "dynamic" block
       Put_compression_structure(curr_descr, cost_analysis => False, bits => dummy);
       Put_LZ_buffer(lzb);
@@ -1140,6 +1139,7 @@ is
     stored_format_bits,
     fixed_format_bits,
     dynamic_format_bits,
+    dynamic_format_bits_2,
     recycled_format_bits: Count_type:= 0;
     stored_format_possible: Boolean;
     recycling_possible: Boolean;  --  Can we recycle current Huffman codes ?
@@ -1151,10 +1151,11 @@ is
       --  We count bits taken by literals, for each block format variant.
       for i in 0 .. 255 loop
         c:= stats_lit_len(i);  --  This literal appears c times in the LZ buffer
-        stored_format_bits   := stored_format_bits   + 8 * c;
-        fixed_format_bits    := fixed_format_bits    + Count_type(default_lit_len_bl(i)) * c;
-        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).bit_length) * c;
-        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).bit_length) * c;
+        stored_format_bits    := stored_format_bits    + 8 * c;
+        fixed_format_bits     := fixed_format_bits     + Count_type(default_lit_len_bl(i)) * c;
+        dynamic_format_bits   := dynamic_format_bits   + Count_type(new_descr.lit_len(i).bit_length) * c;
+        dynamic_format_bits_2 := dynamic_format_bits_2 + Count_type(new_descr_2.lit_len(i).bit_length) * c;
+        recycled_format_bits  := recycled_format_bits  + Count_type(curr_descr.lit_len(i).bit_length) * c;
       end loop;
       --  We count bits taken by DL codes.
       if stored_format_possible then
@@ -1172,16 +1173,18 @@ is
       for i in 257 .. 285 loop
         c:= stats_lit_len(i);  --  This length code appears c times in the LZ buffer
         extra:= extra_bits_for_lz_length_code(i);
-        fixed_format_bits    := fixed_format_bits    + Count_type(default_lit_len_bl(i) + extra) * c;
-        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.lit_len(i).bit_length + extra) * c;
-        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.lit_len(i).bit_length + extra) * c;
+        fixed_format_bits     := fixed_format_bits     + Count_type(default_lit_len_bl(i) + extra) * c;
+        dynamic_format_bits   := dynamic_format_bits   + Count_type(new_descr.lit_len(i).bit_length + extra) * c;
+        dynamic_format_bits_2 := dynamic_format_bits_2 + Count_type(new_descr_2.lit_len(i).bit_length + extra) * c;
+        recycled_format_bits  := recycled_format_bits  + Count_type(curr_descr.lit_len(i).bit_length + extra) * c;
       end loop;
       for i in 0 .. 29 loop
         c:= stats_dis(i);  --  This distance code appears c times in the LZ buffer
         extra:= extra_bits_for_lz_distance_code(i);
-        fixed_format_bits    := fixed_format_bits    + Count_type(default_dis_bl(i) + extra) * c;
-        dynamic_format_bits  := dynamic_format_bits  + Count_type(new_descr.dis(i).bit_length + extra) * c;
-        recycled_format_bits := recycled_format_bits + Count_type(curr_descr.dis(i).bit_length + extra) * c;
+        fixed_format_bits     := fixed_format_bits     + Count_type(default_dis_bl(i) + extra) * c;
+        dynamic_format_bits   := dynamic_format_bits   + Count_type(new_descr.dis(i).bit_length + extra) * c;
+        dynamic_format_bits_2 := dynamic_format_bits_2 + Count_type(new_descr_2.dis(i).bit_length + extra) * c;
+        recycled_format_bits  := recycled_format_bits  + Count_type(curr_descr.dis(i).bit_length + extra) * c;
       end loop;
       --  Supplemental bits to be counted
       --
@@ -1194,16 +1197,23 @@ is
       if block_to_finish and last_block_type in fixed .. dynamic then
         c:= c + Count_type(curr_descr.lit_len(End_Of_Block).bit_length);
       end if;
-      stored_format_bits  := stored_format_bits + c;
-      fixed_format_bits   := fixed_format_bits + c + 2;
-      dynamic_format_bits := dynamic_format_bits + c + 2;
-      Put_compression_structure(new_descr, cost_analysis => True, bits => dynamic_format_bits);
+      stored_format_bits    := stored_format_bits + c;
+      fixed_format_bits     := fixed_format_bits + c + 2;
+      dynamic_format_bits   := dynamic_format_bits + c + 2;
+      dynamic_format_bits_2 := dynamic_format_bits_2 + c + 2;
+      Put_compression_structure(new_descr,   cost_analysis => True, bits => dynamic_format_bits);
+      Put_compression_structure(new_descr_2, cost_analysis => True, bits => dynamic_format_bits_2);
     end Compute_sizes_of_variants;
     --
     optimal_format_bits: Count_type;
   begin
     Get_statistics(lzb, stats_lit_len, stats_dis);
     new_descr:= Build_descriptors(stats_lit_len, stats_dis);
+    stats_lit_len_2:= stats_lit_len;
+    stats_dis_2:= stats_dis;
+    Tweak_for_better_RLE(stats_lit_len_2);
+    Tweak_for_better_RLE(stats_dis_2);
+    new_descr_2:= Build_descriptors(stats_lit_len_2, stats_dis_2);
     --  For "stored" block format, prevent expansion of DL codes with length > max_expand.
     --  We check stats are all 0 for long length codes:
     stored_format_possible:= stats_lit_len(Long_length_codes) = zero_bl_long_lengths;
@@ -1220,7 +1230,9 @@ is
     end if;
     optimal_format_bits:= Count_type'Min(
       Count_type'Min(stored_format_bits, fixed_format_bits),
-      Count_type'Min(dynamic_format_bits, recycled_format_bits)
+      Count_type'Min(
+        Count_type'Min(dynamic_format_bits, dynamic_format_bits_2),
+        recycled_format_bits)
     );
     --
     --  Selection of the block format with smallest size.
@@ -1234,7 +1246,12 @@ is
       if trace then
         Put_Line(log, "### New ""dynamic"" block with compression structure header");
       end if;
-      Send_dynamic_block;
+      Send_dynamic_block(new_descr);
+    elsif dynamic_format_bits_2 = optimal_format_bits then
+      if trace then
+        Put_Line(log, "### New ""dynamic"" block, RLE-tweaked, with compression structure header");
+      end if;
+      Send_dynamic_block(new_descr_2);
     elsif recycled_format_bits = optimal_format_bits then
       if trace then
         Put_Line(log, "### Recycle: continue using existing Huffman compression structures");
