@@ -5,8 +5,8 @@
 project ZipAda is
 
    type Build_Mode_Type is
-      ("Debug", "Optimize", "Profiling");
-   Build_Mode : Build_Mode_Type := external ("Build_Mode", "Optimize");
+      ("Debug", "Fast", "Profiling");
+   Build_Mode : Build_Mode_Type := external ("Build_Mode", "Fast");
    for Source_Dirs use (".", "zip_lib", "test", "extras", "tools", "demo");
    for Exec_Dir use ".";
    for Main use (
@@ -40,7 +40,7 @@ project ZipAda is
       when "Debug" =>
          for Object_Dir use "obj_dbg";
 
-      when "Optimize" =>
+      when "Fast" =>
          for Object_Dir use "obj_opt";
 
       when "Profiling" =>
@@ -54,7 +54,7 @@ project ZipAda is
          when "Debug" =>
             for Default_Switches ("ada") use ("-E");
 
-         when "Optimize" =>
+         when "Fast" =>
 
          when "Profiling" =>
 
@@ -68,7 +68,7 @@ project ZipAda is
          when "Debug" =>
             for Default_Switches ("ada") use ("-g");
 
-         when "Optimize" =>
+         when "Fast" =>
             for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections");
 
          when "Profiling" =>
@@ -91,7 +91,7 @@ project ZipAda is
               "-gnatec../debug.pra"
               );
 
-         when "Optimize" =>
+         when "Fast" =>
             for Default_Switches ("ada") use (
               "-gnat05", "-O2", "-gnatp", "-gnatn", 
               "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", 

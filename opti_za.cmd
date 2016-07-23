@@ -9,5 +9,5 @@ copy /b extras\lib*.a obj_opt
 
 :skip_md
 
-set gnatoptions_87312863=Optimize
+set gnatoptions_87312863=Fast
 call make_za %1
