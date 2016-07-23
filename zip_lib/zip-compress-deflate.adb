@@ -267,7 +267,7 @@ is
   type Stats_type is array(Natural range <>) of Count_type;
 
   --  The following is a translation of Zopfli's OptimizeHuffmanForRle (v. 11-May-2016).
-  --  Possible gain: shorten the compression header with the Huffman trees' bit lengths.
+  --  Possible gain: shorten the compression header containing the Huffman trees' bit lengths.
   --  Possible loss: since the stats do not correspond anymore exactly to the data
   --  to be compressed, the Huffman trees might be suboptimal.
   --
@@ -279,7 +279,7 @@ is
   procedure Tweak_for_better_RLE(counts: in out Stats_type) is
     length: Integer:= counts'Length;
     stride: Integer;
-    symbol, sum, limit, count: Count_type;
+    symbol, sum, limit, new_count: Count_type;
     good_for_rle: array(counts'Range) of Boolean:= (others => False);
   begin
     --  1) We don't want to touch the trailing zeros. We may break the
@@ -326,23 +326,24 @@ is
       then
         if stride >= 4 or else (stride >= 3 and then sum = 0) then
           --  The stride must end, collapse what we have, if we have enough (4).
-          count := Count_type'Max(1, (sum + Count_type(stride) / 2) / Count_type(stride));
+          --  GdM: new_count is the average of counts on the stride's interval, upper-rounded.
+          new_count := Count_type'Max(1, (sum + Count_type(stride) / 2) / Count_type(stride));
           if sum = 0 then
             --  Don't make an all zeros stride to be upgraded to ones.
-            count := 0;
+            new_count := 0;
           end if;
           for k in 0 .. stride - 1 loop
             --  We don't want to change value at counts(i),
             --  that is already belonging to the next stride. Thus - 1.
-            counts(i - k - 1) := count;
+            counts(i - k - 1) := new_count;  --  GdM: Replace histogram value by averaged value.
           end loop;
         end if;
         stride := 0;
         sum := 0;
         if i < length - 3 then
           --  All interesting strides have a count of at least 4, at least when non-zeros.
-          limit := (counts(i) + counts(i + 1) +
-                    counts(i + 2) + counts(i + 3) + 2) / 4;
+          --  GdM: limit is the average of next 4 counts, upper-rounded.
+          limit := (counts(i) + counts(i + 1) + counts(i + 2) + counts(i + 3) + 2) / 4;
         elsif i < length then
           limit := counts(i);
         else
