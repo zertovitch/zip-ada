@@ -1287,9 +1287,8 @@ is
   --  If the optimal Huffman encoding for this portion is very different, we choose to
   --  cut current block and start a new one. The shorter the step, the higher the threshold
   --  for starting a dynamic block, since the compression header is taking some room each time.
-  --  !! TBD: differentiate dynamic vs fixed & stored cases, with a different threshold.
 
-  --  *Tuned*
+  --  *Tuned* (a bit...)
   min_step: constant:= 750;
 
   type Step_threshold_metric is record
@@ -1298,11 +1297,12 @@ is
     metric            : Distance_type;
   end record;
 
+  --  *Tuned* thresholds
   step_choice: constant array(Positive range <>) of Step_threshold_metric:=
-    ( ( 6000,  465, L1),
-      ( 3000,  470, L1),  --  Deflate_2, Deflate_3
-      ( 1500, 2300, L1),  --  Deflate_3 only
-      (  750, 2400, L1)   --  Deflate_3 only
+    ( ( 8 * min_step,  465, L1),  --  Deflate_1, Deflate_2, Deflate_3
+      ( 4 * min_step,  470, L1),  --             Deflate_2, Deflate_3
+      ( 2 * min_step, 2300, L1),  --                        Deflate_3
+      (     min_step, 2400, L1)   --                        Deflate_3
     );
 
   max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
