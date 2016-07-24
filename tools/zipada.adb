@@ -103,7 +103,7 @@ procedure ZipAda is
 
   use Zip.Compress;
 
-  method: Compression_Method:= Shrink;
+  method: Compression_Method:= Deflate_1;
   zip_name_set: Boolean:= False;
 
   procedure Zip_a_file(arg: String) is
@@ -277,10 +277,11 @@ begin
   else
     Put_Line("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
-    Put_Line("options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
-    Put_Line("          -es    : ""shrink"" (LZW algorithm, default)");
-    Put_Line("          -edf   : ""deflate"", with one fixed block");
+    Put_Line("Options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
+    Put_Line("          -es    : ""shrink"" (LZW algorithm)");
+    Put_Line("          -edf   : ""deflate"", with one ""fixed"" block");
     Put_Line("          -edN   : ""deflate"", ""dynamic"" compression, strength N=1..3");
+    Put_Line("                   NB: default method is ""deflate"", strength 1 (-ed1)");
     Put_Line("          -dir   : name(s) may be also directories,");
     Put_Line("                      whose contents will be archived");
     Put_Line("          -r     : same as ""-dir"", but recursive");
