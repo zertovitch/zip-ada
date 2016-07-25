@@ -321,6 +321,7 @@ is
     sum := 0;
     for i in 0 .. length loop
       if i = length or else good_for_rle(i)
+          or else (i > 0 and then good_for_rle(i - 1))  --  Added from Brotli, item #1
           --  Heuristic for selecting the stride ranges to collapse.
           or else abs(counts(i) - limit) >= 4
       then
