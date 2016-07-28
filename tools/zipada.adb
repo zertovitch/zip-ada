@@ -281,7 +281,9 @@ begin
     Put_Line("          -es    : ""shrink"" (LZW algorithm)");
     Put_Line("          -edf   : ""deflate"", with one ""fixed"" block");
     Put_Line("          -edN   : ""deflate"", ""dynamic"" compression, strength N=1..3");
-    Put_Line("                   NB: default method is ""deflate"", strength 1 (-ed1)");
+    New_Line;
+    Put_Line("      NB: default method is ""deflate"", strength 1 (-ed1)");
+    New_Line;
     Put_Line("          -dir   : name(s) may be also directories,");
     Put_Line("                      whose contents will be archived");
     Put_Line("          -r     : same as ""-dir"", but recursive");
