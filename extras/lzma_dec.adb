@@ -13,8 +13,9 @@ procedure LZMA_Dec is
 
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
 
-  -- NB: The Byte I/O below is not buffered, so it is very slow.
-  -- You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
+  --  NB: The Byte I/O below is not buffered, so it is very slow.
+  --  You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
+  --  For instance, see the BlockRead in the Zip package for how to do it.
 
   function Read_Byte return Byte is
     b: Byte;
