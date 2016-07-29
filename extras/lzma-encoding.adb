@@ -5,7 +5,7 @@ with LZ77;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Interfaces;                        use Interfaces;
 
-package body LZMA_Encoding is
+package body LZMA.Encoding is
 
   procedure Encode is
 
@@ -43,12 +43,6 @@ package body LZMA_Encoding is
         );
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
-
-    subtype UInt32 is Unsigned_32;
-
-    subtype LC_range is Integer range 0..8;
-    subtype LP_range is Integer range 0..4;
-    subtype PB_range is Integer range 0..4;
 
     LZMA_DIC_MIN : constant := 2 ** 12; -- 4096
 
@@ -89,4 +83,4 @@ package body LZMA_Encoding is
     My_LZ77;
   end Encode;
 
-end LZMA_Encoding;
+end LZMA.Encoding;

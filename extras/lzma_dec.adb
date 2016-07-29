@@ -1,6 +1,6 @@
 -- Standalone, command-line, LZMA Decoder (for .lzma files).
 
-with LZMA_Decoding;
+with LZMA.Decoding;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -29,7 +29,7 @@ procedure LZMA_Dec is
     Byte'Write(Stream(f_out), b);
   end Write_Byte;
 
-  package My_LZMA_Decoding is new LZMA_Decoding(Read_Byte, Write_Byte);
+  package My_LZMA_Decoding is new LZMA.Decoding(Read_Byte, Write_Byte);
   use My_LZMA_Decoding;
 
   procedure Print_Data_Bytes_Count(title: String; v: Data_Bytes_Count) is

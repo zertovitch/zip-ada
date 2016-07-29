@@ -2,7 +2,7 @@
 
 with Interfaces;
 
-package LZMA_Encoding is
+package LZMA.Encoding is
 
   subtype Byte is Interfaces.Unsigned_8;
 
@@ -21,4 +21,4 @@ package LZMA_Encoding is
     --
   procedure Encode;
 
-end LZMA_Encoding;
+end LZMA.Encoding;

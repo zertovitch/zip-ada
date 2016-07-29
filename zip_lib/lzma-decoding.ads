@@ -3,7 +3,7 @@
 -- Based on a translation of LzmaSpec.cpp, the LZMA Reference Decoder, by Igor Pavlov.
 -- Public domain.
 
-with Ada.Direct_IO, Interfaces, System;
+with Ada.Direct_IO, Interfaces;
 
 generic
   -- Input:
@@ -11,7 +11,7 @@ generic
   -- Output:
   with procedure Write_Byte(b: Interfaces.Unsigned_8);
 
-package LZMA_Decoding is
+package LZMA.Decoding is
 
   type LZMA_Result is (
     LZMA_finished_with_marker,
@@ -60,17 +60,6 @@ package LZMA_Decoding is
 
 private
 
-  use Interfaces;
-
-  subtype Byte is Unsigned_8;
-  subtype UInt16 is Unsigned_16;
-  subtype UInt32 is Unsigned_32;
-  type Unsigned is mod 2 ** System.Word_Size;
-
-  subtype LC_range is Integer range 0..8;
-  subtype LP_range is Integer range 0..4;
-  subtype PB_range is Integer range 0..4;
-
   type LZMA_Decoder_Info is record
     unpackSize           : Data_Bytes_Count;
     unpackSize_as_defined: Data_Bytes_Count;
@@ -84,4 +73,4 @@ private
     range_dec_corrupted  : Boolean;
   end record;
 
-end LZMA_Decoding;
+end LZMA.Decoding;

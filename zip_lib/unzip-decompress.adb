@@ -1,4 +1,4 @@
-with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2_Decoding, LZMA_Decoding;
+with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2_Decoding, LZMA.Decoding;
 
 with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
@@ -1809,7 +1809,7 @@ package body UnZip.Decompress is
           UnZ_IO.Flush_if_full(UnZ_Glob.slide_index);
         end Write_Byte;
         --
-        package My_LZMA_Decoding is new LZMA_Decoding(UnZ_IO.Read_byte_decrypted, Write_Byte);
+        package My_LZMA_Decoding is new LZMA.Decoding(UnZ_IO.Read_byte_decrypted, Write_Byte);
         b3, b4: Unsigned_8;
       begin
         b3:= UnZ_IO.Read_byte_decrypted; -- LZMA SDK major version (e.g.: 9)

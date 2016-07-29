@@ -4,7 +4,7 @@
 with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;                    use Ada.Exceptions;
 
-package body LZMA_Decoding is
+package body LZMA.Decoding is
 
   type Byte_buffer is array(UInt32 range <>) of Byte;
   type p_Byte_buffer is access Byte_buffer;
@@ -708,4 +708,4 @@ package body LZMA_Decoding is
     return o.range_dec_corrupted;
   end Range_decoder_corrupted;
 
-end LZMA_Decoding;
+end LZMA.Decoding;

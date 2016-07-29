@@ -4,7 +4,7 @@
 
 -- Standalone, command-line, experimental LZMA encoder (for .lzma files).
 
-with LZMA_Encoding;
+with LZMA.Encoding;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -51,7 +51,7 @@ procedure LZMA_Enc is
     end Put_byte;
 
     procedure LZMA_Encode is
-      new LZMA_Encoding.Encode(LZMA_Encoding.Level_1, Read_byte, More_bytes, Put_byte);
+      new LZMA.Encoding.Encode(LZMA.Encoding.Level_1, Read_byte, More_bytes, Put_byte);
 
     dummy: Byte:= Read_byte;
 
