@@ -51,9 +51,9 @@ package body LZMA.Encoding is
       unpackSizeDefined    : Boolean := False;
       markerIsMandatory    : Boolean := True;
       dictSize             : UInt32  := LZMA_DIC_MIN;
-      lc                   : LC_range:= 3; -- the number of "literal context" bits
-      lp                   : LP_range:= 0; -- the number of "literal pos" bits
-      pb                   : PB_range:= 2; -- the number of "pos" bits
+      lc                   : Literal_context_bits_range:= 3;   --  number of "literal context" bits
+      lp                   : Literal_position_bits_range:= 0;  --  number of "literal pos" bits
+      pb                   : Position_bits_range:= 2;          --  number of "pos" bits
     end record;
 
     lzma_params: LZMA_Params_Info;

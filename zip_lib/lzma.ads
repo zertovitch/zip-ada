@@ -19,8 +19,17 @@ private
   subtype UInt32 is Unsigned_32;
   type Unsigned is mod 2 ** System.Word_Size;
 
-  subtype LC_range is Integer range 0..8;
-  subtype LP_range is Integer range 0..4;
-  subtype PB_range is Integer range 0..4;
+  subtype Literal_context_bits_range is Integer range 0..8;
+  subtype Literal_position_bits_range is Integer range 0..4;
+  subtype Position_bits_range is Integer range 0..4;
+
+  --  Probability model for bit coding
+  ------------------------------------
+
+  Probability_model_bits  : constant:= 11;  --  LZMA specification name: "kNumBitModelTotalBits"
+  Probability_change_bits : constant:= 5;   --  LZMA specification name: "kNumMoveBits"
+  Probability_model_count : constant:= 2 ** Probability_model_bits;
+  --  All proabilities are initialized with p=0.5. LZMA specification name: "PROB_INIT_VAL"
+  Initial_probability : constant := Probability_model_count / 2;
 
 end LZMA;

@@ -42,12 +42,6 @@ package body LZMA.Decoding is
     end if;
   end Init_Range_Decoder;
 
-  kNumBitModelTotalBits : constant:= 11;
-  kNumMoveBits          : constant:= 5;
-  kNumBitModel_Count    : constant:= 2 ** kNumBitModelTotalBits;
-
-  PROB_INIT_VAL : constant := (2 ** kNumBitModelTotalBits) / 2;
-
   subtype CProb is UInt32;
   type CProb_array is array(Unsigned range <>) of CProb;
 
@@ -86,11 +80,11 @@ package body LZMA.Decoding is
 
   procedure Init(o: in out Length_Decoder) is
   begin
-    o.choice     := PROB_INIT_VAL;
-    o.choice_2   := PROB_INIT_VAL;
-    o.high_coder := (others => PROB_INIT_VAL);
-    o.low_coder  := (others => (others => PROB_INIT_VAL));
-    o.mid_coder  := (others => (others => PROB_INIT_VAL));
+    o.choice     := Initial_probability;
+    o.choice_2   := Initial_probability;
+    o.high_coder := (others => Initial_probability);
+    o.low_coder  := (others => (others => Initial_probability));
+    o.mid_coder  := (others => (others => Initial_probability));
   end Init;
 
   LZMA_DIC_MIN : constant := 2 ** 12;
@@ -102,10 +96,10 @@ package body LZMA.Decoding is
       Raise_Exception(LZMA_Error'Identity, "Incorrect LZMA properties");
       -- raise LZMA_Error with "Incorrect LZMA properties"; -- Ada 2005+
     end if;
-    o.lc := LC_range(d mod 9);
+    o.lc := Literal_context_bits_range(d mod 9);
     d := d / 9;
-    o.lp := LP_range(d mod 5);
-    o.pb := PB_range(d / 5);
+    o.lp := Literal_position_bits_range(d mod 5);
+    o.pb := Position_bits_range(d / 5);
     o.dictSizeInProperties := 0;
     for i in 0..3 loop
       o.dictSizeInProperties := o.dictSizeInProperties +
@@ -125,7 +119,7 @@ package body LZMA.Decoding is
     -- Local copies of invariant properties.
     unpack_size_def: constant Boolean:= o.unpackSizeDefined;
     literal_pos_mask: constant UInt32:= 2 ** o.lp - 1;
-    lc: constant LC_range:= o.lc;
+    lc: constant Literal_context_bits_range:= o.lc;
     --
     use type BIO.Count;
     Marker_exit: exception;
@@ -141,20 +135,20 @@ package body LZMA.Decoding is
     Update_State_ShortRep : constant Transition:= (9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11);
     -- Literals:
     subtype Lit_range is Unsigned range 0 .. 16#300# * 2 ** (o.lc + o.lp) - 1;  -- max 3,145,727
-    LitProbs             : CProb_array(Lit_range):= (others => PROB_INIT_VAL);
+    LitProbs             : CProb_array(Lit_range):= (others => Initial_probability);
     -- Distances:
     subtype Pos_dec_range is Unsigned range 0..kNumFullDistances - kEndPosModelIndex;
-    PosSlotDecoder       : Slot_Coder_Probs := (others => (others => PROB_INIT_VAL));
-    AlignDecoder         : Probs_NAB_bits:= (others => PROB_INIT_VAL);
-    PosDecoders          : CProb_array(Pos_dec_range):= (others => PROB_INIT_VAL);
+    PosSlotDecoder       : Slot_Coder_Probs := (others => (others => Initial_probability));
+    AlignDecoder         : Probs_NAB_bits:= (others => Initial_probability);
+    PosDecoders          : CProb_array(Pos_dec_range):= (others => Initial_probability);
     --
     subtype Long_range is Unsigned range 0..kNumStates * kNumPosBitsMax_Count - 1;
-    IsRep                : CProb_array(State_range):= (others => PROB_INIT_VAL);
-    IsRepG0              : CProb_array(State_range):= (others => PROB_INIT_VAL);
-    IsRepG1              : CProb_array(State_range):= (others => PROB_INIT_VAL);
-    IsRepG2              : CProb_array(State_range):= (others => PROB_INIT_VAL);
-    IsRep0Long           : CProb_array(Long_range):= (others => PROB_INIT_VAL);
-    IsMatch              : CProb_array(Long_range):= (others => PROB_INIT_VAL);
+    IsRep                : CProb_array(State_range):= (others => Initial_probability);
+    IsRepG0              : CProb_array(State_range):= (others => Initial_probability);
+    IsRepG1              : CProb_array(State_range):= (others => Initial_probability);
+    IsRepG2              : CProb_array(State_range):= (others => Initial_probability);
+    IsRep0Long           : CProb_array(Long_range):= (others => Initial_probability);
+    IsMatch              : CProb_array(Long_range):= (others => Initial_probability);
     len_decoder          : Length_Decoder;
     rep_len_decoder      : Length_Decoder;
     --
@@ -168,18 +162,20 @@ package body LZMA.Decoding is
       end if;
     end Normalize_Q;
 
-    procedure Decode_Bit_Q(prob: in out CProb; symbol: out Unsigned) is
+    procedure Decode_Bit_Q(prob_io: in out CProb; symbol: out Unsigned) is
     pragma Inline(Decode_Bit_Q);
-      prob_l: constant CProb:= prob; -- Local copy
-      bound: constant UInt32:= Shift_Right(loc_range_dec.range_z, kNumBitModelTotalBits) * prob_l;
+      prob: constant CProb:= prob_io; -- Local copy
+      bound: constant UInt32:= Shift_Right(loc_range_dec.range_z, Probability_model_bits) * prob;
     begin
       if loc_range_dec.code < bound then
-        prob:= prob_l + Shift_Right(kNumBitModel_Count - prob_l, kNumMoveBits);
+        --  Increase probability. In [0;1] it is: prob:= prob + (1 - prob / 2 ** m)
+        prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
         loc_range_dec.range_z := bound;
         Normalize_Q;
         symbol := 0;
       else
-        prob:= prob_l - Shift_Right(prob_l, kNumMoveBits);
+        --  Decrease probability: prob:= prob - prob / 2 ** m = prob:= prob * (1 - 2 ** m)
+        prob_io:= prob - Shift_Right(prob, Probability_change_bits);
         loc_range_dec.code := loc_range_dec.code - bound;
         loc_range_dec.range_z := loc_range_dec.range_z - bound;
         Normalize_Q;
