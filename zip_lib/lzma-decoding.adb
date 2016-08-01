@@ -24,10 +24,12 @@ package body LZMA.Decoding is
   end Create;
 
   type Range_Decoder is record
-    range_z   : UInt32  := 16#FFFF_FFFF#;
+    width     : UInt32  := 16#FFFF_FFFF#;  --  (*)
     code      : UInt32  := 0;
     corrupted : Boolean := False;
   end record;
+  --  (*) called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
+  --      article about range encoding.
 
   procedure Init_Range_Decoder(o: in out Range_Decoder) is
   begin
@@ -37,7 +39,7 @@ package body LZMA.Decoding is
     for i in 0..3 loop
       o.code := Shift_Left(o.code, 8) or UInt32(Read_Byte);
     end loop;
-    if o.code = o.range_z then
+    if o.code = o.width then
       o.corrupted := True;
     end if;
   end Init_Range_Decoder;
@@ -144,12 +146,16 @@ package body LZMA.Decoding is
     len_decoder          : Length_Decoder;
     rep_len_decoder      : Length_Decoder;
     --
+
+    --  This corresponds to G.N.N. Martin's revised algorithm's adding of
+    --  trailing digits - for encoding. Here we decode and know the encoded
+    --  data, brought by Read_Byte.
     procedure Normalize_Q is
     pragma Inline(Normalize_Q);
       kTopValue : constant := 2**24;
     begin
-      if loc_range_dec.range_z < kTopValue then
-        loc_range_dec.range_z := Shift_Left(loc_range_dec.range_z, 8);
+      if loc_range_dec.width < kTopValue then
+        loc_range_dec.width := Shift_Left(loc_range_dec.width, 8);
         loc_range_dec.code  := Shift_Left(loc_range_dec.code, 8) or UInt32(Read_Byte);
       end if;
     end Normalize_Q;
@@ -157,19 +163,24 @@ package body LZMA.Decoding is
     procedure Decode_Bit_Q(prob_io: in out CProb; symbol: out Unsigned) is
     pragma Inline(Decode_Bit_Q);
       prob: constant CProb:= prob_io; -- Local copy
-      bound: constant UInt32:= Shift_Right(loc_range_dec.range_z, Probability_model_bits) * prob;
+      bound: constant UInt32:= Shift_Right(loc_range_dec.width, Probability_model_bits) * prob;
     begin
       if loc_range_dec.code < bound then
-        --  Increase probability. In [0;1] it is: prob:= prob + (1 - prob / 2 ** m)
+        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob / 2 ** m)
         prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
-        loc_range_dec.range_z := bound;
+        --  The new range is [0, bound[.
+        --  Set new width.
+        loc_range_dec.width := bound;
         Normalize_Q;
         symbol := 0;
       else
         --  Decrease probability: prob:= prob - prob / 2 ** m = prob:= prob * (1 - 2 ** m)
         prob_io:= prob - Shift_Right(prob, Probability_change_bits);
-        loc_range_dec.code := loc_range_dec.code - bound;
-        loc_range_dec.range_z := loc_range_dec.range_z - bound;
+        --  The new range is [bound, width[. We shift the code and implicitely
+        --  the range's limits by -bound in order to have a 0 lower limit for the range.
+        loc_range_dec.code  := loc_range_dec.code - bound;
+        --  Set new width.
+        loc_range_dec.width := loc_range_dec.width - bound;
         Normalize_Q;
         symbol := 1;
       end if;
@@ -374,11 +385,11 @@ package body LZMA.Decoding is
         begin
           decode_direct := 0;
           for count in reverse 1..num_bits loop
-            loc_range_dec.range_z := Shift_Right(loc_range_dec.range_z, 1);
-            loc_range_dec.code := loc_range_dec.code - loc_range_dec.range_z;
+            loc_range_dec.width := Shift_Right(loc_range_dec.width, 1);
+            loc_range_dec.code := loc_range_dec.code - loc_range_dec.width;
             t := - Shift_Right(loc_range_dec.code, 31);
-            loc_range_dec.code := loc_range_dec.code + (loc_range_dec.range_z and t);
-            if loc_range_dec.code = loc_range_dec.range_z then
+            loc_range_dec.code := loc_range_dec.code + (loc_range_dec.width and t);
+            if loc_range_dec.code = loc_range_dec.width then
               loc_range_dec.corrupted := True;
             end if;
             Normalize_Q;
