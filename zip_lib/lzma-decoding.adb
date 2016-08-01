@@ -48,7 +48,6 @@ package body LZMA.Decoding is
   kNumPosBitsMax : constant := 4;
   kNumPosBitsMax_Count : constant := 2**kNumPosBitsMax;
 
-  kNumStates          : constant := 12;
   kNumLenToPosStates  : constant := 4;
   kNumAlignBits       : constant := 4;
   kEndPosModelIndex   : constant := 14;
@@ -112,7 +111,6 @@ package body LZMA.Decoding is
   end Decode_Properties;
 
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
-    subtype State_range is Unsigned range 0..kNumStates-1;
     state : State_range := 0;
     rep0, rep1, rep2, rep3 : UInt32 := 0;
     pos_state: State_range;
@@ -127,12 +125,6 @@ package body LZMA.Decoding is
     -- Local range decoder
     loc_range_dec: Range_Decoder;
     --
-    type Transition is array(State_range) of State_range;
-
-    Update_State_Literal  : constant Transition:= (0, 0, 0, 0, 1, 2, 3,  4,  5,  6,  4,  5);
-    Update_State_Match    : constant Transition:= (7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10);
-    Update_State_Rep      : constant Transition:= (8, 8, 8, 8, 8, 8, 8, 11, 11, 11, 11, 11);
-    Update_State_ShortRep : constant Transition:= (9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11);
     -- Literals:
     subtype Lit_range is Unsigned range 0 .. 16#300# * 2 ** (o.lc + o.lp) - 1;  -- max 3,145,727
     LitProbs             : CProb_array(Lit_range):= (others => Initial_probability);
@@ -142,7 +134,7 @@ package body LZMA.Decoding is
     AlignDecoder         : Probs_NAB_bits:= (others => Initial_probability);
     PosDecoders          : CProb_array(Pos_dec_range):= (others => Initial_probability);
     --
-    subtype Long_range is Unsigned range 0..kNumStates * kNumPosBitsMax_Count - 1;
+    subtype Long_range is Unsigned range 0..States_count * kNumPosBitsMax_Count - 1;
     IsRep                : CProb_array(State_range):= (others => Initial_probability);
     IsRepG0              : CProb_array(State_range):= (others => Initial_probability);
     IsRepG1              : CProb_array(State_range):= (others => Initial_probability);

@@ -27,9 +27,24 @@ private
   ------------------------------------
 
   Probability_model_bits  : constant:= 11;  --  LZMA specification name: "kNumBitModelTotalBits"
-  Probability_change_bits : constant:= 5;   --  LZMA specification name: "kNumMoveBits"
   Probability_model_count : constant:= 2 ** Probability_model_bits;
-  --  All proabilities are initialized with p=0.5. LZMA specification name: "PROB_INIT_VAL"
+
+  Probability_change_bits : constant:= 5;   --  LZMA specification name: "kNumMoveBits"
+
+  --  All probabilities are initialized with p=0.5. LZMA specification name: "PROB_INIT_VAL"
   Initial_probability : constant := Probability_model_count / 2;
+
+  --  Finite state machine
+  ------------------------
+
+  States_count : constant := 12;  --  LZMA specification name: "kNumStates"
+  subtype State_range is Unsigned range 0..States_count-1;
+  type Transition is array(State_range) of State_range;
+
+  ------------------------------------ From ...  0  1  2  3  4  5  6   7   8   9  10  11
+  Update_State_Literal  : constant Transition:= (0, 0, 0, 0, 1, 2, 3,  4,  5,  6,  4,  5);
+  Update_State_Match    : constant Transition:= (7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10);
+  Update_State_Rep      : constant Transition:= (8, 8, 8, 8, 8, 8, 8, 11, 11, 11, 11, 11);
+  Update_State_ShortRep : constant Transition:= (9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11);
 
 end LZMA;
