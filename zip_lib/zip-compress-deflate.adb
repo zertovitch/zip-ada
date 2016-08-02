@@ -636,8 +636,8 @@ is
         end loop;
         --  Now rep is the number of repetitions of current atom, including itself.
         if idx > 1 and then cs_bl(idx) = cs_bl(idx-1) and then rep >= 3
-            --  Better repeat a long sequence of zeros with codes 17 or 18
-            --  just after a 138-long previous sequence.
+            --  Better repeat a long sequence of zeros by using codes 17 or 18
+            --  just after a 138-long previous sequence:
           and then not (cs_bl(idx) = 0 and then rep > 6)
         then
           rep:= Integer'Min(rep, 6);
@@ -659,15 +659,19 @@ is
         exit when idx > last_cs_bl;
       end loop;
     end Emit_data_compression_structures;
-    --
-    bit_order_for_dynamic_block : constant array (Alphabet) of Natural :=  --  Permutation
+    --  Alphabet permutation for shortening in-use alphabet.
+    --  After the RLE codes 16, 17, 18 and the bit length 0, which is assumed to be always used,
+    --  the most usual bit lengths (around 8, which is the "neutral" bit length) appear first.
+    --  For example, if the rare bit lengths 1 and 15 don't occur in any of the two Huffman trees
+    --  for LZ data, then 1 and 15 have a length 0 in the local Alphabet and we can omit sending
+    --  the last two lengths.
+    alphabet_permutation : constant array (Alphabet) of Natural :=
        ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
-    --  The most usual bit lengths (around 8, which is the "neutral" bit length) appear first.
-    --  For example, bit lengths 1 and 15 don't occur in any of the two Huffman trees for data,
-    --  then 1 and 15 have a length 0 in the local Alphabet -> omit sending the last two lengths.
     procedure LLHCL is new
       Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
     a_non_zero: Alphabet;
+    extra_bits_needed : constant array (Alphabet) of Natural :=
+       ( 16 => 2, 17 => 3, 18 => 7, others => 0);
   begin
     truc_freq:= (others => 0);
     Emit_data_compression_structures(simulate);
@@ -680,14 +684,14 @@ is
     --  even if all other bit lengths are 0 because codes 1 to 15 are unused.
     a_non_zero:= 3;
     for a in Alphabet loop
-      if a > a_non_zero and then truc_bl(bit_order_for_dynamic_block(a)) > 0 then
+      if a > a_non_zero and then truc_bl(alphabet_permutation(a)) > 0 then
         a_non_zero:= a;
       end if;
     end loop;
     if cost_analysis then
       bits:= bits + 14 + Count_type(1 + a_non_zero) * 3;
       for a in Alphabet loop
-        bits:= bits + Count_type(truc_freq(a) * truc_bl(a));
+        bits:= bits + Count_type(truc_freq(a) * (truc_bl(a)+extra_bits_needed(a)));
       end loop;
       return;
     end if;
@@ -702,7 +706,7 @@ is
     --  Save the local alphabet's Huffman lengths. It's the compression structure
     --  for compressing the data compression structure. Easy, isn't it ?
     for a in 0..a_non_zero loop
-      Put_code(U32(truc(bit_order_for_dynamic_block(a)).bit_length), 3);
+      Put_code(U32(truc(alphabet_permutation(a)).bit_length), 3);
     end loop;
     --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
     Emit_data_compression_structures(effective);
