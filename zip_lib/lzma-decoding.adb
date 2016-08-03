@@ -44,11 +44,10 @@ package body LZMA.Decoding is
     end if;
   end Init_Range_Decoder;
 
-  subtype CProb is UInt32;
-  type CProb_array is array(Unsigned range <>) of CProb;
-
-  kNumPosBitsMax : constant := 4;
-  kNumPosBitsMax_Count : constant := 2**kNumPosBitsMax;
+  --  Context for improving compression of aligned data, on 1, 2, 4, 8 or 16 (max) bytes.
+  Max_pos_bits : constant := 4;
+  Max_pos_states_count : constant := 2**Max_pos_bits;
+  subtype Pos_state_range is Unsigned range 0 .. Max_pos_states_count-1;
 
   kNumLenToPosStates  : constant := 4;
   kNumAlignBits       : constant := 4;
@@ -65,14 +64,13 @@ package body LZMA.Decoding is
   subtype Probs_8_bits is CProb_array(Bits_8_range);
   subtype Probs_NAB_bits is CProb_array(Bits_NAB_range);
 
-  subtype LM_coder_range is Unsigned range 0 .. kNumPosBitsMax_Count - 1;
-  type LM_Coder_Probs is array(LM_coder_range) of Probs_3_bits;
+  type Low_mid_coder_probs is array(Pos_state_range) of Probs_3_bits;
 
   type Length_Decoder is record
-    choice     : CProb;
-    choice_2   : CProb;
-    low_coder  : LM_Coder_Probs;
-    mid_coder  : LM_Coder_Probs;
+    choice     : CProb;  --  0: low coder; 1: mid or high
+    choice_2   : CProb;  --  0: mid; 1: high
+    low_coder  : Low_mid_coder_probs;
+    mid_coder  : Low_mid_coder_probs;
     high_coder : Probs_8_bits;
   end record;
 
@@ -115,7 +113,7 @@ package body LZMA.Decoding is
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
     state : State_range := 0;
     rep0, rep1, rep2, rep3 : UInt32 := 0;
-    pos_state: State_range;
+    pos_state: Pos_state_range;
     -- Local copies of invariant properties.
     unpack_size_def: constant Boolean:= o.unpackSizeDefined;
     literal_pos_mask: constant UInt32:= 2 ** o.lp - 1;
@@ -136,7 +134,7 @@ package body LZMA.Decoding is
     AlignDecoder         : Probs_NAB_bits:= (others => Initial_probability);
     PosDecoders          : CProb_array(Pos_dec_range):= (others => Initial_probability);
     --
-    subtype Long_range is Unsigned range 0..States_count * kNumPosBitsMax_Count - 1;
+    subtype Long_range is Unsigned range 0..States_count * Max_pos_states_count - 1;
     IsRep                : CProb_array(State_range):= (others => Initial_probability);
     IsRepG0              : CProb_array(State_range):= (others => Initial_probability);
     IsRepG1              : CProb_array(State_range):= (others => Initial_probability);
@@ -483,7 +481,7 @@ package body LZMA.Decoding is
         end if;
         Decode_Bit_Q(IsRepG0(state), bit_b);
         if bit_b = 0 then
-          Decode_Bit_Q(IsRep0Long(state * kNumPosBitsMax_Count + pos_state), bit_c);
+          Decode_Bit_Q(IsRep0Long(state * Max_pos_states_count + pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
             Put_Byte_Q(Get_Byte_Q(rep0 + 1));
@@ -579,8 +577,8 @@ package body LZMA.Decoding is
         Finalize;
         return;
       end if;
-      pos_state := State_range(UInt32(out_win.total_pos) and pos_bits_mask);
-      Decode_Bit_Q(IsMatch(state * kNumPosBitsMax_Count + pos_state), bit_choice);
+      pos_state := Pos_state_range(UInt32(out_win.total_pos) and pos_bits_mask);
+      Decode_Bit_Q(IsMatch(state * Max_pos_states_count + pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
         Process_Literal;

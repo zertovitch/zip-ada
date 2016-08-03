@@ -34,6 +34,10 @@ private
   --  All probabilities are initialized with p=0.5. LZMA specification name: "PROB_INIT_VAL"
   Initial_probability : constant := Probability_model_count / 2;
 
+  --  Type for storing probabilities, must be at least 11 bit.
+  subtype CProb is UInt32;  --  LZMA specification recommends UInt16.
+  type CProb_array is array(Unsigned range <>) of CProb;
+
   --  Finite state machine
   ------------------------
 
