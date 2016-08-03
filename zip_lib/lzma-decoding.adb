@@ -44,47 +44,12 @@ package body LZMA.Decoding is
     end if;
   end Init_Range_Decoder;
 
-  --  Context for improving compression of aligned data, on 1, 2, 4, 8 or 16 (max) bytes.
-  Max_pos_bits : constant := 4;
-  Max_pos_states_count : constant := 2**Max_pos_bits;
-  subtype Pos_state_range is Unsigned range 0 .. Max_pos_states_count-1;
-
   kNumLenToPosStates  : constant := 4;
-  kNumAlignBits       : constant := 4;
   kEndPosModelIndex   : constant := 14;
   kNumFullDistances   : constant := 2 ** (kEndPosModelIndex / 2);
 
-  subtype Bits_3_range is Unsigned range 0 .. 2**3 - 1;
-  subtype Bits_6_range is Unsigned range 0 .. 2**6 - 1;
-  subtype Bits_8_range is Unsigned range 0 .. 2**8 - 1;
-  subtype Bits_NAB_range is Unsigned range 0 .. 2**kNumAlignBits - 1;
-
-  subtype Probs_3_bits is CProb_array(Bits_3_range);
-  subtype Probs_6_bits is CProb_array(Bits_6_range);
-  subtype Probs_8_bits is CProb_array(Bits_8_range);
-  subtype Probs_NAB_bits is CProb_array(Bits_NAB_range);
-
-  type Low_mid_coder_probs is array(Pos_state_range) of Probs_3_bits;
-
-  type Length_Decoder is record
-    choice     : CProb;  --  0: low coder; 1: mid or high
-    choice_2   : CProb;  --  0: mid; 1: high
-    low_coder  : Low_mid_coder_probs;
-    mid_coder  : Low_mid_coder_probs;
-    high_coder : Probs_8_bits;
-  end record;
-
   subtype Slot_coder_range is Unsigned range 0 .. kNumLenToPosStates - 1;
   type Slot_Coder_Probs is array(Slot_coder_range) of Probs_6_bits;
-
-  procedure Init(o: in out Length_Decoder) is
-  begin
-    o.choice     := Initial_probability;
-    o.choice_2   := Initial_probability;
-    o.high_coder := (others => Initial_probability);
-    o.low_coder  := (others => (others => Initial_probability));
-    o.mid_coder  := (others => (others => Initial_probability));
-  end Init;
 
   LZMA_DIC_MIN : constant := 2 ** 12;
 
@@ -141,8 +106,8 @@ package body LZMA.Decoding is
     IsRepG2              : CProb_array(State_range):= (others => Initial_probability);
     IsRep0Long           : CProb_array(Long_range):= (others => Initial_probability);
     IsMatch              : CProb_array(Long_range):= (others => Initial_probability);
-    len_decoder          : Length_Decoder;
-    rep_len_decoder      : Length_Decoder;
+    len_decoder          : Probs_for_LZ_Lengths;
+    rep_len_decoder      : Probs_for_LZ_Lengths;
     --
 
     --  This corresponds to G.N.N. Martin's revised algorithm's adding of
@@ -428,17 +393,17 @@ package body LZMA.Decoding is
             numDirectBits
           );
         else
-          Decode_Direct_Bits(numDirectBits - kNumAlignBits);
-          dist:= dist + Shift_Left(decode_direct, kNumAlignBits);
-          Bit_Tree_Reverse_Decode(AlignDecoder, kNumAlignBits);
+          Decode_Direct_Bits(numDirectBits - Align_bits);
+          dist:= dist + Shift_Left(decode_direct, Align_bits);
+          Bit_Tree_Reverse_Decode(AlignDecoder, Align_bits);
         end if;
       end Decode_Distance;
       --
-      procedure Decode_Length(o: in out Length_Decoder) is
+      procedure Decode_Length(o: in out Probs_for_LZ_Lengths) is
       pragma Inline(Decode_Length);
         bit_a, bit_b: Unsigned;
       begin
-        Decode_Bit_Q(o.choice, bit_a);
+        Decode_Bit_Q(o.choice_1, bit_a);
         if bit_a = 0 then
           Bit_Tree_Decode(o.low_coder(pos_state), 3, len);
           return;
@@ -565,8 +530,6 @@ package body LZMA.Decoding is
 
   begin
     Create(out_win, o.dictSize);
-    Init(len_decoder);
-    Init(rep_len_decoder);
     Init_Range_Decoder(loc_range_dec);
     loop
       if o.unpackSize = 0
