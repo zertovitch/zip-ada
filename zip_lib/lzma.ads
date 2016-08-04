@@ -111,4 +111,12 @@ private
   --  size is 4096. LZMA specification name: "LZMA_DIC_MIN"
   LZMA_min_dictionary_size : constant := 2 ** 12;
 
+  --------------------
+  --  Range coding  --
+  --------------------
+  
+  --  Normalization threshold. When the range width is below that value,
+  --  a shift is needed.
+  width_threshold : constant := 2**24;  --  LZMA specification name: "kTopValue"
+  
 end LZMA;

@@ -103,9 +103,11 @@ package body LZMA.Decoding is
     --  data, brought by Read_Byte.
     procedure Normalize_Q is
     pragma Inline(Normalize_Q);
-      kTopValue : constant := 2**24;
     begin
-      if loc_range_dec.width < kTopValue then
+      --  Assertion: the width is large enough for the normalization to be needed
+      --  once per bit decoding. Worst case: width = 2**24 before; bound = (2**13) * (2**5-1)
+      --  new width's (leading binary digit) = 2**17; after normalization: 2**(17+8) = 2**25.
+      if loc_range_dec.width < width_threshold then
         loc_range_dec.width := Shift_Left(loc_range_dec.width, 8);
         loc_range_dec.code  := Shift_Left(loc_range_dec.code, 8) or UInt32(Read_Byte);
       end if;
@@ -117,7 +119,8 @@ package body LZMA.Decoding is
       bound: constant UInt32:= Shift_Right(loc_range_dec.width, Probability_model_bits) * prob;
     begin
       if loc_range_dec.code < bound then
-        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob / 2 ** m)
+        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
+        --  The truncation ensures (proof needed) that prob <= Probability_model_count - (2**m - 1)
         prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
         --  The new range is [0, bound[.
         --  Set new width.
@@ -125,7 +128,8 @@ package body LZMA.Decoding is
         Normalize_Q;
         symbol := 0;
       else
-        --  Decrease probability: prob:= prob - prob / 2 ** m = prob:= prob * (1 - 2 ** m)
+        --  Decrease probability: prob:= prob - prob / 2**m = prob:= prob * (1 - 2**m)
+        --  The truncation ensures (proof needed) that prob >= 2**m - 1
         prob_io:= prob - Shift_Right(prob, Probability_change_bits);
         --  The new range is [bound, width[. We shift the code and implicitely
         --  the range's limits by -bound in order to have a 0 lower limit for the range.
