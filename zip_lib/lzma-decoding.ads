@@ -65,7 +65,7 @@ private
     unpackSize_as_defined: Data_Bytes_Count;
     unpackSizeDefined    : Boolean;
     markerIsMandatory    : Boolean;
-    dictSize             : UInt32;
+    dictionary_size             : UInt32;
     dictSizeInProperties : UInt32;
     lc                   : Literal_context_bits_range;   -- number of "literal context" bits
     lp                   : Literal_position_bits_range;  -- number of "literal pos" bits

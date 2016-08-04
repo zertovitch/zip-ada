@@ -17,10 +17,10 @@ package body LZMA.Decoding is
     total_pos : Unsigned      := 0;
   end record;
 
-  procedure Create(o: in out Out_Window; dictSize: UInt32) is
+  procedure Create(o: in out Out_Window; dictionary_size: UInt32) is
   begin
-    o.buf  := new Byte_buffer(0..dictSize-1);
-    o.size := dictSize;
+    o.buf  := new Byte_buffer(0..dictionary_size-1);
+    o.size := dictionary_size;
   end Create;
 
   type Range_Decoder is record
@@ -44,15 +44,6 @@ package body LZMA.Decoding is
     end if;
   end Init_Range_Decoder;
 
-  kNumLenToPosStates  : constant := 4;
-  kEndPosModelIndex   : constant := 14;
-  kNumFullDistances   : constant := 2 ** (kEndPosModelIndex / 2);
-
-  subtype Slot_coder_range is Unsigned range 0 .. kNumLenToPosStates - 1;
-  type Slot_Coder_Probs is array(Slot_coder_range) of Probs_6_bits;
-
-  LZMA_DIC_MIN : constant := 2 ** 12;
-
   procedure Decode_Properties(o: in out LZMA_Decoder_Info; b: Byte_buffer) is
     d: Unsigned := Unsigned(b(b'First));
   begin
@@ -69,9 +60,9 @@ package body LZMA.Decoding is
       o.dictSizeInProperties := o.dictSizeInProperties +
         UInt32(b(UInt32(i) + 1 + b'First)) * 2 ** (8 * i);
     end loop;
-    o.dictSize := o.dictSizeInProperties;
-    if o.dictSize < LZMA_DIC_MIN then
-      o.dictSize := LZMA_DIC_MIN;
+    o.dictionary_size := o.dictSizeInProperties;
+    if o.dictionary_size < LZMA_min_dictionary_size then
+      o.dictionary_size := LZMA_min_dictionary_size;
     end if;
   end Decode_Properties;
 
@@ -90,14 +81,14 @@ package body LZMA.Decoding is
     -- Local range decoder
     loc_range_dec: Range_Decoder;
     --
-    -- Literals:
+    --  Literals:
     subtype Lit_range is Unsigned range 0 .. 16#300# * 2 ** (o.lc + o.lp) - 1;  -- max 3,145,727
-    LitProbs             : CProb_array(Lit_range):= (others => Initial_probability);
-    -- Distances:
-    subtype Pos_dec_range is Unsigned range 0..kNumFullDistances - kEndPosModelIndex;
-    PosSlotDecoder       : Slot_Coder_Probs := (others => (others => Initial_probability));
-    AlignDecoder         : Probs_NAB_bits:= (others => Initial_probability);
-    PosDecoders          : CProb_array(Pos_dec_range):= (others => Initial_probability);
+    LitProbs        : CProb_array(Lit_range):= (others => Initial_probability);
+    --  Distances:
+    dis_decoder     : Probs_for_LZ_Distances;
+    --  Lengths:
+    len_decoder     : Probs_for_LZ_Lengths;
+    rep_len_decoder : Probs_for_LZ_Lengths;
     --
     subtype Long_range is Unsigned range 0..States_count * Max_pos_states_count - 1;
     IsRep                : CProb_array(State_range):= (others => Initial_probability);
@@ -106,9 +97,6 @@ package body LZMA.Decoding is
     IsRepG2              : CProb_array(State_range):= (others => Initial_probability);
     IsRep0Long           : CProb_array(Long_range):= (others => Initial_probability);
     IsMatch              : CProb_array(Long_range):= (others => Initial_probability);
-    len_decoder          : Probs_for_LZ_Lengths;
-    rep_len_decoder      : Probs_for_LZ_Lengths;
-    --
 
     --  This corresponds to G.N.N. Martin's revised algorithm's adding of
     --  trailing digits - for encoding. Here we decode and know the encoded
@@ -245,7 +233,7 @@ package body LZMA.Decoding is
       o.unpackSize:= o.unpackSize - 1;
     end Process_Literal;
 
-    dict_size : constant UInt32:= o.dictSize;
+    dict_size : constant UInt32:= o.dictionary_size;
 
     function Is_Finished_OK return Boolean is
     pragma Inline(Is_Finished_OK);
@@ -377,25 +365,25 @@ package body LZMA.Decoding is
         numDirectBits : Natural;
         --
       begin -- Decode_Distance
-        if len_state > kNumLenToPosStates - 1 then
-          len_state := kNumLenToPosStates - 1;
+        if len_state > Len_to_pos_states - 1 then
+          len_state := Len_to_pos_states - 1;
         end if;
-        Bit_Tree_Decode(PosSlotDecoder(len_state), 6, posSlot);
+        Bit_Tree_Decode(dis_decoder.pos_slot_coder(len_state), 6, posSlot);
         if posSlot < 4 then
           dist:= UInt32(posSlot);
           return;
         end if;
         numDirectBits := Natural(Shift_Right(UInt32(posSlot), 1) - 1);
         dist := Shift_Left(2 or (UInt32(posSlot) and 1), numDirectBits);
-        if posSlot < kEndPosModelIndex then
+        if posSlot < End_pos_model_index then
           Bit_Tree_Reverse_Decode(
-            PosDecoders(Unsigned(dist) - posSlot .. Pos_dec_range'Last),
+            dis_decoder.pos_decoders(Unsigned(dist) - posSlot .. Pos_dec_range'Last),
             numDirectBits
           );
         else
           Decode_Direct_Bits(numDirectBits - Align_bits);
           dist:= dist + Shift_Left(decode_direct, Align_bits);
-          Bit_Tree_Reverse_Decode(AlignDecoder, Align_bits);
+          Bit_Tree_Reverse_Decode(dis_decoder.align_coder, Align_bits);
         end if;
       end Decode_Distance;
       --
@@ -529,7 +517,7 @@ package body LZMA.Decoding is
     end Finalize;
 
   begin
-    Create(out_win, o.dictSize);
+    Create(out_win, o.dictionary_size);
     Init_Range_Decoder(loc_range_dec);
     loop
       if o.unpackSize = 0
@@ -655,7 +643,7 @@ package body LZMA.Decoding is
 
   function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
-    return o.dictSize;
+    return o.dictionary_size;
   end Dictionary_size;
 
   function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
