@@ -361,23 +361,23 @@ package body LZMA.Decoding is
         end Bit_Tree_Reverse_Decode;
         --
         len_state     : Unsigned := len;  --  len has been set up by Decode_Length previously
-        posSlot       : Unsigned;
+        pos_slot      : Unsigned;
         numDirectBits : Natural;
         --
       begin -- Decode_Distance
         if len_state > Len_to_pos_states - 1 then
           len_state := Len_to_pos_states - 1;
         end if;
-        Bit_Tree_Decode(dis_decoder.pos_slot_coder(len_state), 6, posSlot);
-        if posSlot < 4 then
-          dist:= UInt32(posSlot);
+        Bit_Tree_Decode(dis_decoder.pos_slot_coder(len_state), 6, pos_slot);
+        if pos_slot < 4 then
+          dist:= UInt32(pos_slot);
           return;
         end if;
-        numDirectBits := Natural(Shift_Right(UInt32(posSlot), 1) - 1);
-        dist := Shift_Left(2 or (UInt32(posSlot) and 1), numDirectBits);
-        if posSlot < End_pos_model_index then
+        numDirectBits := Natural(Shift_Right(UInt32(pos_slot), 1) - 1);
+        dist := Shift_Left(2 or (UInt32(pos_slot) and 1), numDirectBits);
+        if pos_slot < End_pos_model_index then
           Bit_Tree_Reverse_Decode(
-            dis_decoder.pos_decoders(Unsigned(dist) - posSlot .. Pos_dec_range'Last),
+            dis_decoder.pos_coder(Unsigned(dist) - pos_slot .. Pos_coder_range'Last),
             numDirectBits
           );
         else

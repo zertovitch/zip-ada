@@ -93,17 +93,18 @@ private
 
   Len_to_pos_states  : constant := 4;
   subtype Slot_coder_range is Unsigned range 0 .. Len_to_pos_states - 1;
-  type Slot_Coder_Probs is array(Slot_coder_range) of Probs_6_bits;
+  type Slot_coder_probs is array(Slot_coder_range) of Probs_6_bits;
 
   End_pos_model_index : constant := 14;  --  LZMA specification name: "kEndPosModelIndex"
   Num_full_distances  : constant := 2 ** (End_pos_model_index / 2);  --  "kNumFullDistances"
 
-  subtype Pos_dec_range is Unsigned range 0..Num_full_distances - End_pos_model_index;
+  subtype Pos_coder_range is Unsigned range 0 .. Num_full_distances - End_pos_model_index;
+  subtype Pos_coder_probs is CProb_array(Pos_coder_range);
 
   type Probs_for_LZ_Distances is record
-    pos_slot_coder : Slot_Coder_Probs := (others => (others => Initial_probability));
+    pos_slot_coder : Slot_coder_probs := (others => (others => Initial_probability));
     align_coder    : Probs_NAB_bits   := (others => Initial_probability);
-    pos_decoders   : CProb_array(Pos_dec_range):= (others => Initial_probability);
+    pos_coder      : Pos_coder_probs  := (others => Initial_probability);
   end record;
 
   --  Minimum dictionary (= plain text buffer of n previous bytes)
