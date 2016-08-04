@@ -79,7 +79,7 @@ package body LZMA.Decoding is
     Marker_exit: exception;
     out_win : Out_Window;
     -- Local range decoder
-    loc_range_dec: Range_Decoder;
+    range_dec: Range_Decoder;
     --
     --  Literals:
     subtype Lit_range is Unsigned range 0 .. 16#300# * 2 ** (o.lc + o.lp) - 1;  -- max 3,145,727
@@ -107,24 +107,24 @@ package body LZMA.Decoding is
       --  Assertion: the width is large enough for the normalization to be needed
       --  once per bit decoding. Worst case: width = 2**24 before; bound = (2**13) * (2**5-1)
       --  new width's (leading binary digit) = 2**17; after normalization: 2**(17+8) = 2**25.
-      if loc_range_dec.width < width_threshold then
-        loc_range_dec.width := Shift_Left(loc_range_dec.width, 8);
-        loc_range_dec.code  := Shift_Left(loc_range_dec.code, 8) or UInt32(Read_Byte);
+      if range_dec.width < width_threshold then
+        range_dec.width := Shift_Left(range_dec.width, 8);
+        range_dec.code  := Shift_Left(range_dec.code, 8) or UInt32(Read_Byte);
       end if;
     end Normalize_Q;
 
     procedure Decode_Bit_Q(prob_io: in out CProb; symbol: out Unsigned) is
     pragma Inline(Decode_Bit_Q);
       prob: constant CProb:= prob_io; -- Local copy
-      bound: constant UInt32:= Shift_Right(loc_range_dec.width, Probability_model_bits) * prob;
+      bound: constant UInt32:= Shift_Right(range_dec.width, Probability_model_bits) * prob;
     begin
-      if loc_range_dec.code < bound then
+      if range_dec.code < bound then
         --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
         --  The truncation ensures (proof needed) that prob <= Probability_model_count - (2**m - 1)
         prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
         --  The new range is [0, bound[.
         --  Set new width.
-        loc_range_dec.width := bound;
+        range_dec.width := bound;
         Normalize_Q;
         symbol := 0;
       else
@@ -133,9 +133,9 @@ package body LZMA.Decoding is
         prob_io:= prob - Shift_Right(prob, Probability_change_bits);
         --  The new range is [bound, width[. We shift the code and implicitely
         --  the range's limits by -bound in order to have a 0 lower limit for the range.
-        loc_range_dec.code  := loc_range_dec.code - bound;
+        range_dec.code  := range_dec.code - bound;
         --  Set new width.
-        loc_range_dec.width := loc_range_dec.width - bound;
+        range_dec.width := range_dec.width - bound;
         Normalize_Q;
         symbol := 1;
       end if;
@@ -186,7 +186,7 @@ package body LZMA.Decoding is
       end if;
       --
       if not Is_Empty then
-        prevByte := Get_Byte_Q(1);
+        prevByte := Get_Byte_Q(dist => 1);
       end if;
       lit_state :=
         Unsigned(
@@ -207,7 +207,7 @@ package body LZMA.Decoding is
           --  that the current literal sequence resembles to the last
           --  distance-length copied sequence.
           --
-          match_byte     : UInt32 := UInt32(Get_Byte_Q(rep0 + 1));
+          match_byte     : UInt32 := UInt32(Get_Byte_Q(dist => rep0 + 1));
           match_bit      : UInt32;    -- either 0 or 16#100#
           prob_idx_match : Unsigned;  -- either 0 (normal case without match), 16#100# or 16#200#
           bit, bit_b     : Unsigned;
@@ -242,7 +242,7 @@ package body LZMA.Decoding is
     function Is_Finished_OK return Boolean is
     pragma Inline(Is_Finished_OK);
     begin
-      return loc_range_dec.code = 0;
+      return range_dec.code = 0;
     end Is_Finished_OK;
 
     procedure Process_Distance_and_Length is
@@ -340,12 +340,12 @@ package body LZMA.Decoding is
         begin
           decode_direct := 0;
           for count in reverse 1..num_bits loop
-            loc_range_dec.width := Shift_Right(loc_range_dec.width, 1);
-            loc_range_dec.code := loc_range_dec.code - loc_range_dec.width;
-            t := - Shift_Right(loc_range_dec.code, 31);
-            loc_range_dec.code := loc_range_dec.code + (loc_range_dec.width and t);
-            if loc_range_dec.code = loc_range_dec.width then
-              loc_range_dec.corrupted := True;
+            range_dec.width := Shift_Right(range_dec.width, 1);
+            range_dec.code := range_dec.code - range_dec.width;
+            t := - Shift_Right(range_dec.code, 31);
+            range_dec.code := range_dec.code + (range_dec.width and t);
+            if range_dec.code = range_dec.width then
+              range_dec.corrupted := True;
             end if;
             Normalize_Q;
             decode_direct := decode_direct + decode_direct + t + 1;
@@ -441,7 +441,7 @@ package body LZMA.Decoding is
           Decode_Bit_Q(IsRep0Long(state * Max_pos_states_count + pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
-            Put_Byte_Q(Get_Byte_Q(rep0 + 1));
+            Put_Byte_Q(Get_Byte_Q(dist => rep0 + 1));
             o.unpackSize:= o.unpackSize - 1;
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
@@ -517,12 +517,12 @@ package body LZMA.Decoding is
       procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
     begin
       Dispose(out_win.buf);
-      o.range_dec_corrupted:= loc_range_dec.corrupted;
+      o.range_dec_corrupted:= range_dec.corrupted;
     end Finalize;
 
   begin
     Create(out_win, o.dictionary_size);
-    Init_Range_Decoder(loc_range_dec);
+    Init_Range_Decoder(range_dec);
     loop
       if o.unpackSize = 0
         and then Is_Finished_OK

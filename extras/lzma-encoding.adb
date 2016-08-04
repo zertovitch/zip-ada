@@ -7,7 +7,45 @@ with Interfaces;                        use Interfaces;
 
 package body LZMA.Encoding is
 
+  type Range_Encoder is record
+    width     : UInt32  := 16#FFFF_FFFF#;  --  (*)
+    low       : UInt32  := 0;  --  The current range is [low, low+width[
+  end record;
+  --  (*) called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
+  --      article about range encoding.
+
   procedure Encode is
+
+    range_enc: Range_Encoder;
+
+    --  Range encoding of single bits - see LZMA.Decoding for comments with
+    --  some explanations.
+
+    procedure Normalize is
+    pragma Inline(Normalize);
+    begin
+      if range_enc.width < width_threshold then
+        range_enc.width := Shift_Left(range_enc.width, 8);
+        --  !!! TBD - Here the equivalent of RangeEnc_ShiftLow
+      end if;
+    end Normalize;
+
+    procedure Encode_Bit(prob_io: in out CProb; symbol: in Unsigned) is
+    pragma Inline(Encode_Bit);
+      prob: constant CProb:= prob_io;  --  Local copy
+      bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * prob;
+    begin
+      if symbol = 0 then
+        prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
+        range_enc.width := bound;
+        Normalize;
+      else
+        prob_io:= prob - Shift_Right(prob, Probability_change_bits);
+        range_enc.low := range_enc.low + bound;
+        range_enc.width := range_enc.width - bound;
+        Normalize;
+      end if;
+    end Encode_Bit;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
     begin
@@ -44,13 +82,11 @@ package body LZMA.Encoding is
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
 
-    LZMA_DIC_MIN : constant := 2 ** 12; -- 4096
-
     type LZMA_Params_Info is record
       unpackSize           : Data_Bytes_Count:= 0;
       unpackSizeDefined    : Boolean := False;
       markerIsMandatory    : Boolean := True;
-      dictSize             : UInt32  := LZMA_DIC_MIN;
+      dictSize             : UInt32  := String_buffer_size;
       lc                   : Literal_context_bits_range:= 3;   --  number of "literal context" bits
       lp                   : Literal_position_bits_range:= 0;  --  number of "literal pos" bits
       pb                   : Position_bits_range:= 2;          --  number of "pos" bits
