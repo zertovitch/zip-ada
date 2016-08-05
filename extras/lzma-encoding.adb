@@ -7,26 +7,57 @@ with Interfaces;                        use Interfaces;
 
 package body LZMA.Encoding is
 
+  subtype UInt64 is Unsigned_64;
+
   type Range_Encoder is record
     width     : UInt32  := 16#FFFF_FFFF#;  --  (*)
-    low       : UInt32  := 0;  --  The current range is [low, low+width[
+    low       : UInt64  := 0;  --  The current range is [low, low+width[
+    cache     : Byte    := 0;
+    cache_size: UInt64  := 1;
   end record;
   --  (*) called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
   --      article about range encoding.
 
   procedure Encode is
 
+    --  Range encoding of single bits - see equivalent LZMA.Decoding
+    --  parts for comments with some explanations.
+
     range_enc: Range_Encoder;
 
-    --  Range encoding of single bits - see LZMA.Decoding for comments with
-    --  some explanations.
+    --  This part corresponds to G.N.N. Martin's revised algorithm's adding
+    --  of trailing digits, zeroes. The leftmost digits of the range don't
+    --  change anymore and can be output.
+
+    procedure Shift_low is
+      --  Top 32 bits of the lower range bound.
+      low_top32    : constant UInt64:= Shift_Right(range_enc.low, 32);
+      low_bottom32 : constant UInt64:= range_enc.low and 16#FFFF_FFFF#;
+      temp: Byte;
+    begin
+      if low_bottom32 < 16#FF00_0000# or else low_top32 /= 0 then
+        --  Flush range_enc.cache_size bytes, based on only
+        --  2 byte values: range_enc.cache and (low_top32 and 16#FF#).
+        --  The mechanism is a bit obscure...
+        temp:= range_enc.cache;
+        loop
+          Write_byte(temp + Byte(low_top32 and 16#FF#));
+          temp:= 16#FF#;
+          range_enc.cache_size:= range_enc.cache_size - 1;
+          exit when range_enc.cache_size = 0;
+        end loop;
+        range_enc.cache:= Byte(Shift_Right(range_enc.low, 24) and 16#FF#);
+      end if;
+      range_enc.cache_size:= range_enc.cache_size + 1;
+      range_enc.low:= Shift_Left(low_bottom32, 8);  --  Here are the trailing zeroes added.
+    end Shift_low;
 
     procedure Normalize is
     pragma Inline(Normalize);
     begin
       if range_enc.width < width_threshold then
         range_enc.width := Shift_Left(range_enc.width, 8);
-        --  !!! TBD - Here the equivalent of RangeEnc_ShiftLow
+        Shift_low;
       end if;
     end Normalize;
 
@@ -41,7 +72,7 @@ package body LZMA.Encoding is
         Normalize;
       else
         prob_io:= prob - Shift_Right(prob, Probability_change_bits);
-        range_enc.low := range_enc.low + bound;
+        range_enc.low := range_enc.low + UInt64(bound);
         range_enc.width := range_enc.width - bound;
         Normalize;
       end if;
