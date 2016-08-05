@@ -101,8 +101,8 @@ package body LZMA.Decoding is
     --  This corresponds to G.N.N. Martin's revised algorithm's adding of
     --  trailing digits - for encoding. Here we decode and know the encoded
     --  data, brought by Read_Byte.
-    procedure Normalize_Q is
-    pragma Inline(Normalize_Q);
+    procedure Normalize is
+    pragma Inline(Normalize);
     begin
       --  Assertion: the width is large enough for the normalization to be needed
       --  once per bit decoding. Worst case: width = 2**24 before; bound = (2**13) * (2**5-1)
@@ -111,10 +111,10 @@ package body LZMA.Decoding is
         range_dec.width := Shift_Left(range_dec.width, 8);
         range_dec.code  := Shift_Left(range_dec.code, 8) or UInt32(Read_Byte);
       end if;
-    end Normalize_Q;
+    end Normalize;
 
-    procedure Decode_Bit_Q(prob_io: in out CProb; symbol: out Unsigned) is
-    pragma Inline(Decode_Bit_Q);
+    procedure Decode_Bit(prob_io: in out CProb; symbol: out Unsigned) is
+    pragma Inline(Decode_Bit);
       prob: constant CProb:= prob_io; -- Local copy
       bound: constant UInt32:= Shift_Right(range_dec.width, Probability_model_bits) * prob;
     begin
@@ -125,7 +125,7 @@ package body LZMA.Decoding is
         --  The new range is [0, bound[.
         --  Set new width.
         range_dec.width := bound;
-        Normalize_Q;
+        Normalize;
         symbol := 0;
       else
         --  Decrease probability: prob:= prob - prob / 2**m = prob:= prob * (1 - 2**m)
@@ -136,10 +136,10 @@ package body LZMA.Decoding is
         range_dec.code  := range_dec.code - bound;
         --  Set new width.
         range_dec.width := range_dec.width - bound;
-        Normalize_Q;
+        Normalize;
         symbol := 1;
       end if;
-    end Decode_Bit_Q;
+    end Decode_Bit;
 
     function Is_Empty return Boolean is
     pragma Inline(Is_Empty);
@@ -147,8 +147,8 @@ package body LZMA.Decoding is
       return out_win.pos = 0 and then not out_win.is_full;
     end Is_Empty;
 
-    procedure Put_Byte_Q(b: Byte) is
-    pragma Inline(Put_Byte_Q);
+    procedure Put_Byte(b: Byte) is
+    pragma Inline(Put_Byte);
     begin
       out_win.total_pos := out_win.total_pos + 1;
       out_win.buf(out_win.pos):= b;
@@ -158,17 +158,17 @@ package body LZMA.Decoding is
         out_win.is_full := True;
       end if;
       Write_Byte(b);
-    end Put_Byte_Q;
+    end Put_Byte;
 
-    function Get_Byte_Q(dist: UInt32) return Byte is
-    pragma Inline(Get_Byte_Q);
+    function Get_Byte(dist: UInt32) return Byte is
+    pragma Inline(Get_Byte);
     begin
       if dist <= out_win.pos then
         return out_win.buf(out_win.pos - dist);
       else
         return out_win.buf(out_win.pos - dist + out_win.size);
       end if;
-    end Get_Byte_Q;
+    end Get_Byte;
 
     procedure Process_Literal is
     pragma Inline(Process_Literal);
@@ -186,7 +186,7 @@ package body LZMA.Decoding is
       end if;
       --
       if not Is_Empty then
-        prevByte := Get_Byte_Q(dist => 1);
+        prevByte := Get_Byte(dist => 1);
       end if;
       lit_state :=
         Unsigned(
@@ -196,7 +196,7 @@ package body LZMA.Decoding is
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
         loop
-          Decode_Bit_Q(LitProbs(probs_idx + symbol), bit);
+          Decode_Bit(LitProbs(probs_idx + symbol), bit);
           symbol := (symbol + symbol) or bit;
           exit when symbol >= 16#100#;
         end loop;
@@ -207,7 +207,7 @@ package body LZMA.Decoding is
           --  that the current literal sequence resembles to the last
           --  distance-length copied sequence.
           --
-          match_byte     : UInt32 := UInt32(Get_Byte_Q(dist => rep0 + 1));
+          match_byte     : UInt32 := UInt32(Get_Byte(dist => rep0 + 1));
           match_bit      : UInt32;    -- either 0 or 16#100#
           prob_idx_match : Unsigned;  -- either 0 (normal case without match), 16#100# or 16#200#
           bit, bit_b     : Unsigned;
@@ -216,13 +216,13 @@ package body LZMA.Decoding is
             match_byte := match_byte + match_byte;
             match_bit  := match_byte and 16#100#;
             prob_idx_match:= Unsigned(16#100# + match_bit);
-            Decode_Bit_Q(LitProbs(probs_idx + prob_idx_match + symbol), bit);
+            Decode_Bit(LitProbs(probs_idx + prob_idx_match + symbol), bit);
             symbol := (symbol + symbol) or bit;
             exit when symbol >= 16#100#;
             if match_bit /= Shift_Left(UInt32(bit), 8) then
               -- No bit match, then give up byte match
               loop
-                Decode_Bit_Q(LitProbs(probs_idx + symbol), bit_b);
+                Decode_Bit(LitProbs(probs_idx + symbol), bit_b);
                 symbol := (symbol + symbol) or bit_b;
                 exit when symbol >= 16#100#;
               end loop;
@@ -231,7 +231,7 @@ package body LZMA.Decoding is
           end loop;
         end;
       end if;
-      Put_Byte_Q(Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
+      Put_Byte(Byte(symbol - 16#100#)); -- The output of a simple literal happens here.
       --
       state := Update_State_Literal(state);
       o.unpackSize:= o.unpackSize - 1;
@@ -258,7 +258,7 @@ package body LZMA.Decoding is
       begin
         m:= 1;
         for count in reverse 1..num_bits loop
-          Decode_Bit_Q(prob(m + prob'First), bit);
+          Decode_Bit(prob(m + prob'First), bit);
           m:= m + m + bit;
         end loop;
         m:= m - 2**num_bits;
@@ -266,8 +266,8 @@ package body LZMA.Decoding is
       --
       len: Unsigned:= 0;
       --
-      procedure Copy_Match_Q2(dist: UInt32) is
-        pragma Inline(Copy_Match_Q2);
+      procedure Copy_Match(dist: UInt32) is
+        pragma Inline(Copy_Match);
         b2, b3: Byte;
         len32: constant UInt32:= UInt32(len);
         will_fill: constant Boolean:= out_win.pos + len32 >= out_win.size;
@@ -327,7 +327,7 @@ package body LZMA.Decoding is
         else
           Modulo_case;
         end if;
-      end Copy_Match_Q2;
+      end Copy_Match;
       --
       procedure Decode_Distance(dist: out UInt32) is
       pragma Inline(Decode_Distance);
@@ -347,7 +347,7 @@ package body LZMA.Decoding is
             if range_dec.code = range_dec.width then
               range_dec.corrupted := True;
             end if;
-            Normalize_Q;
+            Normalize;
             decode_direct := decode_direct + decode_direct + t + 1;
           end loop;
         end Decode_Direct_Bits;
@@ -358,7 +358,7 @@ package body LZMA.Decoding is
           bit: Unsigned;
         begin
           for i in 0..num_bits-1 loop
-            Decode_Bit_Q(prob(m + prob'First), bit);
+            Decode_Bit(prob(m + prob'First), bit);
             m := m + m + bit;
             dist := dist or Shift_Left(UInt32(bit), i);
           end loop;
@@ -395,12 +395,12 @@ package body LZMA.Decoding is
       pragma Inline(Decode_Length);
         bit_a, bit_b: Unsigned;
       begin
-        Decode_Bit_Q(o.choice_1, bit_a);
+        Decode_Bit(o.choice_1, bit_a);
         if bit_a = 0 then
           Bit_Tree_Decode(o.low_coder(pos_state), 3, len);
           return;
         end if;
-        Decode_Bit_Q(o.choice_2, bit_b);
+        Decode_Bit(o.choice_2, bit_b);
         if bit_b = 0 then
           Bit_Tree_Decode(o.mid_coder(pos_state), 3, len);
           len:= len + 8;
@@ -422,7 +422,7 @@ package body LZMA.Decoding is
       kMatchMinLen : constant := 2;
       --
     begin -- Process_Distance_and_Length
-      Decode_Bit_Q(IsRep(state), bit_a);
+      Decode_Bit(IsRep(state), bit_a);
       if bit_a /= 0 then
         if o.unpackSize = 0 and then unpack_size_def then
           Raise_Exception(
@@ -436,21 +436,21 @@ package body LZMA.Decoding is
             "Output window buffer is empty (in Process_Distance_and_Length)"
           );
         end if;
-        Decode_Bit_Q(IsRepG0(state), bit_b);
+        Decode_Bit(IsRepG0(state), bit_b);
         if bit_b = 0 then
-          Decode_Bit_Q(IsRep0Long(state * Max_pos_states_count + pos_state), bit_c);
+          Decode_Bit(IsRep0Long(state * Max_pos_states_count + pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
-            Put_Byte_Q(Get_Byte_Q(dist => rep0 + 1));
+            Put_Byte(Get_Byte(dist => rep0 + 1));
             o.unpackSize:= o.unpackSize - 1;
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
-          Decode_Bit_Q(IsRepG1(state), bit_d);
+          Decode_Bit(IsRepG1(state), bit_d);
           if bit_d = 0 then
             dist := rep1;
           else
-            Decode_Bit_Q(IsRepG2(state), bit_e);
+            Decode_Bit(IsRepG2(state), bit_e);
             if bit_e = 0 then
               dist := rep2;
             else
@@ -497,8 +497,7 @@ package body LZMA.Decoding is
         isError := True;
       end if;
       -- The LZ distance/length copy happens here.
-      -- Copy_Match(out_win, rep0 + 1, len);
-      Copy_Match_Q2(rep0 + 1);
+      Copy_Match(dist => rep0 + 1);
       o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       if isError then
         Raise_Exception(
@@ -533,7 +532,7 @@ package body LZMA.Decoding is
         return;
       end if;
       pos_state := Pos_state_range(UInt32(out_win.total_pos) and pos_bits_mask);
-      Decode_Bit_Q(IsMatch(state * Max_pos_states_count + pos_state), bit_choice);
+      Decode_Bit(IsMatch(state * Max_pos_states_count + pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
         Process_Literal;

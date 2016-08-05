@@ -52,6 +52,13 @@ package body LZMA.Encoding is
       range_enc.low:= Shift_Left(low_bottom32, 8);  --  Here are the trailing zeroes added.
     end Shift_low;
 
+    procedure Flush_range_encoder is
+    begin
+      for i in 1..4 loop
+        Shift_low;
+      end loop;
+    end Flush_range_encoder;
+
     procedure Normalize is
     pragma Inline(Normalize);
     begin
@@ -148,6 +155,10 @@ package body LZMA.Encoding is
   begin
     Write_LZMA_header;
     My_LZ77;
+    if lzma_params.markerIsMandatory then
+      null; -- !! Send End-of-stream marker (complicated task...)
+    end if;
+    Flush_range_encoder;
   end Encode;
 
 end LZMA.Encoding;
