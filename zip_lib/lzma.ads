@@ -149,6 +149,18 @@ private
   --  size is 4096. LZMA specification name: "LZMA_DIC_MIN"
   LZMA_min_dictionary_size : constant := 2 ** 12;
 
+  --------------------------------------------------
+  --  Binary values of various decision switches  --
+  --------------------------------------------------
+
+  --  LZ literal vs. DL code
+  literal_choice : constant:= 0;
+  DL_code_choice : constant:= 1;
+
+  --  Simple match vs . "Rep match"
+  Simple_match_choice : constant:= 0;
+  Rep_match_choice    : constant:= 1;
+
   --------------------
   --  Range coding  --
   --------------------

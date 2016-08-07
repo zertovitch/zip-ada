@@ -85,40 +85,8 @@ package body LZMA.Encoding is
       end if;
     end Encode_Bit;
 
-    procedure LZ77_emits_literal_byte (b: Byte) is
-    begin
-      null; -- !!
-    end LZ77_emits_literal_byte;
-
-    procedure LZ77_emits_DL_code (distance, length: Integer) is
-    begin
-      null; -- !!
-    end LZ77_emits_DL_code;
-
-    ------------------------
-    --  LZ77 compression  --
-    ------------------------
-
-    LZ77_choice: constant array(LZMA_Level) of LZ77.Method_Type:=
-      (Level_1   => LZ77.IZ_6,
-       Level_2   => LZ77.IZ_10);
-
-    Look_Ahead         : constant Integer:= 258;
-    String_buffer_size : constant := 2**15;  --  2**15 = size for Deflate
-
-    procedure My_LZ77 is
-      new LZ77.Encode
-        ( String_buffer_size => String_buffer_size,
-          Look_Ahead         => Look_Ahead,
-          Threshold          => 2,  --  From a string match length > 2, a DL code is sent
-          Method             => LZ77_choice(level),
-          Read_byte          => Read_byte,
-          More_bytes         => More_bytes,
-          Write_byte         => LZ77_emits_literal_byte,
-          Write_code         => LZ77_emits_DL_code
-        );
-
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
+    String_buffer_size : constant := 2**15;  --  2**15 = size for Deflate
 
     type LZMA_Params_Info is record
       unpackSize           : Data_Bytes_Count:= 0;
@@ -131,6 +99,72 @@ package body LZMA.Encoding is
     end record;
 
     lzma_params: LZMA_Params_Info;
+
+    state : State_range := 0;
+    rep0, rep1, rep2, rep3 : UInt32 := 0;  --  Recent distances used for LZ
+    total_pos : Unsigned := 0;
+    pos_state: Pos_state_range := 0;
+    probs: All_probabilities(
+      last_lit_prob_index => 16#300# * 2 ** (lzma_params.lc + lzma_params.lp) - 1
+    );
+    pos_bits_mask : constant UInt32 := 2 ** lzma_params.pb - 1;
+
+    procedure Update_pos_state is
+    begin
+      pos_state := Pos_state_range(UInt32(total_pos) and pos_bits_mask);
+    end Update_pos_state;
+
+    procedure LZ77_emits_literal_byte (b: Byte) is
+    begin
+      Encode_Bit(probs.switch.match(state, pos_state), literal_choice);
+      null; -- !!!
+      total_pos:= total_pos + 1;
+      Update_pos_state;
+    end LZ77_emits_literal_byte;
+
+    Min_match_length: constant:= 2;  --  "LZMA_MATCH_LEN_MIN"
+
+    procedure Write_Simple_Match(distance, length: UInt32) is
+    begin
+      rep3 := rep2;
+      rep2 := rep1;
+      rep1 := rep0;
+      rep0 := distance;
+      Encode_Bit(probs.switch.rep(state), Simple_match_choice);
+      state := Update_State_Match(state);
+      null; -- !!!
+    end Write_Simple_Match;
+
+    procedure LZ77_emits_DL_code (distance, length: Integer) is
+    begin
+      Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
+      --  !!  Later we will choose betweeen different tactics with memorized distances
+      Write_Simple_Match(UInt32(distance), UInt32(length));
+      total_pos:= total_pos + Unsigned(length);
+      Update_pos_state;
+    end LZ77_emits_DL_code;
+
+    ------------------------
+    --  LZ77 compression  --
+    ------------------------
+
+    LZ77_choice: constant array(LZMA_Level) of LZ77.Method_Type:=
+      (Level_1   => LZ77.IZ_6,
+       Level_2   => LZ77.IZ_10);
+
+    Look_Ahead : constant Integer:= 258;
+
+    procedure My_LZ77 is
+      new LZ77.Encode
+        ( String_buffer_size => String_buffer_size,
+          Look_Ahead         => Look_Ahead,
+          Threshold          => 2,  --  From a string match length > 2, a DL code is sent
+          Method             => LZ77_choice(level),
+          Read_byte          => Read_byte,
+          More_bytes         => More_bytes,
+          Write_byte         => LZ77_emits_literal_byte,
+          Write_code         => LZ77_emits_DL_code
+        );
 
     procedure Write_LZMA_header is
       dw: UInt32:= lzma_params.dictSize;
@@ -153,12 +187,13 @@ package body LZMA.Encoding is
       end if;
     end Write_LZMA_header;
 
-    --  The end-of-stream marker is a "Simple Match" with a special
-    --  length value: 16#FFFF_FFFF#.
+    --  The end-of-stream marker is a fake "Simple Match" with
+    --  a special length value: 16#FFFF_FFFF#.
     --
     procedure Write_end_marker is
     begin
-      null;  -- !!
+      Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
+      Write_Simple_Match(distance => 16#FFFF_FFFF#, length => Min_match_length);
       --
       --  LzmaEnc.c
       --

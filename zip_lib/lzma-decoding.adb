@@ -68,7 +68,7 @@ package body LZMA.Decoding is
 
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
     state : State_range := 0;
-    rep0, rep1, rep2, rep3 : UInt32 := 0;
+    rep0, rep1, rep2, rep3 : UInt32 := 0;  --  Recent distances used for LZ
     pos_state: Pos_state_range;
     -- Local copies of invariant properties.
     unpack_size_def: constant Boolean:= o.unpackSizeDefined;
@@ -252,7 +252,7 @@ package body LZMA.Decoding is
       len: Unsigned:= 0;
       --
       procedure Copy_Match(dist: UInt32) is
-        pragma Inline(Copy_Match);
+      pragma Inline(Copy_Match);
         b2, b3: Byte;
         len32: constant UInt32:= UInt32(len);
         will_fill: constant Boolean:= out_win.pos + len32 >= out_win.size;
@@ -408,7 +408,34 @@ package body LZMA.Decoding is
       --
     begin -- Process_Distance_and_Length
       Decode_Bit(probs.switch.rep(state), bit_a);
-      if bit_a /= 0 then
+      if bit_a = Simple_match_choice then
+        --  "Simple Match"
+        rep3 := rep2;
+        rep2 := rep1;
+        rep1 := rep0;
+        Decode_Length(probs.len);
+        state := Update_State_Match(state);
+        Decode_Distance(dist => rep0);
+        if rep0 = 16#FFFF_FFFF# then
+          if Is_Finished_OK then
+            raise Marker_exit;
+          else
+            Raise_Exception(
+              LZMA_Error'Identity,
+              "Range decoder not finished on EOS marker (in Process_Distance_and_Length)"
+            );
+          end if;
+        end if;
+        if (o.unpackSize = 0 and then unpack_size_def) or
+            rep0 >= dict_size or not Check_Distance
+        then
+          Raise_Exception(
+            LZMA_Error'Identity,
+            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2)"
+          );
+        end if;
+      else
+        --  "Rep Match"
         if o.unpackSize = 0 and then unpack_size_def then
           Raise_Exception(
             LZMA_Error'Identity,
@@ -449,31 +476,6 @@ package body LZMA.Decoding is
         end if;
         Decode_Length(probs.rep_len);
         state := Update_State_Rep(state);
-      else
-        rep3 := rep2;
-        rep2 := rep1;
-        rep1 := rep0;
-        Decode_Length(probs.len);
-        state := Update_State_Match(state);
-        Decode_Distance(dist => rep0);
-        if rep0 = 16#FFFF_FFFF# then
-          if Is_Finished_OK then
-            raise Marker_exit;
-          else
-            Raise_Exception(
-              LZMA_Error'Identity,
-              "Range decoder not finished on EOS marker (in Process_Distance_and_Length)"
-            );
-          end if;
-        end if;
-        if (o.unpackSize = 0 and then unpack_size_def) or
-            rep0 >= dict_size or not Check_Distance
-        then
-          Raise_Exception(
-            LZMA_Error'Identity,
-            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2)"
-          );
-        end if;
       end if;
       len := len + kMatchMinLen;
       isError := False;
@@ -519,7 +521,7 @@ package body LZMA.Decoding is
       pos_state := Pos_state_range(UInt32(out_win.total_pos) and pos_bits_mask);
       Decode_Bit(probs.switch.match(state, pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
-      if bit_choice = 0 then
+      if bit_choice = literal_choice then
         Process_Literal;
       else
         Process_Distance_and_Length;
