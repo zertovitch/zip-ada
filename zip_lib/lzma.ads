@@ -71,9 +71,27 @@ private
   subtype Probs_8_bits is CProb_array(Bits_8_range);
   subtype Probs_NAB_bits is CProb_array(Bits_NAB_range);
 
-  -----------------------------------
-  --  Proabilities for LZ lengths  --
-  -----------------------------------
+  --------------------------------------------------
+  --  Probabilities for the binary decision tree  --
+  --------------------------------------------------
+
+  type Probs_state is array(State_range) of CProb;
+  type Probs_state_and_pos_state is array(State_range, Pos_state_range) of CProb;
+
+  type Probs_for_switches is record
+    --  This is the context for the switch between a Literal and a LZ Distance-Length code
+    match     : Probs_state_and_pos_state:= (others => (others => Initial_probability));
+    --  These are contexts for various repetition modes
+    rep       : Probs_state:= (others => Initial_probability);
+    rep_g0    : Probs_state:= (others => Initial_probability);
+    rep_g1    : Probs_state:= (others => Initial_probability);
+    rep_g2    : Probs_state:= (others => Initial_probability);
+    rep0_long : Probs_state_and_pos_state:= (others => (others => Initial_probability));
+  end record;
+
+  ------------------------------------
+  --  Probabilities for LZ lengths  --
+  ------------------------------------
 
   type Low_mid_coder_probs is array(Pos_state_range) of Probs_3_bits;
 
@@ -87,9 +105,9 @@ private
     high_coder : Probs_8_bits        := (others => Initial_probability);
   end record;
 
-  -------------------------------------
-  --  Proabilities for LZ distances  --
-  -------------------------------------
+  --------------------------------------
+  --  Probabilities for LZ distances  --
+  --------------------------------------
 
   Len_to_pos_states  : constant := 4;
   subtype Slot_coder_range is Unsigned range 0 .. Len_to_pos_states - 1;
@@ -114,9 +132,9 @@ private
   --------------------
   --  Range coding  --
   --------------------
-  
+
   --  Normalization threshold. When the range width is below that value,
   --  a shift is needed.
   width_threshold : constant := 2**24;  --  LZMA specification name: "kTopValue"
-  
+
 end LZMA;

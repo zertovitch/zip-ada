@@ -89,16 +89,10 @@ package body LZMA.Decoding is
     --  Lengths:
     len_decoder     : Probs_for_LZ_Lengths;
     rep_len_decoder : Probs_for_LZ_Lengths;
-    --
-    subtype Long_range is Unsigned range 0..States_count * Max_pos_states_count - 1;
-    IsRep                : CProb_array(State_range):= (others => Initial_probability);
-    IsRepG0              : CProb_array(State_range):= (others => Initial_probability);
-    IsRepG1              : CProb_array(State_range):= (others => Initial_probability);
-    IsRepG2              : CProb_array(State_range):= (others => Initial_probability);
-    IsRep0Long           : CProb_array(Long_range):= (others => Initial_probability);
-    IsMatch              : CProb_array(Long_range):= (others => Initial_probability);
+    --  Decision tree switches:
+    prob_switch     : Probs_for_switches;
 
-    --  This corresponds to G.N.N. Martin's revised algorithm's adding of
+    --  Normalize corresponds to G.N.N. Martin's revised algorithm's adding of
     --  trailing digits - for encoding. Here we decode and know the encoded
     --  data, brought by Read_Byte.
     procedure Normalize is
@@ -422,7 +416,7 @@ package body LZMA.Decoding is
       kMatchMinLen : constant := 2;
       --
     begin -- Process_Distance_and_Length
-      Decode_Bit(IsRep(state), bit_a);
+      Decode_Bit(prob_switch.rep(state), bit_a);
       if bit_a /= 0 then
         if o.unpackSize = 0 and then unpack_size_def then
           Raise_Exception(
@@ -436,9 +430,9 @@ package body LZMA.Decoding is
             "Output window buffer is empty (in Process_Distance_and_Length)"
           );
         end if;
-        Decode_Bit(IsRepG0(state), bit_b);
+        Decode_Bit(prob_switch.rep_g0(state), bit_b);
         if bit_b = 0 then
-          Decode_Bit(IsRep0Long(state * Max_pos_states_count + pos_state), bit_c);
+          Decode_Bit(prob_switch.rep0_long(state, pos_state), bit_c);
           if bit_c = 0 then
             state := Update_State_ShortRep(state);
             Put_Byte(Get_Byte(dist => rep0 + 1));
@@ -446,11 +440,11 @@ package body LZMA.Decoding is
             return;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
-          Decode_Bit(IsRepG1(state), bit_d);
+          Decode_Bit(prob_switch.rep_g1(state), bit_d);
           if bit_d = 0 then
             dist := rep1;
           else
-            Decode_Bit(IsRepG2(state), bit_e);
+            Decode_Bit(prob_switch.rep_g2(state), bit_e);
             if bit_e = 0 then
               dist := rep2;
             else
@@ -532,7 +526,7 @@ package body LZMA.Decoding is
         return;
       end if;
       pos_state := Pos_state_range(UInt32(out_win.total_pos) and pos_bits_mask);
-      Decode_Bit(IsMatch(state * Max_pos_states_count + pos_state), bit_choice);
+      Decode_Bit(prob_switch.match(state, pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
       if bit_choice = 0 then
         Process_Literal;
