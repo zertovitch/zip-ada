@@ -123,7 +123,7 @@ package body LZMA.Encoding is
     type LZMA_Params_Info is record
       unpackSize           : Data_Bytes_Count:= 0;
       unpackSizeDefined    : Boolean := False;
-      markerIsMandatory    : Boolean := True;
+      has_end_mark         : Boolean := True;
       dictSize             : UInt32  := String_buffer_size;
       lc                   : Literal_context_bits_range:= 3;   --  number of "literal context" bits
       lp                   : Literal_position_bits_range:= 0;  --  number of "literal pos" bits
@@ -152,11 +152,35 @@ package body LZMA.Encoding is
         end loop;
       end if;
     end Write_LZMA_header;
+
+    --  The end-of-stream marker is a "Simple Match" with a special
+    --  length value: 16#FFFF_FFFF#.
+    --
+    procedure Write_end_marker is
+    begin
+      null;  -- !!
+      --
+      --  LzmaEnc.c
+      --
+      --    static void WriteEndMarker(CLzmaEnc *p, UInt32 posState)
+      --  {
+      --    UInt32 len;
+      --    RangeEnc_EncodeBit(&p->rc, &p->isMatch[p->state][posState], 1);
+      --    RangeEnc_EncodeBit(&p->rc, &p->isRep[p->state], 0);
+      --    p->state = kMatchNextStates[p->state];
+      --    len = LZMA_MATCH_LEN_MIN;
+      --    LenEnc_Encode2(&p->lenEnc, &p->rc, len - LZMA_MATCH_LEN_MIN, posState, !p->fastMode, p->ProbPrices);
+      --    RcTree_Encode(&p->rc, p->posSlotEncoder[GetLenToPosState(len)], kNumPosSlotBits, (1 << kNumPosSlotBits) - 1);
+      --    RangeEnc_EncodeDirectBits(&p->rc, (((UInt32)1 << 30) - 1) >> kNumAlignBits, 30 - kNumAlignBits);
+      --    RcTree_ReverseEncode(&p->rc, p->posAlignEncoder, kNumAlignBits, kAlignMask);
+      --  }
+    end Write_end_marker;
+
   begin
     Write_LZMA_header;
     My_LZ77;
-    if lzma_params.markerIsMandatory then
-      null; -- !! Send End-of-stream marker (complicated task...)
+    if lzma_params.has_end_mark then
+      Write_end_marker;
     end if;
     Flush_range_encoder;
   end Encode;
