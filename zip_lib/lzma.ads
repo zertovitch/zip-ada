@@ -125,6 +125,26 @@ private
     pos_coder      : Pos_coder_probs  := (others => Initial_probability);
   end record;
 
+  --------------------------------------
+  --  All probabilities used by LZMA  --
+  --------------------------------------
+
+  type All_probabilities(last_lit_prob_index: Unsigned) is record
+    --  Literals:
+    lit     : CProb_array(0..last_lit_prob_index):= (others => Initial_probability);
+    --  Distances:
+    dist    : Probs_for_LZ_Distances;
+    --  Lengths:
+    len     : Probs_for_LZ_Lengths;
+    rep_len : Probs_for_LZ_Lengths;
+    --  Decision tree switches:
+    switch  : Probs_for_switches;
+  end record;
+
+  -------------
+  --  Misc.  --
+  -------------
+
   --  Minimum dictionary (= plain text buffer of n previous bytes)
   --  size is 4096. LZMA specification name: "LZMA_DIC_MIN"
   LZMA_min_dictionary_size : constant := 2 ** 12;
