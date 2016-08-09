@@ -147,7 +147,19 @@ private
 
   --  Minimum dictionary (= plain text buffer of n previous bytes)
   --  size is 4096. LZMA specification name: "LZMA_DIC_MIN"
-  LZMA_min_dictionary_size : constant := 2 ** 12;
+  Min_dictionary_size : constant := 2 ** 12;
+
+  --  Log2-style encoding of LZ lengths
+  Len_low_bits     : constant:= 3;
+  Len_low_symbols  : constant:= 2 ** Len_low_bits;
+  Len_mid_bits     : constant:= 3;
+  Len_mid_symbols  : constant:= 2 ** Len_mid_bits;
+  Len_high_bits    : constant:= 8;
+  Len_high_symbols : constant:= 2 ** Len_high_bits;
+  Len_symbols      : constant:= Len_low_symbols + Len_mid_symbols + Len_high_symbols;
+
+  Min_match_length : constant:= 2;  --  "LZMA_MATCH_LEN_MIN"
+  Max_match_length : constant:= Min_match_length + Len_symbols - 1;  --  "LZMA_MATCH_LEN_MAX"
 
   --------------------------------------------------
   --  Binary values of various decision switches  --

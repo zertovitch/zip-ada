@@ -122,24 +122,61 @@ package body LZMA.Encoding is
       Update_pos_state;
     end LZ77_emits_literal_byte;
 
-    Min_match_length: constant:= 2;  --  "LZMA_MATCH_LEN_MIN"
-
-    procedure Write_Simple_Match(distance, length: UInt32) is
+    procedure Bit_Tree_Encode(
+      prob     : in out CProb_array;
+      num_bits :        Positive;
+      symbol   :        Unsigned)
+    is
+      bit, m: Unsigned;
     begin
+      m:= 1;
+      for i in reverse 1..num_bits loop
+        bit:= Unsigned(Shift_Right(UInt32(symbol), i)) and 1;
+        Encode_Bit(prob(m + prob'First), bit);
+        m:= m + m + bit;
+      end loop;
+    end Bit_Tree_Encode;
+
+    procedure Encode_Length(probs_len: in out Probs_for_LZ_Lengths; length: Unsigned) is
+      len: Unsigned:= length - Min_match_length;
+    begin
+      if len < Len_low_symbols then
+        Encode_Bit(probs_len.choice_1, 0);
+        Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
+      else
+        Encode_Bit(probs_len.choice_1, 1);
+        if len < Len_mid_symbols then
+          Encode_Bit(probs_len.choice_2, 0);
+          len:= len - Len_low_symbols;
+          Bit_Tree_Encode(probs_len.mid_coder(pos_state), Len_mid_bits, len);
+        else
+          Encode_Bit(probs_len.choice_2, 1);
+          len:= len - Len_low_symbols - Len_mid_symbols;
+          Bit_Tree_Encode(probs_len.high_coder, Len_high_bits, len);
+        end if;
+      end if;
+    end Encode_Length;
+
+    procedure Write_Simple_Match(distance: UInt32; length: Unsigned) is
+    begin
+      Encode_Bit(probs.switch.rep(state), Simple_match_choice);
+      state := Update_State_Match(state);
+      Encode_Length(probs.len, length);
+      null; -- !!! Dist. See encodeMatch (Java), line 1894 (C)
       rep3 := rep2;
       rep2 := rep1;
       rep1 := rep0;
       rep0 := distance;
-      Encode_Bit(probs.switch.rep(state), Simple_match_choice);
-      state := Update_State_Match(state);
-      null; -- !!!
     end Write_Simple_Match;
 
     procedure LZ77_emits_DL_code (distance, length: Integer) is
     begin
+      if length not in Min_match_length .. Max_match_length then
+        raise Program_Error;  --  !! should not happen
+      end if;
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       --  !!  Later we will choose betweeen different tactics with memorized distances
-      Write_Simple_Match(UInt32(distance), UInt32(length));
+      Write_Simple_Match(UInt32(distance), Unsigned(length));
       total_pos:= total_pos + Unsigned(length);
       Update_pos_state;
     end LZ77_emits_DL_code;

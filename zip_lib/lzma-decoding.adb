@@ -61,8 +61,8 @@ package body LZMA.Decoding is
         UInt32(b(UInt32(i) + 1 + b'First)) * 2 ** (8 * i);
     end loop;
     o.dictionary_size := o.dictSizeInProperties;
-    if o.dictionary_size < LZMA_min_dictionary_size then
-      o.dictionary_size := LZMA_min_dictionary_size;
+    if o.dictionary_size < Min_dictionary_size then
+      o.dictionary_size := Min_dictionary_size;
     end if;
   end Decode_Properties;
 
@@ -376,23 +376,26 @@ package body LZMA.Decoding is
         end if;
       end Decode_Distance;
       --
-      procedure Decode_Length(o: in out Probs_for_LZ_Lengths) is
+      procedure Decode_Length(probs_len: in out Probs_for_LZ_Lengths) is
       pragma Inline(Decode_Length);
-        bit_a, bit_b: Unsigned;
+        choice: Unsigned;
       begin
-        Decode_Bit(o.choice_1, bit_a);
-        if bit_a = 0 then
-          Bit_Tree_Decode(o.low_coder(pos_state), 3, len);
+        Decode_Bit(probs_len.choice_1, choice);
+        if choice = 0 then
+          Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
+          --  final length is in 2 + [0..7]
           return;
         end if;
-        Decode_Bit(o.choice_2, bit_b);
-        if bit_b = 0 then
-          Bit_Tree_Decode(o.mid_coder(pos_state), 3, len);
-          len:= len + 8;
+        Decode_Bit(probs_len.choice_2, choice);
+        if choice = 0 then
+          Bit_Tree_Decode(probs_len.mid_coder(pos_state), Len_mid_bits, len);
+          len:= len + Len_low_symbols;
+          --  length is in 2 + [8..15]
           return;
         end if;
-        Bit_Tree_Decode(o.high_coder, 8, len);
-        len:= len + 16;
+        Bit_Tree_Decode(probs_len.high_coder, Len_high_bits, len);
+        len:= len + Len_low_symbols + Len_mid_symbols;
+        --  length is in 2 + [16..271]
       end Decode_Length;
       --
       function Check_Distance return Boolean is
@@ -404,7 +407,6 @@ package body LZMA.Decoding is
       isError: Boolean;
       dist: UInt32;
       bit_a, bit_b, bit_c, bit_d, bit_e: Unsigned;
-      kMatchMinLen : constant := 2;
       --
     begin -- Process_Distance_and_Length
       Decode_Bit(probs.switch.rep(state), bit_a);
@@ -477,7 +479,7 @@ package body LZMA.Decoding is
         Decode_Length(probs.rep_len);
         state := Update_State_Rep(state);
       end if;
-      len := len + kMatchMinLen;
+      len := len + Min_match_length;
       isError := False;
       if o.unpackSize < Data_Bytes_Count(len) and then unpack_size_def then
         len := Unsigned(o.unpackSize);
