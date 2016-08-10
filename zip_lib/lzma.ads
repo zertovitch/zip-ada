@@ -11,7 +11,7 @@ private
 
   use Interfaces;
 
-  --  These types are defined in the LZMA specification
+  --  These integer types are defined in the LZMA specification
   --  (DRAFT version, 2015-06-14, by Igor Pavlov)
 
   subtype Byte is Unsigned_8;
@@ -112,17 +112,19 @@ private
   Len_to_pos_states  : constant := 4;
   subtype Slot_coder_range is Unsigned range 0 .. Len_to_pos_states - 1;
   type Slot_coder_probs is array(Slot_coder_range) of Probs_6_bits;
+  Dist_slot_bits: constant:= 6;  --  "kNumPosSlotBits"
 
-  End_pos_model_index : constant := 14;  --  LZMA specification name: "kEndPosModelIndex"
-  Num_full_distances  : constant := 2 ** (End_pos_model_index / 2);  --  "kNumFullDistances"
+  Start_dist_model_index : constant :=  4;  --  "kStartPosModelIndex"
+  End_dist_model_index   : constant := 14;  --  LZMA specification name: "kEndPosModelIndex"
+  Num_full_distances  : constant := 2 ** (End_dist_model_index / 2);  --  "kNumFullDistances"
 
-  subtype Pos_coder_range is Unsigned range 0 .. Num_full_distances - End_pos_model_index;
+  subtype Pos_coder_range is Unsigned range 0 .. Num_full_distances - End_dist_model_index;
   subtype Pos_coder_probs is CProb_array(Pos_coder_range);
 
   type Probs_for_LZ_Distances is record
-    pos_slot_coder : Slot_coder_probs := (others => (others => Initial_probability));
-    align_coder    : Probs_NAB_bits   := (others => Initial_probability);
-    pos_coder      : Pos_coder_probs  := (others => Initial_probability);
+    slot_coder  : Slot_coder_probs := (others => (others => Initial_probability));
+    align_coder : Probs_NAB_bits   := (others => Initial_probability);
+    pos_coder   : Pos_coder_probs  := (others => Initial_probability);
   end record;
 
   --------------------------------------

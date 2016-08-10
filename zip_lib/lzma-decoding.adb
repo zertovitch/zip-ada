@@ -1,6 +1,9 @@
 -- LZMA_Decoding - Ada 95 translation of LzmaSpec.cpp, LZMA Reference Decoder 9.31
 -- LzmaSpec.cpp : 2013-07-28 : Igor Pavlov : Public domain
 
+--  Some rework in 2016: identifiers changed, encapsulation of probability model,
+--  parts common to encoding moved to root LZMA package.
+
 with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;                    use Ada.Exceptions;
 
@@ -349,24 +352,22 @@ package body LZMA.Decoding is
           end loop;
         end Bit_Tree_Reverse_Decode;
         --
-        len_state     : Unsigned := len;  --  len has been set up by Decode_Length previously
-        pos_slot      : Unsigned;
+        --  len has been set up previously by Decode_Length.
+        len_state     : constant Unsigned := Unsigned'Min(len, Len_to_pos_states - 1);
+        dist_slot     : Unsigned;
         numDirectBits : Natural;
         --
-      begin -- Decode_Distance
-        if len_state > Len_to_pos_states - 1 then
-          len_state := Len_to_pos_states - 1;
-        end if;
-        Bit_Tree_Decode(probs.dist.pos_slot_coder(len_state), 6, pos_slot);
-        if pos_slot < 4 then
-          dist:= UInt32(pos_slot);
+      begin  --  Decode_Distance
+        Bit_Tree_Decode(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
+        if dist_slot < Start_dist_model_index then
+          dist:= UInt32(dist_slot);
           return;
         end if;
-        numDirectBits := Natural(Shift_Right(UInt32(pos_slot), 1) - 1);
-        dist := Shift_Left(2 or (UInt32(pos_slot) and 1), numDirectBits);
-        if pos_slot < End_pos_model_index then
+        numDirectBits := Natural(Shift_Right(UInt32(dist_slot), 1) - 1);
+        dist := Shift_Left(2 or (UInt32(dist_slot) and 1), numDirectBits);
+        if dist_slot < End_dist_model_index then
           Bit_Tree_Reverse_Decode(
-            probs.dist.pos_coder(Unsigned(dist) - pos_slot .. Pos_coder_range'Last),
+            probs.dist.pos_coder(Unsigned(dist) - dist_slot .. Pos_coder_range'Last),
             numDirectBits
           );
         else

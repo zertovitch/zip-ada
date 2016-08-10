@@ -1,5 +1,12 @@
 --  DRAFT - WORK IN PROGRESS - DRAFT - WORK IN PROGRESS - DRAFT - WORK IN PROGRESS
 
+--  Parts from original LzmaEnc.c by Igor Pavlov and
+--  the LZMAEncoder.java translation by Lasse Collin.
+--  Other parts from LZMA.Decoding when symmetric. E.g.
+--      Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
+--  becomes
+--      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
+
 with LZ77;
 
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
@@ -157,12 +164,53 @@ package body LZMA.Encoding is
       end if;
     end Encode_Length;
 
+    --  Gets an integer [0, 63] matching the highest two bits of an integer.
+    --  It is a log2 with one "decimal".
+
+    function Get_dist_slot(dist: UInt32) return Unsigned is
+      n: UInt32;
+      i: Natural;
+    begin
+      if dist <= Start_dist_model_index then
+        return Unsigned(dist);
+      end if;
+      n := dist;
+      i := 31;
+      if (n and 16#FFFF_0000#) = 0 then
+        n := Shift_Left(n, 16);
+        i := 15;
+      end if;
+      if (n and 16#FF00_0000#) = 0 then
+        n := Shift_Left(n, 8);
+        i := i - 8;
+      end if;
+      if (n and 16#F000_0000#) = 0 then
+        n := Shift_Left(n, 4);
+        i := i - 4;
+      end if;
+      if (n and 16#C000_0000#) = 0 then
+        n := Shift_Left(n, 2);
+        i := i - 2;
+      end if;
+      if (n and 16#8000_0000#) = 0 then
+        i := i - 1;
+      end if;
+      return Unsigned(i * 2) + Unsigned(Shift_Right(dist, i - 1) and 1);
+    end Get_dist_slot;
+
     procedure Write_Simple_Match(distance: UInt32; length: Unsigned) is
+      procedure Encode_Distance is
+        len_state : constant Unsigned := Unsigned'Min(length, Len_to_pos_states - 1);
+        dist_slot : constant Unsigned := Get_dist_slot(distance);
+      begin
+        Bit_Tree_Encode(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
+        -- !!! Dist. See encodeMatch line 289 (Java), line 1898 (C)
+      end Encode_Distance;
     begin
       Encode_Bit(probs.switch.rep(state), Simple_match_choice);
       state := Update_State_Match(state);
       Encode_Length(probs.len, length);
-      null; -- !!! Dist. See encodeMatch (Java), line 1894 (C)
+      Encode_Distance;
       rep3 := rep2;
       rep2 := rep1;
       rep1 := rep0;
