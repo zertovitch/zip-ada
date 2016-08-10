@@ -391,12 +391,12 @@ package body LZMA.Decoding is
         if choice = 0 then
           Bit_Tree_Decode(probs_len.mid_coder(pos_state), Len_mid_bits, len);
           len:= len + Len_low_symbols;
-          --  length is in 2 + [8..15]
+          --  final length is in 2 + [8..15]
           return;
         end if;
         Bit_Tree_Decode(probs_len.high_coder, Len_high_bits, len);
         len:= len + Len_low_symbols + Len_mid_symbols;
-        --  length is in 2 + [16..271]
+        --  final length is in 2 + [16..271]
       end Decode_Length;
       --
       function Check_Distance return Boolean is

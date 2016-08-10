@@ -84,6 +84,7 @@ begin
     return;
   end if;
   Open(f_in, In_File, Argument(1));
+  Create(f_out, Out_File, Argument(2));
   Encode_LZMA_stream(Stream(f_in), Stream(f_out));
   New_Line;
 

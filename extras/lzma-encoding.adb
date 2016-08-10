@@ -210,7 +210,7 @@ package body LZMA.Encoding is
         m: Unsigned := 1;
         bit: Unsigned;
       begin
-        for count in reverse 0 .. num_bits loop
+        for count in reverse 1 .. num_bits loop
           bit:= Unsigned(symb) and 1;
           Encode_Bit(prob(m + prob'First), bit);
           m := m + m + bit;
@@ -331,21 +331,6 @@ package body LZMA.Encoding is
     begin
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       Write_Simple_Match(distance => 16#FFFF_FFFF#, length => Min_match_length);
-      --
-      --  LzmaEnc.c
-      --
-      --    static void WriteEndMarker(CLzmaEnc *p, UInt32 posState)
-      --  {
-      --    UInt32 len;
-      --    RangeEnc_EncodeBit(&p->rc, &p->isMatch[p->state][posState], 1);
-      --    RangeEnc_EncodeBit(&p->rc, &p->isRep[p->state], 0);
-      --    p->state = kMatchNextStates[p->state];
-      --    len = LZMA_MATCH_LEN_MIN;
-      --    LenEnc_Encode2(&p->lenEnc, &p->rc, len - LZMA_MATCH_LEN_MIN, posState, !p->fastMode, p->ProbPrices);
-      --    RcTree_Encode(&p->rc, p->posSlotEncoder[GetLenToPosState(len)], kNumPosSlotBits, (1 << kNumPosSlotBits) - 1);
-      --    RangeEnc_EncodeDirectBits(&p->rc, (((UInt32)1 << 30) - 1) >> kNumAlignBits, 30 - kNumAlignBits);
-      --    RcTree_ReverseEncode(&p->rc, p->posAlignEncoder, kNumAlignBits, kAlignMask);
-      --  }
     end Write_end_marker;
 
   begin

@@ -47,6 +47,12 @@ procedure LZMA_Dec is
 
   use type BIO.Count;
 
+  default_hints: constant LZMA_Hints:=
+    ( has_size               => True,
+      given_size             => dummy_size,
+      marker_expected        => False,
+      fail_on_bad_range_code => False);
+
 begin
   New_Line;
   Put_Line("LZMA_Dec, translated from the LZMA Reference Decoder 9.31 by Igor Pavlov.");
@@ -58,16 +64,9 @@ begin
     return;
   end if;
   Open(f_in, In_File, Argument(1));
-  Create(f_out,Out_File, Argument(2));
+  Create(f_out, Out_File, Argument(2));
 
-  Decode(
-    lzma_decoder,
-    ( has_size               => True,
-      given_size             => dummy_size,
-      marker_expected        => False,
-      fail_on_bad_range_code => False),
-    res
-  );
+  Decode(lzma_decoder, default_hints, res);
 
   Put_Line(
     "lc="   & Natural'Image(Literal_context_bits(lzma_decoder)) &
@@ -93,7 +92,7 @@ begin
     when LZMA_finished_with_marker =>
        if Unpack_size_defined(lzma_decoder) then
          if Data_Bytes_Count(Index(f_out) - 1) /= Unpack_size_as_defined(lzma_decoder) then
-           Put_Line("Warning: finished with end marker before than specified size");
+           Put_Line("Warning: finished with end marker before the specified size");
          end if;
        end if;
        Put_Line("Finished with end marker");
