@@ -60,6 +60,8 @@ private
   type CProb_array is array(Unsigned range <>) of CProb;
 
   Align_bits       : constant := 4;  --  LZMA specification name: "kNumAlignBits"
+  Align_table_size : constant := 2 ** Align_bits;
+  Align_mask       : constant := Align_table_size - 1;
 
   subtype Bits_3_range is Unsigned range 0 .. 2**3 - 1;
   subtype Bits_6_range is Unsigned range 0 .. 2**6 - 1;

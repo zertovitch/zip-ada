@@ -199,12 +199,64 @@ package body LZMA.Encoding is
     end Get_dist_slot;
 
     procedure Write_Simple_Match(distance: UInt32; length: Unsigned) is
+      --
+      procedure Bit_Tree_Reverse_Encode(
+        prob    : in out CProb_array;
+        num_bits: in     Natural;
+        symbol  : in     UInt32
+      )
+      is
+        symb: UInt32:= symbol;
+        m: Unsigned := 1;
+        bit: Unsigned;
+      begin
+        for count in reverse 0 .. num_bits loop
+          bit:= Unsigned(symb) and 1;
+          Encode_Bit(prob(m + prob'First), bit);
+          m := m + m + bit;
+          symb:= Shift_Right(symb, 1);
+        end loop;
+      end Bit_Tree_Reverse_Encode;
+      --  Range encoding of num_bits with equiprobability.
+      procedure Encode_Direct_Bits(value: UInt32; num_bits: Natural) is
+        num_bits_r: Natural:= num_bits;
+      begin
+        loop
+          range_enc.width:= Shift_Right(range_enc.width, 1);
+          num_bits_r:= num_bits_r - 1;
+          range_enc.low := range_enc.low +
+            (UInt64(range_enc.width) and (0 - UInt64(Shift_Right(value, num_bits_r) and 1)));
+          Normalize;
+          exit when num_bits_r = 0;
+        end loop;
+      end Encode_Direct_Bits;
+      --
       procedure Encode_Distance is
         len_state : constant Unsigned := Unsigned'Min(length, Len_to_pos_states - 1);
         dist_slot : constant Unsigned := Get_dist_slot(distance);
+        base, dist_reduced: UInt32;
+        footerBits: Natural;
       begin
         Bit_Tree_Encode(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
-        -- !!! Dist. See encodeMatch line 289 (Java), line 1898 (C)
+        if dist_slot >= Start_dist_model_index then
+          footerBits := Natural(Shift_Right(UInt32(dist_slot), 1)) - 1;
+          base := Shift_Left(UInt32(2 or (dist_slot and 1)), footerBits);
+          dist_reduced := distance - base;
+          if dist_slot < End_dist_model_index then
+            Bit_Tree_Reverse_Encode(
+              probs.dist.pos_coder(Unsigned(base) - dist_slot - 1 .. Pos_coder_range'Last),
+              footerBits,
+              dist_reduced
+            );
+          else
+            Encode_Direct_Bits(Shift_Right(dist_reduced, Align_bits), footerBits - Align_bits);
+            Bit_Tree_Reverse_Encode(
+              probs.dist.align_coder,
+              Align_bits,
+              dist_reduced and Align_mask
+            );
+          end if;
+        end if;
       end Encode_Distance;
     begin
       Encode_Bit(probs.switch.rep(state), Simple_match_choice);
