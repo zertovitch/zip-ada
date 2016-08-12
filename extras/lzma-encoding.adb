@@ -53,7 +53,7 @@ package body LZMA.Encoding is
           range_enc.cache_size:= range_enc.cache_size - 1;
           exit when range_enc.cache_size = 0;
         end loop;
-        range_enc.cache:= Byte(Shift_Right(range_enc.low, 24) and 16#FF#);
+        range_enc.cache:= Byte(Shift_Right(low_bottom32, 24) and 16#FF#);
       end if;
       range_enc.cache_size:= range_enc.cache_size + 1;
       range_enc.low:= Shift_Left(low_bottom32, 8);  --  Here are the trailing zeroes added.
@@ -61,7 +61,7 @@ package body LZMA.Encoding is
 
     procedure Flush_range_encoder is
     begin
-      for i in 1..4 loop
+      for i in 1 .. 5 loop
         Shift_low;
       end loop;
     end Flush_range_encoder;
