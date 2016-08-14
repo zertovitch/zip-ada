@@ -11,6 +11,7 @@ with LZ77;
 
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Interfaces;                        use Interfaces;
+with Ada.Text_IO;
 
 package body LZMA.Encoding is
 
@@ -80,6 +81,7 @@ package body LZMA.Encoding is
       prob: constant CProb:= prob_io;  --  Local copy
       bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * prob;
     begin
+      Ada.Text_IO.Put_Line("Encode_Bit" & symbol'img);
       if symbol = 0 then
         prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
         range_enc.width := bound;
@@ -137,7 +139,7 @@ package body LZMA.Encoding is
       bit, m: Unsigned;
     begin
       m:= 1;
-      for i in reverse 1..num_bits loop
+      for i in reverse 0 .. num_bits - 1 loop
         bit:= Unsigned(Shift_Right(UInt32(symbol), i)) and 1;
         Encode_Bit(prob(m + prob'First), bit);
         m:= m + m + bit;
