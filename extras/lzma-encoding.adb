@@ -40,7 +40,7 @@ package body LZMA.Encoding is
     procedure Shift_low is
       --  Top 32 bits of the lower range bound.
       low_top32    : constant UInt64:= Shift_Right(range_enc.low, 32);
-      low_bottom32 : constant UInt64:= range_enc.low and 16#FFFF_FFFF#;
+      low_bottom32 : constant UInt32:= UInt32(range_enc.low and 16#FFFF_FFFF#);
       temp: Byte;
     begin
       if low_bottom32 < 16#FF00_0000# or else low_top32 /= 0 then
@@ -57,7 +57,7 @@ package body LZMA.Encoding is
         range_enc.cache:= Byte(Shift_Right(low_bottom32, 24) and 16#FF#);
       end if;
       range_enc.cache_size:= range_enc.cache_size + 1;
-      range_enc.low:= Shift_Left(low_bottom32, 8);  --  Here are the trailing zeroes added.
+      range_enc.low:= UInt64(Shift_Left(low_bottom32, 8));  --  Here are the trailing zeroes added.
     end Shift_low;
 
     procedure Flush_range_encoder is
@@ -71,8 +71,12 @@ package body LZMA.Encoding is
     pragma Inline(Normalize);
     begin
       if range_enc.width < width_threshold then
+        Ada.Text_IO.Put_Line("        Normalize, low   before" & range_enc.low'img);
+        Ada.Text_IO.Put_Line("        Normalize, width before" & range_enc.width'img);
         range_enc.width := Shift_Left(range_enc.width, 8);
         Shift_low;
+        Ada.Text_IO.Put_Line("        Normalize, low   after " & range_enc.low'img);
+        Ada.Text_IO.Put_Line("        Normalize, width after " & range_enc.width'img);
       end if;
     end Normalize;
 
@@ -82,6 +86,7 @@ package body LZMA.Encoding is
       bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * prob;
     begin
       Ada.Text_IO.Put_Line("Encode_Bit" & symbol'img);
+      Ada.Text_IO.Put_Line("  Prob before" & prob_io'img);
       if symbol = 0 then
         prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
         range_enc.width := bound;
@@ -92,6 +97,7 @@ package body LZMA.Encoding is
         range_enc.width := range_enc.width - bound;
         Normalize;
       end if;
+      Ada.Text_IO.Put_Line("  Prob after " & prob_io'img);
     end Encode_Bit;
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
