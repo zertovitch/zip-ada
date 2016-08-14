@@ -1,10 +1,10 @@
 --  DRAFT - WORK IN PROGRESS - DRAFT - WORK IN PROGRESS - DRAFT - WORK IN PROGRESS
 
---  Parts from original LzmaEnc.c by Igor Pavlov and
---  the LZMAEncoder.java translation by Lasse Collin.
---  Other parts from LZMA.Decoding when symmetric. E.g.
+--  Parts of the base mechanism are from the original LzmaEnc.c by Igor Pavlov or
+--  from the LZMAEncoder.java translation by Lasse Collin.
+--  Other parts are mirrored from LZMA.Decoding when symmetric. For instance,
 --      Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
---  becomes
+--  becomes:
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
 
 with LZ77;
@@ -28,36 +28,36 @@ package body LZMA.Encoding is
 
   procedure Encode is
 
-    --  Range encoding of single bits - see equivalent LZMA.Decoding
-    --  parts for comments with some explanations.
+    -------------------------------------
+    --  Range encoding of single bits. --
+    -------------------------------------
 
     range_enc: Range_Encoder;
 
-    --  This part corresponds to G.N.N. Martin's revised algorithm's adding
-    --  of trailing digits, zeroes. The leftmost digits of the range don't
-    --  change anymore and can be output.
-
     procedure Shift_low is
       --  Top 32 bits of the lower range bound.
-      low_top32    : constant UInt64:= Shift_Right(range_enc.low, 32);
-      low_bottom32 : constant UInt32:= UInt32(range_enc.low and 16#FFFF_FFFF#);
-      temp: Byte;
+      lb_top32    : constant UInt64:= Shift_Right(range_enc.low, 32);
+      --  Bottom 32 bits of the lower range bound.
+      lb_bottom32 : constant UInt32:= UInt32(range_enc.low and 16#FFFF_FFFF#);
+      temp, lb_bits_33_40: Byte;
     begin
-      if low_bottom32 < 16#FF00_0000# or else low_top32 /= 0 then
+      if lb_bottom32 < 16#FF00_0000# or else lb_top32 /= 0 then
         --  Flush range_enc.cache_size bytes, based on only
-        --  2 byte values: range_enc.cache and (low_top32 and 16#FF#).
-        --  The mechanism is a bit obscure...
+        --  2 byte values: range_enc.cache and lb_bits_33_40.
+        --  The mechanism is a bit obscure (seems to be a carry)...
         temp:= range_enc.cache;
+        lb_bits_33_40:= Byte(lb_top32 and 16#FF#);
         loop
-          Write_byte(temp + Byte(low_top32 and 16#FF#));
+          Write_byte(temp + lb_bits_33_40);
           temp:= 16#FF#;
           range_enc.cache_size:= range_enc.cache_size - 1;
           exit when range_enc.cache_size = 0;
         end loop;
-        range_enc.cache:= Byte(Shift_Right(low_bottom32, 24) and 16#FF#);
+        range_enc.cache:= Byte(Shift_Right(lb_bottom32, 24) and 16#FF#);  --  bits 25 to 32
       end if;
       range_enc.cache_size:= range_enc.cache_size + 1;
-      range_enc.low:= UInt64(Shift_Left(low_bottom32, 8));  --  Here are the trailing zeroes added.
+      --  Bits 25 to 32 are erased and the trailing zeroes are added.
+      range_enc.low:= UInt64(Shift_Left(lb_bottom32, 8));
     end Shift_low;
 
     procedure Flush_range_encoder is
@@ -67,6 +67,10 @@ package body LZMA.Encoding is
       end loop;
     end Flush_range_encoder;
 
+    --  Normalize corresponds to G.N.N. Martin's revised algorithm's adding
+    --  of trailing digits (zeroes). The leftmost digits of the range don't
+    --  change anymore and can be output.
+    --
     procedure Normalize is
     pragma Inline(Normalize);
     begin
@@ -83,16 +87,23 @@ package body LZMA.Encoding is
     procedure Encode_Bit(prob_io: in out CProb; symbol: in Unsigned) is
     pragma Inline(Encode_Bit);
       prob: constant CProb:= prob_io;  --  Local copy
+      --  Depending on the probability, bound is between 0 and width.
       bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * prob;
     begin
       Ada.Text_IO.Put_Line("Encode_Bit" & symbol'img);
       Ada.Text_IO.Put_Line("  Prob before" & prob_io'img);
       if symbol = 0 then
+        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
+        --  The truncation ensures (proof needed) that prob <= Probability_model_count - (2**m - 1)
         prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
+        --  Set new width. The new range is [low, low+bound[ : low is unchanged, high is new.
         range_enc.width := bound;
         Normalize;
       else
+        --  Decrease probability: prob:= prob - prob / 2**m = prob:= prob * (1 - 2**m)
+        --  The truncation ensures (proof needed) that prob >= 2**m - 1
         prob_io:= prob - Shift_Right(prob, Probability_change_bits);
+        --  The new range is [old low + bound, old low + old width[ : high is unchanged.
         range_enc.low := range_enc.low + UInt64(bound);
         range_enc.width := range_enc.width - bound;
         Normalize;
@@ -122,19 +133,57 @@ package body LZMA.Encoding is
     probs: All_probabilities(
       last_lit_prob_index => 16#300# * 2 ** (lzma_params.lc + lzma_params.lp) - 1
     );
-    pos_bits_mask : constant UInt32 := 2 ** lzma_params.pb - 1;
+    pos_bits_mask    : constant UInt32 := 2 ** lzma_params.pb - 1;
+    literal_pos_mask : constant UInt32 := 2 ** lzma_params.lp - 1;
 
     procedure Update_pos_state is
     begin
       pos_state := Pos_state_range(UInt32(total_pos) and pos_bits_mask);
     end Update_pos_state;
 
-    procedure LZ77_emits_literal_byte (b: Byte) is
+    procedure Write_Literal (prob: in out CProb_array; symbol: in UInt32) is
+      symb: UInt32:= symbol or 16#100#;
     begin
-      Encode_Bit(probs.switch.match(state, pos_state), literal_choice);
-      null; -- !!!
+      loop
+        Encode_Bit(
+          prob(Unsigned(Shift_Right(symb, 8)) + prob'First),
+          Unsigned(Shift_Right(symb, 7)) and 1
+        );
+        symb:= Shift_Left(symb, 1);
+        exit when symb >= 16#10000#;
+      end loop;
+    end Write_Literal;
+
+    prev_byte: Byte:= 0;
+    --  We expand the DL codes in order to have at least the last byte.
+    --  This is a little bit overkill ;-). To fix it, LZ77 should pass the last copied byte !!
+    type Text_Buffer_Index is mod String_buffer_size;
+    type Text_Buffer is array (Text_Buffer_Index) of Byte;
+    Text_Buf: Text_Buffer;
+    R: Text_Buffer_Index:= 0;
+
+    procedure LZ77_emits_literal_byte (b: Byte) is
+      lit_state    : Unsigned;
+      probs_idx    : Unsigned;
+    begin
+      Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
+      lit_state :=
+        Unsigned(
+          Shift_Left(UInt32(total_pos) and literal_pos_mask, lzma_params.lc) +
+          Shift_Right(UInt32(prev_byte), 8 - lzma_params.lc)
+        );
+      probs_idx:= 16#300# * lit_state;
+      if state < 7 then
+        Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
+      else
+        raise Program_Error; -- !!!
+      end if;
       total_pos:= total_pos + 1;
       Update_pos_state;
+      state := Update_State_Literal(state);
+      prev_byte:= b;
+      Text_Buf(R):= b;
+      R:= R+1;  --  This is mod String_buffer_size
     end LZ77_emits_literal_byte;
 
     procedure Bit_Tree_Encode(
@@ -278,6 +327,7 @@ package body LZMA.Encoding is
     end Write_Simple_Match;
 
     procedure LZ77_emits_DL_code (distance, length: Integer) is
+      Copy_start: constant Text_Buffer_Index:= R - Text_Buffer_Index(distance);
     begin
       if length not in Min_match_length .. Max_match_length then
         raise Program_Error;  --  !! should not happen
@@ -287,6 +337,12 @@ package body LZMA.Encoding is
       Write_Simple_Match(UInt32(distance), Unsigned(length));
       total_pos:= total_pos + Unsigned(length);
       Update_pos_state;
+      --  Expand in the circular text buffer to have it up to date
+      for K in 0..Text_Buffer_Index(length-1) loop
+        Text_Buf(R):= Text_Buf(Copy_start+K);
+        R:= R+1;  --  This is mod String_buffer_size
+      end loop;
+      prev_byte:= Text_Buf(R-1);
     end LZ77_emits_DL_code;
 
     ------------------------
@@ -316,20 +372,18 @@ package body LZMA.Encoding is
       uw: Data_Bytes_Count:= lzma_params.unpackSize;
     begin
       Write_byte(Byte(lzma_params.lc + 9 * lzma_params.lp + 9 * 5 * lzma_params.pb));
-      for i in 0..3 loop
+      for i in 0 .. 3 loop
         Write_byte(Byte(dw mod 256));
         dw:= dw / 256;
       end loop;
-      if lzma_params.unpackSizeDefined then
-        for i in 0..7 loop
+      for i in 0 .. 7 loop
+        if lzma_params.unpackSizeDefined then
           Write_byte(Byte(uw mod 256));
           uw:= uw / 256;
-        end loop;
-      else
-        for i in 0..7 loop
+        else
           Write_byte(16#FF#);
-        end loop;
-      end if;
+        end if;
+      end loop;
     end Write_LZMA_header;
 
     --  The end-of-stream marker is a fake "Simple Match" with

@@ -160,7 +160,7 @@ package body LZMA.Decoding is
 
     procedure Process_Literal is
     pragma Inline(Process_Literal);
-      prevByte     : Byte:= 0;
+      prev_byte    : Byte:= 0;
       symbol       : Unsigned:= 1;
       lit_state    : Unsigned;
       probs_idx    : Unsigned;
@@ -174,12 +174,12 @@ package body LZMA.Decoding is
       end if;
       --
       if not Is_Empty then
-        prevByte := Get_Byte(dist => 1);
+        prev_byte := Get_Byte(dist => 1);
       end if;
       lit_state :=
         Unsigned(
           Shift_Left(UInt32(out_win.total_pos) and literal_pos_mask, lc) +
-          Shift_Right(UInt32(prevByte), 8 - lc)
+          Shift_Right(UInt32(prev_byte), 8 - lc)
         );
       probs_idx:= 16#300# * lit_state;
       if state < 7 then

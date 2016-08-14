@@ -170,7 +170,7 @@ private
   --------------------------------------------------
 
   --  LZ literal vs. DL code
-  literal_choice : constant:= 0;
+  Literal_choice : constant:= 0;
   DL_code_choice : constant:= 1;
 
   --  Simple match vs . "Rep match"
