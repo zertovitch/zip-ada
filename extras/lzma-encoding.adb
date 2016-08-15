@@ -154,17 +154,34 @@ package body LZMA.Encoding is
       end loop;
     end Write_Literal;
 
+    procedure Write_Literal_Matched (prob: in out CProb_array; symbol, matched: in UInt32) is
+      symb: UInt32:= symbol or 16#100#;
+      offs: UInt32:= 16#100#;
+      match: UInt32:= matched;
+    begin
+      loop
+        match:= Shift_Left(match, 1);
+        Encode_Bit(
+          prob(Unsigned(offs + (match and offs) + Shift_Right(symb, 8)) + prob'First),
+          Unsigned(Shift_Right(symb, 7)) and 1
+        );
+        symb:= Shift_Left(symb, 1);
+        offs:= offs and not (match xor symb);
+        exit when symb >= 16#10000#;
+      end loop;
+    end Write_Literal_Matched;
+
     prev_byte: Byte:= 0;
-    --  We expand the DL codes in order to have at least the last byte.
-    --  This is a little bit overkill ;-). To fix it, LZ77 should pass the last copied byte !!
+    --  We expand the DL codes in order to have some past data.
     type Text_Buffer_Index is mod String_buffer_size;
     type Text_Buffer is array (Text_Buffer_Index) of Byte;
     Text_Buf: Text_Buffer;
     R: Text_Buffer_Index:= 0;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
-      lit_state    : Unsigned;
-      probs_idx    : Unsigned;
+      lit_state : Unsigned;
+      probs_idx : Unsigned;
+      b_match: Byte;
     begin
       Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
       lit_state :=
@@ -175,8 +192,11 @@ package body LZMA.Encoding is
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
         Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
+        Ada.Text_IO.Put_Line("  *** LZ77 Literal, simple (seems ok):" & Character'Val(b));
       else
-        raise Program_Error; -- !!!
+        b_match:= Text_Buf(R-Text_Buffer_Index(rep0)-1);
+        Write_Literal_Matched(probs.lit(probs_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
+        Ada.Text_IO.Put_Line("  *** LZ77 Literal with match (buggy):" & Character'Val(b));
       end if;
       total_pos:= total_pos + 1;
       Update_pos_state;
@@ -329,12 +349,14 @@ package body LZMA.Encoding is
     procedure LZ77_emits_DL_code (distance, length: Integer) is
       Copy_start: constant Text_Buffer_Index:= R - Text_Buffer_Index(distance);
     begin
+      Ada.Text_IO.Put_Line("  *** LZ77 DL code");
       if length not in Min_match_length .. Max_match_length then
         raise Program_Error;  --  !! should not happen
       end if;
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       --  !!  Later we will choose betweeen different tactics with memorized distances
-      Write_Simple_Match(UInt32(distance), Unsigned(length));
+      Write_Simple_Match(UInt32(distance - 1), Unsigned(length));
+      --  !!  added "- 1", perhaps it's a fix at the wrong place (check different distances) ?
       total_pos:= total_pos + Unsigned(length);
       Update_pos_state;
       --  Expand in the circular text buffer to have it up to date
