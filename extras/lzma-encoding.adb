@@ -309,12 +309,12 @@ package body LZMA.Encoding is
       end Encode_Direct_Bits;
       --
       procedure Encode_Distance is
-        len_state : constant Unsigned := Unsigned'Min(length, Len_to_pos_states - 1);
+        len_state : constant Unsigned := Unsigned'Min(length - 2, Len_to_pos_states - 1);
         dist_slot : constant Unsigned := Get_dist_slot(distance);
         base, dist_reduced: UInt32;
         footerBits: Natural;
       begin
-        Ada.Text_IO.Put_Line("  -----> Distance slot" & dist_slot'img);
+        Ada.Text_IO.Put_Line("  -----> Distance slot" & dist_slot'img & " len_state=" & len_state'img);
         Bit_Tree_Encode(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
         if dist_slot >= Start_dist_model_index then
           footerBits := Natural(Shift_Right(UInt32(dist_slot), 1)) - 1;
