@@ -162,8 +162,8 @@ package body LZMA.Decoding is
     pragma Inline(Process_Literal);
       prev_byte    : Byte:= 0;
       symbol       : Unsigned:= 1;
-      lit_state    : Unsigned;
-      probs_idx    : Unsigned;
+      lit_state    : Integer;
+      probs_idx    : Integer;
       bit          : Unsigned;
     begin
       if o.unpackSize = 0 and then unpack_size_def then
@@ -177,14 +177,14 @@ package body LZMA.Decoding is
         prev_byte := Get_Byte(dist => 1);
       end if;
       lit_state :=
-        Unsigned(
+        Integer(
           Shift_Left(UInt32(out_win.total_pos) and literal_pos_mask, lc) +
           Shift_Right(UInt32(prev_byte), 8 - lc)
         );
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
         loop
-          Decode_Bit(probs.lit(probs_idx + symbol), bit);
+          Decode_Bit(probs.lit(probs_idx + Integer(symbol)), bit);
           symbol := (symbol + symbol) or bit;
           exit when symbol >= 16#100#;
         end loop;
@@ -197,20 +197,20 @@ package body LZMA.Decoding is
           --
           match_byte     : UInt32 := UInt32(Get_Byte(dist => rep0 + 1));
           match_bit      : UInt32;    -- either 0 or 16#100#
-          prob_idx_match : Unsigned;  -- either 0 (normal case without match), 16#100# or 16#200#
+          prob_idx_match : Integer;   -- either 0 (normal case without match), 16#100# or 16#200#
           bit, bit_b     : Unsigned;
         begin
           loop
             match_byte := match_byte + match_byte;
             match_bit  := match_byte and 16#100#;
-            prob_idx_match:= Unsigned(16#100# + match_bit);
-            Decode_Bit(probs.lit(probs_idx + prob_idx_match + symbol), bit);
+            prob_idx_match:= Integer(16#100# + match_bit);
+            Decode_Bit(probs.lit(probs_idx + prob_idx_match + Integer(symbol)), bit);
             symbol := (symbol + symbol) or bit;
             exit when symbol >= 16#100#;
             if match_bit /= Shift_Left(UInt32(bit), 8) then
               -- No bit match, then give up byte match
               loop
-                Decode_Bit(probs.lit(probs_idx + symbol), bit_b);
+                Decode_Bit(probs.lit(probs_idx + Integer(symbol)), bit_b);
                 symbol := (symbol + symbol) or bit_b;
                 exit when symbol >= 16#100#;
               end loop;
@@ -246,7 +246,7 @@ package body LZMA.Decoding is
       begin
         m:= 1;
         for count in reverse 1..num_bits loop
-          Decode_Bit(prob(m + prob'First), bit);
+          Decode_Bit(prob(Integer(m) + prob'First), bit);
           m:= m + m + bit;
         end loop;
         m:= m - 2**num_bits;
@@ -346,7 +346,7 @@ package body LZMA.Decoding is
           bit: Unsigned;
         begin
           for i in 0..num_bits-1 loop
-            Decode_Bit(prob(m + prob'First), bit);
+            Decode_Bit(prob(Integer(m) + prob'First), bit);
             m := m + m + bit;
             dist := dist or Shift_Left(UInt32(bit), i);
           end loop;
@@ -367,7 +367,7 @@ package body LZMA.Decoding is
         dist := Shift_Left(2 or (UInt32(dist_slot) and 1), numDirectBits);
         if dist_slot < End_dist_model_index then
           Bit_Tree_Reverse_Decode(
-            probs.dist.pos_coder(Unsigned(dist) - dist_slot .. Pos_coder_range'Last),
+            probs.dist.pos_coder(Integer(dist) - Integer(dist_slot) .. Pos_coder_range'Last),
             numDirectBits
           );
         else
@@ -524,7 +524,7 @@ package body LZMA.Decoding is
       pos_state := Pos_state_range(UInt32(out_win.total_pos) and pos_bits_mask);
       Decode_Bit(probs.switch.match(state, pos_state), bit_choice);
       -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
-      if bit_choice = literal_choice then
+      if bit_choice = Literal_choice then
         Process_Literal;
       else
         Process_Distance_and_Length;

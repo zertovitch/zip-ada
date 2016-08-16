@@ -2,7 +2,8 @@
 
 --  Parts of the base mechanism are from the original LzmaEnc.c by Igor Pavlov or
 --  from the LZMAEncoder.java translation by Lasse Collin.
---  Other parts are mirrored from LZMA.Decoding when symmetric. For instance,
+--  Other parts are mirrored from LZMA.Decoding when symmetric.
+--  For instance,
 --      Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
 --  becomes:
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
@@ -146,7 +147,7 @@ package body LZMA.Encoding is
     begin
       loop
         Encode_Bit(
-          prob(Unsigned(Shift_Right(symb, 8)) + prob'First),
+          prob(Integer(Shift_Right(symb, 8)) + prob'First),
           Unsigned(Shift_Right(symb, 7)) and 1
         );
         symb:= Shift_Left(symb, 1);
@@ -162,7 +163,7 @@ package body LZMA.Encoding is
       loop
         match:= Shift_Left(match, 1);
         Encode_Bit(
-          prob(Unsigned(offs + (match and offs) + Shift_Right(symb, 8)) + prob'First),
+          prob(Integer(offs + (match and offs) + Shift_Right(symb, 8)) + prob'First),
           Unsigned(Shift_Right(symb, 7)) and 1
         );
         symb:= Shift_Left(symb, 1);
@@ -179,13 +180,13 @@ package body LZMA.Encoding is
     R: Text_Buffer_Index:= 0;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
-      lit_state : Unsigned;
-      probs_idx : Unsigned;
+      lit_state : Integer;
+      probs_idx : Integer;
       b_match: Byte;
     begin
       Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
       lit_state :=
-        Unsigned(
+        Integer(
           Shift_Left(UInt32(total_pos) and literal_pos_mask, lzma_params.lc) +
           Shift_Right(UInt32(prev_byte), 8 - lzma_params.lc)
         );
@@ -216,7 +217,7 @@ package body LZMA.Encoding is
       m:= 1;
       for i in reverse 0 .. num_bits - 1 loop
         bit:= Unsigned(Shift_Right(UInt32(symbol), i)) and 1;
-        Encode_Bit(prob(m + prob'First), bit);
+        Encode_Bit(prob(Integer(m) + prob'First), bit);
         m:= m + m + bit;
       end loop;
     end Bit_Tree_Encode;
@@ -289,22 +290,22 @@ package body LZMA.Encoding is
       begin
         for count in reverse 1 .. num_bits loop
           bit:= Unsigned(symb) and 1;
-          Encode_Bit(prob(m + prob'First), bit);
+          Encode_Bit(prob(Integer(m) + prob'First), bit);
           m := m + m + bit;
           symb:= Shift_Right(symb, 1);
         end loop;
       end Bit_Tree_Reverse_Encode;
+      --
       --  Range encoding of num_bits with equiprobability.
       procedure Encode_Direct_Bits(value: UInt32; num_bits: Natural) is
-        num_bits_r: Natural:= num_bits;
       begin
-        loop
+        for i in reverse 0 .. num_bits - 1 loop
+          --  Bound is the half width. New width is halved anyway.
           range_enc.width:= Shift_Right(range_enc.width, 1);
-          num_bits_r:= num_bits_r - 1;
+          --  Either low is unchanged (bit=0), or new low := old low + bound (bit=1).
           range_enc.low := range_enc.low +
-            (UInt64(range_enc.width) and (0 - UInt64(Shift_Right(value, num_bits_r) and 1)));
+            (UInt64(range_enc.width) and (0 - UInt64(Shift_Right(value, i) and 1)));
           Normalize;
-          exit when num_bits_r = 0;
         end loop;
       end Encode_Direct_Bits;
       --
@@ -314,6 +315,7 @@ package body LZMA.Encoding is
         base, dist_reduced: UInt32;
         footerBits: Natural;
       begin
+        Ada.Text_IO.Put_Line("  -----> Distance slot" & dist_slot'img);
         Bit_Tree_Encode(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
         if dist_slot >= Start_dist_model_index then
           footerBits := Natural(Shift_Right(UInt32(dist_slot), 1)) - 1;
@@ -321,7 +323,7 @@ package body LZMA.Encoding is
           dist_reduced := distance - base;
           if dist_slot < End_dist_model_index then
             Bit_Tree_Reverse_Encode(
-              probs.dist.pos_coder(Unsigned(base) - dist_slot - 1 .. Pos_coder_range'Last),
+              probs.dist.pos_coder(Integer(base) - Integer(dist_slot) - 1 .. Pos_coder_range'Last),
               footerBits,
               dist_reduced
             );
@@ -349,7 +351,7 @@ package body LZMA.Encoding is
     procedure LZ77_emits_DL_code (distance, length: Integer) is
       Copy_start: constant Text_Buffer_Index:= R - Text_Buffer_Index(distance);
     begin
-      Ada.Text_IO.Put_Line("  *** LZ77 DL code");
+      Ada.Text_IO.Put_Line("  *** LZ77 DL code" & distance'img & length'img);
       if length not in Min_match_length .. Max_match_length then
         raise Program_Error;  --  !! should not happen
       end if;

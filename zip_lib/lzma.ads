@@ -57,16 +57,17 @@ private
 
   --  Type for storing probabilities, must be at least 11 bit.
   subtype CProb is UInt32;  --  LZMA specification recommends UInt16.
-  type CProb_array is array(Unsigned range <>) of CProb;
+  --  Integer (signed) used as index because there is a -1 (unused) index in Pos_coder_range.
+  type CProb_array is array(Integer range <>) of CProb;
 
   Align_bits       : constant := 4;  --  LZMA specification name: "kNumAlignBits"
   Align_table_size : constant := 2 ** Align_bits;
   Align_mask       : constant := Align_table_size - 1;
 
-  subtype Bits_3_range is Unsigned range 0 .. 2**3 - 1;
-  subtype Bits_6_range is Unsigned range 0 .. 2**6 - 1;
-  subtype Bits_8_range is Unsigned range 0 .. 2**8 - 1;
-  subtype Bits_NAB_range is Unsigned range 0 .. 2**Align_bits - 1;
+  subtype Bits_3_range is Integer range 0 .. 2**3 - 1;
+  subtype Bits_6_range is Integer range 0 .. 2**6 - 1;
+  subtype Bits_8_range is Integer range 0 .. 2**8 - 1;
+  subtype Bits_NAB_range is Integer range 0 .. 2**Align_bits - 1;
 
   subtype Probs_3_bits is CProb_array(Bits_3_range);
   subtype Probs_6_bits is CProb_array(Bits_6_range);
@@ -120,7 +121,9 @@ private
   End_dist_model_index   : constant := 14;  --  LZMA specification name: "kEndPosModelIndex"
   Num_full_distances  : constant := 2 ** (End_dist_model_index / 2);  --  "kNumFullDistances"
 
-  subtype Pos_coder_range is Unsigned range 0 .. Num_full_distances - End_dist_model_index;
+  --  Pos_coder_range: index -1 is never used as such but appears
+  --  when calling Bit_Tree_Reverse_Encode (as in the original C version, RcTree_ReverseEncode).
+  subtype Pos_coder_range is Integer range -1 .. Num_full_distances - End_dist_model_index;
   subtype Pos_coder_probs is CProb_array(Pos_coder_range);
 
   type Probs_for_LZ_Distances is record
@@ -133,7 +136,7 @@ private
   --  All probabilities used by LZMA  --
   --------------------------------------
 
-  type All_probabilities(last_lit_prob_index: Unsigned) is record
+  type All_probabilities(last_lit_prob_index: Integer) is record
     --  Literals:
     lit     : CProb_array(0..last_lit_prob_index):= (others => Initial_probability);
     --  Distances:
