@@ -1,6 +1,4 @@
-- Zip.Compress with a strong compression - LZMA top priority;
-      started as standalone encoder in lzma_enc.adb
-
+- Zip.Compress.LZMA, using LZMA.Encoding (available sinc rev. 457)
 - Zip.Compress.Deflate: see specific "to do"'s in package's body
 - Zip.LZ77: see specific "to do"'s in package's body
 

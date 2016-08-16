@@ -26,8 +26,7 @@ package Zip.Compress is
 
   --  Compression_Method is actually reflecting the way of compressing
   --  data, not only the final compression format called "method" in
-  --  Zip specifications. In future versions, there might be other
-  --  enumeration items like "PPMd_variant_x" or "LZMA_variant_x"...
+  --  Zip specifications.
 
   type Compression_Method is
     (--  No compression
@@ -43,7 +42,10 @@ package Zip.Compress is
      Deflate_Fixed,
      Deflate_1,
      Deflate_2,
-     Deflate_3
+     Deflate_3,
+     --  LZMA
+     LZMA_1,
+     LZMA_2
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;
@@ -59,6 +61,8 @@ package Zip.Compress is
   --  The multi-block Deflate methods use refined techniques to decide when to
   --  start a new block and what sort of block to put next.
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
+
+  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_2;
 
   User_abort: exception;
 
@@ -91,7 +95,8 @@ private
      Reduce_2            => reduce_2,
      Reduce_3            => reduce_3,
      Reduce_4            => reduce_4,
-     Deflation_Method    => deflate
+     Deflation_Method    => deflate,
+     LZMA_Method         => lzma_meth
     );
 
 end Zip.Compress;

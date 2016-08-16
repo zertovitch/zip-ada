@@ -22,7 +22,8 @@
 with Zip.CRC_Crypto,
      Zip.Compress.Shrink,
      Zip.Compress.Reduce,
-     Zip.Compress.Deflate;
+     Zip.Compress.Deflate,
+     Zip.Compress.LZMA_E;
 
 with Ada.Numerics.Discrete_Random;
 
@@ -165,6 +166,13 @@ package body Zip.Compress is
           CRC, encrypt_pack, output_size, compression_ok
         );
         zip_type:= 8;
+      when LZMA_Method =>
+        Zip.Compress.LZMA_E(
+          input, output, input_size_known, input_size, feedback,
+          method,
+          CRC, encrypt_pack, output_size, compression_ok
+        );
+        zip_type:= 14;
     end case;
     CRC:= Final(CRC);
     --

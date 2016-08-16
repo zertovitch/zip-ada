@@ -121,7 +121,7 @@ package Zip is
      deflate,   -- C,D
      deflate_e, --   D - Enhanced deflate
      bzip2,     --   D
-     lzma,      --   D
+     lzma_meth, -- C,D
      ppmd,
      unknown
    );

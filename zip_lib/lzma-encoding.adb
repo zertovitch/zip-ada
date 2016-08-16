@@ -12,8 +12,8 @@
 with LZ77;
 
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
+--  with Ada.Text_IO;
 with Interfaces;                        use Interfaces;
-with Ada.Text_IO;
 
 package body LZMA.Encoding is
 
@@ -108,7 +108,7 @@ package body LZMA.Encoding is
         range_enc.width := range_enc.width - bound;
         Normalize;
       end if;
-      Ada.Text_IO.Put_Line("Encode_Bit;" & symbol'img & "; prob before= ;" & prob'img & "; after= ;" & prob_io'img);
+      --  Ada.Text_IO.Put_Line("Encode_Bit;" & symbol'img & "; prob before= ;" & prob'img & "; after= ;" & prob_io'img);
     end Encode_Bit;
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
@@ -183,7 +183,7 @@ package body LZMA.Encoding is
       probs_idx : Integer;
       b_match: Byte;
     begin
-      Ada.Text_IO.Put_Line("  *** LZ77 Literal [" & Character'Val(b) & ']');
+      --  Ada.Text_IO.Put_Line("  *** LZ77 Literal [" & Character'Val(b) & ']');
       Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
       lit_state :=
         Integer(
@@ -192,10 +192,10 @@ package body LZMA.Encoding is
         );
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
-        Ada.Text_IO.Put_Line("           Literal, simple: [" & Character'Val(b) & ']');
+        --  Ada.Text_IO.Put_Line("           Literal, simple: [" & Character'Val(b) & ']');
         Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
       else
-        Ada.Text_IO.Put_Line("           Literal with match: [" & Character'Val(b) & ']');
+        --  Ada.Text_IO.Put_Line("           Literal with match: [" & Character'Val(b) & ']');
         b_match:= Text_Buf(R-Text_Buffer_Index(rep0)-1);
         Write_Literal_Matched(probs.lit(probs_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
       end if;
@@ -318,7 +318,7 @@ package body LZMA.Encoding is
         base, dist_reduced: UInt32;
         footerBits: Natural;
       begin
-        Ada.Text_IO.Put_Line("  -----> Distance slot" & dist_slot'img & " len_state=" & len_state'img);
+        --  Ada.Text_IO.Put_Line("  -----> Distance slot" & dist_slot'img & " len_state=" & len_state'img);
         Bit_Tree_Encode(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
         if dist_slot >= Start_dist_model_index then
           footerBits := Natural(Shift_Right(UInt32(dist_slot), 1)) - 1;
@@ -354,7 +354,7 @@ package body LZMA.Encoding is
     procedure LZ77_emits_DL_code (distance, length: Integer) is
       Copy_start: constant Text_Buffer_Index:= R - Text_Buffer_Index(distance);
     begin
-      Ada.Text_IO.Put_Line("  *** LZ77 DL code" & distance'img & length'img);
+      --  Ada.Text_IO.Put_Line("  *** LZ77 DL code" & distance'img & length'img);
       if length not in Min_match_length .. Max_match_length then
         raise Program_Error;  --  !! should not happen
       end if;

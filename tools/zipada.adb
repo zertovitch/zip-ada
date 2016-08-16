@@ -209,6 +209,11 @@ procedure ZipAda is
             when '2'    => method:= Deflate_2;
             when others => method:= Deflate_3;
           end case;
+        elsif opt(opt'First..opt'First+1) = "el" then
+          case opt(opt'First+2) is
+            when '1'    => method:= LZMA_1;
+            when others => method:= LZMA_2;
+          end case;
         elsif opt(opt'First..opt'First+3) = "dir " then
           scan:= Scan_mode'Max(scan, files_and_dirs);
         elsif opt(opt'First..opt'First+1) = "r " then
@@ -281,6 +286,7 @@ begin
     Put_Line("          -es    : ""shrink"" (LZW algorithm)");
     Put_Line("          -edf   : ""deflate"", with one ""fixed"" block");
     Put_Line("          -edN   : ""deflate"", ""dynamic"" compression, strength N=1..3");
+    Put_Line("          -elN   : ""lzma"", strength N=1..2");
     New_Line;
     Put_Line("      NB: default method is ""deflate"", strength 1 (-ed1)");
     New_Line;

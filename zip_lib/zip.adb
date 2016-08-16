@@ -861,7 +861,7 @@ package body Zip is
       when  8 => return deflate;
       when  9 => return deflate_e;
       when 12 => return bzip2;
-      when 14 => return lzma;
+      when 14 => return lzma_meth;
       when 98 => return ppmd;
       when others => return unknown;
     end case;
