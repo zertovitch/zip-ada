@@ -76,12 +76,12 @@ package body LZMA.Encoding is
     pragma Inline(Normalize);
     begin
       if range_enc.width < width_threshold then
-        Ada.Text_IO.Put_Line("        Normalize, low   before" & range_enc.low'img);
-        Ada.Text_IO.Put_Line("        Normalize, width before" & range_enc.width'img);
+        --  Ada.Text_IO.Put_Line("        Normalize, low   before" & range_enc.low'img);
+        --  Ada.Text_IO.Put_Line("        Normalize, width before" & range_enc.width'img);
         range_enc.width := Shift_Left(range_enc.width, 8);
         Shift_low;
-        Ada.Text_IO.Put_Line("        Normalize, low   after " & range_enc.low'img);
-        Ada.Text_IO.Put_Line("        Normalize, width after " & range_enc.width'img);
+        --  Ada.Text_IO.Put_Line("        Normalize, low   after " & range_enc.low'img);
+        --  Ada.Text_IO.Put_Line("        Normalize, width after " & range_enc.width'img);
       end if;
     end Normalize;
 
@@ -91,8 +91,6 @@ package body LZMA.Encoding is
       --  Depending on the probability, bound is between 0 and width.
       bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * prob;
     begin
-      Ada.Text_IO.Put_Line("Encode_Bit" & symbol'img);
-      Ada.Text_IO.Put_Line("  Prob before" & prob_io'img);
       if symbol = 0 then
         --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
         --  The truncation ensures (proof needed) that prob <= Probability_model_count - (2**m - 1)
@@ -109,7 +107,7 @@ package body LZMA.Encoding is
         range_enc.width := range_enc.width - bound;
         Normalize;
       end if;
-      Ada.Text_IO.Put_Line("  Prob after " & prob_io'img);
+      Ada.Text_IO.Put_Line("Encode_Bit;" & symbol'img & "; prob before= ;" & prob'img & "; after= ;" & prob_io'img);
     end Encode_Bit;
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
@@ -184,6 +182,7 @@ package body LZMA.Encoding is
       probs_idx : Integer;
       b_match: Byte;
     begin
+      Ada.Text_IO.Put_Line("  *** LZ77 Literal [" & Character'Val(b) & ']');
       Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
       lit_state :=
         Integer(
@@ -192,12 +191,12 @@ package body LZMA.Encoding is
         );
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
+        Ada.Text_IO.Put_Line("           Literal, simple: [" & Character'Val(b) & ']');
         Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
-        Ada.Text_IO.Put_Line("  *** LZ77 Literal, simple (seems ok):" & Character'Val(b));
       else
+        Ada.Text_IO.Put_Line("           Literal with match: [" & Character'Val(b) & ']');
         b_match:= Text_Buf(R-Text_Buffer_Index(rep0)-1);
         Write_Literal_Matched(probs.lit(probs_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
-        Ada.Text_IO.Put_Line("  *** LZ77 Literal with match (buggy):" & Character'Val(b));
       end if;
       total_pos:= total_pos + 1;
       Update_pos_state;
