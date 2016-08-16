@@ -1,7 +1,8 @@
---  DRAFT - WORK IN PROGRESS - DRAFT - WORK IN PROGRESS - DRAFT - WORK IN PROGRESS
+--  WORK IN PROGRESS - WORK IN PROGRESS - WORK IN PROGRESS - WORK IN PROGRESS - WORK IN PROGRESS
 
 --  Parts of the base mechanism are from the original LzmaEnc.c by Igor Pavlov or
 --  from the LZMAEncoder.java translation by Lasse Collin.
+--
 --  Other parts are mirrored from LZMA.Decoding when symmetric.
 --  For instance,
 --      Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
@@ -226,16 +227,19 @@ package body LZMA.Encoding is
     begin
       if len < Len_low_symbols then
         Encode_Bit(probs_len.choice_1, 0);
+        --  LZ length in [2..9], i.e. len in [0..7]
         Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
       else
         Encode_Bit(probs_len.choice_1, 1);
+        len:= len - Len_low_symbols;
         if len < Len_mid_symbols then
           Encode_Bit(probs_len.choice_2, 0);
-          len:= len - Len_low_symbols;
+          --  LZ length in [10..17], i.e. len in [0..7]
           Bit_Tree_Encode(probs_len.mid_coder(pos_state), Len_mid_bits, len);
         else
           Encode_Bit(probs_len.choice_2, 1);
-          len:= len - Len_low_symbols - Len_mid_symbols;
+          len:= len - Len_mid_symbols;
+          --  LZ length in [18..273], i.e. len in [0..255]
           Bit_Tree_Encode(probs_len.high_coder, Len_high_bits, len);
         end if;
       end if;
@@ -355,9 +359,8 @@ package body LZMA.Encoding is
         raise Program_Error;  --  !! should not happen
       end if;
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
-      --  !!  Later we will choose betweeen different tactics with memorized distances
+      --  !!  Later we will choose betweeen different tactics with memorized distances (rep1..rep3)
       Write_Simple_Match(UInt32(distance - 1), Unsigned(length));
-      --  !!  added "- 1", perhaps it's a fix at the wrong place (check different distances) ?
       total_pos:= total_pos + Unsigned(length);
       Update_pos_state;
       --  Expand in the circular text buffer to have it up to date

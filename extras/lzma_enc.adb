@@ -1,7 +1,3 @@
---------------------------------
--- DRAFT - not yet functional --
---------------------------------
-
 -- Standalone, command-line, experimental LZMA encoder (for .lzma files).
 
 with LZMA.Encoding;
@@ -51,7 +47,7 @@ procedure LZMA_Enc is
     end Put_byte;
 
     procedure LZMA_Encode is
-      new LZMA.Encoding.Encode(LZMA.Encoding.Level_1, Read_byte, More_bytes, Put_byte);
+      new LZMA.Encoding.Encode(LZMA.Encoding.Level_2, Read_byte, More_bytes, Put_byte);
 
     dummy: Byte:= Read_byte;
 
@@ -75,7 +71,6 @@ procedure LZMA_Enc is
 begin
   New_Line;
   Put_Line("LZMA_Enc: a standalone LZMA encoder.");
-  Put_Line("DRAFT - not yet functional");
   if Argument_Count = 0 then
     Put_Line("Use: lzma_enc infile outfile.lzma");
     return;
