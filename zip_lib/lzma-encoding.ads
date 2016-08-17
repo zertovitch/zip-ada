@@ -1,5 +1,9 @@
---  LZMA_Encoding - a standalone LZMA encoder.
+--  LZMA_Encoding - a standalone, generic LZMA encoder.
 --  See body for credits and other informations.
+
+--  Examples of use:
+--    LZMA_Enc, a standalone encoder to .lzma files
+--    Zip.Compress.LZMA_E, creates Zip files entries with LZMA encoding
 
 with Interfaces;
 

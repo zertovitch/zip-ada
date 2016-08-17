@@ -1,6 +1,5 @@
-- Zip.Compress.LZMA, using LZMA.Encoding (available sinc rev. 457)
-- Zip.Compress.Deflate: see specific "to do"'s in package's body
-- Zip.LZ77: see specific "to do"'s in package's body
+- Zip.Compress.Deflate, LZMA.Encoding and LZ77:
+  see specific "to do"'s in packages' bodies.
 
 - tools: comp_zip: optionally, check only CRC
 - tools: a Freshen_Zip tool that freshen files from an archive, or files

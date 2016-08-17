@@ -29,6 +29,8 @@ zipada     -edf              test_zadf     %files%
 zipada     -ed1              test_zad1     %files%
 zipada     -ed2              test_zad2     %files%
 zipada     -ed3              test_zad3     %files%
+zipada     -el1              test_zal1     %files%
+zipada     -el2              test_zal2     %files%
 zip        -1                test_ifz1     %files%
 zip        -6                test_ifz6     %files%
 zip        -9                test_ifz9     %files%
@@ -72,6 +74,8 @@ comp_zip test_zash test_zadf -q2
 comp_zip test_zash test_zad1 -q2
 comp_zip test_zash test_zad2 -q2
 comp_zip test_zash test_zad3 -q2
+comp_zip test_zash test_zal1 -q2
+comp_zip test_zash test_zal2 -q2
 comp_zip test_zash test_ifz9 -q2
 comp_zip test_zash test_7z_d -q2
 if exist test_kzip.zip comp_zip test_zash test_kzip -q2

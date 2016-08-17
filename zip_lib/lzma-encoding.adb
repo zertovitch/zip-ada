@@ -1,13 +1,14 @@
---  LZMA_Encoding - a standalone LZMA encoder.
+--  LZMA_Encoding - a standalone, generic LZMA encoder.
 
---  Parts of the base mechanism are from the original LzmaEnc.c by Igor Pavlov or
---  from the LZMAEncoder.java translation by Lasse Collin.
---
+--  Most parts of the base mechanism are from the original LzmaEnc.c by Igor Pavlov.
+--  Some parts are from the LZMAEncoder.java translation by Lasse Collin.
 --  Other parts are mirrored from LZMA.Decoding when symmetric.
---  For instance,
+--    For instance,
 --      Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
---  becomes:
+--    becomes:
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
+
+--  To do: implement repeated matches, remove items with "!!"'s and tracing with Text_IO.
 
 with LZ77;
 

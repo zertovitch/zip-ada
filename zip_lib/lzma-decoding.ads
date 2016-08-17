@@ -3,6 +3,13 @@
 -- Based on a translation of LzmaSpec.cpp, the LZMA Reference Decoder, by Igor Pavlov.
 -- Public domain.
 
+--  Further rework documented in body.
+
+--  Examples of use:
+--    LZMA_Dec, a standalone decoder for .lzma files
+--    UnZip.Decompress, extracts Zip files entries with, among others, LZMA encoding
+
+
 with Ada.Direct_IO, Interfaces;
 
 generic
