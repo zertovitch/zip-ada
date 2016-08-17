@@ -1,4 +1,4 @@
---  WORK IN PROGRESS - WORK IN PROGRESS - WORK IN PROGRESS - WORK IN PROGRESS - WORK IN PROGRESS
+--  LZMA_Encoding - a standalone LZMA encoder.
 
 --  Parts of the base mechanism are from the original LzmaEnc.c by Igor Pavlov or
 --  from the LZMAEncoder.java translation by Lasse Collin.
@@ -28,7 +28,14 @@ package body LZMA.Encoding is
   --  (*) called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
   --      article about range encoding.
 
-  procedure Encode is
+  procedure Encode(
+    level                 : LZMA_compression_level      := Level_1;
+    literal_context_bits  : Literal_context_bits_range  := 3;  --  "Literal context" bits
+    literal_position_bits : Literal_position_bits_range := 0;  --  "Literal position" bits
+    position_bits         : Position_bits_range         := 2;  --  "Position" bits
+    end_marker            : Boolean:= True  --  Produce an End-Of-Stream marker ?
+  )
+  is
 
     -------------------------------------
     --  Range encoding of single bits. --
@@ -117,11 +124,12 @@ package body LZMA.Encoding is
     type LZMA_Params_Info is record
       unpackSize           : Data_Bytes_Count:= 0;
       unpackSizeDefined    : Boolean := False;
-      has_end_mark         : Boolean := True;
+      has_size             : Boolean := False;  --  Is size is part of header data ?
+      has_end_mark         : Boolean := end_marker;
       dictSize             : UInt32  := String_buffer_size;
-      lc                   : Literal_context_bits_range:= 3;   --  number of "literal context" bits
-      lp                   : Literal_position_bits_range:= 0;  --  number of "literal pos" bits
-      pb                   : Position_bits_range:= 2;          --  number of "pos" bits
+      lc                   : Literal_context_bits_range  := literal_context_bits;
+      lp                   : Literal_position_bits_range := literal_position_bits;
+      pb                   : Position_bits_range         := position_bits;
     end record;
 
     lzma_params: LZMA_Params_Info;
@@ -247,7 +255,7 @@ package body LZMA.Encoding is
 
     --  Gets an integer [0, 63] matching the highest two bits of an integer.
     --  It is a log2 with one "decimal".
-
+    --
     function Get_dist_slot(dist: UInt32) return Unsigned is
       n: UInt32;
       i: Natural;
@@ -298,8 +306,9 @@ package body LZMA.Encoding is
           symb:= Shift_Right(symb, 1);
         end loop;
       end Bit_Tree_Reverse_Encode;
-      --
+
       --  Range encoding of num_bits with equiprobability.
+      --
       procedure Encode_Direct_Bits(value: UInt32; num_bits: Natural) is
       begin
         for i in reverse 0 .. num_bits - 1 loop
@@ -375,17 +384,19 @@ package body LZMA.Encoding is
     --  LZ77 compression  --
     ------------------------
 
-    LZ77_choice: constant array(LZMA_Level) of LZ77.Method_Type:=
+    LZ77_choice: constant array(LZMA_compression_level) of LZ77.Method_Type:=
       (Level_1   => LZ77.IZ_6,
        Level_2   => LZ77.IZ_10);
 
-    Look_Ahead : constant Integer:= 258;
+    --  !! These are constants for the Info-Zip LZ77. LZMA's LZ lengths can be from 2 to 273.
+    Min_length : constant := 3;  --  From a string match length >= 3, a DL code is sent
+    Max_length : constant := 258;
 
     procedure My_LZ77 is
       new LZ77.Encode
         ( String_buffer_size => String_buffer_size,
-          Look_Ahead         => Look_Ahead,
-          Threshold          => 2,  --  From a string match length > 2, a DL code is sent
+          Look_Ahead         => Max_length,
+          Threshold          => Min_length - 1,
           Method             => LZ77_choice(level),
           Read_byte          => Read_byte,
           More_bytes         => More_bytes,
@@ -397,23 +408,26 @@ package body LZMA.Encoding is
       dw: UInt32:= lzma_params.dictSize;
       uw: Data_Bytes_Count:= lzma_params.unpackSize;
     begin
+      --  LZMA 5-byte header
       Write_byte(Byte(lzma_params.lc + 9 * lzma_params.lp + 9 * 5 * lzma_params.pb));
       for i in 0 .. 3 loop
         Write_byte(Byte(dw mod 256));
         dw:= dw / 256;
       end loop;
-      for i in 0 .. 7 loop
-        if lzma_params.unpackSizeDefined then
-          Write_byte(Byte(uw mod 256));
-          uw:= uw / 256;
-        else
-          Write_byte(16#FF#);
-        end if;
-      end loop;
+      --  Optional (8 more header bytes): unpacked size
+      if lzma_params.has_size then
+        for i in 0 .. 7 loop
+          if lzma_params.unpackSizeDefined then
+            Write_byte(Byte(uw mod 256));
+            uw:= uw / 256;
+          else
+            Write_byte(16#FF#);
+          end if;
+        end loop;
+      end if;
     end Write_LZMA_header;
 
-    --  The end-of-stream marker is a fake "Simple Match" with
-    --  a special length value: 16#FFFF_FFFF#.
+    --  The end-of-stream marker is a fake "Simple Match" with a special distance: 16#FFFF_FFFF#.
     --
     procedure Write_end_marker is
     begin

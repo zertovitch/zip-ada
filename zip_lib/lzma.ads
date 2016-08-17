@@ -5,7 +5,9 @@ with System;
 
 package LZMA is
 
-  --  Nothing public so far...
+  subtype Literal_context_bits_range  is Integer range 0..8;
+  subtype Literal_position_bits_range is Integer range 0..4;
+  subtype Position_bits_range         is Integer range 0..4;
 
 private
 
@@ -18,10 +20,6 @@ private
   subtype UInt16 is Unsigned_16;
   subtype UInt32 is Unsigned_32;
   type Unsigned is mod 2 ** System.Word_Size;
-
-  subtype Literal_context_bits_range is Integer range 0..8;
-  subtype Literal_position_bits_range is Integer range 0..4;
-  subtype Position_bits_range is Integer range 0..4;
 
   ----------------------------
   --  Finite state machine  --

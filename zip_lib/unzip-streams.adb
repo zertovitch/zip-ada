@@ -104,7 +104,7 @@ package body UnZip.Streams is
       output_stream_access       => out_stream_ptr,
       feedback                   => null,
       explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
-      explode_slide_8KB_LZMA_EOS => (local_header.bit_flag and 2) /= 0,
+      explode_slide_8KB_LZMA_EOS => (local_header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0,
       data_descriptor_after_data => data_descriptor_after_data,
       is_encrypted               => encrypted,
       password                   => password,

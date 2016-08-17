@@ -1929,8 +1929,8 @@ package body UnZip.Decompress is
         when deflate | deflate_e =>
           UnZ_Meth.deflate_e_mode:= format = deflate_e;
           UnZ_Meth.Inflate;
-        when Zip.bzip2 => UnZ_Meth.Bunzip2;
-        when Zip.lzma  => UnZ_Meth.LZMA_Decode;
+        when Zip.bzip2     => UnZ_Meth.Bunzip2;
+        when Zip.lzma_meth => UnZ_Meth.LZMA_Decode;
         when others =>
           Raise_Exception(Unsupported_method'Identity,
              "Format/method " & PKZip_method'Image(format) & " not supported for decompression");

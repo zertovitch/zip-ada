@@ -46,10 +46,9 @@ procedure LZMA_Enc is
       Byte'Write(s_out, b);
     end Put_byte;
 
-    procedure LZMA_Encode is
-      new LZMA.Encoding.Encode(LZMA.Encoding.Level_2, Read_byte, More_bytes, Put_byte);
+    procedure LZMA_Encode is new LZMA.Encoding.Encode(Read_byte, More_bytes, Put_byte);
 
-    dummy: Byte:= Read_byte;
+    dummy: Byte:= Read_byte;  --  Consume the initial 'X'
 
   begin
     -- Whole processing here:

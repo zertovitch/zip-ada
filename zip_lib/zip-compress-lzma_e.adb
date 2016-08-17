@@ -1,5 +1,3 @@
---  !!! missing: LZMA SDK+properties header
-
 with LZMA.Encoding;
 with Zip.CRC_Crypto;
 
@@ -19,7 +17,6 @@ procedure Zip.Compress.LZMA_E
   compression_ok  : out Boolean -- indicates compressed < uncompressed
 )
 is
-  --------------------------------------------------------------------------
 
   ------------------
   -- Buffered I/O --
@@ -86,56 +83,56 @@ is
     end if;
   end Flush_output;
 
-    X_Percent: Natural;
-    Bytes_in   : Natural;   --  Count of input file bytes processed
-    user_aborting: Boolean;
-    PctDone: Natural;
+  X_Percent: Natural;
+  Bytes_in   : Natural;   --  Count of input file bytes processed
+  user_aborting: Boolean;
+  PctDone: Natural;
 
-    function Read_byte return Byte is
-      b: Byte;
-    begin
-      b:= InBuf(InBufIdx);
-      InBufIdx:= InBufIdx + 1;
-      Zip.CRC_Crypto.Update(CRC, (1=> b));
-      Bytes_in:= Bytes_in + 1;
-      if feedback /= null then
-        if Bytes_in = 1 then
+  function Read_byte return Byte is
+    b: Byte;
+  begin
+    b:= InBuf(InBufIdx);
+    InBufIdx:= InBufIdx + 1;
+    Zip.CRC_Crypto.Update(CRC, (1=> b));
+    Bytes_in:= Bytes_in + 1;
+    if feedback /= null then
+      if Bytes_in = 1 then
+        feedback(0, False, user_aborting);
+      end if;
+      if X_Percent > 0 and then
+         ((Bytes_in-1) mod X_Percent = 0
+          or Bytes_in = Integer(input_size))
+      then
+        if input_size_known then
+          PctDone := Integer( (100.0 * Float( Bytes_in)) / Float(input_size));
+          feedback(PctDone, False, user_aborting);
+        else
           feedback(0, False, user_aborting);
         end if;
-        if X_Percent > 0 and then
-           ((Bytes_in-1) mod X_Percent = 0
-            or Bytes_in = Integer(input_size))
-        then
-          if input_size_known then
-            PctDone := Integer( (100.0 * Float( Bytes_in)) / Float(input_size));
-            feedback(PctDone, False, user_aborting);
-          else
-            feedback(0, False, user_aborting);
-          end if;
-          if user_aborting then
-            raise User_abort;
-          end if;
+        if user_aborting then
+          raise User_abort;
         end if;
       end if;
-      return b;
-    end Read_byte;
+    end if;
+    return b;
+  end Read_byte;
 
-    function More_bytes return Boolean is
-    begin
-      if InBufIdx > MaxInBufIdx then
-        Read_Block;
-      end if;
-      return not InputEoF;
-    end More_bytes;
+  function More_bytes return Boolean is
+  begin
+    if InBufIdx > MaxInBufIdx then
+      Read_Block;
+    end if;
+    return not InputEoF;
+  end More_bytes;
 
-    use LZMA.Encoding;
+  use LZMA.Encoding;
 
-    LZMA_choice: constant array(LZMA_Method) of LZMA_Level:=
-      (LZMA_1  => Level_1,
-       LZMA_2  => Level_2);
+  LZMA_choice: constant array(LZMA_Method) of LZMA_compression_level:=
+    (LZMA_1  => Level_1,
+     LZMA_2  => Level_2);
 
-    procedure LZMA_Encode is
-      new LZMA.Encoding.Encode(LZMA_choice(method), Read_byte, More_bytes, Put_byte);
+  procedure LZMA_Encode is
+    new LZMA.Encoding.Encode(Read_byte, More_bytes, Put_byte);
 
 begin
   --  Allocate input and output buffers.
@@ -156,8 +153,14 @@ begin
     else
       X_Percent := 0;
     end if;
-    --  !!! missing: LZMA SDK+properties header
-    LZMA_Encode;
+    Put_byte(16);  --  LZMA SDK major version
+    Put_byte(02);  --  LZMA SDK minor version
+    Put_byte(5);   --  LZMA properties size low byte
+    Put_byte(0);   --  LZMA properties size high byte
+    LZMA_Encode(
+      level      => LZMA_choice(method),
+      end_marker => True    --  In Appnote, the use of an EOS marker is "highly recommended".
+    );
     Flush_output;
     compression_ok:= True;
   exception

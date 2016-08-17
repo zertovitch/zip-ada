@@ -41,6 +41,8 @@ if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.
 zipada -ed3 ../bench_%1_deflate_3 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_3_%1.zcd
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
+zipada -el1 ../bench_%1_lzma_1 *
+zipada -el2 ../bench_%1_lzma_2 *
 
 cd ..
 
@@ -48,7 +50,7 @@ rem Wrapping it all - update archive with all archives
 rem Funnily, upon zipping bench_matrix_*.zip, level 1-8 stores everything, but level 9 deflates to 26% !
 
 zip -9 all_bench_%1.zip bench_%1_*.zip
-unzip -t bench_%1_*.zip
+7z t bench_%1_*.zip
 dir /OS- bench_%1_*.zip
 del bench_%1_*.zip
 unzip -l all_bench_%1.zip

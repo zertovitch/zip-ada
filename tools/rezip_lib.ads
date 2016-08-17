@@ -44,7 +44,7 @@ private
   deflate_or_store   : constant Zip_format_set :=
     (Zip.store | Zip.deflate => True, others => False);
   fast_decompression : constant Zip_format_set :=
-    (Zip.store .. Zip.deflate_e | Zip.lzma => True,
+    (Zip.store .. Zip.deflate_e | Zip.lzma_meth => True,
      Zip.bzip2 => False,
      others => False);
 

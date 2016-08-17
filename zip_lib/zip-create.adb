@@ -179,6 +179,18 @@ package body Zip.Create is
         if Password /= "" then
           shi.bit_flag := shi.bit_flag or Zip.Headers.Encryption_Flag_Bit;
         end if;
+        if Info.Compress in LZMA_Method then
+          --  We always put an EOS marker. From Appnote:
+          --
+          --      5.8.9 Data compressed with method 14, LZMA, may include an end-of-stream
+          --      (EOS) marker ending the compressed data stream.  This marker is not
+          --      required, but its use is highly recommended to facilitate processing
+          --      and implementers should include the EOS marker whenever possible.
+          --      When the EOS marker is used, general purpose bit 1 must be set.  If
+          --      general purpose bit 1 is not set, the EOS marker is not present.
+          --
+          shi.bit_flag := shi.bit_flag or LZMA_EOS_Flag_Bit;
+        end if;
         if Is_Read_Only(Stream) then
           cfh.external_attributes:= cfh.external_attributes or 1;
         end if;

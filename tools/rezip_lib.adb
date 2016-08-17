@@ -109,16 +109,16 @@ package body Rezip_lib is
          U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
       -- 7-Zip 9.20 or later; LZMA:
       (U("7z"), U("7-Zip"), NN,
-         U("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma, 0, False),
+         U("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma_meth, 0, False),
       (U("7z"), U("7-Zip"), NN, -- dictionary size 2**19 = 512 KB
-         U("a -tzip -mm=LZMA:a=2:d=19:mf=bt3:fb=128:lc=0:lp=2"), NN, 63, Zip.lzma, 0, False),
+         U("a -tzip -mm=LZMA:a=2:d=19:mf=bt3:fb=128:lc=0:lp=2"), NN, 63, Zip.lzma_meth, 0, False),
       (U("7z"), U("7-Zip"), NN,
          U("a -tzip -mm=LZMA:a=2:d=#RAND#(3200,3700)k:mf=bt4:fb=#RAND#(255,273):lc=2:lp0:pb0"),
-         NN, 63, Zip.lzma, 0, True),
+         NN, 63, Zip.lzma_meth, 0, True),
       (U("7z"), U("7-Zip"), NN, -- dictionary size 2**25 = 32 MB
-         U("a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7"), NN, 63, Zip.lzma, 0, False),
+         U("a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7"), NN, 63, Zip.lzma_meth, 0, False),
       (U("7z"), U("7-Zip"), NN, -- dictionary size 2**26 = 64 MB
-         U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma, 0, False),
+         U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma_meth, 0, False),
       -- AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U("advzip"), U("AdvZip"), U("http://advancemame.sf.net/comp-readme.html"),
          U("-a -4"), NN, 20, Zip.deflate, kzip_zopfli_limit, False)

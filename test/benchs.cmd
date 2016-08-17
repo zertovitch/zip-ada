@@ -19,4 +19,6 @@ rem *** Our benchmarks ***
 rem **********************
 
 rem DNA sequences in various formats (e.g. FASTA, Genbank)
-call bench dna %1
+call bench dna    %1
+call bench matrix %1
+call bench pdf    %1

@@ -97,8 +97,15 @@ package Zip.Headers is
   -- PKZIP local file header, in front of every file in archive - PK34 --
   -----------------------------------------------------------------------
 
-  Encryption_Flag_Bit        : constant := 2** 0;
-  Language_Encoding_Flag_Bit : constant := 2**11;
+  --  Appnote: 4.4.4 general purpose bit flag: (2 bytes)
+  --
+  --  Bit 0:  If set, indicates that the file is encrypted.
+  Encryption_Flag_Bit        : constant := 2 **  0;
+  --  Bit 1:  If set, indicates an EOS marker is used.
+  LZMA_EOS_Flag_Bit          : constant := 2 **  1;
+  --  Bit 11: Language encoding flag (EFS). If this bit is set, the filename and
+  --          comment fields for this file MUST be encoded using UTF-8.
+  Language_Encoding_Flag_Bit : constant := 2 ** 11;
 
   type Local_File_Header is record
     -- PK34                                --  1.. 4
