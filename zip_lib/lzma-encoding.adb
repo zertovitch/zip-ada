@@ -102,14 +102,14 @@ package body LZMA.Encoding is
     begin
       if symbol = 0 then
         --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
-        --  The truncation ensures (proof needed) that prob <= Probability_model_count - (2**m - 1)
+        --  The truncation ensures (*) that prob <= Probability_model_count - (2**m - 1)
         prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
         --  Set new width. The new range is [low, low+bound[ : low is unchanged, high is new.
         range_enc.width := bound;
         Normalize;
       else
-        --  Decrease probability: prob:= prob - prob / 2**m = prob:= prob * (1 - 2**m)
-        --  The truncation ensures (proof needed) that prob >= 2**m - 1
+        --  Decrease probability: prob:= prob - prob / 2**m = prob * (1 - 2**m)
+        --  The truncation ensures (*) that prob >= 2**m - 1
         prob_io:= prob - Shift_Right(prob, Probability_change_bits);
         --  The new range is [old low + bound, old low + old width[ : high is unchanged.
         range_enc.low := range_enc.low + UInt64(bound);
@@ -117,6 +117,9 @@ package body LZMA.Encoding is
         Normalize;
       end if;
       --  Ada.Text_IO.Put_Line("Encode_Bit;" & symbol'img & "; prob before= ;" & prob'img & "; after= ;" & prob_io'img);
+      --  (*) Proof needed, but seems easy: can be exhaustively checked.
+      --      A too low prob could cause the width to be too small or even zero.
+      --      See LZMA sheet in za_work.xls.
     end Encode_Bit;
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;

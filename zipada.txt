@@ -5,9 +5,9 @@ Zip-Ada is a library for dealing with the Zip compressed archive
 file format. It supplies:
 
  - compression with the following sub-formats ("methods"):
-     Store, Reduce, Shrink (LZW) and Deflate
+     Store, Reduce, Shrink (LZW), Deflate and LZMA
  - decompression for the following sub-formats ("methods"):
-     Store, Reduce, Shrink (LZW), Implode, Deflate, BZip2 and LZMA
+     Store, Reduce, Shrink (LZW), Implode, Deflate, Deflate64, BZip2 and LZMA
  - encryption and decryption (portable Zip 2.0 encryption scheme)
  - unconditional portability - within limits of compiler's provided
      integer types and target architecture capacity; see below a list
@@ -128,6 +128,12 @@ packages.
 
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
+
+* Changes in '51', xx-yyy-2016:
+  - LZMA.Encoding added (can be used as a standalone compressor)
+  - Zip.Compress.LZMA_E added: in other words, you can use the powerful
+      LZMA compression with Zip.Create
+  - Zip.Compress.Deflate: Deflate_1 .. Deflate_3 compress slightly better
 
 * Changes in '50', 31-Mar-2016:
   - Zip.Compress.Shrink is slightly faster
