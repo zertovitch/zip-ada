@@ -174,9 +174,14 @@ private
   Literal_choice : constant:= 0;
   DL_code_choice : constant:= 1;
 
-  --  Simple match vs . "Rep match"
+  --  Within DL code: "Simple match" vs. "Rep match"
   Simple_match_choice : constant:= 0;
   Rep_match_choice    : constant:= 1;
+
+  --  Within "Rep match": "Distance is rep0" vs. "Distance is rep1, rep2 or rep3"
+  The_distance_is_rep0_choice : constant:= 0;
+  --  Within "Distance is rep0":
+  The_length_is_1_choice : constant:= 0;
 
   --------------------
   --  Range coding  --

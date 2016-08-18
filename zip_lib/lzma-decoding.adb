@@ -456,9 +456,9 @@ package body LZMA.Decoding is
           );
         end if;
         Decode_Bit(probs.switch.rep_g0(state), bit_b);
-        if bit_b = 0 then
+        if bit_b = The_distance_is_rep0_choice then
           Decode_Bit(probs.switch.rep0_long(state, pos_state), bit_c);
-          if bit_c = 0 then
+          if bit_c = The_length_is_1_choice then
             state := Update_State_ShortRep(state);
             Put_Byte(Get_Byte(dist => rep0 + 1));
             o.unpackSize:= o.unpackSize - 1;

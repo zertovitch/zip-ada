@@ -140,7 +140,7 @@ package body LZMA.Encoding is
 
     state : State_range := 0;
     rep0, rep1, rep2, rep3 : UInt32 := 0;  --  Recent distances used for LZ
-    total_pos : Unsigned := 0;
+    total_pos : Data_Bytes_Count := 0;
     pos_state: Pos_state_range := 0;
     probs: All_probabilities(
       last_lit_prob_index => 16#300# * 2 ** (lzma_params.lc + lzma_params.lp) - 1
@@ -193,27 +193,36 @@ package body LZMA.Encoding is
     procedure LZ77_emits_literal_byte (b: Byte) is
       lit_state : Integer;
       probs_idx : Integer;
-      b_match: Byte;
+      b_match: constant Byte:= Text_Buf(R-Text_Buffer_Index(rep0)-1);
     begin
       --  Ada.Text_IO.Put_Line("  *** LZ77 Literal [" & Character'Val(b) & ']');
-      Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
-      lit_state :=
-        Integer(
-          Shift_Left(UInt32(total_pos) and literal_pos_mask, lzma_params.lc) +
-          Shift_Right(UInt32(prev_byte), 8 - lzma_params.lc)
-        );
-      probs_idx:= 16#300# * lit_state;
-      if state < 7 then
-        --  Ada.Text_IO.Put_Line("           Literal, simple: [" & Character'Val(b) & ']');
-        Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
+      if total_pos > Data_Bytes_Count(rep0 + 1) and then b = b_match then
+        --  We are lucky: we have the same byte. "Short Rep Match" case.
+        --  !! On some text files the compression is worse, perhaps because of the 3 extra bits always encoded.
+        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
+        Encode_Bit(probs.switch.rep(state), Rep_match_choice);
+        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
+        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);
+        state := Update_State_ShortRep(state);
       else
-        --  Ada.Text_IO.Put_Line("           Literal with match: [" & Character'Val(b) & ']');
-        b_match:= Text_Buf(R-Text_Buffer_Index(rep0)-1);
-        Write_Literal_Matched(probs.lit(probs_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
+        Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
+        lit_state :=
+          Integer(
+            Shift_Left(UInt32(total_pos) and literal_pos_mask, lzma_params.lc) +
+            Shift_Right(UInt32(prev_byte), 8 - lzma_params.lc)
+          );
+        probs_idx:= 16#300# * lit_state;
+        if state < 7 then
+          --  Ada.Text_IO.Put_Line("           Literal, simple: [" & Character'Val(b) & ']');
+          Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
+        else
+          --  Ada.Text_IO.Put_Line("           Literal with match: [" & Character'Val(b) & ']');
+          Write_Literal_Matched(probs.lit(probs_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
+        end if;
+        state := Update_State_Literal(state);
       end if;
       total_pos:= total_pos + 1;
       Update_pos_state;
-      state := Update_State_Literal(state);
       prev_byte:= b;
       Text_Buf(R):= b;
       R:= R+1;  --  This is mod String_buffer_size
@@ -372,9 +381,9 @@ package body LZMA.Encoding is
         raise Program_Error;  --  !! should not happen
       end if;
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
-      --  !!  Later we will choose betweeen different tactics with memorized distances (rep1..rep3)
+      --  !!  Later we will choose betweeen different tactics with memorized distances (rep0..rep3)
       Write_Simple_Match(UInt32(distance - 1), Unsigned(length));
-      total_pos:= total_pos + Unsigned(length);
+      total_pos:= total_pos + Data_Bytes_Count(length);
       Update_pos_state;
       --  Expand in the circular text buffer to have it up to date
       for K in 0..Text_Buffer_Index(length-1) loop
