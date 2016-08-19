@@ -16,6 +16,13 @@ procedure LZMA_Enc is
 
   subtype Byte is Unsigned_8;
 
+  use LZMA, LZMA.Encoding;
+
+  level                 : constant Compression_level           := Level_2;
+  literal_context_bits  : Literal_context_bits_range  := 3;
+  literal_position_bits : Literal_position_bits_range := 0;
+  position_bits         : Position_bits_range         := 2;
+
   procedure Encode_LZMA_stream (s_in, s_out: Stream_Access) is
     EOS: Boolean:= False;
     mem_b: Byte:= Character'Pos('X');  --  delayed by 1 byte to catch the EOS
@@ -52,7 +59,13 @@ procedure LZMA_Enc is
 
   begin
     -- Whole processing here:
-    LZMA_Encode;
+    LZMA_Encode(
+      level,
+      literal_context_bits,
+      literal_position_bits,
+      position_bits,
+      uncompressed_size_info => True
+    );
   end Encode_LZMA_stream;
 
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
@@ -67,26 +80,53 @@ procedure LZMA_Enc is
     New_Line;
   end Print_Data_Bytes_Count;
 
+  bench: Boolean:= False;
+  z: constant:= Character'Pos('0');
+
 begin
   New_Line;
   Put_Line("LZMA_Enc: a standalone LZMA encoder.");
   if Argument_Count = 0 then
-    Put_Line("Use: lzma_enc infile outfile.lzma");
+    Put_Line("Use: lzma_enc infile outfile [options]");
+    New_Line;
+    Put_Line("NB: "".lzma"" extension automatically added to outfile");
+    Put_Line("Options: -b: benchmark the context parameters (225 .lzma output files!)");
     return;
-  elsif Argument_Count /= 2 then
-    Put_Line("You must specify two parameters");
+  elsif Argument_Count < 2 then
+    Put_Line("You must specify at least two parameters");
     return;
   end if;
-  Open(f_in, In_File, Argument(1));
-  Create(f_out, Out_File, Argument(2));
-  Encode_LZMA_stream(Stream(f_in), Stream(f_out));
-  New_Line;
-
-  Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in) - 1));
-  Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out) - 1));
-
-  Close(f_in);
-  Close(f_out);
+  for i in 3..Argument_Count loop
+    bench:= bench or Argument(i) = "-b";
+  end loop;
+  if bench then
+    for lc in Literal_context_bits_range loop
+      for lp in Literal_position_bits_range loop
+        for pb in Position_bits_range loop
+          Open(f_in, In_File, Argument(1));
+          Create(f_out, Out_File,
+            Argument(2) & '_' &
+            Character'Val(z+lc) & Character'Val(z+lp) & Character'Val(z+pb) & ".lzma"
+          );
+          literal_context_bits  := lc;
+          literal_position_bits := lp;
+          position_bits         := pb;
+          Encode_LZMA_stream(Stream(f_in), Stream(f_out));
+          Close(f_in);
+          Close(f_out);
+        end loop;
+      end loop;
+    end loop;
+  else
+    Open(f_in, In_File, Argument(1));
+    Create(f_out, Out_File, Argument(2) & ".lzma");
+    Encode_LZMA_stream(Stream(f_in), Stream(f_out));
+    New_Line;
+    Print_Data_Bytes_Count("Read    ", Data_Bytes_Count(Index(f_in) - 1));
+    Print_Data_Bytes_Count("Written ", Data_Bytes_Count(Index(f_out) - 1));
+    Close(f_in);
+    Close(f_out);
+  end if;
 
 exception
   when E: others =>

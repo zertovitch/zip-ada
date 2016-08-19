@@ -9,10 +9,9 @@
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
 --
 --  To do:
---    - remove items with "!!"'s and tracing with Ada.Text_IO.
---    - check with gcov
---    - test all combinations of literal_context_bits, literal_position_bits, position_bits
---    - shop for a better match finder (for LZ77), with all possible length and longer distances.
+--    - remove items with "!!"'s.
+--    - shop for a better match finder (for LZ77), with the whole range
+--        of supported lengths, and longer distances.
 --
 --  Change log:
 --------------
@@ -23,7 +22,6 @@
 with LZ77;
 
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
---  with Ada.Text_IO;
 with Interfaces;                        use Interfaces;
 
 package body LZMA.Encoding is
@@ -40,11 +38,12 @@ package body LZMA.Encoding is
   --      article about range encoding.
 
   procedure Encode(
-    level                 : LZMA_compression_level      := Level_1;
+    level                 : Compression_level           := Level_1;
     literal_context_bits  : Literal_context_bits_range  := 3;  --  Bits of last byte are used.
     literal_position_bits : Literal_position_bits_range := 0;  --  Position mod 2**bits is used.
     position_bits         : Position_bits_range         := 2;  --  Position mod 2**bits is used.
-    end_marker            : Boolean:= True  --  Produce an End-Of-Stream marker ?
+    end_marker            : Boolean:= True;  --  Produce an End-Of-Stream marker ?
+    uncompressed_size_info: Boolean:= False  --  Optional header appendix, needed for .lzma files
   )
   is
 
@@ -95,42 +94,37 @@ package body LZMA.Encoding is
     pragma Inline(Normalize);
     begin
       if range_enc.width < width_threshold then
-        --  Ada.Text_IO.Put_Line("        Normalize, low   before" & range_enc.low'img);
-        --  Ada.Text_IO.Put_Line("        Normalize, width before" & range_enc.width'img);
         range_enc.width := Shift_Left(range_enc.width, 8);  --  Trailing zeroes are added to width.
         Shift_low;
-        --  Ada.Text_IO.Put_Line("        Normalize, low   after " & range_enc.low'img);
-        --  Ada.Text_IO.Put_Line("        Normalize, width after " & range_enc.width'img);
       end if;
     end Normalize;
 
-    procedure Encode_Bit(prob_io: in out CProb; symbol: in Unsigned) is
+    procedure Encode_Bit(prob: in out CProb; symbol: in Unsigned) is
     pragma Inline(Encode_Bit);
-      prob: constant CProb:= prob_io;  --  Local copy
-      --  The bound is between 0 and width, closer to 0 if prob is small,
-      --  closer to width if prob is large.
-      bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * prob;
+      --  The current interval is [low, high=low+width[ .
+      --  The bound is between 0 and width, closer to 0 if prob
+      --  is small, closer to width if prob is large.
+      cur_prob: constant CProb:= prob;  --  Local copy
+      bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * cur_prob;
     begin
       if symbol = 0 then
-        --  Left sub-interval, for symbol 0.
-        --  Set new width. The new range is [low, low+bound[ : low is unchanged, high is new.
+        --  Left sub-interval, for symbol 0: [low, low+bound[ .
+        --  Set new range. low is unchanged, high is new.
         range_enc.width := bound;
         Normalize;
-        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
+        --  Increase probability.
         --  The truncation ensures that prob <= Probability_model_count - (2**m - 1). See note (*).
-        prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
+        prob:= cur_prob + Shift_Right(Probability_model_count - cur_prob, Probability_change_bits);
       else
-        --  Right sub-interval, for symbol 1.
-        --  The new range is [old low + bound, old low + old width[ : high is unchanged.
+        --  Right sub-interval, for symbol 1: [low+bound, high=low+width[ .
+        --  Set new range. low is new, high is unchanged.
         range_enc.low := range_enc.low + UInt64(bound);
         range_enc.width := range_enc.width - bound;
         Normalize;
         --  Decrease probability: prob:= prob - {prob / 2**m}, approx. equal to prob * (1 - 2**m).
         --  The truncation represented by {} ensures that prob >= 2**m - 1. See note (*).
-        prob_io:= prob - Shift_Right(prob, Probability_change_bits);
+        prob:= cur_prob - Shift_Right(cur_prob, Probability_change_bits);
       end if;
-      --  Ada.Text_IO.Put_Line("Encode_Bit;" & symbol'img & "; prob before= ;" & prob'img & "; after= ;" & prob_io'img);
-      --  ____
       --  (*) It can be exhaustively checked that it is always he case.
       --      A too low prob could cause the width to be too small or even zero.
       --      Same for "too high". See LZMA sheet in za_work.xls.
@@ -145,17 +139,17 @@ package body LZMA.Encoding is
     String_buffer_size : constant := 2**15;  --  2**15 = size for Deflate
 
     type LZMA_Params_Info is record
-      unpackSize           : Data_Bytes_Count:= 0;
-      unpackSizeDefined    : Boolean := False;
-      has_size             : Boolean := False;  --  Is size is part of header data ?
+      unpack_size          : Data_Bytes_Count:= 0;
+      unpack_size_defined  : Boolean := False;
+      header_has_size      : Boolean := uncompressed_size_info;
       has_end_mark         : Boolean := end_marker;
-      dictSize             : UInt32  := String_buffer_size;
+      dict_size            : UInt32  := String_buffer_size;
       lc                   : Literal_context_bits_range  := literal_context_bits;
       lp                   : Literal_position_bits_range := literal_position_bits;
       pb                   : Position_bits_range         := position_bits;
     end record;
 
-    lzma_params: LZMA_Params_Info;
+    params: LZMA_Params_Info;
 
     --  Finite state machine.
     state : State_range := 0;
@@ -164,12 +158,10 @@ package body LZMA.Encoding is
     rep_dist: array(Repeat_stack_range) of UInt32 := (others => 0);
     --
     total_pos : Data_Bytes_Count := 0;
-    pos_state: Pos_state_range := 0;
-    probs: All_probabilities(
-      last_lit_prob_index => 16#300# * 2 ** (lzma_params.lc + lzma_params.lp) - 1
-    );
-    pos_bits_mask    : constant UInt32 := 2 ** lzma_params.pb - 1;
-    literal_pos_mask : constant UInt32 := 2 ** lzma_params.lp - 1;
+    pos_state : Pos_state_range  := 0;
+    probs: All_probabilities(last_lit_prob_index => 16#300# * 2 ** (params.lc + params.lp) - 1);
+    pos_bits_mask    : constant UInt32 := 2 ** params.pb - 1;
+    literal_pos_mask : constant UInt32 := 2 ** params.lp - 1;
 
     procedure Update_pos_state is
     begin
@@ -181,8 +173,8 @@ package body LZMA.Encoding is
     begin
       loop
         Encode_Bit(
-          prob(Integer(Shift_Right(symb, 8)) + prob'First),
-          Unsigned(Shift_Right(symb, 7)) and 1
+          prob   => prob(Integer(Shift_Right(symb, 8)) + prob'First),
+          symbol => Unsigned(Shift_Right(symb, 7)) and 1
         );
         symb:= Shift_Left(symb, 1);
         exit when symb >= 16#10000#;
@@ -197,8 +189,8 @@ package body LZMA.Encoding is
       loop
         match:= Shift_Left(match, 1);
         Encode_Bit(
-          prob(Integer(offs + (match and offs) + Shift_Right(symb, 8)) + prob'First),
-          Unsigned(Shift_Right(symb, 7)) and 1
+          prob   => prob(Integer(offs + (match and offs) + Shift_Right(symb, 8)) + prob'First),
+          symbol => Unsigned(Shift_Right(symb, 7)) and 1
         );
         symb:= Shift_Left(symb, 1);
         offs:= offs and not (match xor symb);
@@ -218,7 +210,6 @@ package body LZMA.Encoding is
       probs_idx : Integer;
       b_match: constant Byte:= Text_Buf(R-Text_Buffer_Index(rep_dist(0))-1);
     begin
-      --  Ada.Text_IO.Put_Line("  *** LZ77 Literal [" & Character'Val(b) & ']');
       if total_pos > Data_Bytes_Count(rep_dist(0) + 1) and then b = b_match then
         --  We are lucky: we have the same byte. "Short Rep Match" case.
         --
@@ -235,15 +226,13 @@ package body LZMA.Encoding is
         Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
         lit_state :=
           Integer(
-            Shift_Left(UInt32(total_pos) and literal_pos_mask, lzma_params.lc) +
-            Shift_Right(UInt32(prev_byte), 8 - lzma_params.lc)
+            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
+            Shift_Right(UInt32(prev_byte), 8 - params.lc)
           );
         probs_idx:= 16#300# * lit_state;
         if state < 7 then
-          --  Ada.Text_IO.Put_Line("           Literal, simple: [" & Character'Val(b) & ']');
           Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
         else
-          --  Ada.Text_IO.Put_Line("           Literal with match: [" & Character'Val(b) & ']');
           Write_Literal_Matched(probs.lit(probs_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
         end if;
         state := Update_State_Literal(state);
@@ -367,7 +356,6 @@ package body LZMA.Encoding is
         base, dist_reduced: UInt32;
         footerBits: Natural;
       begin
-        --  Ada.Text_IO.Put_Line("  -----> Distance slot" & dist_slot'img & " len_state=" & len_state'img);
         Bit_Tree_Encode(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
         if dist_slot >= Start_dist_model_index then
           footerBits := Natural(Shift_Right(UInt32(dist_slot), 1)) - 1;
@@ -404,7 +392,6 @@ package body LZMA.Encoding is
     procedure Write_Repeat_Match(index: Repeat_stack_range; length: Unsigned) is
       aux: UInt32;
     begin
-      --  Ada.Text_IO.Put_Line("           Repeat match, mem index: [" & index'img & ']');
       Encode_Bit(probs.switch.rep(state), Rep_match_choice);
       case index is
         when 0 =>
@@ -422,7 +409,7 @@ package body LZMA.Encoding is
           Encode_Bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
           Encode_Bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
       end case;
-      --  Roll the distance stack up to the found one, which becomes first.
+      --  Roll the distance stack up to the found item, which becomes first.
       aux:= rep_dist(index);
       for i in reverse 1..index loop
         rep_dist(i) := rep_dist(i-1);
@@ -438,7 +425,6 @@ package body LZMA.Encoding is
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
     begin
-      --  Ada.Text_IO.Put_Line("  *** LZ77 DL code" & distance'img & length'img);
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       for i in rep_dist'Range loop
         if dist_ip = rep_dist(i) then
@@ -465,7 +451,7 @@ package body LZMA.Encoding is
     --  LZ77 compression  --
     ------------------------
 
-    LZ77_choice: constant array(LZMA_compression_level) of LZ77.Method_Type:=
+    LZ77_choice: constant array(Compression_level) of LZ77.Method_Type:=
       (Level_1   => LZ77.IZ_6,
        Level_2   => LZ77.IZ_10);
 
@@ -486,19 +472,19 @@ package body LZMA.Encoding is
         );
 
     procedure Write_LZMA_header is
-      dw: UInt32:= lzma_params.dictSize;
-      uw: Data_Bytes_Count:= lzma_params.unpackSize;
+      dw: UInt32:= params.dict_size;
+      uw: Data_Bytes_Count:= params.unpack_size;
     begin
-      --  LZMA 5-byte header
-      Write_byte(Byte(lzma_params.lc + 9 * lzma_params.lp + 9 * 5 * lzma_params.pb));
+      --  5-byte header
+      Write_byte(Byte(params.lc + 9 * params.lp + 9 * 5 * params.pb));
       for i in 0 .. 3 loop
         Write_byte(Byte(dw mod 256));
         dw:= dw / 256;
       end loop;
-      --  Optional (8 more header bytes): unpacked size
-      if lzma_params.has_size then
+      --  8 bytes for unpacked size; optional => you need a "pre-header" with that option :-(
+      if params.header_has_size then
         for i in 0 .. 7 loop
-          if lzma_params.unpackSizeDefined then
+          if params.unpack_size_defined then
             Write_byte(Byte(uw mod 256));
             uw:= uw / 256;
           else
@@ -508,19 +494,13 @@ package body LZMA.Encoding is
       end if;
     end Write_LZMA_header;
 
-    --  The end-of-stream marker is a fake "Simple Match" with a special distance: 16#FFFF_FFFF#.
-    --
-    procedure Write_end_marker is
-    begin
-      Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
-      Write_Simple_Match(distance => 16#FFFF_FFFF#, length => Min_match_length);
-    end Write_end_marker;
-
   begin
     Write_LZMA_header;
     My_LZ77;
-    if lzma_params.has_end_mark then
-      Write_end_marker;
+    if params.has_end_mark then
+      --  The end-of-stream marker is a fake "Simple Match" with a special distance.
+      Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
+      Write_Simple_Match(distance => 16#FFFF_FFFF#, length => Min_match_length);
     end if;
     Flush_range_encoder;
   end Encode;

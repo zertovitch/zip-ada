@@ -24,8 +24,8 @@ project ZipAda is
      --  Misc.
      "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
      "lz",       --  A simple LZ-Huffman coder/decoder
-     "lzma_dec", --  The LZMA Reference Decoder
-     "lzma_enc", --  Experimental LZMA encoder
+     "lzma_dec", --  LZMA decoder
+     "lzma_enc", --  LZMA encoder
      "test_lz_scramble",  --  Test LZ_Scramble
      "test_llhc",         --  Test for Length_limited_Huffman_code_lengths
      "test_lz77.adb",

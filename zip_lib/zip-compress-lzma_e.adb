@@ -127,7 +127,7 @@ is
 
   use LZMA.Encoding;
 
-  LZMA_choice: constant array(LZMA_Method) of LZMA_compression_level:=
+  LZMA_choice: constant array(LZMA_Method) of Compression_level:=
     (LZMA_1  => Level_1,
      LZMA_2  => Level_2);
 
