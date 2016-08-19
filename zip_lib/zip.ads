@@ -104,8 +104,8 @@ package Zip is
 
   ---------
 
-  -- Compression methods or formats in the "official" PKWARE Zip format.
-  -- Details in appnote.txt, part V.J
+  --  Compression "methods" - actually, formats - in the "official" PKWARE Zip format.
+  --  Details in appnote.txt, part V.J
   --   C: supported by Zip-Ada for compressing
   --   D: supported by Zip-Ada for decompressing
 
@@ -127,6 +127,9 @@ package Zip is
    );
 
   subtype reduce is PKZip_method range reduce_1..reduce_4;
+
+  -- Return a String image, nicer than the 'Image attribute.
+  function Image(m: PKZip_method) return String;
 
   -- Technical: translates the method code as set in zip archives
   function Method_from_code(x: Interfaces.Unsigned_16) return PKZip_method;

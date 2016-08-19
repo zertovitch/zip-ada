@@ -18,7 +18,7 @@ procedure LZMA_Enc is
 
   use LZMA, LZMA.Encoding;
 
-  level                 : constant Compression_level           := Level_2;
+  level                 : constant Compression_level  := Level_2;
   literal_context_bits  : Literal_context_bits_range  := 3;
   literal_position_bits : Literal_position_bits_range := 0;
   position_bits         : Position_bits_range         := 2;

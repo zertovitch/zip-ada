@@ -66,13 +66,14 @@ package body Rezip_lib is
   --  Give up recompression above a certain data size for some external packers like KZip
   --  or Zopfli.
   --
-  kzip_zopfli_limit: constant:= 10_000_000;
+  kzip_zopfli_limit: constant:= 2_000_000;
 
   type Approach is (
     original,
     shrink,
-    reduce_1, reduce_2, reduce_3, reduce_4,
-    deflate_f, deflate_1, deflate_2, deflate_3,
+    reduce_4,
+    deflate_3,
+    lzma_2,
     external_1, external_2, external_3, external_4,
     external_5, external_6, external_7, external_8,
     external_9, external_10, external_11, external_12,
@@ -199,14 +200,9 @@ package body Rezip_lib is
 
     Approach_to_Method: constant array(Internal) of Zip.Compress.Compression_Method:=
       (shrink    => Zip.Compress.Shrink,
-       reduce_1  => Zip.Compress.Reduce_1,
-       reduce_2  => Zip.Compress.Reduce_2,
-       reduce_3  => Zip.Compress.Reduce_3,
        reduce_4  => Zip.Compress.Reduce_4,
-       deflate_f => Zip.Compress.Deflate_Fixed,
-       deflate_1 => Zip.Compress.Deflate_1,
-       deflate_2 => Zip.Compress.Deflate_2,
-       deflate_3 => Zip.Compress.Deflate_3
+       deflate_3 => Zip.Compress.Deflate_3,
+       lzma_2    => Zip.Compress.LZMA_2
       );
 
     type Packer_info is record
@@ -702,11 +698,9 @@ package body Rezip_lib is
               null;
             when shrink =>
               consider(a):= consider(a) and uncomp_size <= 6000;
-            when reduce_1 .. reduce_4 =>
+            when reduce_4 =>
               consider(a):= consider(a) and uncomp_size <= 9000;
-            when deflate_f =>
-              consider(a):= consider(a) and uncomp_size <= 4000;
-            when deflate_1 .. deflate_3 =>
+            when deflate_3 | lzma_2 =>
               null;
             when External =>
               consider(a):= consider(a) and (ext(a).limit = 0 or uncomp_size <= ext(a).limit);
@@ -729,7 +723,8 @@ package body Rezip_lib is
                 mth:= Zip.Method_from_code(e.info(a).zfm);
                 --
               when Internal =>
-                if a in deflate_1 .. deflate_3 then
+                if Approach_to_Method(a) in Zip.Compress.Deflation_Method then
+                  --  We post-process with DeflOpt.
                   Process_Internal_as_Zip(a, e.all);
                 else
                   Process_Internal_Raw(a, e.all);
@@ -810,12 +805,12 @@ package body Rezip_lib is
         Put(summary,"<td>" & Img(choice, html => True) & "</td>");
         Put(summary,
           "<td bgcolor=#fafa64>" &
-          To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(choice).zfm))) &
+          Zip.Image(Zip.Method_from_code(e.info(choice).zfm)) &
           "</td>"
         );
         Put(summary,
           "<td>" &
-          To_Lower(Zip.PKZip_method'Image(Zip.Method_from_code(e.info(original).zfm))) &
+          Zip.Image(Zip.Method_from_code(e.info(original).zfm)) &
           "</td>"
         );
         Winner_color;
@@ -898,8 +893,7 @@ package body Rezip_lib is
           when original =>
             consider_a_priori(a):= True;
           when Internal =>
-            consider_a_priori(a):= format_choice(Zip.Compress.Method_to_Format(Approach_to_Method(a)))
-              and a not in reduce_1..reduce_3;
+            consider_a_priori(a):= format_choice(Zip.Compress.Method_to_Format(Approach_to_Method(a)));
           when External =>
             consider_a_priori(a):= format_choice(ext(a).pkzm);
         end case;
@@ -956,14 +950,13 @@ package body Rezip_lib is
         if consider_a_priori(a) then
           case a is
             when original =>
-              Put(summary, "<td align=right bgcolor=#dddd00 class=""td_approach"">Approach's<br>method/<br>format &rarr;</td>");
+              Put(summary, "<td align=right bgcolor=#dddd00 class=""td_approach"">Approach's<br>format &rarr;</td>");
             when Internal =>
               Put(summary, "<td bgcolor=#fafa64>" &
-                To_Lower( Zip.PKZip_method'Image(
-                  Zip.Compress.Method_to_Format(Approach_to_Method(a)))) & "</td>");
+                Zip.Image(Zip.Compress.Method_to_Format(Approach_to_Method(a))) & "</td>");
               -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
             when External =>
-              Put(summary, "<td bgcolor=#fafa64>" & To_Lower(Zip.PKZip_method'Image(ext(a).pkzm)) & "</td>");
+              Put(summary, "<td bgcolor=#fafa64>" & Zip.Image(ext(a).pkzm) & "</td>");
           end case;
         end if;
       end loop;
@@ -1105,7 +1098,7 @@ package body Rezip_lib is
       Put_Line(summary, "    Formats allowed:<br><table border=1 cellpadding=1 cellspacing=1>");
       for f in format_choice'Range loop
         Put_Line(summary,
-          "      <tr><td>" & Zip.PKZip_method'Image(f) & "</td><td>" &
+          "      <tr><td>" & Zip.Image(f) & "</td><td>" &
           Boolean'Image(format_choice(f)) & "</td></tr>");
       end loop;
       Put_Line(summary, "    </table>");

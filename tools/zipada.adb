@@ -24,6 +24,7 @@ with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress, Zip.Create;          use Zip.Create;
 
 with My_feedback;
+with Zip;
 
 procedure ZipAda is
 
@@ -75,10 +76,7 @@ procedure ZipAda is
     end if;
     Put(' ');
     declare
-      meth: constant String:=
-        To_Lower(Zip.PKZip_method'Image(
-          Zip.Method_from_code(Final_Method)
-        ));
+      meth: constant String:= Zip.Image(Zip.Method_from_code(Final_Method));
     begin
       Put( meth & (Zip.PKZip_method'Width - meth'Length) * ' ');
     end;

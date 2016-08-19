@@ -3,7 +3,7 @@
 --  Description:     Part of the UnZipAda demo
 ------------------------------------------------------------------------------
 
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Zip;
 
 package body Summary is
 
@@ -19,9 +19,9 @@ package body Summary is
 
   function Nice_image(format: UnZip.PKZip_method) return String is
     img_stuffed: String(1..UnZip.PKZip_method'Width):= (others=> ' ');
-    img: constant String:= UnZip.PKZip_method'Image(format);
+    img: constant String:= Zip.Image(format);
   begin
-    img_stuffed(1..img'Length):= To_Lower(img);
+    img_stuffed(1..img'Length):= img;
     return img_stuffed;
   end Nice_image;
 

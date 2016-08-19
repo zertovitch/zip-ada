@@ -845,6 +845,26 @@ package body Zip is
     end if;
   end BlockWrite;
 
+  function Image(m: PKZip_method) return String is
+  begin
+    case m is
+      when store     => return "Store";
+      when shrink    => return "Shrink";
+      when reduce_1  => return "Reduce 1";
+      when reduce_2  => return "Reduce 2";
+      when reduce_3  => return "Reduce 3";
+      when reduce_4  => return "Reduce 4";
+      when implode   => return "Implode";
+      when tokenize  => return "Tokenize";
+      when deflate   => return "Deflate";
+      when deflate_e => return "Deflate64";
+      when bzip2     => return "BZip2";
+      when lzma_meth => return "LZMA";
+      when ppmd      => return "PPMd";
+      when unknown   => return "(unknown)";
+    end case;
+  end Image;
+
   function Method_from_code(x: Natural) return PKZip_method is
     -- An enumeration clause might be more elegant, but needs
     -- curiously an Unchecked_Conversion... (RM 13.4)
