@@ -1,5 +1,5 @@
 --  LZMA_Encoding - a standalone, generic LZMA encoder.
-
+--
 --  Most parts of the base mechanism are from the original LzmaEnc.c by Igor Pavlov.
 --  Some parts are from the LZMAEncoder.java translation by Lasse Collin.
 --  Other parts are mirrored from LZMA.Decoding when symmetric.
@@ -7,8 +7,18 @@
 --      Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
 --    becomes:
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
-
---  To do: implement repeated matches, remove items with "!!"'s and tracing with Text_IO.
+--
+--  To do:
+--    - remove items with "!!"'s and tracing with Text_IO.
+--    - check with gcov
+--    - test all combinations of literal_context_bits, literal_position_bits, position_bits
+--    - shop for a better match finder (for LZ77), with all possible length and longer distances.
+--
+--  Change log:
+--------------
+--
+--  18-Aug-2016: Fully functional.
+--  28-Jul-2016: Created.
 
 with LZ77;
 
@@ -139,7 +149,9 @@ package body LZMA.Encoding is
     lzma_params: LZMA_Params_Info;
 
     state : State_range := 0;
-    rep0, rep1, rep2, rep3 : UInt32 := 0;  --  Recent distances used for LZ
+    subtype Repeat_stack_range is Integer range 0..3;
+    --  Recent distances used for LZ:
+    rep_dist: array(Repeat_stack_range) of UInt32 := (others => 0);
     total_pos : Data_Bytes_Count := 0;
     pos_state: Pos_state_range := 0;
     probs: All_probabilities(
@@ -193,12 +205,16 @@ package body LZMA.Encoding is
     procedure LZ77_emits_literal_byte (b: Byte) is
       lit_state : Integer;
       probs_idx : Integer;
-      b_match: constant Byte:= Text_Buf(R-Text_Buffer_Index(rep0)-1);
+      b_match: constant Byte:= Text_Buf(R-Text_Buffer_Index(rep_dist(0))-1);
     begin
       --  Ada.Text_IO.Put_Line("  *** LZ77 Literal [" & Character'Val(b) & ']');
-      if total_pos > Data_Bytes_Count(rep0 + 1) and then b = b_match then
+      if total_pos > Data_Bytes_Count(rep_dist(0) + 1) and then b = b_match then
         --  We are lucky: we have the same byte. "Short Rep Match" case.
-        --  !! On some text files the compression is worse, perhaps because of the 3 extra bits always encoded.
+        --
+        --  !! On some files the compression is worse, certainly because of the
+        --    3 extra bits always encoded. See Bench sheet in za_work.xls.
+        --    Idea 1: do it only when the 4 probabilities, combined, are above a certain threshold.
+        --    Idea 2: look in another source (if it is not too complicated...)
         Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
         Encode_Bit(probs.switch.rep(state), Rep_match_choice);
         Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
@@ -225,7 +241,7 @@ package body LZMA.Encoding is
       Update_pos_state;
       prev_byte:= b;
       Text_Buf(R):= b;
-      R:= R+1;  --  This is mod String_buffer_size
+      R:= R + 1;  --  This is mod String_buffer_size
     end LZ77_emits_literal_byte;
 
     procedure Bit_Tree_Encode(
@@ -362,35 +378,76 @@ package body LZMA.Encoding is
           end if;
         end if;
       end Encode_Distance;
+      --
     begin
       Encode_Bit(probs.switch.rep(state), Simple_match_choice);
       state := Update_State_Match(state);
       Encode_Length(probs.len, length);
       Encode_Distance;
-      rep3 := rep2;
-      rep2 := rep1;
-      rep1 := rep0;
-      rep0 := distance;
+      for i in reverse 1 .. Repeat_stack_range'Last loop
+        rep_dist(i) := rep_dist(i-1);
+      end loop;
+      rep_dist(0) := distance;
     end Write_Simple_Match;
 
-    procedure LZ77_emits_DL_code (distance, length: Integer) is
+    procedure Write_Repeat_Match(index: Repeat_stack_range; length: Unsigned) is
+      aux: UInt32;
+    begin
+      --  Ada.Text_IO.Put_Line("           Repeat match, mem index: [" & index'img & ']');
+      Encode_Bit(probs.switch.rep(state), Rep_match_choice);
+      case index is
+        when 0 =>
+          Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
+          Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
+        when 1 =>
+          Encode_Bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
+          Encode_Bit(probs.switch.rep_g1(state), The_distance_is_rep1_choice);
+        when 2 =>
+          Encode_Bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
+          Encode_Bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
+          Encode_Bit(probs.switch.rep_g2(state), The_distance_is_rep2_choice);
+        when 3 =>
+          Encode_Bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
+          Encode_Bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
+          Encode_Bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
+      end case;
+      --  Roll the distance stack up to the found one, which becomes first.
+      aux:= rep_dist(index);
+      for i in reverse 1..index loop
+        rep_dist(i) := rep_dist(i-1);
+      end loop;
+      rep_dist(0):= aux;
+      --
+      Encode_Length(probs.rep_len, length);
+      state := Update_State_Rep(state);
+    end Write_Repeat_Match;
+
+    procedure LZ77_emits_DL_code (distance: Integer; length: Match_length_range) is
       Copy_start: constant Text_Buffer_Index:= R - Text_Buffer_Index(distance);
+      dist_ip: constant UInt32:= UInt32(distance - 1);
+      found_repeat: Integer:= rep_dist'First - 1;
     begin
       --  Ada.Text_IO.Put_Line("  *** LZ77 DL code" & distance'img & length'img);
-      if length not in Min_match_length .. Max_match_length then
-        raise Program_Error;  --  !! should not happen
-      end if;
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
-      --  !!  Later we will choose betweeen different tactics with memorized distances (rep0..rep3)
-      Write_Simple_Match(UInt32(distance - 1), Unsigned(length));
+      for i in rep_dist'Range loop
+        if dist_ip = rep_dist(i) then
+          found_repeat:= i;
+          exit;
+        end if;
+      end loop;
+      if found_repeat >= rep_dist'First then
+        Write_Repeat_Match(found_repeat, Unsigned(length));
+      else
+        Write_Simple_Match(dist_ip, Unsigned(length));
+      end if;
       total_pos:= total_pos + Data_Bytes_Count(length);
       Update_pos_state;
       --  Expand in the circular text buffer to have it up to date
       for K in 0..Text_Buffer_Index(length-1) loop
         Text_Buf(R):= Text_Buf(Copy_start+K);
-        R:= R+1;  --  This is mod String_buffer_size
+        R:= R + 1;  --  This is mod String_buffer_size
       end loop;
-      prev_byte:= Text_Buf(R-1);
+      prev_byte:= Text_Buf(R - 1);
     end LZ77_emits_DL_code;
 
     ------------------------

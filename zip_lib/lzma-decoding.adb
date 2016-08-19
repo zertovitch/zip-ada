@@ -466,11 +466,11 @@ package body LZMA.Decoding is
           end if;
         else
           Decode_Bit(probs.switch.rep_g1(state), bit_d);
-          if bit_d = 0 then
+          if bit_d = The_distance_is_rep1_choice then
             dist := rep1;
           else
             Decode_Bit(probs.switch.rep_g2(state), bit_e);
-            if bit_e = 0 then
+            if bit_e = The_distance_is_rep2_choice then
               dist := rep2;
             else
               dist := rep3;

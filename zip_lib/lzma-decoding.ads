@@ -9,7 +9,6 @@
 --    LZMA_Dec, a standalone decoder for .lzma files
 --    UnZip.Decompress, extracts Zip files entries with, among others, LZMA encoding
 
-
 with Ada.Direct_IO, Interfaces;
 
 generic

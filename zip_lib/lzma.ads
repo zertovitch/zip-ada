@@ -166,6 +166,8 @@ private
   Min_match_length : constant:= 2;  --  "LZMA_MATCH_LEN_MIN"
   Max_match_length : constant:= Min_match_length + Len_symbols - 1;  --  "LZMA_MATCH_LEN_MAX"
 
+  subtype Match_length_range is Integer range Min_match_length .. Max_match_length;
+
   --------------------------------------------------
   --  Binary values of various decision switches  --
   --------------------------------------------------
@@ -178,10 +180,18 @@ private
   Simple_match_choice : constant:= 0;
   Rep_match_choice    : constant:= 1;
 
-  --  Within "Rep match": "Distance is rep0" vs. "Distance is rep1, rep2 or rep3"
-  The_distance_is_rep0_choice : constant:= 0;
+  --  Within "Rep match": "Distance is rep0" vs. "Distance is not rep0"
+  The_distance_is_rep0_choice     : constant:= 0;
+  The_distance_is_not_rep0_choice : constant:= 1;
   --  Within "Distance is rep0":
-  The_length_is_1_choice : constant:= 0;
+  The_length_is_1_choice     : constant:= 0;
+  The_length_is_not_1_choice : constant:= 1;
+  --  Within "Distance is not rep0": "Distance is rep1" vs. "Distance is not rep1"
+  The_distance_is_rep1_choice     : constant:= 0;
+  The_distance_is_not_rep1_choice : constant:= 1;
+  --  Within "Distance is not rep1": "Distance is rep2" vs. "Distance is not rep2"
+  The_distance_is_rep2_choice     : constant:= 0;
+  The_distance_is_not_rep2_choice : constant:= 1;
 
   --------------------
   --  Range coding  --
