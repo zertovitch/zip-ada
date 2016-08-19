@@ -9,7 +9,7 @@
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
 --
 --  To do:
---    - remove items with "!!"'s and tracing with Text_IO.
+--    - remove items with "!!"'s and tracing with Ada.Text_IO.
 --    - check with gcov
 --    - test all combinations of literal_context_bits, literal_position_bits, position_bits
 --    - shop for a better match finder (for LZ77), with all possible length and longer distances.
@@ -41,9 +41,9 @@ package body LZMA.Encoding is
 
   procedure Encode(
     level                 : LZMA_compression_level      := Level_1;
-    literal_context_bits  : Literal_context_bits_range  := 3;  --  "Literal context" bits
-    literal_position_bits : Literal_position_bits_range := 0;  --  "Literal position" bits
-    position_bits         : Position_bits_range         := 2;  --  "Position" bits
+    literal_context_bits  : Literal_context_bits_range  := 3;  --  Bits of last byte are used.
+    literal_position_bits : Literal_position_bits_range := 0;  --  Position mod 2**bits is used.
+    position_bits         : Position_bits_range         := 2;  --  Position mod 2**bits is used.
     end_marker            : Boolean:= True  --  Produce an End-Of-Stream marker ?
   )
   is
@@ -97,7 +97,7 @@ package body LZMA.Encoding is
       if range_enc.width < width_threshold then
         --  Ada.Text_IO.Put_Line("        Normalize, low   before" & range_enc.low'img);
         --  Ada.Text_IO.Put_Line("        Normalize, width before" & range_enc.width'img);
-        range_enc.width := Shift_Left(range_enc.width, 8);
+        range_enc.width := Shift_Left(range_enc.width, 8);  --  Trailing zeroes are added to width.
         Shift_low;
         --  Ada.Text_IO.Put_Line("        Normalize, low   after " & range_enc.low'img);
         --  Ada.Text_IO.Put_Line("        Normalize, width after " & range_enc.width'img);
@@ -107,30 +107,39 @@ package body LZMA.Encoding is
     procedure Encode_Bit(prob_io: in out CProb; symbol: in Unsigned) is
     pragma Inline(Encode_Bit);
       prob: constant CProb:= prob_io;  --  Local copy
-      --  Depending on the probability, bound is between 0 and width.
+      --  The bound is between 0 and width, closer to 0 if prob is small,
+      --  closer to width if prob is large.
       bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * prob;
     begin
       if symbol = 0 then
-        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
-        --  The truncation ensures (*) that prob <= Probability_model_count - (2**m - 1)
-        prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
+        --  Left sub-interval, for symbol 0.
         --  Set new width. The new range is [low, low+bound[ : low is unchanged, high is new.
         range_enc.width := bound;
         Normalize;
+        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
+        --  The truncation ensures that prob <= Probability_model_count - (2**m - 1). See note (*).
+        prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
       else
-        --  Decrease probability: prob:= prob - prob / 2**m = prob * (1 - 2**m)
-        --  The truncation ensures (*) that prob >= 2**m - 1
-        prob_io:= prob - Shift_Right(prob, Probability_change_bits);
+        --  Right sub-interval, for symbol 1.
         --  The new range is [old low + bound, old low + old width[ : high is unchanged.
         range_enc.low := range_enc.low + UInt64(bound);
         range_enc.width := range_enc.width - bound;
         Normalize;
+        --  Decrease probability: prob:= prob - {prob / 2**m}, approx. equal to prob * (1 - 2**m).
+        --  The truncation represented by {} ensures that prob >= 2**m - 1. See note (*).
+        prob_io:= prob - Shift_Right(prob, Probability_change_bits);
       end if;
       --  Ada.Text_IO.Put_Line("Encode_Bit;" & symbol'img & "; prob before= ;" & prob'img & "; after= ;" & prob_io'img);
-      --  (*) Proof needed, but seems easy: can be exhaustively checked.
+      --  ____
+      --  (*) It can be exhaustively checked that it is always he case.
       --      A too low prob could cause the width to be too small or even zero.
-      --      See LZMA sheet in za_work.xls.
+      --      Same for "too high". See LZMA sheet in za_work.xls.
     end Encode_Bit;
+
+    -----------------------------------------------------------
+    --  The LZMA "machine": here the LZ codes are processed  --
+    --  and sent to the above bit encoder in a smart way.    --
+    -----------------------------------------------------------
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
     String_buffer_size : constant := 2**15;  --  2**15 = size for Deflate
@@ -148,10 +157,12 @@ package body LZMA.Encoding is
 
     lzma_params: LZMA_Params_Info;
 
+    --  Finite state machine.
     state : State_range := 0;
+    --  Small stack of recent distances used for LZ.
     subtype Repeat_stack_range is Integer range 0..3;
-    --  Recent distances used for LZ:
     rep_dist: array(Repeat_stack_range) of UInt32 := (others => 0);
+    --
     total_pos : Data_Bytes_Count := 0;
     pos_state: Pos_state_range := 0;
     probs: All_probabilities(
@@ -214,7 +225,7 @@ package body LZMA.Encoding is
         --  !! On some files the compression is worse, certainly because of the
         --    3 extra bits always encoded. See Bench sheet in za_work.xls.
         --    Idea 1: do it only when the 4 probabilities, combined, are above a certain threshold.
-        --    Idea 2: look in another source (if it is not too complicated...)
+        --    Idea 2: look in another source (if the solution is not too complicated...)
         Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
         Encode_Bit(probs.switch.rep(state), Rep_match_choice);
         Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);

@@ -5,8 +5,15 @@ with System;
 
 package LZMA is
 
+  --  Bits of last byte being used as context.
+  --    With the value 8, LZMA uses a complete Markov chain for predicting
+  --    a literal from the previous one, like PKZip's Reduce format.
   subtype Literal_context_bits_range  is Integer range 0..8;
+
+  --  Position mod 2**bits is used, but for literal context only.
   subtype Literal_position_bits_range is Integer range 0..4;
+
+  --  Position mod 2**bits is used in various places.
   subtype Position_bits_range         is Integer range 0..4;
 
 private
