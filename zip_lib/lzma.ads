@@ -1,4 +1,34 @@
---  Items that are common to LZMA encoding and LZMA decoding.
+--  LZMA library
+---------------
+--  Library for encoding and decoding data streams in the LZMA compression
+--  format invented by Igor Pavlov.
+--
+--  Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
+
+--  Legal licensing note:
+
+--  Copyright (c) 2016 Gautier de Montmollin
+
+--  Permission is hereby granted, free of charge, to any person obtaining a copy
+--  of this software and associated documentation files (the "Software"), to deal
+--  in the Software without restriction, including without limitation the rights
+--  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+--  copies of the Software, and to permit persons to whom the Software is
+--  furnished to do so, subject to the following conditions:
+
+--  The above copyright notice and this permission notice shall be included in
+--  all copies or substantial portions of the Software.
+
+--  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+--  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+--  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+--  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+--  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+--  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+--  THE SOFTWARE.
+
+-- NB: this is the MIT License, as found 21-Aug-2016 on the site
+-- http://www.opensource.org/licenses/mit-license.php
 
 with Interfaces;
 with System;
@@ -33,7 +63,7 @@ private
   ----------------------------
 
   States_count : constant := 12;  --  LZMA specification name: "kNumStates"
-  subtype State_range is Unsigned range 0..States_count-1;
+  subtype State_range is Unsigned range 0..States_count - 1;
   type Transition is array(State_range) of State_range;
 
   ------------------------------------ From ...  0  1  2  3  4  5  6   7   8   9  10  11
@@ -201,12 +231,19 @@ private
   The_distance_is_rep2_choice     : constant:= 0;
   The_distance_is_not_rep2_choice : constant:= 1;
 
-  --------------------
-  --  Range coding  --
-  --------------------
+  ----------------------
+  --  Range encoding  --
+  ----------------------
 
   --  Normalization threshold. When the range width is below that value,
   --  a shift is needed.
   width_threshold : constant := 2**24;  --  LZMA specification name: "kTopValue"
+
+  --  The following article (the only reference in the LZMA specification)
+  --  explains how range encoding works:
+  --
+  --     G. N. N. Martin, Range encoding: an algorithm for removing redundancy
+  --     from a digitized message, Video & Data Recording Conference,
+  --     Southampton, UK, July 24-27, 1979.
 
 end LZMA;
