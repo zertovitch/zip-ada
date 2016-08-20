@@ -35,6 +35,7 @@ zip        -1                test_ifz1     %files%
 zip        -6                test_ifz6     %files%
 zip        -9                test_ifz9     %files%
 7z a -tzip -mx=9 -mm=deflate test_7z_d     %files%
+7z a -tzip -mx=9 -mm=LZMA    test_7z_l     %files%
 
 if not "%1" == "full" goto skip
 echo  --
@@ -78,6 +79,7 @@ comp_zip test_zash test_zal1 -q2
 comp_zip test_zash test_zal2 -q2
 comp_zip test_zash test_ifz9 -q2
 comp_zip test_zash test_7z_d -q2
+comp_zip test_zash test_7z_l -q2
 if exist test_kzip.zip comp_zip test_zash test_kzip -q2
 if exist test_zopf.zip comp_zip test_zash test_zopf -q2
 

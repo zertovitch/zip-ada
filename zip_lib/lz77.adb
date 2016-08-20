@@ -19,7 +19,7 @@
 --    - LZ77 / IZ: tune TOO_FAR (max: 32767), see http://optipng.sf.net/pngtech/too_far.html
 --        "TOO_FAR in zlib Is Not Too Far" for discussion
 --    - LZ77: try yet another LZ77, e.g. from 7-Zip, or program a new one with
---        hash chains etc.
+--        hash chains etc. BT3 or BT4 seem best for LZMA (BTn: Binary Tree n bytes hash).
 
 with System;
 

@@ -9,9 +9,9 @@
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
 --
 --  To do:
---    - remove items with "!!"'s.
 --    - shop for a better match finder (for LZ77), with the whole range
 --        of supported lengths, and longer distances.
+--        BT3 or BT4 seem best (BTn: Binary Tree n bytes hash).
 --
 --  Change log:
 --------------
@@ -101,11 +101,11 @@ package body LZMA.Encoding is
 
     procedure Encode_Bit(prob: in out CProb; symbol: in Unsigned) is
     pragma Inline(Encode_Bit);
+      cur_prob: constant CProb:= prob;  --  Local copy
       --  The current interval is [low, high=low+width[ .
       --  The bound is between 0 and width, closer to 0 if prob
       --  is small, closer to width if prob is large.
-      cur_prob: constant CProb:= prob;  --  Local copy
-      bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * cur_prob;
+      bound: constant UInt32:= Shift_Right(range_enc.width, Probability_model_bits) * UInt32(cur_prob);
     begin
       if symbol = 0 then
         --  Left sub-interval, for symbol 0: [low, low+bound[ .
@@ -205,22 +205,36 @@ package body LZMA.Encoding is
     Text_Buf: Text_Buffer;
     R: Text_Buffer_Index:= 0;
 
+    type MProb is new Long_Float range 0.0 .. 1.0;
+
+    function To_Math(cp: CProb) return MProb is
+    pragma Inline(To_Math);
+    begin
+      return MProb'Base(cp) / MProb'Base(Probability_model_count);
+    end To_Math;
+
     procedure LZ77_emits_literal_byte (b: Byte) is
       lit_state : Integer;
       probs_idx : Integer;
       b_match: constant Byte:= Text_Buf(R-Text_Buffer_Index(rep_dist(0))-1);
+      threshold: constant:= 0.01;  --  0.0: always, 1.0/16.0 = 0.0625: equiprobable, 1.0: never.
     begin
-      if total_pos > Data_Bytes_Count(rep_dist(0) + 1) and then b = b_match then
-        --  We are lucky: we have the same byte. "Short Rep Match" case.
-        --
-        --  !! On some files the compression is worse, certainly because of the
-        --    3 extra bits always encoded. See Bench sheet in za_work.xls.
-        --    Idea 1: do it only when the 4 probabilities, combined, are above a certain threshold.
-        --    Idea 2: look in another source (if the solution is not too complicated...)
-        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
-        Encode_Bit(probs.switch.rep(state), Rep_match_choice);
-        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
-        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);
+      if total_pos > Data_Bytes_Count(rep_dist(0) + 1) and then b = b_match
+        --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match" case.
+        --  But wait: it costs 4 bits, so better to have already a probable case before proceeding.
+        --  For computing we assume independent probabilities, just like the range encoder does
+        --  when adapting the width. With high probabilities the width will decrease less and
+        --  the compression will be better. When choice bit is 1 the case's probability is 1-p.
+          and then
+            (1.0 - To_Math(probs.switch.match(state, pos_state))) *
+            (1.0 - To_Math(probs.switch.rep(state))) *
+            To_Math(probs.switch.rep_g0(state)) *
+            To_Math(probs.switch.rep0_long(state, pos_state)) >= threshold
+      then
+        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);               --  1
+        Encode_Bit(probs.switch.rep(state), Rep_match_choice);                          --  1
+        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);            --  0
+        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);   --  0
         state := Update_State_ShortRep(state);
       else
         Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
@@ -455,7 +469,9 @@ package body LZMA.Encoding is
       (Level_1   => LZ77.IZ_6,
        Level_2   => LZ77.IZ_10);
 
-    --  !! These are constants for the Info-Zip LZ77. LZMA's LZ lengths can be from 2 to 273.
+    --  These are constants for the Info-Zip LZ77.
+    --  LZMA's LZ lengths can range from 2 to 273.
+    --  See to-do list above about a better match finder.
     Min_length : constant := 3;  --  From a string match length >= 3, a DL code is sent
     Max_length : constant := 258;
 

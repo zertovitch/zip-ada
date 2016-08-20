@@ -105,28 +105,20 @@ package body LZMA.Decoding is
       end if;
     end Normalize;
 
-    procedure Decode_Bit(prob_io: in out CProb; symbol: out Unsigned) is
+    procedure Decode_Bit(prob: in out CProb; symbol: out Unsigned) is
     pragma Inline(Decode_Bit);
-      prob: constant CProb:= prob_io; -- Local copy
-      bound: constant UInt32:= Shift_Right(range_dec.width, Probability_model_bits) * prob;
+      cur_prob: constant CProb:= prob; -- Local copy
+      bound: constant UInt32:= Shift_Right(range_dec.width, Probability_model_bits) * UInt32(cur_prob);
+      --  See encoder for explanations about the maths.
     begin
       if range_dec.code < bound then
-        --  Increase probability. In [0, 1] it would be: prob:= prob + (1 - prob) / 2**m
-        --  The truncation ensures (proof needed) that prob <= Probability_model_count - (2**m - 1)
-        prob_io:= prob + Shift_Right(Probability_model_count - prob, Probability_change_bits);
-        --  The new range is [0, bound[.
-        --  Set new width.
+        prob:= cur_prob + Shift_Right(Probability_model_count - cur_prob, Probability_change_bits);
         range_dec.width := bound;
         Normalize;
         symbol := 0;
       else
-        --  Decrease probability: prob:= prob - prob / 2**m = prob:= prob * (1 - 2**m)
-        --  The truncation ensures (proof needed) that prob >= 2**m - 1
-        prob_io:= prob - Shift_Right(prob, Probability_change_bits);
-        --  The new range is [bound, width[. We shift the code and implicitely
-        --  the range's limits by -bound in order to have a 0 lower limit for the range.
+        prob:= cur_prob - Shift_Right(cur_prob, Probability_change_bits);
         range_dec.code  := range_dec.code - bound;
-        --  Set new width.
         range_dec.width := range_dec.width - bound;
         Normalize;
         symbol := 1;

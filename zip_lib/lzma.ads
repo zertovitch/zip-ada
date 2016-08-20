@@ -60,8 +60,10 @@ private
   --  All probabilities are initialized with p=0.5. LZMA specification name: "PROB_INIT_VAL"
   Initial_probability : constant := Probability_model_count / 2;
 
-  --  Type for storing probabilities, must be at least 11 bit.
-  subtype CProb is UInt32;  --  LZMA specification recommends UInt16.
+  --  Type for storing probabilities, must have at least Probability_model_bits bits.
+  --  LZMA specification recommends UInt16. LzmaEnc.c uses UInt16 or optionally UInt32.
+  type CProb is new UInt16;
+
   --  Integer (signed) used as index because there is a -1 (unused) index in Pos_coder_range.
   type CProb_array is array(Integer range <>) of CProb;
 
@@ -103,8 +105,7 @@ private
 
   type Low_mid_coder_probs is array(Pos_state_range) of Probs_3_bits;
 
-  --  Probabilities used for encoding LZ lengths.
-  --  LZMA specification name: "CLenDecoder"
+  --  Probabilities used for encoding LZ lengths. LZMA specification name: "CLenDecoder"
   type Probs_for_LZ_Lengths is record
     choice_1   : CProb               := Initial_probability;  --  0: low coder; 1: mid or high
     choice_2   : CProb               := Initial_probability;  --  0: mid; 1: high
