@@ -168,6 +168,10 @@ package body LZMA.Encoding is
       pos_state := Pos_state_range(UInt32(total_pos) and pos_bits_mask);
     end Update_pos_state;
 
+    -----------------------------------------------------------------------------------
+    --  This part processes the case where LZ77 sends a literal (a plain text byte)  --
+    -----------------------------------------------------------------------------------
+
     procedure Write_Literal (prob: in out CProb_array; symbol: in UInt32) is
       symb: UInt32:= symbol or 16#100#;
     begin
@@ -258,6 +262,10 @@ package body LZMA.Encoding is
       R:= R + 1;  --  This is mod String_buffer_size
     end LZ77_emits_literal_byte;
 
+    ---------------------------------------------------------------------------------
+    --  This part processes the case where LZ77 sends a Distance-Length (DL) code  --
+    ---------------------------------------------------------------------------------
+
     procedure Bit_Tree_Encode(
       prob     : in out CProb_array;
       num_bits :        Positive;
@@ -297,7 +305,7 @@ package body LZMA.Encoding is
     end Encode_Length;
 
     --  Gets an integer [0, 63] matching the highest two bits of an integer.
-    --  It is a log2 with one "decimal".
+    --  It is a log2 function with one "decimal".
     --
     function Get_dist_slot(dist: UInt32) return Unsigned is
       n: UInt32;
@@ -397,6 +405,7 @@ package body LZMA.Encoding is
       state := Update_State_Match(state);
       Encode_Length(probs.len, length);
       Encode_Distance;
+      --  Shift the stack of recent distances; the new distance becomes the first item.
       for i in reverse 1 .. Repeat_stack_range'Last loop
         rep_dist(i) := rep_dist(i-1);
       end loop;
@@ -423,7 +432,7 @@ package body LZMA.Encoding is
           Encode_Bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
           Encode_Bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
       end case;
-      --  Roll the distance stack up to the found item, which becomes first.
+      --  Roll the stack of recent distances up to the found item, which becomes first.
       aux:= rep_dist(index);
       for i in reverse 1..index loop
         rep_dist(i) := rep_dist(i-1);
