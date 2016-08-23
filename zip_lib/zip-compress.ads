@@ -69,7 +69,7 @@ package Zip.Compress is
   subtype Multi_Method is Compression_Method range Preselection .. Preselection;
 
   subtype Single_Method is Compression_Method
-    range Compression_Method'First .. Compression_Method'Pred(Preselection);
+    range Compression_Method'First .. Compression_Method'Pred(Multi_Method'First);
 
   User_abort: exception;
 

@@ -899,7 +899,7 @@ package body Rezip_lib is
             case meth is
               when Zip.Compress.Single_Method =>
                 consider_a_priori(a):= format_choice(Zip.Compress.Method_to_Format(meth));
-              when Zip.Compress.Preselection =>
+              when Zip.Compress.Multi_Method =>
                 --  This doesn't actually happen: the strong methods are
                 --  already applied and compared as single methods.
                 consider_a_priori(a):= format_choice = all_formats;
