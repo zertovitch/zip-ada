@@ -1,4 +1,4 @@
--- Standalone, command-line, experimental LZMA encoder (for .lzma files).
+-- Standalone, command-line, LZMA encoder (for .lzma files).
 
 with LZMA.Encoding;
 
