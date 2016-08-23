@@ -45,7 +45,9 @@ package Zip.Compress is
      Deflate_3,
      --  LZMA
      LZMA_1,
-     LZMA_2
+     LZMA_2,
+     --  Multi-method
+     Preselection  --  Select a method depending on hints like the uncompressed size
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;
@@ -54,7 +56,7 @@ package Zip.Compress is
   subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
 
   --  Deflate_Fixed compresses the data into a single block and with predefined
-  --  ("fixed") compression structures. The data are basically LZ-Compressed
+  --  ("fixed") compression structures. The data are basically LZ-compressed
   --  only, since the Huffman code sets are flat and not tailored for the data.
   subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_3;
 
@@ -63,6 +65,11 @@ package Zip.Compress is
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
 
   subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_2;
+
+  subtype Multi_Method is Compression_Method range Preselection .. Preselection;
+
+  subtype Single_Method is Compression_Method
+    range Compression_Method'First .. Compression_Method'Pred(Preselection);
 
   User_abort: exception;
 
@@ -96,7 +103,8 @@ private
      Reduce_3            => reduce_3,
      Reduce_4            => reduce_4,
      Deflation_Method    => deflate,
-     LZMA_Method         => lzma_meth
+     LZMA_Method         => lzma_meth,
+     Preselection        => unknown
     );
 
 end Zip.Compress;

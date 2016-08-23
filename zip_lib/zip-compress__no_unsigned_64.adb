@@ -150,7 +150,7 @@ package body Zip.Compress is
           CRC, encrypt_pack, output_size, compression_ok
         );
         zip_type:= 8;
-      when LZMA_Method =>
+      when others =>
         Zip.Compress.Deflate(  --  [P32]
           input, output, input_size_known, input_size, feedback,
           Deflation_Method'Last,  --  [P32]

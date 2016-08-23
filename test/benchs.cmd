@@ -1,5 +1,7 @@
 @echo off
 
+del benchs.log
+
 rem ***********************************************
 rem *** Classic lossless compression benchmarks ***
 rem ***********************************************
@@ -23,3 +25,5 @@ call bench matrix %1
 call bench pdf    %1
 rem DNA sequences in various formats (e.g. FASTA, Genbank)
 call bench dna    %1
+rem Database stuff (.sql, .mdb)
+call bench db     %1

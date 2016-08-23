@@ -31,6 +31,7 @@ zipada     -ed2              test_zad2     %files%
 zipada     -ed3              test_zad3     %files%
 zipada     -el1              test_zal1     %files%
 zipada     -el2              test_zal2     %files%
+zipada     -eps              test_zaps     %files%
 zip        -1                test_ifz1     %files%
 zip        -6                test_ifz6     %files%
 zip        -9                test_ifz9     %files%
@@ -77,6 +78,7 @@ comp_zip test_zash test_zad2 -q2
 comp_zip test_zash test_zad3 -q2
 comp_zip test_zash test_zal1 -q2
 comp_zip test_zash test_zal2 -q2
+comp_zip test_zash test_zaps -q2
 comp_zip test_zash test_ifz9 -q2
 comp_zip test_zash test_7z_d -q2
 comp_zip test_zash test_7z_l -q2

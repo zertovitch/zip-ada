@@ -211,6 +211,8 @@ procedure ZipAda is
             when '1'    => method:= LZMA_1;
             when others => method:= LZMA_2;
           end case;
+        elsif opt(opt'First..opt'First+2) = "eps" then
+          method:= Preselection;
         elsif opt(opt'First..opt'First+3) = "dir " then
           scan:= Scan_mode'Max(scan, files_and_dirs);
         elsif opt(opt'First..opt'First+1) = "r " then
@@ -284,6 +286,7 @@ begin
     Put_Line("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
     Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N=1..3");
     Put_Line("          -elN   : ""LZMA"" method, strength N=1..2");
+    Put_Line("          -eps   : preselection of an appropriate strong compression");
     New_Line;
     Put_Line("      NB: default method is ""Deflate"", strength 1 (-ed1)");
     New_Line;

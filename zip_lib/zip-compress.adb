@@ -110,93 +110,107 @@ package body Zip.Compress is
       compression_ok:= True;
     end Store_data;
     --
-  begin
-    Init(CRC);
-    if is_encrypted then
-      Init_keys(encrypt_pack, password);
-      Set_mode(encrypt_pack, encrypted);
-      --  A bit dumb from Zip spec: we need to know the final CRC in order to set up
-      --  the last byte of the encryption header, that allows for detecting if a password
-      --  is OK - this, with 255/256 probability of correct detection of a wrong password!
-      --  Result: 1st scan of the whole input stream with CRC calculation:
-      Store_data(do_write => False);
-      Reset(cg);
-      for i in 1..11 loop
-        encrypt_header(i):= Random(cg);
-      end loop;
-      encrypt_header(12):= Byte(Shift_Right( Final(CRC), 24 ));
-      Set_Index(input, idx_in);
+    procedure Compress_data_single_method(actual_method: Single_Method) is
+    begin
       Init(CRC);
-      Encode(encrypt_pack, encrypt_header);
-      BlockWrite(output, encrypt_header);
-      --
-      --  We need to remember at this point the encryption keys in case we need
-      --  to rewrite from here (compression failed, store data).
-      --
-      mem_encrypt_pack:= encrypt_pack;
-    else
-      Set_mode(encrypt_pack, clear);
-    end if;
-    case method is
-      --
-      when Store =>
-        Store_data(do_write => True);
-      --
-      when Shrink =>
-        Zip.Compress.Shrink(
-          input, output, input_size_known, input_size, feedback,
-          CRC, encrypt_pack, output_size, compression_ok
-        );
-        zip_type:= 1; -- "Shrink" method
-      --
-      when Reduction_Method =>
-        Zip.Compress.Reduce(
-          input, output, input_size_known, input_size, feedback,
-          method,
-          CRC, encrypt_pack, output_size, compression_ok
-        );
-        zip_type:= 2 + Unsigned_16(
-          Compression_Method'Pos(method) -
-          Compression_Method'Pos(Reduce_1)
-        );
-      when Deflation_Method =>
-        Zip.Compress.Deflate(
-          input, output, input_size_known, input_size, feedback,
-          method,
-          CRC, encrypt_pack, output_size, compression_ok
-        );
-        zip_type:= 8;
-      when LZMA_Method =>
-        Zip.Compress.LZMA_E(
-          input, output, input_size_known, input_size, feedback,
-          method,
-          CRC, encrypt_pack, output_size, compression_ok
-        );
-        zip_type:= 14;
-    end case;
-    CRC:= Final(CRC);
-    --
-    -- Handle case where compression has been unefficient:
-    -- data to be compressed is too "random"; then compressed data
-    -- happen to be larger than uncompressed data
-    --
-    if not compression_ok then
-      -- Go back to the beginning and just store the data
-      Set_Index(input, idx_in);
       if is_encrypted then
-        Set_Index(output, idx_out + 12);
-        encrypt_pack:= mem_encrypt_pack;
-        -- ^ Restore the encryption keys to their state just after the encryption header
+        Init_keys(encrypt_pack, password);
+        Set_mode(encrypt_pack, encrypted);
+        --  A bit dumb from Zip spec: we need to know the final CRC in order to set up
+        --  the last byte of the encryption header, that allows for detecting if a password
+        --  is OK - this, with 255/256 probability of correct detection of a wrong password!
+        --  Result: 1st scan of the whole input stream with CRC calculation:
+        Store_data(do_write => False);
+        Reset(cg);
+        for i in 1..11 loop
+          encrypt_header(i):= Random(cg);
+        end loop;
+        encrypt_header(12):= Byte(Shift_Right( Final(CRC), 24 ));
+        Set_Index(input, idx_in);
+        Init(CRC);
+        Encode(encrypt_pack, encrypt_header);
+        BlockWrite(output, encrypt_header);
+        --
+        --  We need to remember at this point the encryption keys in case we need
+        --  to rewrite from here (compression failed, store data).
+        --
+        mem_encrypt_pack:= encrypt_pack;
       else
-        Set_Index(output, idx_out);
+        Set_mode(encrypt_pack, clear);
       end if;
-      Init(CRC);
-      Store_data(do_write => True);
+      case actual_method is
+        --
+        when Store =>
+          Store_data(do_write => True);
+        --
+        when Shrink =>
+          Zip.Compress.Shrink(
+            input, output, input_size_known, input_size, feedback,
+            CRC, encrypt_pack, output_size, compression_ok
+          );
+          zip_type:= 1; -- code for "Shrink" method
+        --
+        when Reduction_Method =>
+          Zip.Compress.Reduce(
+            input, output, input_size_known, input_size, feedback,
+            actual_method,
+            CRC, encrypt_pack, output_size, compression_ok
+          );
+          zip_type:= 2 + Unsigned_16(
+            Compression_Method'Pos(actual_method) -
+            Compression_Method'Pos(Reduce_1)
+          );
+        when Deflation_Method =>
+          Zip.Compress.Deflate(
+            input, output, input_size_known, input_size, feedback,
+            actual_method,
+            CRC, encrypt_pack, output_size, compression_ok
+          );
+          zip_type:= 8;
+        when LZMA_Method =>
+          Zip.Compress.LZMA_E(
+            input, output, input_size_known, input_size, feedback,
+            actual_method,
+            CRC, encrypt_pack, output_size, compression_ok
+          );
+          zip_type:= 14;
+      end case;
       CRC:= Final(CRC);
-    end if;
-    if is_encrypted then
-      output_size:= output_size + 12;
-    end if;
+      --
+      -- Handle case where compression has been unefficient:
+      -- data to be compressed is too "random"; then compressed data
+      -- happen to be larger than uncompressed data
+      --
+      if not compression_ok then
+        -- Go back to the beginning and just store the data
+        Set_Index(input, idx_in);
+        if is_encrypted then
+          Set_Index(output, idx_out + 12);
+          encrypt_pack:= mem_encrypt_pack;
+          -- ^ Restore the encryption keys to their state just after the encryption header
+        else
+          Set_Index(output, idx_out);
+        end if;
+        Init(CRC);
+        Store_data(do_write => True);
+        CRC:= Final(CRC);
+      end if;
+      if is_encrypted then
+        output_size:= output_size + 12;
+      end if;
+    end Compress_data_single_method;
+
+  begin
+    case method is
+      when Single_Method =>
+        Compress_data_single_method(method);
+      when Preselection =>
+        if input_size_known and then input_size < 9000 then
+          Compress_data_single_method(Deflation_Method'Last);
+        else
+          Compress_data_single_method(LZMA_Method'Last);
+        end if;
+    end case;
   end Compress_data;
 
 end Zip.Compress;

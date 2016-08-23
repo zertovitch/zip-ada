@@ -15,7 +15,7 @@ cd %1
 if not "%2" == "full" goto skip
 
 rem   ### LZW
-zipada      ../bench_%1_shrink    *
+zipada -es  ../bench_%1_shrink    *
 rem   ### Reduce (LZ & Markov)
 zipada -er4 ../bench_%1_reduce_4  *
 rem   ### Deflate
@@ -43,6 +43,7 @@ if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 zipada -el1 ../bench_%1_lzma_1 *
 zipada -el2 ../bench_%1_lzma_2 *
+zipada -eps ../bench_%1_presel *
 
 cd ..
 
@@ -52,6 +53,7 @@ rem Funnily, upon zipping bench_matrix_*.zip, level 1-8 stores everything, but l
 zip -9 all_bench_%1.zip bench_%1_*.zip
 7z t bench_%1_*.zip
 dir /OS- bench_%1_*.zip
+dir /OS- bench_%1_*.zip >>benchs.log
 del bench_%1_*.zip
 unzip -l all_bench_%1.zip
 

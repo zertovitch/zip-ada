@@ -886,6 +886,8 @@ package body Rezip_lib is
           sb(sb'Last-2..sb'Last-1);
       end Webcolor;
 
+      meth: Zip.Compress.Compression_Method;
+
     begin -- Repack_contents
       T0:= Clock;
       for a in Approach loop
@@ -893,7 +895,15 @@ package body Rezip_lib is
           when original =>
             consider_a_priori(a):= True;
           when Internal =>
-            consider_a_priori(a):= format_choice(Zip.Compress.Method_to_Format(Approach_to_Method(a)));
+            meth:= Approach_to_Method(a);
+            case meth is
+              when Zip.Compress.Single_Method =>
+                consider_a_priori(a):= format_choice(Zip.Compress.Method_to_Format(meth));
+              when Zip.Compress.Preselection =>
+                --  This doesn't actually happen: the strong methods are
+                --  already applied and compared as single methods.
+                consider_a_priori(a):= format_choice = all_formats;
+            end case;
           when External =>
             consider_a_priori(a):= format_choice(ext(a).pkzm);
         end case;
