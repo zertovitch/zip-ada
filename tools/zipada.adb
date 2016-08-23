@@ -2,7 +2,6 @@
 --  File:            ZipAda.adb
 --  Description:     A minimal standalone command-line zip archiving utility
 --                     using the Zip-Ada library.
---  Date/version:    14-Feb-2014; 17-Nov-2011; 19-Oct-2009; ... ; Dec-2007
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 -- Important changes:
@@ -280,13 +279,13 @@ begin
   else
     Put_Line("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
-    Put_Line("Options:  -erN   : use the 2-pass ""reduce"" method, factor N=1..4");
-    Put_Line("          -es    : ""shrink"" (LZW algorithm)");
-    Put_Line("          -edf   : ""deflate"", with one ""fixed"" block");
-    Put_Line("          -edN   : ""deflate"", ""dynamic"" compression, strength N=1..3");
-    Put_Line("          -elN   : ""lzma"", strength N=1..2");
+    Put_Line("Options:  -erN   : use the 2-pass ""Reduce"" method, factor N=1..4");
+    Put_Line("          -es    : ""Shrink"" method (LZW algorithm)");
+    Put_Line("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
+    Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N=1..3");
+    Put_Line("          -elN   : ""LZMA"" method, strength N=1..2");
     New_Line;
-    Put_Line("      NB: default method is ""deflate"", strength 1 (-ed1)");
+    Put_Line("      NB: default method is ""Deflate"", strength 1 (-ed1)");
     New_Line;
     Put_Line("          -dir   : name(s) may be also directories,");
     Put_Line("                      whose contents will be archived");
