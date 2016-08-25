@@ -64,7 +64,7 @@ set min=%time:~3,2%
 set nice_date=%year%-%month%-%day%_%hour%.%min%
 rem --------------------------
 
-dir /OS test_za??.zip test_ifz?.zip test_kzip.zip test_7z_d.zip test_zopf.zip |find ".zip" >test_za_%nice_date%.log
+dir /OS test_za??.zip test_ifz?.zip test_kzip.zip test_7z_?.zip test_zopf.zip |find ".zip" >test_za_%nice_date%.log
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.

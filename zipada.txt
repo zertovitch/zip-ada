@@ -130,11 +130,13 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '51', xx-yyy-2016:
+* Changes in '51', 27-Aug-2016:
   - LZMA.Encoding has been added; it is a standalone compressor,
       see lzma_enc.adb for an example of use.
-  - Zip.Compress provide now LZMA_1, LZMA_2 methods. In other words, you
+  - Zip.Compress provides now LZMA_1, LZMA_2 methods. In other words, you
       can use the LZMA compression with Zip.Create.
+  - Zip.Compress has also a "Preselection" method that selects
+      a compression method depending on hints like the uncompressed size.
   - Zip.Compress.Deflate: Deflate_1 .. Deflate_3 compression is
       slightly better.
 
