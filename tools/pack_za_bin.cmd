@@ -1,5 +1,7 @@
 rem ************* Pack Zip-Ada Win32 binary executables. Tools only, no demos.
 
+cd ..
+
 rem del *.exe
 
 call opti_za
