@@ -1,3 +1,5 @@
+cd ..
+
 del *.ali
 del *.o
 del *.#*
@@ -70,3 +72,4 @@ cd obj_pro
 cleanacu
 cd..
 
+cd tools
