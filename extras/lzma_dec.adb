@@ -55,9 +55,11 @@ procedure LZMA_Dec is
 
 begin
   New_Line;
-  Put_Line("LZMA_Dec, translated from the LZMA Reference Decoder 9.31 by Igor Pavlov.");
+  Put_Line("LZMA_Dec, adapted from the LZMA Reference Decoder 9.31 by Igor Pavlov.");
   if Argument_Count = 0 then
     Put_Line("Use: lzma_dec a.lzma outfile");
+    New_Line;
+    Put_Line("NB: The I/O is not buffered => may be slow. Use the UnZipAda tool for fast I/O.");
     return;
   elsif Argument_Count /= 2 then
     Put_Line("You must specify two parameters");

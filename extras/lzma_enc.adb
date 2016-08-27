@@ -7,9 +7,6 @@ with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Interfaces;                        use Interfaces;
 
-with Ada.Exceptions;
-with GNAT.Traceback.Symbolic;
-
 procedure LZMA_Enc is
 
   subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
@@ -89,7 +86,9 @@ begin
   if Argument_Count = 0 then
     Put_Line("Use: lzma_enc infile outfile [options]");
     New_Line;
-    Put_Line("NB: "".lzma"" extension automatically added to outfile");
+    Put_Line("NB: - The "".lzma"" extension automatically added to outfile.");
+    Put_Line("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
+    New_Line;
     Put_Line("Options: -b: benchmark the context parameters (225 .lzma output files!)");
     return;
   elsif Argument_Count < 2 then
@@ -127,17 +126,5 @@ begin
     Close(f_in);
     Close(f_out);
   end if;
-
-exception
-  when E: others =>
-    New_Line(Standard_Error);
-    Put_Line(Standard_Error,
-             "--------------------[ Unhandled exception ]-----------------");
-    Put_Line(Standard_Error, " > Name of exception . . . . .: " &
-             Ada.Exceptions.Exception_Name(E) );
-    Put_Line(Standard_Error, " > Message for exception . . .: " &
-             Ada.Exceptions.Exception_Message(E) );
-    Put_Line(Standard_Error, " > Trace-back of call stack: " );
-    Put_Line(Standard_Error, GNAT.Traceback.Symbolic.Symbolic_Traceback(E) );
 
 end LZMA_Enc;
