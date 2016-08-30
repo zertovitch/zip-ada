@@ -349,9 +349,9 @@ package body LZ77 is
         if Match_Length <= Threshold then
           Match_Length := 1;
           Huffman_E.Update_Freq_Tree( Natural(Text_Buf(R)) );
-          Write_byte( Text_Buf(R) );
+          Write_literal( Text_Buf(R) );
         else
-          Write_code(Match_Position+1, Match_Length);
+          Write_DL_code(Match_Position+1, Match_Length);
         end if;
         Last_Match_Length := Match_Length;
         I:= 0;
@@ -828,7 +828,7 @@ package body LZ77 is
             ------------------------------------
             --  Output a Distance-Length code --
             ------------------------------------
-            Write_code(Positive(strstart - 1 - prev_match), Positive(prev_length));
+            Write_DL_code(Positive(strstart - 1 - prev_match), Positive(prev_length));
             --  Insert in hash table all strings up to the end of the match.
             --  strstart-1 and strstart are already inserted.
             lookahead := lookahead - (prev_length-1);
@@ -854,7 +854,7 @@ package body LZ77 is
             ------------------------
             --  Output a literal  --
             ------------------------
-            Write_byte(window(strstart-1));
+            Write_literal(window(strstart-1));
             strstart:= strstart + 1;
             lookahead := lookahead - 1;
           else
@@ -877,7 +877,7 @@ package body LZ77 is
         --  Output last literal, if any  --
         -----------------------------------
         if match_available then
-          Write_byte(window(strstart-1));
+          Write_literal(window(strstart-1));
         end if;
       end LZ77_part_of_IZ_Deflate;
 

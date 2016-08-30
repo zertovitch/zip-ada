@@ -1576,8 +1576,8 @@ is
           Method             => LZ77_choice(method),
           Read_byte          => Read_byte,
           More_bytes         => More_bytes,
-          Write_byte         => LZ77_emits_literal_byte,
-          Write_code         => LZ77_emits_DL_code
+          Write_literal      => LZ77_emits_literal_byte,
+          Write_DL_code      => LZ77_emits_DL_code
         );
 
     --  The following is for research purposes: compare different LZ77 variants and see

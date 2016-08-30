@@ -492,8 +492,8 @@ package body LZMA.Encoding is
           Method             => LZ77_choice(level),
           Read_byte          => Read_byte,
           More_bytes         => More_bytes,
-          Write_byte         => LZ77_emits_literal_byte,
-          Write_code         => LZ77_emits_DL_code
+          Write_literal      => LZ77_emits_literal_byte,
+          Write_DL_code      => LZ77_emits_DL_code
         );
 
     procedure Write_LZMA_header is

@@ -35,8 +35,8 @@ package LZ77 is
     with function  Read_byte return Byte;
     with function  More_bytes return Boolean;
     -- Output of LZ-compressed data:
-    with procedure Write_byte( b: Byte );
-    with procedure Write_code( distance, length: Integer );
+    with procedure Write_literal( b: Byte );
+    with procedure Write_DL_code( distance, length: Integer );
     --
   procedure Encode;
 

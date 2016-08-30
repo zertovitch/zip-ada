@@ -54,7 +54,7 @@ procedure Test_LZ77 is
   max_dis, max_len: Natural:= 0;
   min_dis, min_len: Natural:= Natural'Last;
 
-  procedure Emit_code( distance, length: Natural ) is
+  procedure Emit_DL_code( distance, length: Natural ) is
     b: Byte;
     I: Natural;
   begin
@@ -71,14 +71,14 @@ procedure Test_LZ77 is
       b:= Text_Buf((I+K) mod String_buffer_size);
       Write_and_record_literal( b );
     end loop;
-  end Emit_code;
+  end Emit_DL_code;
 
   procedure My_LZ77 is
     new LZ77.Encode(
       String_buffer_size, Look_Ahead, Threshold,
       LZHuf,
       Read_byte, More_bytes,
-      Emit_literal, Emit_code
+      Emit_literal, Emit_DL_code
     );
 
 begin

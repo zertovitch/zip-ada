@@ -581,8 +581,8 @@ is
                 --      Deflate. Then the compression is worse, though much faster.
                 Read_byte          => Read_byte,
                 More_bytes         => More_bytes,
-                Write_byte         => Write_normal_byte,
-                Write_code         => Write_DL_code);
+                Write_literal      => Write_normal_byte,
+                Write_DL_code      => Write_DL_code);
 
     procedure Finish_Cache is
       i: LZ_buffer_range:= LZ_buffer_range(lz77_pos mod LZ_cache_size);
