@@ -29,20 +29,22 @@ package UnZip.Streams is
 
    -- Version: Zip as a file
    procedure Open
-     (File           : in out Zipped_File_Type; -- File-in-archive handle
-      Archive_Name   : in String;               -- Name of archive file
-      Name           : in String;               -- Name of zipped entry
-      Password       : in String := "";         -- Decryption password
-      Case_sensitive : in Boolean:= False
+     (File             : in out Zipped_File_Type; -- File-in-archive handle
+      Archive_Name     : in String;               -- Name of archive file
+      Name             : in String;               -- Name of zipped entry
+      Password         : in String  := "";        -- Decryption password
+      Case_sensitive   : in Boolean := False;
+      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
      );
 
    -- Version: Zip as a stream
    procedure Open
-     (File           : in out Zipped_File_Type; -- File-in-archive handle
-      Archive_Stream : in out Zip_Streams.Root_Zipstream_Type'Class; -- Archive's stream
-      Name           : in String;               -- Name of zipped entry
-      Password       : in String := "";         -- Decryption password
-      Case_sensitive : in Boolean:= False
+     (File             : in out Zipped_File_Type; -- File-in-archive handle
+      Archive_Stream   : in out Zip_Streams.Root_Zipstream_Type'Class; -- Archive's stream
+      Name             : in String;               -- Name of zipped entry
+      Password         : in String  := "";        -- Decryption password
+      Case_sensitive   : in Boolean := False;
+      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
      );
 
    -- Same as above, but uses a the pre-loaded contents of the archive's
@@ -52,10 +54,11 @@ package UnZip.Streams is
    -- compressed file.
 
    procedure Open
-     (File           : in out Zipped_File_Type; -- File-in-archive handle
-      Archive_Info   : in Zip.Zip_info;         -- Archive's Zip_info
-      Name           : in String;               -- Name of zipped entry
-      Password       : in String := ""          -- Decryption password
+     (File             : in out Zipped_File_Type; -- File-in-archive handle
+      Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
+      Name             : in String;               -- Name of zipped entry
+      Password         : in String  := "";        -- Decryption password
+      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
      );
 
    procedure Close (File : in out Zipped_File_Type);
@@ -79,10 +82,11 @@ package UnZip.Streams is
    ----------------------------------------------------------------
 
    procedure Extract(
-     Destination    : in out Ada.Streams.Root_Stream_Type'Class;
-     Archive_Info   : in Zip.Zip_info;  -- Archive's Zip_info
-     Name           : in String;        -- Name of zipped entry
-     Password       : in String := ""   -- Decryption password
+     Destination      : in out Ada.Streams.Root_Stream_Type'Class;
+     Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
+     Name             : in String;               -- Name of zipped entry
+     Password         : in String  := "";        -- Decryption password
+     Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
    );
 
 private

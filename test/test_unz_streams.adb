@@ -27,38 +27,40 @@ procedure Test_UnZ_Streams is
     --
   exception
     when Zip.Zip_file_open_Error =>
-      Put( "Can't open archive [" & a & ']' );
+      Put_Line( "Can't open archive [" & a & ']' );
     when Zip.File_name_not_found =>
-      Put( "Cannot find [" & n & "] in archive [" & a & ']' );
+      Put_Line( "Cannot find [" & n & "] in archive [" & a & ']' );
     when UnZip.Wrong_password      =>
-      Put( "Password doesn't fit!" );
+      Put_Line( "Password doesn't fit!" );
   end Test_Input_Stream;
 
-  procedure Test_Output_Stream is
+  procedure Test_Output_Stream(suffix: String; trash_dir: Boolean) is
     o: Ada.Streams.Stream_IO.File_Type;
     z: Zip.Zip_info;
     a: constant String:= "detailed_results.zip"; -- Created by Demo_csv_into_zip
     n: constant String:= "flood/overseas/australasia_fd.csv";
   begin
-    Create(o, Out_File, "demo_data.csv");
+    Create(o, Out_File, "demo_data_" & suffix & ".csv");
     Zip.Load(
       info           => z,
       from           => a
     );
     Extract(
-      Destination  => Stream(o).all,
-      Archive_Info => z,
-      Name         => n
+      Destination      => Stream(o).all,
+      Archive_Info     => z,
+      Name             => n,
+      Ignore_Directory => trash_dir
     );
     Close(o);
   exception
     when Zip.Zip_file_open_Error =>
-      Put( "Can't open archive [" & a & ']' );
+      Put_Line( "Can't open archive [" & a & ']' );
     when Zip.File_name_not_found =>
-      Put( "Cannot find [" & n & "] in archive [" & a & ']' );
+      Put_Line( "Cannot find [" & n & "] in archive [" & a & ']' );
   end Test_Output_Stream;
 
 begin
-  Test_Output_Stream;
   Test_Input_Stream;
+  Test_Output_Stream("with_dir", False);
+  Test_Output_Stream("without_dir", True);
 end Test_UnZ_Streams;
