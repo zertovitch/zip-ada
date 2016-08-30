@@ -220,12 +220,29 @@ package Zip is
     crc_32         :    out Interfaces.Unsigned_32
   );
 
-  -- Find offset of a certain compressed file in a Zip_info data
+  -- Find offset of a certain compressed file in a pre-loaded Zip_info data
 
   procedure Find_offset(
     info           : in     Zip_info;
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
+    file_index     :    out Zip_Streams.ZS_Index_Type;
+    comp_size      :    out File_size_type;
+    uncomp_size    :    out File_size_type;
+    crc_32         :    out Interfaces.Unsigned_32
+  );
+
+  -- Find offset of a certain compressed file in a pre-loaded Zip_info data.
+  -- This version scans the whole catalogue and returns the index of the first
+  -- entry with a matching name, ignoring directory information.
+  -- For instance, if the Zip archive contains "zip-ada/zip_lib/zip.ads",
+  -- "zip.ads" will match - or even "ZIP.ads" if info has been loaded in case-insensitive mode.
+  -- Caution: this may be much slower than the exact search with Find_offset.
+
+  procedure Find_offset_without_directory(
+    info           : in     Zip.Zip_info;
+    name           : in     String;
+    name_encoding  :    out Zip.Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
     comp_size      :    out File_size_type;
     uncomp_size    :    out File_size_type;
@@ -360,8 +377,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "51";
-  reference : constant String:= "27-Aug-2016";
+  version   : constant String:= "52, preview 1";
+  reference : constant String:= "30-Aug-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

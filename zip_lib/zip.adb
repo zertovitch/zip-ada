@@ -644,6 +644,70 @@ package body Zip is
     );
   end Find_offset;
 
+  procedure Find_offset_without_directory(
+    info           : in     Zip_info;
+    name           : in     String;
+    name_encoding  :    out Zip_name_encoding;
+    file_index     :    out Zip_Streams.ZS_Index_Type;
+    comp_size      :    out File_size_type;
+    uncomp_size    :    out File_size_type;
+    crc_32         :    out Interfaces.Unsigned_32
+  )
+  is
+    function Trash_dir( n: String ) return String is
+      idx: Integer:= n'First - 1;
+    begin
+      for i in n'Range loop
+        if n(i)= '/' or n(i)='\' then
+          idx:= i;
+        end if;
+      end loop;
+      -- idx points on the index just before the interesting part
+      return Normalize(n( idx+1 .. n'Last ), info.case_sensitive);
+    end Trash_dir;
+
+    simple_name: constant String:= Trash_dir(name);
+
+    Found: exception;
+
+    procedure Check_entry(
+      entry_name          : String; -- 'name' is compressed entry's name
+      entry_index         : Zip_Streams.ZS_Index_Type;
+      entry_comp_size     : File_size_type;
+      entry_uncomp_size   : File_size_type;
+      entry_crc_32        : Interfaces.Unsigned_32;
+      date_time           : Time;
+      method              : PKZip_method;
+      entry_name_encoding : Zip_name_encoding;
+      read_only           : Boolean;
+      encrypted_2_x       : Boolean; -- PKZip 2.x encryption
+      user_code           : in out Integer
+    )
+    is
+    pragma Unreferenced (date_time, method, read_only, encrypted_2_x, user_code);
+    begin
+      if Trash_dir(entry_name) = simple_name then
+        name_encoding := entry_name_encoding;
+        file_index    := entry_index;
+        comp_size     := entry_comp_size;
+        uncomp_size   := entry_uncomp_size;
+        crc_32        := entry_crc_32;
+        raise Found;
+      end if;
+    end Check_entry;
+    --
+    procedure Search is new Traverse_verbose(Check_entry);
+    --
+  begin
+    begin
+      Search(info);
+    exception
+      when Found =>
+        return;
+    end;
+    raise File_name_not_found;
+  end Find_offset_without_directory;
+
   function Exists(
     info           : in     Zip_info;
     name           : in     String

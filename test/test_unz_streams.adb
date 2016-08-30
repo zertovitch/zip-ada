@@ -38,7 +38,7 @@ procedure Test_UnZ_Streams is
     o: Ada.Streams.Stream_IO.File_Type;
     z: Zip.Zip_info;
     a: constant String:= "detailed_results.zip"; -- Created by Demo_csv_into_zip
-    n: constant String:= "flood/overseas/australasia_fd.csv";
+    n: constant String:= "flood/oveRSEas/auSTRalasia_fd.csv";  --  we check case-unsensitiveness
   begin
     Create(o, Out_File, "demo_data_" & suffix & ".csv");
     Zip.Load(
