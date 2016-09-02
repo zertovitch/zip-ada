@@ -1,10 +1,10 @@
--- LZMA_Decoding - Ada 95 translation of LzmaSpec.cpp, LZMA Reference Decoder 9.31
+-- LZMA.Decoding - Ada 95 translation of LzmaSpec.cpp, LZMA Reference Decoder 9.31
 -- LzmaSpec.cpp : 2013-07-28 : Igor Pavlov : Public domain
-
+--
 --  Rework in 2016 by G. de Montmollin.
 --    - some confusing identifiers were changed:
---      mostly, "range" was renamed "width", various names for probability data have
---      been renamed "probs", different things called "pos" have been renamed
+--        mostly, "range" was renamed "width", various names for probability data
+--        have been renamed "probs", different things called "pos" have been renamed
 --    - the whole probability model has been encapsulated
 --    - parts common to encoding were moved to the root LZMA package.
 
