@@ -1,26 +1,39 @@
---  There are two LZ77 encoders at choice here:
+--  There are three LZ77 encoders at choice here:
 --
 --    1/  LZ77_using_LZHuf, based on LZHuf
 --
 --    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c which is
 --          actually the LZ77 part of Zip's compression.
 --
---  Variant 1/ is working since 2009. Two problems: it is slow and not
---     well adapted to the Deflate format (mediocre compression).
+--    3/  LZ77_using_BT4, based on LZMA SDK's BT4 algorithm.
 --
---  Variant 2/ is much faster, and better suited for Deflate. Added 05-Mar-2016.
+--  Variant 1/, LZ77_using_LZHuf, is working since 2009. Two problems: it is slow
+--     and not well adapted to the Deflate format (mediocre compression).
+--
+--  Variant 2/, LZ77_using_IZ, is much faster, and better suited for Deflate.
+--     It has been added on 05-Mar-2016.
 --     The code is tailored and optimized for a single set of
---     the String_buffer_size, Look_Ahead, Threshold LZ77 parameters.
+--     the String_buffer_size, Look_Ahead, Threshold LZ77 parameters - those for Deflate.
+--
+--  Variant 3/, LZ77_using_BT4, was added on 06-Sep-2016.
+--     The seems to be the best match finder for LZMA on data of the >= MB scale.
 
 --  To do:
 --
+--  2/
 --    - LZ77 / IZ: similar to the test with TOO_FAR, try to cluster distances around
 --        values needing less extra bits (may not work at all...)
 --    - LZ77 / IZ: tune TOO_FAR (max: 32767), see http://optipng.sf.net/pngtech/too_far.html
 --        "TOO_FAR in zlib Is Not Too Far" for discussion
---    - LZ77: try yet another LZ77, e.g. from 7-Zip, or program a new one with
---        hash chains etc. BT3 or BT4 seem best for LZMA (BTn: Binary Tree n bytes hash).
+--
+--  3/
+--    - LZ77 / BT4: fix the wrong matches issue(s). NB: wrong matches are corrected, so the
+--        compressor is working, but it would be more satisfying to find the cause of the
+--        wrong matches... (See Is_match_correct).
+--    - LZ77 / BT4: implement a stack of recent distances for a LZMA-friendly mode.
 
+with Ada.Unchecked_Deallocation;
+with Interfaces; use Interfaces;
 with System;
 
 package body LZ77 is
@@ -57,8 +70,6 @@ package body LZ77 is
       N_Char    : constant Integer:= 256-Threshold+Look_Ahead;
       -- Character code (= 0..N_CHAR-1)
       Max_Table     : constant Integer:= N_Char*2-1;
-
-      use Interfaces; -- Make Unsigned_* types visible
 
       type Text_Buffer is array ( 0..String_buffer_size+Look_Ahead-1 ) of Byte;
       empty_buffer: constant Text_Buffer:= (others=> 32); -- ' '
@@ -422,7 +433,6 @@ package body LZ77 is
       NIL      : constant:= 0;  --  Tail of hash chains
       TOO_FAR  : constant:= 4096;  --  Matches of length 3 are discarded if their distance exceeds TOO_FAR
       --
-      use Interfaces;
       subtype ulg is Unsigned_M32;
       subtype unsigned is Unsigned_M16;
       subtype ush is Unsigned_M16;
@@ -569,7 +579,7 @@ package body LZ77 is
             --  index is the window's range.
             --  This assumes WSIZE = 2**15, which is checked at startup of LZ77_using_IZ.
             --  Very likely, match_start is garbage anyway - see http://sf.net/p/infozip/bugs/49/
-            match_start := Natural_M32( Unsigned_16(match_start) - Unsigned_16(WSIZE) );
+            match_start := Natural_M32( Unsigned_16(match_start) - Unsigned_16(WSIZE mod (2**16)) );
             strstart    := strstart - WSIZE; -- we now have strstart >= MAX_DIST:
             for nn in 0 .. unsigned'(HASH_SIZE - 1) loop
               m := head(nn);
@@ -891,12 +901,664 @@ package body LZ77 is
       LZ77_part_of_IZ_Deflate;
     end LZ77_using_IZ;
 
+    ---------------------------------------------------------------------
+    --  BT4  -  Binary tree of match positions selected with           --
+    --          the leading 2 to 4 bytes of each possible match.       --
+    ---------------------------------------------------------------------
+
+    --  Based on BT4.java by Lasse Collin, itself based on LzFind.c by Igor Pavlov.
+
+    procedure LZ77_using_BT4 is
+      MATCH_LEN_MIN: constant Integer:= Threshold + 1;
+      --
+      readAhead   : Integer := -1;  -- LZMAEncoder.java
+      readPos     : Integer := -1;
+      cur_literal : Byte;
+      readLimit   : Integer := -1;
+      -- finishing   : Boolean := False;
+      writePos    : Integer :=  0;
+      pendingSize : Integer :=  0;
+      --
+      OPTS : constant := 4096;
+      EXTRA_SIZE_BEFORE : constant :=  OPTS;
+      EXTRA_SIZE_AFTER  : constant :=  OPTS;
+
+      keepSizeBefore : constant Integer:= EXTRA_SIZE_BEFORE + String_buffer_size;
+      keepSizeAfter  : constant Integer:= EXTRA_SIZE_AFTER  + Look_Ahead;
+      reserveSize : constant Integer:=
+        Integer'Min(
+          String_buffer_size / 2 +
+          256 * (2 ** 10),  --  256 KB
+          512 * (2 ** 20)   --  512 MB
+        );
+      getBufSize: constant Integer:= keepSizeBefore + keepSizeAfter + reserveSize;
+
+      procedure Send_first_literal_of_match is
+      begin
+        Write_literal(cur_literal);
+        readAhead := readAhead - 1;
+      end Send_first_literal_of_match;
+
+      procedure Send_DL_code( distance, length: Integer ) is
+      begin
+        Write_DL_code(distance + 1, length);
+        readAhead := readAhead - length;
+      end Send_DL_code;
+
+      type Int_array is array(Natural range <>) of Integer;
+      type p_Int_array is access Int_array;
+      procedure Dispose is new Ada.Unchecked_Deallocation(Int_array, p_Int_array);
+
+      procedure Normalize(positions: in out Int_array; normalizationOffset: Integer) is
+      begin
+        for i in 0 .. positions'Length - 1 loop
+          if positions(i) <= normalizationOffset then
+            positions(i) := 0;
+          else
+            positions(i) := positions(i) - normalizationOffset;
+          end if;
+        end loop;
+      end Normalize;
+
+      function getAvail return Integer is
+      begin
+        return writePos - readPos - 1;  --  !! " - 1" added
+      end getAvail;
+
+      function movePos(requiredForFlushing, requiredForFinishing: Integer) return Integer is
+        avail: Integer;
+      begin
+        --  assert requiredForFlushing >= requiredForFinishing;
+        readPos := readPos + 1;
+        avail   := getAvail;
+        if avail < requiredForFlushing then
+          if avail < requiredForFinishing  -- or else not finishing
+          then
+            pendingSize:= pendingSize + 1;
+            avail := 0;
+          end if;
+        end if;
+        return avail;
+      end movePos;
+
+      function getHash4Size return Integer is
+        h : Unsigned_32:= Unsigned_32(String_buffer_size - 1);
+      begin
+        h:= h or Shift_Right(h, 1);
+        h:= h or Shift_Right(h, 2);
+        h:= h or Shift_Right(h, 4);
+        h:= h or Shift_Right(h, 8);
+        h:= Shift_Right(h, 1);
+        h:= h or 16#FFFF#;  --  LzFind.c: "don't change it! It's required for Deflate"
+        if h > 2 ** 24 then
+          h:= Shift_Right(h, 1);
+        end if;
+        return Integer(h + 1);
+      end getHash4Size;
+
+      type Byte_array is array(Natural range <>) of Byte;
+      type p_Byte_array is access Byte_array;
+      procedure Dispose is new Ada.Unchecked_Deallocation(Byte_array, p_Byte_array);
+
+      package Hash234 is
+        HASH_2_SIZE : constant := 2 ** 10;
+        HASH_2_MASK : constant := HASH_2_SIZE - 1;
+        HASH_3_SIZE : constant := 2 ** 16;
+        HASH_3_MASK : constant := HASH_3_SIZE - 1;
+        hash_4_size : constant Integer:= getHash4Size;
+        hash_4_mask : constant Unsigned_32:= Unsigned_32(hash_4_size) - 1;
+        --
+        hash2Table: Int_array(0..HASH_2_SIZE-1) := (others => 0);  --  !! initialization added
+        hash3Table: Int_array(0..HASH_3_SIZE-1) := (others => 0);  --  !! initialization added
+        hash4Table: p_Int_array;
+        --
+        hash2Value, hash3Value, hash4Value: Unsigned_32:= 0;
+        --
+        procedure calcHashes(buf: Byte_array; off: Integer);
+        procedure updateTables(pos: Integer);
+        procedure Normalize(normalizeOffset: Integer);
+      end Hash234;
+
+      package body Hash234 is
+
+        crcTable: array(Byte) of Unsigned_32;
+        CRC32_POLY: constant:= 16#EDB8_8320#;
+
+        procedure calcHashes(buf: Byte_array; off: Integer) is
+          temp: Unsigned_32 := crcTable(buf(off)) xor Unsigned_32(buf(off + 1));
+        begin
+          hash2Value := temp and HASH_2_MASK;
+          temp:= temp xor Shift_Left(Unsigned_32(buf(off + 2)), 8);
+          hash3Value := temp and HASH_3_MASK;
+          temp:= temp xor Shift_Left(crcTable(buf(off + 3)), 5);
+          hash4Value := temp and hash_4_mask;
+        end calcHashes;
+
+        procedure updateTables(pos: Integer) is
+        begin
+          hash2Table(Integer(hash2Value)) := pos;
+          hash3Table(Integer(hash3Value)) := pos;
+          hash4Table(Integer(hash4Value)) := pos;
+        end updateTables;
+
+        procedure Normalize(normalizeOffset: Integer) is
+        begin
+          Normalize(hash2Table, normalizeOffset);
+          Normalize(hash3Table, normalizeOffset);
+          Normalize(hash4Table.all, normalizeOffset);
+        end Normalize;
+
+        r: Unsigned_32;
+      begin
+        hash4Table:= new Int_array(0..hash_4_size-1);
+        hash4Table.all:= (others => 0);  --  !! initialization added
+        for i in Byte loop
+          r:= Unsigned_32(i);
+          for j in 0 .. 7 loop
+            if (r and 1) = 0 then
+              r:= Shift_Right(r, 1);
+            else
+              r:= Shift_Right(r, 1) xor CRC32_POLY;
+            end if;
+          end loop;
+          crcTable(i) := r;
+        end loop;
+      end Hash234;
+
+      niceLen: constant Integer:= Integer'Min(64, Look_Ahead);
+      depthLimit: constant:= 48;  --  Alternatively: 16 + niceLen / 2
+
+      --  !! nicer: unconstr. array of (dist, len) pairs, 1-based array.
+
+      type Any_Matches_type(countMax: Integer) is record
+        count: Integer:= 0;
+        len  : Int_array(0 .. countMax);
+        dist : Int_array(0 .. countMax);
+      end record;
+
+      --  Subtracting 1 because the shortest match that this match
+      --  finder can find is 2 bytes, so there's no need to reserve
+      --  space for one-byte matches.
+      subtype Matches_type is Any_Matches_type(niceLen - 1);
+
+      cyclicSize : constant Integer := String_buffer_size;  --  Had: + 1;
+      cyclicPos  : Integer := -1;
+      lzPos      : Integer := cyclicSize;
+
+      tree : p_Int_array;
+
+      function BT4_movePos return Integer is
+        avail : constant Integer:= movePos(niceLen, 4);
+        normalizationOffset: Integer;
+      begin
+        --  Put_Line("BT4_movePos");
+        if avail /= 0 then
+          lzPos:= lzPos + 1;
+          if lzPos = Integer'Last then
+            normalizationOffset := Integer'Last - cyclicSize;
+            Hash234.Normalize(normalizationOffset);
+            Normalize(tree.all, normalizationOffset);
+            lzPos:= lzPos - normalizationOffset;
+          end if;
+          cyclicPos:= cyclicPos + 1;
+          if cyclicPos = cyclicSize then
+            --  Put_Line("cyclicPos zeroed");
+            cyclicPos := 0;
+          end if;
+        end if;
+        return avail;
+      end BT4_movePos;
+
+      buf : p_Byte_array;
+
+      --  Moves data from the end of the buffer to the beginning, discarding
+      --  old data and making space for new input.
+
+      procedure moveWindow is
+        --  Align the move to a multiple of 16 bytes (LZMA-friendly, see pos_bits)
+        moveOffset : constant Integer := ((readPos + 1 - keepSizeBefore) / 16) * 16;
+        moveSize   : constant Integer := writePos - moveOffset;
+      begin
+        --  Put_Line("Move window, size=" & moveSize'Img & " offset=" & moveOffset'Img);
+        buf(0 .. moveSize - 1):= buf(moveOffset .. moveOffset + moveSize - 1);
+        readPos   := readPos   - moveOffset;
+        readLimit := readLimit - moveOffset;
+        writePos  := writePos  - moveOffset;
+      end moveWindow;
+
+     --  Copies new data into the buffer.
+     function fillWindow(len_initial: Integer) return Integer is
+       len: Integer:= len_initial;
+       actual_len: Integer:= 0;
+     begin
+        --  Move the sliding window if needed.
+        if readPos >= buf'Length - keepSizeAfter then
+          moveWindow;
+        end if;
+
+        --  Try to fill the dictionary buffer up to its boundary.
+        if len > buf'Length - writePos then
+          len := buf'Length - writePos;
+        end if;
+
+        while len > 0 and then More_bytes loop
+          buf(writePos):= Read_byte;
+          writePos:= writePos + 1;
+          len:= len - 1;
+          actual_len:= actual_len + 1;
+        end loop;
+
+        --  Set the new readLimit but only if there's enough data to allow
+        --  encoding of at least one more byte.
+        if writePos >= keepSizeAfter then
+          readLimit := writePos - keepSizeAfter;
+        end if;
+
+        -- processPendingBytes();
+
+        --  Put_Line("Fill window, request=" & len_initial'Img & " actual=" & actual_len'Img);
+        --  Tell the caller how much input we actually copied into the dictionary.
+        return actual_len;
+      end fillWindow;
+
+      Null_position: constant:= -1;  --  LzFind.c: kEmptyHashValue, 0
+
+      procedure BT4_skip_update_tree(niceLenLimit: Integer; currentMatch: in out Integer) is
+        delta0, depth, ptr0, ptr1, pair, len, len0, len1: Integer;
+      begin
+        --  Put("BT4_skip_update_tree... ");
+        depth := depthLimit;
+        ptr0  := cyclicPos * 2 + 1;
+        ptr1  := cyclicPos * 2;
+        len0  := 0;
+        len1  := 0;
+        loop
+          delta0 := lzPos - currentMatch;
+          if depth = 0 or else delta0 >= cyclicSize then
+            tree(ptr0) := Null_position;
+            tree(ptr1) := Null_position;
+            return;
+          end if;
+          depth:= depth - 1;
+          if cyclicPos - delta0 < 0 then
+            pair:= cyclicSize;
+          else
+            pair:= 0;
+          end if;
+          pair := (cyclicPos - delta0 + pair) * 2;
+          len  := Integer'Min(len0, len1);
+          --  Match ?
+          if buf(readPos + len - delta0) = buf(readPos + len) then
+            --  No need to look for longer matches than niceLenLimit
+            --  because we only are updating the tree, not returning
+            --  matches found to the caller.
+            loop
+              len:= len + 1;
+              if len = niceLenLimit then
+                tree(ptr1) := tree(pair);
+                tree(ptr0) := tree(pair + 1);
+                return;
+              end if;
+              exit when buf(readPos + len - delta0) /= buf(readPos + len);
+            end loop;
+          end if;
+          --  Bytes are no more matching. The past value is either smaller...
+          if buf(readPos + len - delta0) < buf(readPos + len) then
+            tree(ptr1) := currentMatch;
+            ptr1 := pair + 1;
+            currentMatch := tree(ptr1);
+            len1 := len;
+          else  --  ... or larger
+            tree(ptr0) := currentMatch;
+            ptr0 := pair;
+            currentMatch := tree(ptr0);
+            len0 := len;
+          end if;
+        end loop;
+      end BT4_skip_update_tree;
+
+      function BT4_getMatches return Matches_type is
+        matches: Matches_type;
+        matchLenLimit : Integer := Look_Ahead;
+        niceLenLimit  : Integer := niceLen;
+        avail: Integer;
+        delta0, delta2, delta3, currentMatch,
+        lenBest, depth, ptr0, ptr1, pair, len, len0, len1: Integer;
+      begin
+        --  Put("BT4_getMatches... ");
+        readAhead:= readAhead + 1;
+        --
+        matches.count:= 0;
+        avail:= BT4_movePos;
+        if avail < matchLenLimit then
+          if avail = 0 then
+            return matches;
+          end if;
+          matchLenLimit := avail;
+          if niceLenLimit > avail then
+            niceLenLimit := avail;
+          end if;
+        end if;
+        --
+        Hash234.calcHashes(buf.all, readPos);
+        delta2 := lzPos - Hash234.hash2Table (Integer(Hash234.hash2Value));
+        delta3 := lzPos - Hash234.hash3Table (Integer(Hash234.hash3Value));
+        currentMatch :=   Hash234.hash4Table (Integer(Hash234.hash4Value));
+        Hash234.updateTables(lzPos);
+        --
+        lenBest := 0;
+        --  See if the hash from the first two bytes found a match.
+        --  The hashing algorithm guarantees that if the first byte
+        --  matches, also the second byte does, so there's no need to
+        --  test the second byte.
+        if delta2 < cyclicSize and then buf(readPos - delta2) = buf(readPos) then
+          --  Match of length 2 found and checked.
+          lenBest := 2;
+          matches.len(0) := 2;
+          matches.dist(0) := delta2 - 1;
+          matches.count := 1;
+        end if;
+        --  See if the hash from the first three bytes found a match that
+        --  is different from the match possibly found by the two-byte hash.
+        --  Also here the hashing algorithm guarantees that if the first byte
+        --  matches, also the next two bytes do.
+        if delta2 /= delta3 and then delta3 < cyclicSize
+                and then buf(readPos - delta3) = buf(readPos)
+        then
+          --  Match of length 3 found and checked.
+          lenBest := 3;
+          matches.count := matches.count + 1;
+          matches.dist(matches.count - 1) := delta3 - 1;
+          delta2 := delta3;
+        end if;
+        --  If a match was found, see how long it is.
+        if matches.count > 0 then
+          while lenBest < matchLenLimit and then buf(readPos + lenBest - delta2)
+                                               = buf(readPos + lenBest)
+          loop
+            lenBest:= lenBest + 1;
+          end loop;
+          matches.len(matches.count - 1) := lenBest;
+          --  Return if it is long enough (niceLen or reached the end of the dictionary).
+          if lenBest >= niceLenLimit then
+            BT4_skip_update_tree(niceLenLimit, currentMatch);
+            return matches;
+          end if;
+        end if;
+        --  Long enough match wasn't found so easily. Look for better matches from the binary tree.
+        if lenBest < 3 then
+          lenBest := 3;
+        end if;
+        depth := depthLimit;
+        ptr0  := cyclicPos * 2 + 1;
+        ptr1  := cyclicPos * 2;
+        len0  := 0;
+        len1  := 0;
+        --
+        loop
+          delta0 := lzPos - currentMatch;
+          --  Return if the search depth limit has been reached or
+          --  if the distance of the potential match exceeds the
+          --  dictionary size.
+          if depth = 0 or else delta0 >= cyclicSize then
+            tree(ptr0) := Null_position;
+            tree(ptr1) := Null_position;
+            return matches;
+          end if;
+          depth:= depth - 1;
+          --
+          if cyclicPos - delta0 < 0 then
+            pair:= cyclicSize;
+          else
+            pair:= 0;
+          end if;
+          pair := (cyclicPos - delta0 + pair) * 2;
+          len  := Integer'Min(len0, len1);
+          --  Match ?
+          if buf(readPos + len - delta0) = buf(readPos + len) then
+            loop
+              len:= len + 1;
+              exit when len >= matchLenLimit
+                or else buf(readPos + len - delta0) /= buf(readPos + len);
+            end loop;
+            if len > lenBest then
+              lenBest := len;
+              matches.len(matches.count) := len;
+              matches.dist(matches.count) := delta0 - 1;
+              matches.count:= matches.count + 1;
+              if len >= niceLenLimit then
+                tree(ptr1) := tree(pair);
+                tree(ptr0) := tree(pair + 1);
+                return matches;
+              end if;
+            end if;
+          end if;
+          --  Bytes are no more matching. The past value is either smaller...
+          if buf(readPos + len - delta0) < buf(readPos + len) then
+            tree(ptr1) := currentMatch;
+            ptr1 := pair + 1;
+            currentMatch := tree(ptr1);
+            len1 := len;
+          else  --  ... or larger
+            tree(ptr0) := currentMatch;
+            ptr0 := pair;
+            currentMatch := tree(ptr0);
+            len0 := len;
+          end if;
+        end loop;
+      end BT4_getMatches;
+
+      procedure BT4_skip(len: Integer) is
+        procedure Skip_one is
+          niceLenLimit, avail, currentMatch: Integer;
+        begin
+          niceLenLimit := niceLen;
+          avail := BT4_movePos;
+          if avail < niceLenLimit then
+            if avail = 0 then
+              return;
+            end if;
+            niceLenLimit := avail;
+          end if;
+          Hash234.calcHashes(buf.all, readPos);
+          currentMatch := Hash234.hash4Table (Integer(Hash234.hash4Value));
+          Hash234.updateTables(lzPos);
+          BT4_skip_update_tree(niceLenLimit, currentMatch);
+        end Skip_one;
+      begin
+        readAhead:= readAhead + len;
+        --
+        for count in 1 .. len loop
+          Skip_one;
+        end loop;
+      end BT4_skip;
+
+      matches: Matches_type;
+
+      procedure getNextSymbol is
+        avail, mainLen, mainDist, newLen, newDist: Integer;
+
+        function changePair(smallDist, bigDist: Integer) return Boolean is
+        begin
+          return smallDist < bigDist / (2**7);
+        end changePair;
+
+        --  !! This function should not be needed (see comments on places where it is called)...
+        function Is_match_correct(shift: Natural) return Boolean is
+        begin
+          --put_line("              " & mainLen'img);
+          for i in reverse -1 + shift .. mainLen - 2 + shift loop
+            if buf(readPos - (mainDist+1) + i) /= buf(readPos + i) then
+              return False;
+            end if;
+          end loop;
+          return True;
+        end Is_match_correct;
+
+      begin
+        -- Get the matches for the next byte unless readAhead indicates
+        -- that we already got the new matches during the previous call
+        -- to this procedure.
+        if readAhead = -1 then
+          matches := BT4_getMatches;
+        end if;
+        cur_literal:= buf(readPos);
+        --  Get the number of bytes available in the dictionary, but
+        --  not more than the maximum match length. If there aren't
+        --  enough bytes remaining to encode a match at all, return
+        --  immediately to encode this byte as a literal.
+        avail := Integer'Min(getAvail, Look_Ahead);
+        if avail < MATCH_LEN_MIN then
+          --  Put("[a]");
+          Send_first_literal_of_match;
+          return;
+        end if;
+
+        --  !! TBD: keep a stack of 4 most recent distances for LZMA-friendly mode
+        --  Look for a match from the previous four match distances.
+
+        --  int bestRepLen = 0;
+        --  int bestRepIndex = 0;
+        --  for (int rep = 0; rep < REPS; ++rep) {
+        --      int len = lz.getMatchLen(reps(rep), avail);
+        --      if (len < MATCH_LEN_MIN)
+        --          continue;
+        --
+        --      --  If it is long enough, return it.
+        --      if (len >= niceLen) {
+        --          back = rep;
+        --          BT4_skip(len - 1);
+        --          return len;
+        --      }
+        --
+        --      --  Remember the index and length of the best repeated match.
+        --      if (len > bestRepLen) {
+        --          bestRepIndex = rep;
+        --          bestRepLen = len;
+        --      }
+        --  }
+
+        mainLen := 0;
+        mainDist := 0;
+        if matches.count > 0 then
+          mainLen  := matches.len(matches.count - 1);
+          mainDist := matches.dist(matches.count - 1);
+          if mainLen >= niceLen then
+            if Is_match_correct(1) then
+              BT4_skip(mainLen - 1);
+              --  Put_Line("[DL A]" & mainDist'Img & mainLen'Img);
+              Send_DL_code(mainDist, mainLen);
+              return;
+            else
+              --  !! Happens, but very rarely (1x on the 8MB test.mdb)...
+              --Put_Line("Wrong match [A]! pos=" & Integer'Image(lzPos - cyclicSize));
+              Send_first_literal_of_match;
+              return;
+            end if;
+          end if;
+          while matches.count > 1 and then mainLen = matches.len(matches.count - 2) + 1 loop
+            exit when not changePair(matches.dist(matches.count - 2), mainDist);
+            matches.count:= matches.count - 1;
+            mainLen := matches.len(matches.count - 1);
+            mainDist := matches.dist(matches.count - 1);
+          end loop;
+          if mainLen = MATCH_LEN_MIN and then mainDist >= 128 then
+            mainLen := 1;
+          end if;
+        end if;
+
+        --  if bestRepLen >= MATCH_LEN_MIN then
+        --      if bestRepLen + 1 >= mainLen
+        --              or else (bestRepLen + 2 >= mainLen and then mainDist >= 2 ** 9)
+        --              or else (bestRepLen + 3 >= mainLen and then mainDist >= 2 ** 15)
+        --      then
+        --          back := bestRepIndex;
+        --          BT4_skip(bestRepLen - 1);
+        --          return bestRepLen;
+        --      end if;
+        --  end if;
+
+        if mainLen < MATCH_LEN_MIN or else avail <= MATCH_LEN_MIN then
+          --Put("[b]");
+          Send_first_literal_of_match;
+          return;
+        end if;
+
+        --  Get the next match. Test if it is better than the current match.
+        --  If so, encode the current byte as a literal.
+        matches := BT4_getMatches;
+        --
+        if matches.count > 0 then
+          newLen  := matches.len(matches.count - 1);
+          newDist := matches.dist(matches.count - 1);
+          if (newLen >= mainLen and then newDist < mainDist)
+                  or else (newLen = mainLen + 1
+                      and then not changePair(mainDist, newDist))
+                  or else newLen > mainLen + 1
+                  or else (newLen + 1 >= mainLen
+                      and then mainLen >= MATCH_LEN_MIN + 1
+                      and then changePair(newDist, mainDist))
+          then
+            --Put("[c]");
+            --Put(Character'Val(cur_literal));
+            Send_first_literal_of_match;
+            return;
+          end if;
+        end if;
+
+        --  limit := Integer'Max(mainLen - 1, MATCH_LEN_MIN);
+        --  for rep in 0 .. REPS-1 loop
+        --      if lz.getMatchLen(reps(rep), limit) = limit then
+        --        Send_first_literal_of_match;
+        --        return;
+        --      end if;
+        --  end loop;
+
+        if Is_match_correct(0) then
+          BT4_skip(mainLen - 2);
+          --Put_Line("[DL B]" & mainDist'Img & mainLen'Img);
+          Send_DL_code(mainDist, mainLen);
+        else
+          --  !! Happens sometimes, but only after 2nd window filling (no window move involved)
+          --     and often before next BT4_movePos when cyclicPos is zeroed
+          --Put_Line("Wrong match [B]!");
+          Send_first_literal_of_match;
+        end if;
+      end getNextSymbol;
+
+      actual_written, avail: Integer;
+    begin
+      buf:= new Byte_array(0 .. getBufSize);
+      tree:= new Int_array(0 .. cyclicSize * 2 - 1);
+      tree.all:= (others => Null_position);
+      buf(writePos):= 123;
+      writePos:= writePos + 1; -- for the Skip(1) just after
+      BT4_skip(1);  --  as in encodeInit()
+      readAhead:= readAhead - 1;
+      actual_written:= fillWindow(String_buffer_size);
+      if actual_written > 0 then
+        loop
+          getNextSymbol;
+          avail:= getAvail;
+          if avail = 0 then
+            actual_written:= fillWindow(String_buffer_size);
+            exit when actual_written = 0;
+          end if;
+        end loop;
+      end if;
+      Dispose(buf);
+      Dispose(tree);
+      Dispose(Hash234.hash4Table);
+    end LZ77_using_BT4;
+
   begin
     case Method is
       when LZHuf =>
         LZ77_using_LZHuf;
       when IZ_4 .. IZ_10 =>
         LZ77_using_IZ( 4 + Method_Type'Pos(Method) -  Method_Type'Pos(IZ_4) );
+      when BT4 =>
+        LZ77_using_BT4;
     end case;
   end Encode;
 
