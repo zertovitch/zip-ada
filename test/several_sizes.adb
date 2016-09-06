@@ -1,5 +1,5 @@
 -- Usage: several_sizes <big_file>
--- Produces .tmp files that are partial copies of <big_file>, with different sizes.
+-- Produces <size>.tmp files that are partial copies of <big_file>, with different sizes.
 -- These files can be compressed for testing.
 
 with Ada.Text_IO, Ada.Integer_Text_IO;
@@ -40,7 +40,7 @@ procedure Several_sizes is
   function name return String is
   begin
     return Argument(1);
-  end;
+  end name;
 
   procedure Test(limit: Natural) is
     b: Buffer(1..1024);
@@ -62,7 +62,7 @@ procedure Several_sizes is
     end loop;
     Close(f_out);
     Close(f_in);
-  end;
+  end Test;
 
   use Ada.Text_IO;
 
@@ -71,14 +71,14 @@ procedure Several_sizes is
 begin
   if Argument_Count=0 then
     Put_Line(" Usage: several_sizes <big_file>");
-    Put_Line(" Produces .tmp files that are partial copies of <big_file>, with different sizes.");
+    Put_Line(" Produces <size>.tmp files that are partial copies of <big_file>, with different sizes.");
     return;
   end if;
-  --
+  --  Tiny files
   for i in 0..126 loop
     Test(i);
   end loop;
-  --
+  --  Around powers of two (typical LZ sliding window sizes)
   s:= 128;
   loop
     for i in -60..60 loop
@@ -87,4 +87,4 @@ begin
     s:= s * 2;
     exit when s > 300_000;
   end loop;
-end;
+end Several_sizes;

@@ -119,8 +119,8 @@ package Zip_Streams is
    -- Memory_Zipstream: stream based on an in-memory Unbounded_String --
    ---------------------------------------------------------------------
    type Memory_Zipstream is new Root_Zipstream_Type with private;
-   subtype Unbounded_Stream is Memory_Zipstream;
-   pragma Obsolescent (Unbounded_Stream);
+   --  subtype Unbounded_Stream is Memory_Zipstream;
+   --  pragma Obsolescent (Unbounded_Stream);
 
    -- Get the complete value of the stream
    procedure Get (Str : Memory_Zipstream; Unb : out Unbounded_String);
@@ -133,8 +133,8 @@ package Zip_Streams is
    -- File_Zipstream: stream based on a file --
    --------------------------------------------
    type File_Zipstream is new Root_Zipstream_Type with private;
-   subtype ZipFile_Stream is File_Zipstream;
-   pragma Obsolescent (ZipFile_Stream);
+   --  subtype ZipFile_Stream is File_Zipstream;
+   --  pragma Obsolescent (ZipFile_Stream);
 
    type File_Mode is new Ada.Streams.Stream_IO.File_Mode;
 

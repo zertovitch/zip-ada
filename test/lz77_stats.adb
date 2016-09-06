@@ -1,4 +1,4 @@
---  Gather some statistics about LZ77 DLE codes.
+--  Gather some statistics about LZ77 DLE codes and output it in a matrix form.
 --  May help answering questions like:
 --   - which distances and lengths are used, and how often ?
 --   - which distance and length *pairs* are used, and how often ?

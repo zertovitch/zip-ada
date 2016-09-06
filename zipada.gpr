@@ -28,9 +28,10 @@ project ZipAda is
      "lzma_enc", --  LZMA encoder
      "test_lz_scramble",  --  Test LZ_Scramble
      "test_llhc",         --  Test for Length_limited_Huffman_code_lengths
-     "test_lz77.adb",
+     "test_lz77.adb",     --  Test the LZ77 package
+     "lz77_stats.adb",    --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
      "random_data.adb",   --  Produces n bytes of pseudo-random data
-     "lz77_stats.adb"
+     "several_sizes.adb"  --  Truncates a file into partial copies of several sizes
      -- "demo_csv_gnat.ads",
      -- "unzipada.adb", "uza_gnat.ads"
    );
