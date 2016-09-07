@@ -224,9 +224,14 @@ package body LZMA.Encoding is
       lit_state : Integer;
       probs_idx : Integer;
       b_match: constant Byte:= Text_Buf(R-Text_Buffer_Index(rep_dist(0))-1);
-      threshold: constant:= 0.01;  --  0.0: always, 1.0/16.0 = 0.0625: equiprobable, 1.0: never.
+      --  Probability threshold for the "Short Rep Match" case, b = b_match.
+      --  Some values:
+      --    0.0                 : always do (when possible of course...)
+      --    1.0 / 16.0 = 0.0625 : minimum is the equiprobable case
+      --    1.0                 : never do
+      threshold_short_rep_match: constant:= 0.01;  --  Empirical optimum
     begin
-      if total_pos > Data_Bytes_Count(rep_dist(0) + 1) and then b = b_match
+      if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1) 
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match" case.
         --  But wait: it costs 4 bits, so better to have already a probable case before proceeding.
         --  For computing we assume independent probabilities, just like the range encoder does
@@ -236,7 +241,7 @@ package body LZMA.Encoding is
             (1.0 - To_Math(probs.switch.match(state, pos_state))) *
             (1.0 - To_Math(probs.switch.rep(state))) *
             To_Math(probs.switch.rep_g0(state)) *
-            To_Math(probs.switch.rep0_long(state, pos_state)) >= threshold
+            To_Math(probs.switch.rep0_long(state, pos_state)) >= threshold_short_rep_match
       then
         Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);               --  1
         Encode_Bit(probs.switch.rep(state), Rep_match_choice);                          --  1
