@@ -201,11 +201,14 @@ package Zip is
   -- Offsets - various procedures giving 1-based indexes to local headers --
   --------------------------------------------------------------------------
 
-  -- Find 1st offset in a Zip stream
+  -- Find 1st offset in a Zip stream (i.e. the first's archived entry's offset)
 
   procedure Find_first_offset(
     file           : in out Zip_Streams.Root_Zipstream_Type'Class;
     file_index     :    out Zip_Streams.ZS_Index_Type );
+
+  --  If the archive is empty (the 22 byte .zip file), there is no first entry or offset.
+  archive_is_empty: exception;
 
   -- Find offset of a certain compressed file
   -- in a Zip file (file opened and kept open)
@@ -377,8 +380,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "52, preview 1";
-  reference : constant String:= "30-Aug-2016";
+  version   : constant String:= "52, preview 2";
+  reference : constant String:= ">= 07-Sep-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

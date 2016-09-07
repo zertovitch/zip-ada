@@ -535,7 +535,11 @@ package body Zip is
       ZS_Index_Type (1 + the_end.offset_shifting + the_end.central_dir_offset)
     );
 
-    min_offset:= the_end.central_dir_offset; -- will be lowered
+    min_offset:= the_end.central_dir_offset; -- will be lowered if the archive is not empty.
+
+    if the_end.total_entries = 0 then
+      raise archive_is_empty;
+    end if;
 
     for i in 1..the_end.total_entries loop
       Zip.Headers.Read_and_check(file, header );

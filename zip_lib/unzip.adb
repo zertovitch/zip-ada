@@ -629,7 +629,7 @@ package body UnZip is
       );
     end loop all_files;
   exception
-    when Zip.Headers.bad_local_header =>
+    when Zip.Headers.bad_local_header | Zip.archive_is_empty =>
       Close(zip_file); -- normal case: end was hit
     when Zip.Zip_file_open_Error =>
       raise;    -- couldn't open zip file

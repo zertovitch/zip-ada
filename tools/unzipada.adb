@@ -361,7 +361,7 @@ begin
     Put( Float( seconds ), 4, 2, 0 );
     Put_Line( " sec");
 
-    Put_Line("Archive successfully processed (or no archive!)");
+    Put_Line("Archive successfully processed (or empty archive, or no archive!)");
   end if;
 
 end UnZipAda;
