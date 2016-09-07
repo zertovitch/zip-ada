@@ -17,6 +17,7 @@
 --
 --  Variant 3/, LZ77_using_BT4, was added on 06-Sep-2016.
 --     The seems to be the best match finder for LZMA on data of the >= MB scale.
+--     *Caution*: it's working, but it's pretty recent; see to-do's below.
 
 --  To do:
 --
@@ -915,7 +916,7 @@ package body LZ77 is
       readPos     : Integer := -1;
       cur_literal : Byte;
       readLimit   : Integer := -1;
-      -- finishing   : Boolean := False;
+      finishing   : constant Boolean := False;
       writePos    : Integer :=  0;
       pendingSize : Integer :=  0;
       --
@@ -972,10 +973,10 @@ package body LZ77 is
         readPos := readPos + 1;
         avail   := getAvail;
         if avail < requiredForFlushing then
-          if avail < requiredForFinishing  -- or else not finishing
+          if avail < requiredForFinishing or else not finishing
           then
             pendingSize:= pendingSize + 1;
-            avail := 0;
+            avail := 0;  --  This causes cyclicPos not being in sync with readPos
           end if;
         end if;
         return avail;
@@ -1050,6 +1051,8 @@ package body LZ77 is
 
         r: Unsigned_32;
       begin
+        --  NB: heap allocation is needed only because of small
+        --      default stack sizes on some compilers.
         hash4Table:= new Int_array(0..hash_4_size-1);
         hash4Table.all:= (others => 0);  --  !! initialization added
         for i in Byte loop
@@ -1088,7 +1091,7 @@ package body LZ77 is
       tree : p_Int_array;
 
       function BT4_movePos return Integer is
-        avail : constant Integer:= movePos(niceLen, 4);
+        avail : constant Integer:= movePos(requiredForFlushing => niceLen, requiredForFinishing => 4);
         normalizationOffset: Integer;
       begin
         --  Put_Line("BT4_movePos");
@@ -1348,8 +1351,11 @@ package body LZ77 is
         end loop;
       end BT4_getMatches;
 
-      procedure BT4_skip(len: Integer) is
+      procedure BT4_skip(len: Natural) is
+      pragma Inline(BT4_skip);
+        --
         procedure Skip_one is
+        pragma Inline(Skip_one);
           niceLenLimit, avail, currentMatch: Integer;
         begin
           niceLenLimit := niceLen;
@@ -1365,10 +1371,11 @@ package body LZ77 is
           Hash234.updateTables(lzPos);
           BT4_skip_update_tree(niceLenLimit, currentMatch);
         end Skip_one;
+        --
       begin
         readAhead:= readAhead + len;
         --
-        for count in 1 .. len loop
+        for count in reverse 1 .. len loop
           Skip_one;
         end loop;
       end BT4_skip;
@@ -1379,6 +1386,7 @@ package body LZ77 is
         avail, mainLen, mainDist, newLen, newDist: Integer;
 
         function changePair(smallDist, bigDist: Integer) return Boolean is
+        pragma Inline(changePair);
         begin
           return smallDist < bigDist / (2**7);
         end changePair;
@@ -1528,6 +1536,8 @@ package body LZ77 is
 
       actual_written, avail: Integer;
     begin
+      --  NB: heap allocation is needed only because of small
+      --      default stack sizes on some compilers.
       buf:= new Byte_array(0 .. getBufSize);
       tree:= new Int_array(0 .. cyclicSize * 2 - 1);
       tree.all:= (others => Null_position);
