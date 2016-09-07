@@ -17,7 +17,7 @@
 --
 --  Variant 3/, LZ77_using_BT4, was added on 06-Sep-2016.
 --     The seems to be the best match finder for LZMA on data of the >= MB scale.
---     *Caution*: it's working, but it's pretty recent; see to-do's below.
+--     *Caution*: still experimental; it's working, but it's pretty recent; see to-do's below.
 
 --  To do:
 --
@@ -946,8 +946,10 @@ package body LZ77 is
       end Normalize;
 
       function getAvail return Integer is
+      pragma Inline(getAvail);
       begin
-        return writePos - readPos - 1;  --  !! " - 1" added
+         --  !! - 1 added for getting readPos in buf'Range upon: cur_literal:= buf(readPos);
+        return writePos - readPos - 1;
       end getAvail;
 
       function movePos(requiredForFlushing, requiredForFinishing: Integer) return Integer is
@@ -1113,7 +1115,7 @@ package body LZ77 is
         procedure skip_update_tree(niceLenLimit: Integer; currentMatch: in out Integer) is
           delta0, depth, ptr0, ptr1, pair, len, len0, len1: Integer;
         begin
-          --  Put("BT4_skip_update_tree... ");
+          --  Put("BT4.skip_update_tree... ");
           depth := depthLimit;
           ptr0  := cyclicPos * 2 + 1;
           ptr1  := cyclicPos * 2;
@@ -1333,7 +1335,7 @@ package body LZ77 is
         moveOffset : constant Integer := ((readPos + 1 - keepSizeBefore) / 16) * 16;
         moveSize   : constant Integer := writePos - moveOffset;
       begin
-        --  Put_Line("Move window, size=" & moveSize'Img & " offset=" & moveOffset'Img);
+        --  Put_Line("  Move window, size=" & moveSize'Img & " offset=" & moveOffset'Img);
         buf(0 .. moveSize - 1):= buf(moveOffset .. moveOffset + moveSize - 1);
         readPos   := readPos   - moveOffset;
         readLimit := readLimit - moveOffset;
@@ -1362,6 +1364,7 @@ package body LZ77 is
        len: Integer:= len_initial;
        actual_len: Integer:= 0;
      begin
+        --  Put_Line("Fill window - start");
         --  Move the sliding window if needed.
         if readPos >= buf'Length - keepSizeAfter then
           moveWindow;
@@ -1387,7 +1390,7 @@ package body LZ77 is
 
         processPendingBytes;
 
-        --  Put_Line("Fill window, request=" & len_initial'Img & " actual=" & actual_len'Img);
+        --  Put_Line("Fill window, requested=" & len_initial'Img & " actual=" & actual_len'Img);
         --  Tell the caller how much input we actually copied into the dictionary.
         return actual_len;
       end fillWindow;
@@ -1450,6 +1453,9 @@ package body LZ77 is
         if readAhead = -1 then
           matches := getMatches;
         end if;
+        --  @ if readPos not in buf.all'Range then
+        --  @   Put("**** " & buf'Last'Img & keepSizeAfter'Img & readPos'Img & writePos'Img);
+        --  @ end if;
         cur_literal:= buf(readPos);
         --  Get the number of bytes available in the dictionary, but
         --  not more than the maximum match length. If there aren't
@@ -1475,7 +1481,7 @@ package body LZ77 is
         --      --  If it is long enough, return it.
         --      if (len >= niceLen) {
         --          back = rep;
-        --          BT4_skip(len - 1);
+        --          skip(len - 1);
         --          return len;
         --      }
         --
@@ -1520,7 +1526,7 @@ package body LZ77 is
         --              or else (bestRepLen + 3 >= mainLen and then mainDist >= 2 ** 15)
         --      then
         --          back := bestRepIndex;
-        --          BT4_skip(bestRepLen - 1);
+        --          skip(bestRepLen - 1);
         --          return bestRepLen;
         --      end if;
         --  end if;
@@ -1576,10 +1582,6 @@ package body LZ77 is
       --  NB: heap allocation is needed only because of small
       --      default stack sizes on some compilers.
       buf:= new Byte_array(0 .. getBufSize);
-      buf(writePos):= 123;
-      writePos:= writePos + 1; -- for the Skip(1) just after
-      skip(1);  --  as in encodeInit() in LZMAEncoder.java
-      readAhead:= readAhead - 1;
       actual_written:= fillWindow(String_buffer_size);
       if actual_written > 0 then
         loop

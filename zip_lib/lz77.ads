@@ -46,6 +46,7 @@ package LZ77 is
     IZ_9,
     IZ_10,
     --  Use LZMA SDK's BT4 algorithm (see body for details and credits)
+    --  *Caution*: still experimental; it's working, but it's pretty recent...
     BT4
   );
 
