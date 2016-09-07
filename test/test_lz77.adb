@@ -79,7 +79,9 @@ procedure Test_LZ77 is
 
   type Method_Set is array(Method_Type) of Boolean;
 
-  meth: constant Method_Set:= (others => True);
+  --  meth: constant Method_Set:= (others => True);
+  --  meth: constant Method_Set:= (IZ_5 | IZ_7 | IZ_8 => False, others => True);
+  meth: constant Method_Set:= (LZHuf | BT4 => True, others => False);
 
 begin
   for m in Method_Type loop
