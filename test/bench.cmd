@@ -43,6 +43,7 @@ if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 zipada -el1 ../bench_%1_lzma_1 *
 zipada -el2 ../bench_%1_lzma_2 *
+zipada -el3 ../bench_%1_lzma_3 *
 zipada -eps ../bench_%1_presel *
 
 cd ..

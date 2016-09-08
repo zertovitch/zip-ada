@@ -1080,6 +1080,7 @@ package body LZ77 is
         function movePos return Integer;
         procedure skip_update_tree(niceLenLimit: Integer; currentMatch: in out Integer);
         procedure skip(len: Natural);
+        pragma Inline(skip);
         function getMatches return Matches_type;
       end BT4;
 
@@ -1167,7 +1168,6 @@ package body LZ77 is
         end skip_update_tree;
 
         procedure skip(len: Natural) is
-        pragma Inline(skip);
           --
           procedure Skip_one is
           pragma Inline(Skip_one);

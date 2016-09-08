@@ -11,9 +11,13 @@ package LZMA.Encoding is
 
   subtype Byte is Interfaces.Unsigned_8;
 
+  --  Low level: faster but weaker compression
+  --  High level: slower but stronger compression
+  --
   type Compression_level is (
-    Level_1,  --  Faster but weaker compression
-    Level_2   --  Slower but stronger compression
+    Level_1,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 6
+    Level_2,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 10
+    Level_3   --  uses LZMA SDK's BT4 match finder, 16MB sliding window
   );
 
   generic

@@ -11,11 +11,6 @@
 --  from the original LzmaEnc.c by Igor Pavlov.
 --  Some parts are from the LZMAEncoder.java translation by Lasse Collin.
 --
---  To do:
---    - shop for a better match finder (for LZ77), with the whole range
---        of supported lengths, and longer distances.
---        BT3 or BT4 seem best (BTn: Binary Tree n bytes hash).
---
 --  Change log:
 --------------
 --
@@ -133,20 +128,42 @@ package body LZMA.Encoding is
       --      Same for "too high". See LZMA sheet in za_work.xls.
     end Encode_Bit;
 
+    -----------------------------------
+    --  LZ77 compression parameters  --
+    -----------------------------------
+
+    LZ77_choice: constant array(Compression_level) of LZ77.Method_Type:=
+      (Level_1   => LZ77.IZ_6,
+       Level_2   => LZ77.IZ_10,
+       Level_3   => LZ77.BT4);
+
+    Min_length : constant array(Compression_level) of Positive:=
+      (Level_1 | Level_2  => 3,    --  Deflate's Value
+       others             => 2);
+
+    Max_length : constant array(Compression_level) of Positive:=
+      (Level_1 | Level_2  => 258,  --  Deflate's Value
+       others             => 273);
+
+    String_buffer_bits: constant array(Compression_level) of Positive:=
+      (Level_1 | Level_2  => 15,  --  Deflate's Value
+       Level_3            => 24);
+
+    String_buffer_size : constant Positive := 2 ** String_buffer_bits(level);
+
     -----------------------------------------------------------
     --  The LZMA "machine": here the LZ codes are processed  --
     --  and sent to the above bit encoder in a smart way.    --
     -----------------------------------------------------------
 
     subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
-    String_buffer_size : constant := 2**15;  --  2**15 = size for Deflate
 
     type LZMA_Params_Info is record
       unpack_size          : Data_Bytes_Count:= 0;
       unpack_size_defined  : Boolean := False;
       header_has_size      : Boolean := uncompressed_size_info;
       has_end_mark         : Boolean := end_marker;
-      dict_size            : UInt32  := String_buffer_size;
+      dict_size            : UInt32  := UInt32(String_buffer_size);
       lc                   : Literal_context_bits_range  := literal_context_bits;
       lp                   : Literal_position_bits_range := literal_position_bits;
       pb                   : Position_bits_range         := position_bits;
@@ -207,10 +224,11 @@ package body LZMA.Encoding is
 
     prev_byte: Byte:= 0;
     --  We expand the DL codes in order to have some past data.
-    type Text_Buffer_Index is mod String_buffer_size;
+    subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size - 1);
     type Text_Buffer is array (Text_Buffer_Index) of Byte;
+    Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size - 1);
     Text_Buf: Text_Buffer;
-    R: Text_Buffer_Index:= 0;
+    R: UInt32:= 0;
 
     type MProb is new Long_Float range 0.0 .. 1.0;
 
@@ -223,7 +241,7 @@ package body LZMA.Encoding is
     procedure LZ77_emits_literal_byte (b: Byte) is
       lit_state : Integer;
       probs_idx : Integer;
-      b_match: constant Byte:= Text_Buf(R-Text_Buffer_Index(rep_dist(0))-1);
+      b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
       --  Probability threshold for the "Short Rep Match" case, b = b_match.
       --  Some values:
       --    0.0                 : always do (when possible of course...)
@@ -231,7 +249,7 @@ package body LZMA.Encoding is
       --    1.0                 : never do
       threshold_short_rep_match: constant:= 0.01;  --  Empirical optimum
     begin
-      if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1) 
+      if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match" case.
         --  But wait: it costs 4 bits, so better to have already a probable case before proceeding.
         --  For computing we assume independent probabilities, just like the range encoder does
@@ -267,7 +285,7 @@ package body LZMA.Encoding is
       Update_pos_state;
       prev_byte:= b;
       Text_Buf(R):= b;
-      R:= R + 1;  --  This is mod String_buffer_size
+      R:= (R + 1) and Text_Buf_Mask;  --  This is mod String_buffer_size
     end LZ77_emits_literal_byte;
 
     ---------------------------------------------------------------------------------
@@ -452,7 +470,7 @@ package body LZMA.Encoding is
     end Write_Repeat_Match;
 
     procedure LZ77_emits_DL_code (distance: Integer; length: Match_length_range) is
-      Copy_start: constant Text_Buffer_Index:= R - Text_Buffer_Index(distance);
+      Copy_start: constant UInt32:= (R - UInt32(distance)) and Text_Buf_Mask;
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
     begin
@@ -471,32 +489,18 @@ package body LZMA.Encoding is
       total_pos:= total_pos + Data_Bytes_Count(length);
       Update_pos_state;
       --  Expand in the circular text buffer to have it up to date
-      for K in 0..Text_Buffer_Index(length-1) loop
-        Text_Buf(R):= Text_Buf(Copy_start+K);
-        R:= R + 1;  --  This is mod String_buffer_size
+      for K in 0 .. UInt32(length-1) loop
+        Text_Buf(R):= Text_Buf((Copy_start + K) and Text_Buf_Mask);
+        R:= (R + 1) and Text_Buf_Mask;  --  This is mod String_buffer_size
       end loop;
-      prev_byte:= Text_Buf(R - 1);
+      prev_byte:= Text_Buf((R - 1) and Text_Buf_Mask);
     end LZ77_emits_DL_code;
-
-    ------------------------
-    --  LZ77 compression  --
-    ------------------------
-
-    LZ77_choice: constant array(Compression_level) of LZ77.Method_Type:=
-      (Level_1   => LZ77.IZ_6,
-       Level_2   => LZ77.IZ_10);
-
-    --  These are constants for the Info-Zip LZ77.
-    --  LZMA's LZ lengths can range from 2 to 273.
-    --  See to-do list above about a better match finder.
-    Min_length : constant := 3;  --  From a string match length >= 3, a DL code is sent
-    Max_length : constant := 258;
 
     procedure My_LZ77 is
       new LZ77.Encode
         ( String_buffer_size => String_buffer_size,
-          Look_Ahead         => Max_length,
-          Threshold          => Min_length - 1,
+          Look_Ahead         => Max_length(level),
+          Threshold          => Min_length(level) - 1,
           Method             => LZ77_choice(level),
           Read_byte          => Read_byte,
           More_bytes         => More_bytes,

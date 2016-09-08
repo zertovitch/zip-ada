@@ -46,6 +46,7 @@ package Zip.Compress is
      --  LZMA
      LZMA_1,
      LZMA_2,
+     LZMA_3,
      --  Multi-method
      Preselection  --  Select a method depending on hints like the uncompressed size
     );
@@ -64,7 +65,7 @@ package Zip.Compress is
   --  start a new block and what sort of block to put next.
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
 
-  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_2;
+  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_3;
 
   subtype Multi_Method is Compression_Method range Preselection .. Preselection;
 

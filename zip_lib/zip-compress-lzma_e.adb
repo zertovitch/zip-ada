@@ -129,7 +129,8 @@ is
 
   LZMA_choice: constant array(LZMA_Method) of Compression_level:=
     (LZMA_1  => Level_1,
-     LZMA_2  => Level_2);
+     LZMA_2  => Level_2,
+     LZMA_3  => Level_3);
 
   procedure LZMA_Encode is
     new LZMA.Encoding.Encode(Read_byte, More_bytes, Put_byte);

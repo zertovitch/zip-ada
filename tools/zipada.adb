@@ -209,7 +209,8 @@ procedure ZipAda is
         elsif opt(opt'First..opt'First+1) = "el" then
           case opt(opt'First+2) is
             when '1'    => method:= LZMA_1;
-            when others => method:= LZMA_2;
+            when '2'    => method:= LZMA_2;
+            when others => method:= LZMA_3;
           end case;
         elsif opt(opt'First..opt'First+2) = "eps" then
           method:= Preselection;
@@ -281,11 +282,11 @@ begin
   else
     Put_Line("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
-    Put_Line("Options:  -erN   : use the 2-pass ""Reduce"" method, factor N=1..4");
+    Put_Line("Options:  -erN   : use the 2-pass ""Reduce"" method, factor N = 1..4");
     Put_Line("          -es    : ""Shrink"" method (LZW algorithm)");
     Put_Line("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
-    Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N=1..3");
-    Put_Line("          -elN   : ""LZMA"" method, strength N=1..2");
+    Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 1..3");
+    Put_Line("          -elN   : ""LZMA"" method, strength N = 1..3");
     Put_Line("          -eps   : preselection of an appropriate strong compression");
     New_Line;
     Put_Line("      NB: default method is ""Deflate"", strength 1 (-ed1)");
