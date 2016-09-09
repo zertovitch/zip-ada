@@ -1039,8 +1039,8 @@ package body LZ77 is
 
         r: Unsigned_32;
       begin
-        --  NB: heap allocation is needed only because of small
-        --      default stack sizes on some compilers.
+        --  NB: heap allocation used only for convenience because of
+        --      small default stack sizes on some compilers.
         hash4Table:= new Int_array(0..hash_4_size-1);
         hash4Table.all:= (others => 0);  --  !! initialization added
         for i in Byte loop
@@ -1323,6 +1323,8 @@ package body LZ77 is
         end getMatches;
 
       begin
+        --  NB: heap allocation used only for convenience because of
+        --      small default stack sizes on some compilers.
         tree:= new Int_array(0 .. cyclicSize * 2 - 1);
         tree.all:= (others => Null_position);
       end BT4;
@@ -1411,6 +1413,10 @@ package body LZ77 is
         BT4.skip(len);
       end skip;
 
+      --  Small stack of recent distances used for LZ.
+      subtype Repeat_stack_range is Integer range 0..3;
+      rep_dist: array(Repeat_stack_range) of Natural := (others => 0);
+
       procedure getNextSymbol is
         avail, mainLen, mainDist, newLen, newDist: Integer;
 
@@ -1434,6 +1440,25 @@ package body LZ77 is
           return True;
         end Is_match_correct;
 
+        function getMatchLen(dist, lenLimit: Integer) return Natural is
+          backPos: constant Integer := readPos - dist - 1;
+          len: Integer := 0;
+        begin
+          if dist < 1 then
+            return 0;
+          end if;
+          --  @ if readPos+len not in buf.all'Range then
+          --  @   Put("**** readpos " & buf'Last'Img & readPos'Img);
+          --  @ end if;
+          --  @ if backPos+len not in buf.all'Range then
+          --  @   Put("**** backpos " & buf'Last'Img & backPos'Img);
+          --  @ end if;
+          while len < lenLimit and then buf(readPos + len) = buf(backPos + len) loop
+            len:= len + 1;
+          end loop;
+          return len;
+        end getMatchLen;
+
         procedure Send_first_literal_of_match is
         begin
           Write_literal(cur_literal);
@@ -1441,10 +1466,40 @@ package body LZ77 is
         end Send_first_literal_of_match;
 
         procedure Send_DL_code( distance, length: Integer ) is
+          found_repeat: Integer:= rep_dist'First - 1;
+          aux: Integer;
         begin
           Write_DL_code(distance + 1, length);
           readAhead := readAhead - length;
+          if LZMA_friendly then
+            --
+            --  Manage the stack of recent distances in the same way the "MA" part of LZMA does.
+            --
+            for i in rep_dist'Range loop
+              if distance = rep_dist(i) then
+                found_repeat:= i;
+                exit;
+              end if;
+            end loop;
+            if found_repeat >= rep_dist'First then
+              --  Roll the stack of recent distances up to the item with index found_repeat,
+              --  which becomes first. If found_repeat = rep_dist'First, no actual change occurs.
+              aux:= rep_dist(found_repeat);
+              for i in reverse rep_dist'First + 1 .. found_repeat loop
+                rep_dist(i) := rep_dist(i-1);
+              end loop;
+              rep_dist(rep_dist'First):= aux;
+            else
+              --  Shift the stack of recent distances; the new distance becomes the first item.
+              for i in reverse rep_dist'First + 1 .. rep_dist'Last loop
+                rep_dist(i) := rep_dist(i-1);
+              end loop;
+              rep_dist(0) := distance;
+            end if;
+          end if;
         end Send_DL_code;
+
+        bestRepLen, bestRepIndex, len: Integer;
 
       begin
         --  Get the matches for the next byte unless readAhead indicates
@@ -1468,29 +1523,28 @@ package body LZ77 is
           return;
         end if;
 
-        --  !! TBD: keep a stack of 4 most recent distances for LZMA-friendly mode
-        --  Look for a match from the previous four match distances.
-
-        --  int bestRepLen = 0;
-        --  int bestRepIndex = 0;
-        --  for (int rep = 0; rep < REPS; ++rep) {
-        --      int len = lz.getMatchLen(reps(rep), avail);
-        --      if (len < MATCH_LEN_MIN)
-        --          continue;
-        --
-        --      --  If it is long enough, return it.
-        --      if (len >= niceLen) {
-        --          back = rep;
-        --          skip(len - 1);
-        --          return len;
-        --      }
-        --
-        --      --  Remember the index and length of the best repeated match.
-        --      if (len > bestRepLen) {
-        --          bestRepIndex = rep;
-        --          bestRepLen = len;
-        --      }
-        --  }
+        if LZMA_friendly then
+          --  Look for a match from the previous four different match distances.
+          bestRepLen := 0;
+          bestRepIndex := 0;
+          for rep in Repeat_stack_range loop
+            len := getMatchLen(rep_dist(rep), avail);
+            if len >= MATCH_LEN_MIN then
+              --  If it is long enough, return it.
+              if len >= niceLen then
+                skip(len - 1);
+                --  Put_Line("[DL RA]");
+                Send_DL_code(rep_dist(rep), len);
+                return;
+              end if;
+              --  Remember the index and length of the best repeated match.
+              if len > bestRepLen then
+                bestRepIndex := rep;
+                bestRepLen := len;
+              end if;
+            end if;
+          end loop;
+        end if;
 
         mainLen := 0;
         mainDist := 0;
@@ -1520,16 +1574,17 @@ package body LZ77 is
           end if;
         end if;
 
-        --  if bestRepLen >= MATCH_LEN_MIN then
-        --      if bestRepLen + 1 >= mainLen
-        --              or else (bestRepLen + 2 >= mainLen and then mainDist >= 2 ** 9)
-        --              or else (bestRepLen + 3 >= mainLen and then mainDist >= 2 ** 15)
-        --      then
-        --          back := bestRepIndex;
-        --          skip(bestRepLen - 1);
-        --          return bestRepLen;
-        --      end if;
-        --  end if;
+        if LZMA_friendly
+             and then bestRepLen >= MATCH_LEN_MIN
+             and then ( bestRepLen + 1 >= mainLen
+                        or else (bestRepLen + 2 >= mainLen and then mainDist >= 2 ** 9)
+                        or else (bestRepLen + 3 >= mainLen and then mainDist >= 2 ** 15) )
+        then
+          skip(bestRepLen - 1);
+          --  Put_Line("[DL RB]");
+          Send_DL_code(rep_dist(bestRepIndex), bestRepLen);
+          return;
+        end if;
 
         if mainLen < MATCH_LEN_MIN or else avail <= MATCH_LEN_MIN then
           --Put("[b]");
@@ -1559,6 +1614,8 @@ package body LZ77 is
           end if;
         end if;
 
+        --  !! For the dessert...
+        --
         --  limit := Integer'Max(mainLen - 1, MATCH_LEN_MIN);
         --  for rep in 0 .. REPS-1 loop
         --      if lz.getMatchLen(reps(rep), limit) = limit then
@@ -1579,8 +1636,8 @@ package body LZ77 is
 
       actual_written, avail: Integer;
     begin
-      --  NB: heap allocation is needed only because of small
-      --      default stack sizes on some compilers.
+      --  NB: heap allocation used only for convenience because of
+      --      small default stack sizes on some compilers.
       buf:= new Byte_array(0 .. getBufSize);
       actual_written:= fillWindow(String_buffer_size);
       if actual_written > 0 then

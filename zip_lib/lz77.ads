@@ -67,6 +67,7 @@ package LZ77 is
     with procedure Write_literal( b: Byte );
     with procedure Write_DL_code( distance, length: Integer );
     --
+    LZMA_friendly: Boolean:= True;  --  Up to 4 recent distances may be preferred
   procedure Encode;
 
 end LZ77;
