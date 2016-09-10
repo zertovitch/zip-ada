@@ -2,12 +2,13 @@
 ---------------------------------------------------
 --  This is a collection of various free LZ77 match finders and encoders.
 --  The differences reside in the way matches are found, or skipped.
+--  See body (lz77.adb) for details and credits.
 --
 --  Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 Gautier de Montmollin
+--  Copyright (c) 2016 Gautier de Montmollin (maintainer of the Ada version)
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal

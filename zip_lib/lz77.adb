@@ -26,9 +26,6 @@
 --        values needing less extra bits (may not work at all...)
 --    - LZ77 / IZ: tune TOO_FAR (max: 32767), see http://optipng.sf.net/pngtech/too_far.html
 --        "TOO_FAR in zlib Is Not Too Far" for discussion
---
---  3/
---    - LZ77 / BT4: implement a stack of recent distances for a LZMA-friendly mode.
 
 with Ada.Unchecked_Deallocation;
 with Interfaces; use Interfaces;
@@ -1418,7 +1415,7 @@ package body LZ77 is
       rep_dist: array(Repeat_stack_range) of Natural := (others => 0);
 
       procedure getNextSymbol is
-        avail, mainLen, mainDist, newLen, newDist: Integer;
+        avail, mainLen, mainDist, newLen, newDist, limit: Integer;
 
         function changePair(smallDist, bigDist: Integer) return Boolean is
         pragma Inline(changePair);
@@ -1614,15 +1611,13 @@ package body LZ77 is
           end if;
         end if;
 
-        --  !! For the dessert...
-        --
-        --  limit := Integer'Max(mainLen - 1, MATCH_LEN_MIN);
-        --  for rep in 0 .. REPS-1 loop
-        --      if lz.getMatchLen(reps(rep), limit) = limit then
-        --        Send_first_literal_of_match;
-        --        return;
-        --      end if;
-        --  end loop;
+        limit := Integer'Max(mainLen - 1, MATCH_LEN_MIN);
+        for rep in rep_dist'Range loop
+          if getMatchLen(rep_dist(rep), limit) = limit then
+            Send_first_literal_of_match;
+            return;
+          end if;
+        end loop;
 
         if Is_match_correct(0) then
           skip(mainLen - 2);

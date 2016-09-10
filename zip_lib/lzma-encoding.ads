@@ -17,7 +17,7 @@ package LZMA.Encoding is
   type Compression_level is (
     Level_1,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 6
     Level_2,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 10
-    Level_3   --  uses LZMA SDK's BT4 match finder, 16MB sliding window
+    Level_3   --  uses LZMA SDK's BT4 match finder, 16MB sliding window (!! need to refine size selection)
   );
 
   generic

@@ -8,6 +8,5 @@ if "%1"=="" goto fin
 
 zipada -r -eps %1_ps %1
 7z t %1_ps.zip
-pause
 
 :fin
