@@ -37,12 +37,12 @@ package body LZMA.Encoding is
 
   procedure Encode(
     level                  : Compression_level           := Level_1;
-    literal_context_bits   : Literal_context_bits_range  := 3;  --  Bits of last byte are used.
-    literal_position_bits  : Literal_position_bits_range := 0;  --  Position mod 2**bits is used.
-    position_bits          : Position_bits_range         := 2;  --  Position mod 2**bits is used.
+    literal_context_bits   : Literal_context_bits_range  := 3;   --  Bits of last byte are used.
+    literal_position_bits  : Literal_position_bits_range := 0;   --  Position mod 2**bits is used.
+    position_bits          : Position_bits_range         := 2;   --  Position mod 2**bits is used.
     end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker ?
     uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
-    dictionary_size        : Natural := Default_dictionary_size  --  For BT4.
+    dictionary_size        : Natural := Default_dictionary_size  --  Not used by Level_1, Level_2.
   )
   is
 
