@@ -1428,16 +1428,20 @@ package body LZ77 is
         --  The issue seems to have been solved now (rev. 489).
         function Is_match_correct(shift: Natural) return Boolean is
         pragma Inline(Is_match_correct);
+          paranoid: constant Boolean:= True;
         begin
-          for i in reverse -1 + shift .. mainLen - 2 + shift loop
-            if buf(readPos - (mainDist+1) + i) /= buf(readPos + i) then
-              return False;
-            end if;
-          end loop;
+          if paranoid then
+            for i in reverse -1 + shift .. mainLen - 2 + shift loop
+              if buf(readPos - (mainDist+1) + i) /= buf(readPos + i) then
+                return False;  --  Should not occur (check with code coverage)
+              end if;
+            end loop;
+          end if;
           return True;
         end Is_match_correct;
 
         function getMatchLen(dist, lenLimit: Integer) return Natural is
+        pragma Inline(getMatchLen);
           backPos: constant Integer := readPos - dist - 1;
           len: Integer := 0;
         begin

@@ -205,10 +205,13 @@ package body Zip.Compress is
       when Single_Method =>
         Compress_data_single_method(method);
       when Preselection =>
-        if input_size_known and then input_size < 9000 then
+        if input_size_known and input_size < 9_000 then
           Compress_data_single_method(Deflation_Method'Last);
+        elsif input_size_known and input_size < 44_376 then
+          --  See: Optimum, LZ77 sheet in za_work.xls
+          Compress_data_single_method(LZMA_2);  --  Uses IZ_10 match finder
         else
-          Compress_data_single_method(LZMA_Method'Last);
+          Compress_data_single_method(LZMA_Method'Last);  --  Uses BT4 match finder
         end if;
     end case;
   end Compress_data;
