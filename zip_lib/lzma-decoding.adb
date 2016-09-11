@@ -430,7 +430,11 @@ package body LZMA.Decoding is
         then
           Raise_Exception(
             LZMA_Error'Identity,
-            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2)"
+            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2)." &
+            "; Distance =" & UInt32'Image(rep0) &
+            "; Dictionary size =" & UInt32'Image(dict_size) &
+            "; Position =" & UInt32'Image(out_win.pos) &
+            "; Is window full ? " & Boolean'Image(out_win.is_full)
           );
         end if;
       else

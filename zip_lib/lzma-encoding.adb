@@ -36,12 +36,13 @@ package body LZMA.Encoding is
   --      article about range encoding.
 
   procedure Encode(
-    level                 : Compression_level           := Level_1;
-    literal_context_bits  : Literal_context_bits_range  := 3;  --  Bits of last byte are used.
-    literal_position_bits : Literal_position_bits_range := 0;  --  Position mod 2**bits is used.
-    position_bits         : Position_bits_range         := 2;  --  Position mod 2**bits is used.
-    end_marker            : Boolean:= True;  --  Produce an End-Of-Stream marker ?
-    uncompressed_size_info: Boolean:= False  --  Optional header appendix, needed for .lzma files
+    level                  : Compression_level           := Level_1;
+    literal_context_bits   : Literal_context_bits_range  := 3;  --  Bits of last byte are used.
+    literal_position_bits  : Literal_position_bits_range := 0;  --  Position mod 2**bits is used.
+    position_bits          : Position_bits_range         := 2;  --  Position mod 2**bits is used.
+    end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker ?
+    uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
+    dictionary_size        : Natural := Default_dictionary_size  --  For BT4.
   )
   is
 
@@ -145,11 +146,27 @@ package body LZMA.Encoding is
       (Level_1 | Level_2  => 258,  --  Deflate's Value
        others             => 273);
 
-    String_buffer_bits: constant array(Compression_level) of Positive:=
-      (Level_1 | Level_2  => 15,  --  Deflate's Value
-       Level_3            => 24);
+    --  Round to the next power of two. BT4 borks without this for the window size.
+    function Ceiling_power_of_2(x: Natural) return Positive is
+      p: Positive:= 1;
+    begin
+      while p < Integer'Last / 2 and p < x loop
+        p:= p * 2;
+      end loop;
+      return Integer'Max(p, x);
+    end Ceiling_power_of_2;
 
-    String_buffer_size : constant Positive := 2 ** String_buffer_bits(level);
+    String_buffer_size: constant array(Compression_level) of Positive:=
+      (Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value
+       Level_3            =>
+         Integer'Max(
+           Min_dictionary_size,                    --  minimum: 4 KB
+           Integer'Min(
+             Ceiling_power_of_2(dictionary_size),  --  specified, default 32 KB
+             2**24                                 --  maximum: 16 MB
+           )
+         )
+      );
 
     -----------------------------------------------------------
     --  The LZMA "machine": here the LZ codes are processed  --
@@ -163,7 +180,7 @@ package body LZMA.Encoding is
       unpack_size_defined  : Boolean := False;
       header_has_size      : Boolean := uncompressed_size_info;
       has_end_mark         : Boolean := end_marker;
-      dict_size            : UInt32  := UInt32(String_buffer_size);
+      dict_size            : UInt32  := UInt32(String_buffer_size(level));
       lc                   : Literal_context_bits_range  := literal_context_bits;
       lp                   : Literal_position_bits_range := literal_position_bits;
       pb                   : Position_bits_range         := position_bits;
@@ -224,9 +241,9 @@ package body LZMA.Encoding is
 
     prev_byte: Byte:= 0;
     --  We expand the DL codes in order to have some past data.
-    subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size - 1);
+    subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size(level) - 1);
     type Text_Buffer is array (Text_Buffer_Index) of Byte;
-    Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size - 1);
+    Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size(level) - 1);
     Text_Buf: Text_Buffer;
     R: UInt32:= 0;
 
@@ -498,7 +515,7 @@ package body LZMA.Encoding is
 
     procedure My_LZ77 is
       new LZ77.Encode
-        ( String_buffer_size => String_buffer_size,
+        ( String_buffer_size => String_buffer_size(level),
           Look_Ahead         => Max_length(level),
           Threshold          => Min_length(level) - 1,
           Method             => LZ77_choice(level),

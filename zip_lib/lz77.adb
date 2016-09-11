@@ -17,7 +17,7 @@
 --
 --  Variant 3/, LZ77_using_BT4, was added on 06-Sep-2016.
 --     The seems to be the best match finder for LZMA on data of the >= MB scale.
---     *Caution*: still experimental; it's working, but it's pretty recent; see to-do's below.
+--     *Caution*: still experimental; it's working, but it's pretty recent.
 
 --  To do:
 --
@@ -1073,6 +1073,8 @@ package body LZ77 is
       cyclicPos  : Integer := -1;
       lzPos      : Integer := cyclicSize;
 
+      max_dist: constant Integer:= cyclicSize;
+
       package BT4 is
         function movePos return Integer;
         procedure skip_update_tree(niceLenLimit: Integer; currentMatch: in out Integer);
@@ -1121,7 +1123,7 @@ package body LZ77 is
           len1  := 0;
           loop
             delta0 := lzPos - currentMatch;
-            if depth = 0 or else delta0 >= cyclicSize then
+            if depth = 0 or else delta0 >= max_dist then
               tree(ptr0) := Null_position;
               tree(ptr1) := Null_position;
               return;
@@ -1222,7 +1224,7 @@ package body LZ77 is
           --  The hashing algorithm guarantees that if the first byte
           --  matches, also the second byte does, so there's no need to
           --  test the second byte.
-          if delta2 < cyclicSize and then buf(readPos - delta2) = buf(readPos) then
+          if delta2 < max_dist and then buf(readPos - delta2) = buf(readPos) then
             --  Match of length 2 found and checked.
             lenBest := 2;
             matches.len(0) := 2;
@@ -1233,7 +1235,7 @@ package body LZ77 is
           --  is different from the match possibly found by the two-byte hash.
           --  Also here the hashing algorithm guarantees that if the first byte
           --  matches, also the next two bytes do.
-          if delta2 /= delta3 and then delta3 < cyclicSize
+          if delta2 /= delta3 and then delta3 < max_dist
                   and then buf(readPos - delta3) = buf(readPos)
           then
             --  Match of length 3 found and checked.
@@ -1271,7 +1273,7 @@ package body LZ77 is
             --  Return if the search depth limit has been reached or
             --  if the distance of the potential match exceeds the
             --  dictionary size.
-            if depth = 0 or else delta0 >= cyclicSize then
+            if depth = 0 or else delta0 >= max_dist then
               tree(ptr0) := Null_position;
               tree(ptr1) := Null_position;
               return matches;

@@ -180,7 +180,7 @@ package body Zip.Create is
           shi.bit_flag := shi.bit_flag or Zip.Headers.Encryption_Flag_Bit;
         end if;
         if Info.Compress in LZMA_Method then
-          --  We always put an EOS marker. From Appnote:
+          --  We always put an EOS marker. From PKWARE's Appnote:
           --
           --      5.8.9 Data compressed with method 14, LZMA, may include an end-of-stream
           --      (EOS) marker ending the compressed data stream.  This marker is not

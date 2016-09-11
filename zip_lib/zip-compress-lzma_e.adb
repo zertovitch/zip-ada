@@ -158,10 +158,11 @@ begin
     Put_byte(02);  --  LZMA SDK minor version
     Put_byte(5);   --  LZMA properties size low byte
     Put_byte(0);   --  LZMA properties size high byte
-    LZMA_Encode(
-      level      => LZMA_choice(method),
-      end_marker => True    --  In Appnote, the use of an EOS marker is "highly recommended".
-    );
+    if input_size_known then
+      LZMA_Encode(LZMA_choice(method), dictionary_size => Integer(input_size));
+    else
+      LZMA_Encode(LZMA_choice(method));
+    end if;
     Flush_output;
     compression_ok:= True;
   exception
