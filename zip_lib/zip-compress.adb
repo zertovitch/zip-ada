@@ -204,10 +204,10 @@ package body Zip.Compress is
     case method is
       when Single_Method =>
         Compress_data_single_method(method);
-      when Preselection =>
+      when Preselection_Method =>
         if input_size_known and input_size < 9_000 then
           Compress_data_single_method(Deflation_Method'Last);  --  Deflate
-        elsif input_size_known and input_size < 22_805 then
+        elsif method = Preselection_1 or (input_size_known and input_size < 22_805) then
           --  See: Optimum, LZ77 sheet in za_work.xls
           --       or l2_vs_l3.xls with a larger data set.
           Compress_data_single_method(LZMA_2);                 --  LZMA with IZ_10 match finder

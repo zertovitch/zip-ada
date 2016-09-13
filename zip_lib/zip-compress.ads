@@ -29,7 +29,7 @@ package Zip.Compress is
   --  Zip specifications.
 
   type Compression_Method is
-    (--  No compression
+    (--  No compression:
      Store,
      --  Shrink = LZW algorithm, as in GIF pictures:
      Shrink,
@@ -43,12 +43,14 @@ package Zip.Compress is
      Deflate_1,
      Deflate_2,
      Deflate_3,
-     --  LZMA
+     --  LZMA:
      LZMA_1,
      LZMA_2,
-     LZMA_3,
-     --  Multi-method
-     Preselection  --  Select a method depending on hints like the uncompressed size
+     LZMA_3,  --  NB: LZMA_3 can be very slow on large data
+     --  Multi-method:
+     --    Preselection: select a method depending on hints, like the uncompressed size
+     Preselection_1,  --  Not too slow; selects Deflate_3 or LZMA_2
+     Preselection_2   --  Can be very slow on large data; selects Deflate_3, LZMA_2 or LZMA_3
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;
@@ -67,7 +69,9 @@ package Zip.Compress is
 
   subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_3;
 
-  subtype Multi_Method is Compression_Method range Preselection .. Preselection;
+  subtype Multi_Method is Compression_Method range Preselection_1 .. Preselection_2;
+
+  subtype Preselection_Method is Compression_Method range Preselection_1 .. Preselection_2;
 
   subtype Single_Method is Compression_Method
     range Compression_Method'First .. Compression_Method'Pred(Multi_Method'First);
@@ -105,7 +109,7 @@ private
      Reduce_4            => reduce_4,
      Deflation_Method    => deflate,
      LZMA_Method         => lzma_meth,
-     Preselection        => unknown
+     Multi_Method        => unknown
     );
 
 end Zip.Compress;

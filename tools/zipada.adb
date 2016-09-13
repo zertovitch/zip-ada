@@ -188,35 +188,40 @@ procedure ZipAda is
     if arg(arg'First) = '-' or arg(arg'First) = '/' then
       -- Options
       declare
-        opt: constant String:= arg(arg'First+1..arg'Last) & "    ";
+        --  Spaces to avoid too short slices
+        opt : constant String:= arg(arg'First+1..arg'Last) & "    ";
+        eX  : constant String:= opt(opt'First..opt'First+1);
       begin
-        if opt(opt'First..opt'First+1) = "er" then
+        if eX = "er" then
           case opt(opt'First+2) is
             when '1'    => method:= Reduce_1;
             when '2'    => method:= Reduce_2;
             when '3'    => method:= Reduce_3;
             when others => method:= Reduce_4;
           end case;
-        elsif opt(opt'First..opt'First+1) = "es" then
+        elsif eX = "es" then
           method:= Shrink;
-        elsif opt(opt'First..opt'First+1) = "ed" then
+        elsif eX = "ed" then
           case opt(opt'First+2) is
             when 'f'    => method:= Deflate_Fixed;
             when '1'    => method:= Deflate_1;
             when '2'    => method:= Deflate_2;
             when others => method:= Deflate_3;
           end case;
-        elsif opt(opt'First..opt'First+1) = "el" then
+        elsif eX = "el" then
           case opt(opt'First+2) is
             when '1'    => method:= LZMA_1;
             when '2'    => method:= LZMA_2;
             when others => method:= LZMA_3;
           end case;
-        elsif opt(opt'First..opt'First+2) = "eps" then
-          method:= Preselection;
+        elsif eX = "ep" then
+          case opt(opt'First+2) is
+            when '1'    => method:= Preselection_1;
+            when others => method:= Preselection_2;
+          end case;
         elsif opt(opt'First..opt'First+3) = "dir " then
           scan:= Scan_mode'Max(scan, files_and_dirs);
-        elsif opt(opt'First..opt'First+1) = "r " then
+        elsif eX = "r " then
           scan:= files_and_dirs_recursive;
         elsif opt(opt'First) = 's' then
           if arg'Length > 2 then  --  Password is appended to the option
@@ -287,7 +292,7 @@ begin
     Put_Line("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
     Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 1..3");
     Put_Line("          -elN   : ""LZMA"" method, strength N = 1..3");
-    Put_Line("          -eps   : preselection of an appropriate strong compression");
+    Put_Line("          -epN   : preselection of an appropriate method, strength N = 1..2");
     New_Line;
     Put_Line("      NB: default method is ""Deflate"", strength 1 (-ed1)");
     New_Line;
