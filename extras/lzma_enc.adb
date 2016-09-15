@@ -15,7 +15,7 @@ procedure LZMA_Enc is
 
   use LZMA, LZMA.Encoding;
 
-  level                 : constant Compression_level  := Level_2;
+  level                 : Compression_level           := Level_2;
   literal_context_bits  : Literal_context_bits_range  := 3;
   literal_position_bits : Literal_position_bits_range := 0;
   position_bits         : Position_bits_range         := 2;
@@ -61,6 +61,7 @@ procedure LZMA_Enc is
       literal_context_bits,
       literal_position_bits,
       position_bits,
+      dictionary_size => 2**20,
       uncompressed_size_info => True
     );
   end Encode_LZMA_stream;
@@ -89,7 +90,7 @@ begin
     Put_Line("NB: - The "".lzma"" extension automatically added to outfile.");
     Put_Line("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
     New_Line;
-    Put_Line("Options: -b: benchmark the context parameters (225 .lzma output files!)");
+    Put_Line("Options: -b: benchmark LZ77's and the context parameters (450 .lzma output files!)");
     return;
   elsif Argument_Count < 2 then
     Put_Line("You must specify at least two parameters");
@@ -102,17 +103,22 @@ begin
     for lc in Literal_context_bits_range loop
       for lp in Literal_position_bits_range loop
         for pb in Position_bits_range loop
-          Open(f_in, In_File, Argument(1));
-          Create(f_out, Out_File,
-            Argument(2) & '_' &
-            Character'Val(z+lc) & Character'Val(z+lp) & Character'Val(z+pb) & ".lzma"
-          );
-          literal_context_bits  := lc;
-          literal_position_bits := lp;
-          position_bits         := pb;
-          Encode_LZMA_stream(Stream(f_in), Stream(f_out));
-          Close(f_in);
-          Close(f_out);
+          for lv in Level_2 .. Level_3 loop
+            Open(f_in, In_File, Argument(1));
+            Create(f_out, Out_File,
+              Argument(2) & '_' &
+              Character'Val(z+lc) & Character'Val(z+lp) & Character'Val(z+pb) &
+              "_l" &
+              Character'Val(z+1+Compression_level'Pos(lv)) & ".lzma"
+            );
+            literal_context_bits  := lc;
+            literal_position_bits := lp;
+            position_bits         := pb;
+            level                 := lv;
+            Encode_LZMA_stream(Stream(f_in), Stream(f_out));
+            Close(f_in);
+            Close(f_out);
+          end loop;
         end loop;
       end loop;
     end loop;
