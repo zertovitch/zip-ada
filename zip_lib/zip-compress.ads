@@ -46,14 +46,14 @@ package Zip.Compress is
      --  LZMA:
      LZMA_1,
      LZMA_2,
-     LZMA_2_for_EPUB,
-     LZMA_2_for_JPEG,
+       LZMA_2_for_EPUB,  --  LZMA with non-default parameters
+       LZMA_2_for_JPEG,
      LZMA_3,           --  NB: LZMA_3 can be very slow on large data
-     LZMA_3_for_EPUB,
+       LZMA_3_for_EPUB,
      --  Multi-method:
      --    Preselection: select a method depending on hints, like the uncompressed size
-     Preselection_1,  --  Not too slow; selects Deflate_3 or LZMA_2
-     Preselection_2   --  Can be very slow on large data; selects Deflate_3, LZMA_2 or LZMA_3
+     Preselection_1,  --  Not too slow; selects Deflate_3 or LZMA_2*
+     Preselection_2   --  Can be very slow on large data; selects Deflate_3, LZMA_2* or LZMA_3*
     );
 
   type Method_to_Format_type is array(Compression_Method) of PKZip_method;

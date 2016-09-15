@@ -240,12 +240,14 @@ package body Zip.Compress is
     ext_4: constant String:= Tail(up, 5);
   begin
     if ext_3 = ".JPG" or else ext_4 = ".JPEG"
-      --  Not related to JPEG, but compressed as well better in "pure Markov" mode:
+      --  Not related to JPEG, but are compressed as well better in "pure Markov" mode with LZMA:
       or else ext_3 = ".ORF" or else ext_3 = ".CR2"  --  Raw camera files: Olympus, Canon
     then
       return JPEG_and_Co;
     end if;
-    if ext_4 = ".EPUB" then  --  e-book reader format
+    --  EPUB: e-book reader format (actually a .zip, but other .zip behave in
+    --  a different way with LZMA params...)
+    if ext_4 = ".EPUB" then 
       return EPUB;
     end if;
     return Neutral;
