@@ -443,7 +443,8 @@ Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
 
 Stephan Busch (Squeeze Chart) for encouragements and remarks on
-   special settings for specific data types (see LZMA_2_for_JPEG)
+   special LZMA / PPMd settings for specific data types (applied so far:
+   JPEG, EPUB, ORF, CR2)
    http://www.squeezechart.com/
 
 Open bugs (as of v.49)

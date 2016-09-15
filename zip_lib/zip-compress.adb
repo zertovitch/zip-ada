@@ -27,6 +27,7 @@ with Zip.CRC_Crypto,
 
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Numerics.Discrete_Random;
+with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 
 package body Zip.Compress is
 
@@ -202,6 +203,9 @@ package body Zip.Compress is
       end if;
     end Compress_data_single_method;
 
+    fast_presel: constant Boolean:=
+      method = Preselection_1 or (input_size_known and input_size < 22_805);
+
   begin
     case method is
       when Single_Method =>
@@ -211,26 +215,38 @@ package body Zip.Compress is
           when Neutral =>  --  No clue about what kind of data
             if input_size_known and input_size < 9_000 then
               Compress_data_single_method(Deflation_Method'Last);  --  Deflate
-            elsif method = Preselection_1 or (input_size_known and input_size < 22_805) then
+            elsif fast_presel then
               --  See: Optimum, LZ77 sheet in za_work.xls
               --       or l2_vs_l3.xls with a larger data set.
               Compress_data_single_method(LZMA_2);                 --  LZMA with IZ_10 match finder
             else
-              Compress_data_single_method(LZMA_Method'Last);       --  LZMA with BT4 match finder
+              Compress_data_single_method(LZMA_3);                 --  LZMA with BT4 match finder
             end if;
           when JPEG_and_Co =>
             Compress_data_single_method(LZMA_2_for_JPEG);
+          when EPUB =>
+            if fast_presel then
+              Compress_data_single_method(LZMA_2_for_EPUB);
+            else
+              Compress_data_single_method(LZMA_3_for_EPUB);
+            end if;
         end case;
     end case;
   end Compress_data;
 
   function Guess_type_from_name(name: String) return Data_content_type is
     up: constant String:= To_Upper(name);
+    ext_3: constant String:= Tail(up, 4);
+    ext_4: constant String:= Tail(up, 5);
   begin
-    if (up'Length > 4 and then up(up'Last-3 .. up'Last) = ".JPG")
-       or else (up'Length > 5 and then up(up'Last-4 .. up'Last) = ".JPEG")
+    if ext_3 = ".JPG" or else ext_4 = ".JPEG"
+      --  Not related to JPEG, but compressed as well better in "pure Markov" mode:
+      or else ext_3 = ".ORF" or else ext_3 = ".CR2"  --  Raw camera files: Olympus, Canon
     then
       return JPEG_and_Co;
+    end if;
+    if ext_4 = ".EPUB" then  --  e-book reader format
+      return EPUB;
     end if;
     return Neutral;
   end Guess_type_from_name;

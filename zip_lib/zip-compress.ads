@@ -46,8 +46,10 @@ package Zip.Compress is
      --  LZMA:
      LZMA_1,
      LZMA_2,
+     LZMA_2_for_EPUB,
      LZMA_2_for_JPEG,
-     LZMA_3,  --  NB: LZMA_3 can be very slow on large data
+     LZMA_3,           --  NB: LZMA_3 can be very slow on large data
+     LZMA_3_for_EPUB,
      --  Multi-method:
      --    Preselection: select a method depending on hints, like the uncompressed size
      Preselection_1,  --  Not too slow; selects Deflate_3 or LZMA_2
@@ -68,7 +70,7 @@ package Zip.Compress is
   --  start a new block and what sort of block to put next.
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
 
-  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_3;
+  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_3_for_EPUB;
 
   subtype Multi_Method is Compression_Method range Preselection_1 .. Preselection_2;
 
@@ -79,7 +81,7 @@ package Zip.Compress is
 
   User_abort: exception;
 
-  type Data_content_type is (Neutral, JPEG_and_Co);
+  type Data_content_type is (Neutral, JPEG_and_Co, EPUB);
 
   --  Compress data from an input stream to an output stream until
   --  End_Of_File(input) = True, or number of input bytes = input_size .

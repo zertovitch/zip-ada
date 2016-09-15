@@ -129,8 +129,10 @@ is
 
   LZMA_choice: constant array(LZMA_Method) of Compression_level:=
     (LZMA_1                   => Level_1,
-     LZMA_2 | LZMA_2_for_JPEG => Level_2,
-     LZMA_3                   => Level_3);
+     LZMA_2 |
+     LZMA_2_for_EPUB |
+     LZMA_2_for_JPEG          => Level_2,
+     LZMA_3 | LZMA_3_for_EPUB => Level_3);
 
   procedure LZMA_Encode is
     new LZMA.Encoding.Encode(Read_byte, More_bytes, Put_byte);
@@ -161,13 +163,19 @@ begin
     case method is
       when LZMA_2_for_JPEG =>
         --  We set the LZMA parameters as "pure byte Markov chain".
-        --  "lzma_enc picture.jpg out -b" show that this setting is best for most JPEG's.
+        --  "lzma_enc picture.jpg out -b" shows that this setting is best for most JPEG's.
         --  Also observed by Stephan Busch (Squeeze Chart).
         --  This is also the reason why Reduce_4 does relatively well on JPEG's.
         LZMA_Encode(
           level => LZMA_choice(method),
           literal_context_bits  => 8,
           literal_position_bits => 0,
+          position_bits         => 0);
+      when LZMA_3_for_EPUB =>
+        LZMA_Encode(
+          level => LZMA_choice(method),
+          literal_context_bits  => 8,
+          literal_position_bits => 4,
           position_bits         => 0);
       when others =>
         if input_size_known then
