@@ -442,6 +442,9 @@ Pascal Pignard, for testing the UnZipAda.adb tool under Mac OS X
 Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
 
+Stephan Busch (Squeeze Chart) for encouragements and remarks on
+   special settings for specific data types (see LZMA_2_for_JPEG)
+   http://www.squeezechart.com/
 
 Open bugs (as of v.49)
 ======================

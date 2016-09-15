@@ -25,6 +25,7 @@ with Zip.CRC_Crypto,
      Zip.Compress.Deflate,
      Zip.Compress.LZMA_E;
 
+with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Numerics.Discrete_Random;
 
 package body Zip.Compress is
@@ -43,6 +44,7 @@ package body Zip.Compress is
     method          : Compression_Method;
     feedback        : Feedback_proc;
     password        : String;
+    content_hint    : Data_content_type;
     CRC             : out Interfaces.Unsigned_32;
     output_size     : out File_size_type;
     zip_type        : out Interfaces.Unsigned_16
@@ -205,16 +207,32 @@ package body Zip.Compress is
       when Single_Method =>
         Compress_data_single_method(method);
       when Preselection_Method =>
-        if input_size_known and input_size < 9_000 then
-          Compress_data_single_method(Deflation_Method'Last);  --  Deflate
-        elsif method = Preselection_1 or (input_size_known and input_size < 22_805) then
-          --  See: Optimum, LZ77 sheet in za_work.xls
-          --       or l2_vs_l3.xls with a larger data set.
-          Compress_data_single_method(LZMA_2);                 --  LZMA with IZ_10 match finder
-        else
-          Compress_data_single_method(LZMA_Method'Last);       --  LZMA with BT4 match finder
-        end if;
+        case content_hint is
+          when Neutral =>  --  No clue about what kind of data
+            if input_size_known and input_size < 9_000 then
+              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+            elsif method = Preselection_1 or (input_size_known and input_size < 22_805) then
+              --  See: Optimum, LZ77 sheet in za_work.xls
+              --       or l2_vs_l3.xls with a larger data set.
+              Compress_data_single_method(LZMA_2);                 --  LZMA with IZ_10 match finder
+            else
+              Compress_data_single_method(LZMA_Method'Last);       --  LZMA with BT4 match finder
+            end if;
+          when JPEG_and_Co =>
+            Compress_data_single_method(LZMA_2_for_JPEG);
+        end case;
     end case;
   end Compress_data;
+
+  function Guess_type_from_name(name: String) return Data_content_type is
+    up: constant String:= To_Upper(name);
+  begin
+    if (up'Length > 4 and then up(up'Last-3 .. up'Last) = ".JPG")
+       or else (up'Length > 5 and then up(up'Last-4 .. up'Last) = ".JPEG")
+    then
+      return JPEG_and_Co;
+    end if;
+    return Neutral;
+  end Guess_type_from_name;
 
 end Zip.Compress;

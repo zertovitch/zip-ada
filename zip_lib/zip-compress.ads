@@ -46,6 +46,7 @@ package Zip.Compress is
      --  LZMA:
      LZMA_1,
      LZMA_2,
+     LZMA_2_for_JPEG,
      LZMA_3,  --  NB: LZMA_3 can be very slow on large data
      --  Multi-method:
      --    Preselection: select a method depending on hints, like the uncompressed size
@@ -78,6 +79,8 @@ package Zip.Compress is
 
   User_abort: exception;
 
+  type Data_content_type is (Neutral, JPEG_and_Co);
+
   --  Compress data from an input stream to an output stream until
   --  End_Of_File(input) = True, or number of input bytes = input_size .
   --  If password /= "", an encryption header is written.
@@ -90,11 +93,14 @@ package Zip.Compress is
     method          : Compression_Method;
     feedback        : Feedback_proc;
     password        : String;
+    content_hint    : Data_content_type;
     CRC             : out Interfaces.Unsigned_32;
     output_size     : out File_size_type;
     zip_type        : out Interfaces.Unsigned_16
     -- ^ code corresponding to the compression method actually used
   );
+
+  function Guess_type_from_name(name: String) return Data_content_type;
 
 private
 

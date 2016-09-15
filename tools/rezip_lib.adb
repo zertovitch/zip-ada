@@ -530,6 +530,7 @@ package body Rezip_lib is
         method           => Approach_to_Method(a),
         feedback         => My_feedback'Access,
         password         => "",
+        content_hint     => Zip.Compress.Guess_type_from_name(S(e.name)),
         CRC              => e.head.short_info.dd.crc_32,
         -- we take the occasion to compute the CRC if not
         -- yet available (e.g. JAR)

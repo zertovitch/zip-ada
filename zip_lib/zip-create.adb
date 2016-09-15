@@ -216,6 +216,7 @@ package body Zip.Create is
            method           => Info.Compress,
            feedback         => Feedback,
            password         => Password,
+           content_hint     => Guess_type_from_name(entry_name),
            CRC              => shi.dd.crc_32,
            output_size      => shi.dd.compressed_size,
            zip_type         => shi.zip_type
