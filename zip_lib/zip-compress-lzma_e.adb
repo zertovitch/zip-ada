@@ -135,9 +135,9 @@ is
      LZMA_2_for_ARW           => Level_2,
      LZMA_3 | LZMA_3_for_EPUB => Level_3);
 
-  --  Set the LZMA parameters as "pure byte Markov chain" for some data.
+  --  Set the LZMA parameters tuned for some data.
   --  Hints by Stephan Busch (Squeeze Chart) - thanks!
-  --  Parameters tested with commands like "lzma_enc picture.jpg out -b".
+  --  Parameters optimality tested with commands like "lzma_enc picture.jpg out -b".
 
   lc: constant array(LZMA_Method) of Natural:=
     (LZMA_2_for_JPEG |

@@ -247,12 +247,16 @@ package body Zip.Compress is
     then
       return JPEG_and_Co;
     end if;
-    --  EPUB: e-book reader format (actually a .zip, but other .zip behave in
-    --  a different way with LZMA params...)
-    if ext_4 = ".EPUB" then
+    --  EPUB: e-book reader format (actually a .zip archive!)
+    if ext_4 = ".EPUB"
+      or else ext_3 = ".JAR" or else ext_3 = ".ZIP"
+    then
       return EPUB;
     end if;
-    if ext_3 = ".ARW" or else ext_3 = ".RW2" then
+    if ext_3 = ".ARW" or else ext_3 = ".RW2"
+      or else ext_3 = ".MTS" or else ext_3 = ".MP3"
+      or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P"
+    then
       return ARW_RW2;
     end if;
     return Neutral;

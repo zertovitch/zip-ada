@@ -100,9 +100,9 @@ begin
     bench:= bench or Argument(i) = "-b";
   end loop;
   if bench then
-    for lc in Literal_context_bits_range loop
-      for lp in Literal_position_bits_range loop
-        for pb in Position_bits_range loop
+    for lc in reverse Literal_context_bits_range loop
+      for lp in reverse Literal_position_bits_range loop
+        for pb in reverse Position_bits_range loop
           for lv in Level_2 .. Level_3 loop
             Open(f_in, In_File, Argument(1));
             Create(f_out, Out_File,
