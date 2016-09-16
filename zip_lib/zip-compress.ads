@@ -48,6 +48,7 @@ package Zip.Compress is
      LZMA_2,
        LZMA_2_for_EPUB,  --  LZMA with non-default parameters
        LZMA_2_for_JPEG,
+       LZMA_2_for_ARW,
      LZMA_3,           --  NB: LZMA_3 can be very slow on large data
        LZMA_3_for_EPUB,
      --  Multi-method:
@@ -81,7 +82,7 @@ package Zip.Compress is
 
   User_abort: exception;
 
-  type Data_content_type is (Neutral, JPEG_and_Co, EPUB);
+  type Data_content_type is (Neutral, JPEG_and_Co, ARW_RW2, EPUB);
 
   --  Compress data from an input stream to an output stream until
   --  End_Of_File(input) = True, or number of input bytes = input_size .

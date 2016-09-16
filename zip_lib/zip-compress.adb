@@ -224,6 +224,8 @@ package body Zip.Compress is
             end if;
           when JPEG_and_Co =>
             Compress_data_single_method(LZMA_2_for_JPEG);
+          when ARW_RW2 =>
+            Compress_data_single_method(LZMA_2_for_ARW);
           when EPUB =>
             if fast_presel then
               Compress_data_single_method(LZMA_2_for_EPUB);
@@ -247,8 +249,11 @@ package body Zip.Compress is
     end if;
     --  EPUB: e-book reader format (actually a .zip, but other .zip behave in
     --  a different way with LZMA params...)
-    if ext_4 = ".EPUB" then 
+    if ext_4 = ".EPUB" then
       return EPUB;
+    end if;
+    if ext_3 = ".ARW" or else ext_3 = ".RW2" then
+      return ARW_RW2;
     end if;
     return Neutral;
   end Guess_type_from_name;

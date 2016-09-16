@@ -444,7 +444,7 @@ Manuel Op de Coul, Huygens-Fokker Foundation
 
 Stephan Busch (Squeeze Chart) for encouragements and remarks on
    special LZMA / PPMd settings for specific data types (applied so far:
-   JPEG, EPUB, ORF, CR2)
+   JPEG, EPUB, ORF, CR2, ARW, RW2)
    http://www.squeezechart.com/
 
 Open bugs (as of v.49)
