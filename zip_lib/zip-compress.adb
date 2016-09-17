@@ -230,6 +230,8 @@ package body Zip.Compress is
             Compress_data_single_method(LZMA_for_ARW);
           when PNG =>
             Compress_data_single_method(LZMA_for_PNG);
+          when WAV =>
+            Compress_data_single_method(LZMA_for_WAV);
           when GIF =>
             if input_size_known and input_size < 350 then
               Compress_data_single_method(Deflate_1);
@@ -277,6 +279,9 @@ package body Zip.Compress is
     end if;
     if ext_3 = ".GIF" then
       return GIF;
+    end if;
+    if ext_3 = ".WAV" then
+      return WAV;
     end if;
     return Neutral;
   end Guess_type_from_name;

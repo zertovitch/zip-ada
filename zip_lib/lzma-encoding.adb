@@ -158,7 +158,7 @@ package body LZMA.Encoding is
     end Ceiling_power_of_2;
 
     String_buffer_size: constant array(Compression_level) of Positive:=
-      (Level_0            => 16,  -- Fake
+      (Level_0            => 16,       --  Fake: actually we don't do any LZ77 for level 0
        Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value
        Level_3            =>
          Integer'Max(

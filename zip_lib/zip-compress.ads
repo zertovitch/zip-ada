@@ -86,7 +86,7 @@ package Zip.Compress is
 
   User_abort: exception;
 
-  type Data_content_type is (Neutral, JPEG_and_Co, ARW_RW2, Zip_in_Zip, PNG, GIF);
+  type Data_content_type is (Neutral, JPEG_and_Co, ARW_RW2, Zip_in_Zip, PNG, GIF, WAV);
 
   --  Compress data from an input stream to an output stream until
   --  End_Of_File(input) = True, or number of input bytes = input_size .
