@@ -226,11 +226,15 @@ package body Zip.Compress is
             Compress_data_single_method(LZMA_2_for_JPEG);
           when ARW_RW2 =>
             Compress_data_single_method(LZMA_2_for_ARW);
-          when EPUB =>
+          when PNG =>
+            Compress_data_single_method(LZMA_2_for_PNG);
+          when GIF =>
+            Compress_data_single_method(LZMA_2_for_GIF);
+          when Zip_in_Zip =>
             if fast_presel then
-              Compress_data_single_method(LZMA_2_for_EPUB);
+              Compress_data_single_method(LZMA_2_for_Zip_in_Zip);
             else
-              Compress_data_single_method(LZMA_3_for_EPUB);
+              Compress_data_single_method(LZMA_3_for_Zip_in_Zip);
             end if;
         end case;
     end case;
@@ -247,17 +251,26 @@ package body Zip.Compress is
     then
       return JPEG_and_Co;
     end if;
-    --  EPUB: e-book reader format (actually a .zip archive!)
-    if ext_4 = ".EPUB"
+    --  Zip archives happen to be zipped...
+    if ext_4 = ".EPUB"  --  EPUB: e-book reader format
       or else ext_3 = ".JAR" or else ext_3 = ".ZIP"
+      or else ext_3 = ".ODB" or else ext_3 = ".ODS" or else ext_3 = ".ODT"
+      or else ext_3 = ".OTR" or else ext_3 = ".OTS" or else ext_3 = ".OTT"
+      or else ext_4 = ".XLSX"
     then
-      return EPUB;
+      return Zip_in_Zip;
     end if;
     if ext_3 = ".ARW" or else ext_3 = ".RW2"
       or else ext_3 = ".MTS" or else ext_3 = ".MP3"
       or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P"
     then
       return ARW_RW2;
+    end if;
+    if ext_3 = ".PNG" then
+      return PNG;
+    end if;
+    if ext_3 = ".GIF" then
+      return GIF;
     end if;
     return Neutral;
   end Guess_type_from_name;

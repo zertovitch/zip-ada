@@ -130,10 +130,13 @@ is
   LZ77_level_choice: constant array(LZMA_Method) of Compression_level:=
     (LZMA_1                   => Level_1,
      LZMA_2 |
-     LZMA_2_for_EPUB |
+     LZMA_2_for_Zip_in_Zip |
      LZMA_2_for_JPEG |
-     LZMA_2_for_ARW           => Level_2,
-     LZMA_3 | LZMA_3_for_EPUB => Level_3);
+     LZMA_2_for_ARW  |
+     LZMA_2_for_PNG  |
+     LZMA_2_for_GIF           => Level_2,
+     LZMA_3 |
+     LZMA_3_for_Zip_in_Zip    => Level_3);
 
   --  Set the LZMA parameters tuned for some data.
   --  Hints by Stephan Busch (Squeeze Chart) - thanks!
@@ -142,21 +145,24 @@ is
   lc: constant array(LZMA_Method) of Natural:=
     (LZMA_2_for_JPEG |
      LZMA_2_for_ARW  |
-     LZMA_3_for_EPUB   => 8,
-     others            => 3
+     LZMA_2_for_PNG  |
+     LZMA_3_for_Zip_in_Zip => 8,
+     LZMA_2_for_GIF        => 0,
+     others                => 3
     );
 
   lp: constant array(LZMA_Method) of Natural:=
     (LZMA_2_for_ARW  |
-     LZMA_3_for_EPUB   => 4,
-     others            => 0
+     LZMA_3_for_Zip_in_Zip => 4,
+     others                => 0
     );
 
   pb: constant array(LZMA_Method) of Natural:=
     (LZMA_2_for_JPEG |
-     LZMA_3_for_EPUB   => 0,
-     LZMA_2_for_ARW    => 4,
-     others            => 2
+     LZMA_2_for_GIF |
+     LZMA_3_for_Zip_in_Zip => 0,
+     LZMA_2_for_ARW        => 4,
+     others                => 2
     );
 
   procedure LZMA_Encode is
