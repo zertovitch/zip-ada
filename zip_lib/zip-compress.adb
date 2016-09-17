@@ -208,8 +208,10 @@ package body Zip.Compress is
 
   begin
     case method is
+      --
       when Single_Method =>
         Compress_data_single_method(method);
+      --
       when Preselection_Method =>
         case content_hint is
           when Neutral =>  --  No clue about what kind of data
@@ -229,7 +231,11 @@ package body Zip.Compress is
           when PNG =>
             Compress_data_single_method(LZMA_for_PNG);
           when GIF =>
-            Compress_data_single_method(LZMA_for_GIF);
+            if input_size_known and input_size < 350 then
+              Compress_data_single_method(Deflate_1);
+            else
+              Compress_data_single_method(LZMA_for_GIF);
+            end if;
           when Zip_in_Zip =>
             if fast_presel then
               Compress_data_single_method(LZMA_2_for_Zip_in_Zip);
