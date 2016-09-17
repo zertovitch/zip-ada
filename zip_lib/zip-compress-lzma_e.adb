@@ -143,26 +143,29 @@ is
   --  Parameters optimality tested with commands like "lzma_enc picture.jpg out -b".
 
   lc: constant array(LZMA_Method) of Natural:=
-    (LZMA_2_for_JPEG |
-     LZMA_2_for_ARW  |
-     LZMA_2_for_PNG  |
-     LZMA_3_for_Zip_in_Zip => 8,
-     LZMA_2_for_GIF        => 0,
-     others                => 3
+    (LZMA_2_for_JPEG       |
+     LZMA_2_for_ARW        |
+     LZMA_2_for_PNG        |
+     LZMA_2_for_Zip_in_Zip |
+     LZMA_3_for_Zip_in_Zip  => 8,
+     LZMA_2_for_GIF         => 0,
+     others                 => 3
     );
 
   lp: constant array(LZMA_Method) of Natural:=
-    (LZMA_2_for_ARW  |
-     LZMA_3_for_Zip_in_Zip => 4,
-     others                => 0
+    (LZMA_2_for_ARW        |
+     LZMA_2_for_Zip_in_Zip |
+     LZMA_3_for_Zip_in_Zip   => 4,
+     others                  => 0
     );
 
   pb: constant array(LZMA_Method) of Natural:=
-    (LZMA_2_for_JPEG |
-     LZMA_2_for_GIF |
-     LZMA_3_for_Zip_in_Zip => 0,
-     LZMA_2_for_ARW        => 4,
-     others                => 2
+    (LZMA_2_for_JPEG       |
+     LZMA_2_for_GIF        |
+     LZMA_2_for_Zip_in_Zip |
+     LZMA_3_for_Zip_in_Zip   => 0,
+     LZMA_2_for_ARW          => 4,
+     others                  => 2
     );
 
   procedure LZMA_Encode is
