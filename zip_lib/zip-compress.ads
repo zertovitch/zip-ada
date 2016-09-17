@@ -46,13 +46,14 @@ package Zip.Compress is
      --  LZMA:
      LZMA_1,
      LZMA_2,
-       LZMA_2_for_Zip_in_Zip,  --  LZMA with non-default parameters
-       LZMA_2_for_JPEG,
-       LZMA_2_for_ARW,
-       LZMA_2_for_PNG,
-       LZMA_2_for_GIF,
      LZMA_3,           --  NB: LZMA_3 can be very slow on large data
-       LZMA_3_for_Zip_in_Zip,
+     --  LZMA with non-default parameters, target for specific data types:
+     LZMA_2_for_Zip_in_Zip,
+     LZMA_3_for_Zip_in_Zip,
+     LZMA_for_JPEG,
+     LZMA_for_ARW,
+     LZMA_for_PNG,
+     LZMA_for_GIF,
      --  Multi-method:
      --    Preselection: select a method depending on hints, like the uncompressed size
      Preselection_1,  --  Not too slow; selects Deflate_3 or LZMA_2*
@@ -73,7 +74,7 @@ package Zip.Compress is
   --  start a new block and what sort of block to put next.
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
 
-  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_3_for_Zip_in_Zip;
+  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_for_GIF;
 
   subtype Multi_Method is Compression_Method range Preselection_1 .. Preselection_2;
 

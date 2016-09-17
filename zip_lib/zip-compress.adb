@@ -223,13 +223,13 @@ package body Zip.Compress is
               Compress_data_single_method(LZMA_3);                 --  LZMA with BT4 match finder
             end if;
           when JPEG_and_Co =>
-            Compress_data_single_method(LZMA_2_for_JPEG);
+            Compress_data_single_method(LZMA_for_JPEG);
           when ARW_RW2 =>
-            Compress_data_single_method(LZMA_2_for_ARW);
+            Compress_data_single_method(LZMA_for_ARW);
           when PNG =>
-            Compress_data_single_method(LZMA_2_for_PNG);
+            Compress_data_single_method(LZMA_for_PNG);
           when GIF =>
-            Compress_data_single_method(LZMA_2_for_GIF);
+            Compress_data_single_method(LZMA_for_GIF);
           when Zip_in_Zip =>
             if fast_presel then
               Compress_data_single_method(LZMA_2_for_Zip_in_Zip);

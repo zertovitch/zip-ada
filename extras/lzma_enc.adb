@@ -90,7 +90,7 @@ begin
     Put_Line("NB: - The "".lzma"" extension automatically added to outfile.");
     Put_Line("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
     New_Line;
-    Put_Line("Options: -b: benchmark LZ77's and the context parameters (450 .lzma output files!)");
+    Put_Line("Options: -b: benchmark LZ77's and the context parameters (675 .lzma output files!)");
     return;
   elsif Argument_Count < 2 then
     Put_Line("You must specify at least two parameters");
@@ -103,7 +103,7 @@ begin
     for lc in reverse Literal_context_bits_range loop
       for lp in reverse Literal_position_bits_range loop
         for pb in reverse Position_bits_range loop
-          for lv in Level_2 .. Level_3 loop
+          for lv in Level_1 .. Level_3 loop
             Open(f_in, In_File, Argument(1));
             Create(f_out, Out_File,
               Argument(2) & '_' &

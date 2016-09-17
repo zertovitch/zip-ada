@@ -128,43 +128,43 @@ is
   use LZMA.Encoding;
 
   LZ77_level_choice: constant array(LZMA_Method) of Compression_level:=
-    (LZMA_1                   => Level_1,
-     LZMA_2 |
+    (LZMA_1                |
+     LZMA_for_GIF            => Level_1,
+     LZMA_2                |
      LZMA_2_for_Zip_in_Zip |
-     LZMA_2_for_JPEG |
-     LZMA_2_for_ARW  |
-     LZMA_2_for_PNG  |
-     LZMA_2_for_GIF           => Level_2,
+     LZMA_for_JPEG         |
+     LZMA_for_ARW          |
+     LZMA_for_PNG            => Level_2,
      LZMA_3 |
-     LZMA_3_for_Zip_in_Zip    => Level_3);
+     LZMA_3_for_Zip_in_Zip   => Level_3);
 
   --  Set the LZMA parameters tuned for some data.
   --  Hints by Stephan Busch (Squeeze Chart) - thanks!
   --  Parameters optimality tested with commands like "lzma_enc picture.jpg out -b".
 
   lc: constant array(LZMA_Method) of Natural:=
-    (LZMA_2_for_JPEG       |
-     LZMA_2_for_ARW        |
-     LZMA_2_for_PNG        |
+    (LZMA_for_JPEG         |
+     LZMA_for_ARW          |
+     LZMA_for_PNG          |
      LZMA_2_for_Zip_in_Zip |
-     LZMA_3_for_Zip_in_Zip  => 8,
-     LZMA_2_for_GIF         => 0,
-     others                 => 3
+     LZMA_3_for_Zip_in_Zip   => 8,
+     LZMA_for_GIF            => 0,
+     others                  => 3
     );
 
   lp: constant array(LZMA_Method) of Natural:=
-    (LZMA_2_for_ARW        |
+    (LZMA_for_ARW          |
      LZMA_2_for_Zip_in_Zip |
      LZMA_3_for_Zip_in_Zip   => 4,
      others                  => 0
     );
 
   pb: constant array(LZMA_Method) of Natural:=
-    (LZMA_2_for_JPEG       |
-     LZMA_2_for_GIF        |
+    (LZMA_for_JPEG         |
+     LZMA_for_GIF          |
      LZMA_2_for_Zip_in_Zip |
      LZMA_3_for_Zip_in_Zip   => 0,
-     LZMA_2_for_ARW          => 4,
+     LZMA_for_ARW            => 4,
      others                  => 2
     );
 
