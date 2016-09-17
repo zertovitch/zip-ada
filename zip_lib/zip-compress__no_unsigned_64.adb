@@ -1,5 +1,5 @@
---  Patched version of Zip.Compress for the ObjectAda 9.1, 9.2 32-bits
---  compilers where Unsigned_64 is not in Interfaces.
+--  Patched version of Zip.Compress for the
+--  ObjectAda v9.1, 9.2 32-bits compilers where Unsigned_64 is not in Interfaces.
 --  Patches marked with "[P32]"
 --  
 
@@ -9,7 +9,9 @@ with Zip.CRC_Crypto,
      Zip.Compress.Deflate;
      --, Zip.Compress.LZMA_E; [P32]
 
+with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Numerics.Discrete_Random;
+with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 
 package body Zip.Compress is
 
@@ -27,6 +29,7 @@ package body Zip.Compress is
     method          : Compression_Method;
     feedback        : Feedback_proc;
     password        : String;
+    content_hint    : Data_content_type;
     CRC             : out Interfaces.Unsigned_32;
     output_size     : out File_size_type;
     zip_type        : out Interfaces.Unsigned_16
@@ -182,5 +185,55 @@ package body Zip.Compress is
       output_size:= output_size + 12;
     end if;
   end Compress_data;
+
+  function Guess_type_from_name(name: String) return Data_content_type is
+    up: constant String:= To_Upper(name);
+    ext_3: constant String:= Tail(up, 4);
+    ext_4: constant String:= Tail(up, 5);
+  begin
+    if ext_3 = ".JPG" or else ext_4 = ".JPEG" then
+      return JPEG;
+    end if;
+    --  Zip archives happen to be zipped...
+    if ext_4 = ".EPUB"  --  EPUB: e-book reader format
+      or else ext_3 = ".JAR" or else ext_3 = ".ZIP"
+      or else ext_3 = ".ODB" or else ext_3 = ".ODS" or else ext_3 = ".ODT"
+      or else ext_3 = ".OTR" or else ext_3 = ".OTS" or else ext_3 = ".OTT"
+      or else ext_4 = ".XLSX"
+    then
+      return Zip_in_Zip;
+    end if;
+    --  Some raw camera picture data
+    if ext_3 = ".ORF"          --  Raw Olympus
+      or else ext_3 = ".CR2"   --  Raw Canon
+      or else ext_3 = ".RAF"   --  Raw Fujifilm
+      or else ext_3 = ".SRW"   --  Raw Samsung
+    then
+      return ORF_CR2;
+    end if;
+    if ext_3 = ".ARW"          --  Raw Sony
+      or else ext_3 = ".RW2"   --  Raw Panasonic
+      or else ext_3 = ".NEF"   --  Raw Nikon
+      or else ext_3 = ".DNG"   --  Raw Leica, Pentax
+      or else ext_3 = ".X3F"   --  Raw Sigma
+    then
+      return ARW_RW2;
+    end if;
+    if ext_3 = ".MTS" or else ext_3 = ".MP3"  --  MP3 too ?? !!
+      or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P"
+    then
+      return MP4;
+    end if;
+    if ext_3 = ".PNG" then
+      return PNG;
+    end if;
+    if ext_3 = ".GIF" then
+      return GIF;
+    end if;
+    if ext_3 = ".WAV" then
+      return WAV;
+    end if;
+    return Neutral;
+  end Guess_type_from_name;
 
 end Zip.Compress;
