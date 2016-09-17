@@ -134,7 +134,8 @@ package body LZMA.Encoding is
     -----------------------------------
 
     LZ77_choice: constant array(Compression_level) of LZ77.Method_Type:=
-      (Level_1   => LZ77.IZ_6,
+      (Level_0   => LZ77.IZ_4,  --  Fake: actually we don't do any LZ77 for level 0
+       Level_1   => LZ77.IZ_6,
        Level_2   => LZ77.IZ_10,
        Level_3   => LZ77.BT4);
 
@@ -157,7 +158,8 @@ package body LZMA.Encoding is
     end Ceiling_power_of_2;
 
     String_buffer_size: constant array(Compression_level) of Positive:=
-      (Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value
+      (Level_0            => 16,  -- Fake
+       Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value
        Level_3            =>
          Integer'Max(
            Min_dictionary_size,                    --  minimum: 4 KB
@@ -550,7 +552,13 @@ package body LZMA.Encoding is
 
   begin
     Write_LZMA_header;
-    My_LZ77;
+    if level = Level_0 then
+      while More_bytes loop
+        LZ77_emits_literal_byte(Read_byte);
+      end loop;
+    else
+      My_LZ77;
+    end if;
     if params.has_end_mark then
       --  The end-of-stream marker is a fake "Simple Match" with a special distance.
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);

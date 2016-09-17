@@ -54,6 +54,7 @@ package Zip.Compress is
      LZMA_for_ARW,
      LZMA_for_PNG,
      LZMA_for_GIF,
+     LZMA_for_WAV,
      --  Multi-method:
      --    Preselection: select a method depending on hints, like the uncompressed size
      Preselection_1,  --  Not too slow; selects Deflate_3 or LZMA_2*
@@ -74,7 +75,7 @@ package Zip.Compress is
   --  start a new block and what sort of block to put next.
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
 
-  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_for_GIF;
+  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_for_WAV;
 
   subtype Multi_Method is Compression_Method range Preselection_1 .. Preselection_2;
 

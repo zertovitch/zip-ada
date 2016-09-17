@@ -136,7 +136,8 @@ is
      LZMA_for_ARW          |
      LZMA_for_PNG            => Level_2,
      LZMA_3 |
-     LZMA_3_for_Zip_in_Zip   => Level_3);
+     LZMA_3_for_Zip_in_Zip   => Level_3,
+     LZMA_for_WAV            => Level_0);
 
   --  Set the LZMA parameters tuned for some data.
   --  Hints by Stephan Busch (Squeeze Chart) - thanks!
@@ -148,7 +149,8 @@ is
      LZMA_for_PNG          |
      LZMA_2_for_Zip_in_Zip |
      LZMA_3_for_Zip_in_Zip   => 8,
-     LZMA_for_GIF            => 0,
+     LZMA_for_GIF          |
+     LZMA_for_WAV            => 0,
      others                  => 3
     );
 
@@ -156,6 +158,7 @@ is
     (LZMA_for_ARW          |
      LZMA_2_for_Zip_in_Zip |
      LZMA_3_for_Zip_in_Zip   => 4,
+     LZMA_for_WAV            => 1,
      others                  => 0
     );
 
@@ -165,6 +168,7 @@ is
      LZMA_2_for_Zip_in_Zip |
      LZMA_3_for_Zip_in_Zip   => 0,
      LZMA_for_ARW            => 4,
+     LZMA_for_WAV            => 1,
      others                  => 2
     );
 
