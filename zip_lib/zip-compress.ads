@@ -51,7 +51,9 @@ package Zip.Compress is
      LZMA_2_for_Zip_in_Zip,
      LZMA_3_for_Zip_in_Zip,
      LZMA_for_JPEG,
-     LZMA_for_ARW,
+     LZMA_for_ARW,   --  Raw camera picture
+     LZMA_for_ORF,   --  Raw camera picture
+     LZMA_for_MP4,
      LZMA_for_PNG,
      LZMA_for_GIF,
      LZMA_for_WAV,
@@ -86,7 +88,15 @@ package Zip.Compress is
 
   User_abort: exception;
 
-  type Data_content_type is (Neutral, JPEG_and_Co, ARW_RW2, Zip_in_Zip, PNG, GIF, WAV);
+  type Data_content_type is (
+    Neutral, 
+    JPEG, 
+    ARW_RW2,     --  Raw digital camera image
+    ORF_CR2,     --  Raw digital camera image
+    Zip_in_Zip, 
+    PNG, GIF, 
+    WAV, MP4
+  );
 
   --  Compress data from an input stream to an output stream until
   --  End_Of_File(input) = True, or number of input bytes = input_size .

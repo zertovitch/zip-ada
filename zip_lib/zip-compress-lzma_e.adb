@@ -118,6 +118,7 @@ is
   end Read_byte;
 
   function More_bytes return Boolean is
+  pragma Inline(More_bytes);
   begin
     if InBufIdx > MaxInBufIdx then
       Read_Block;
@@ -133,10 +134,12 @@ is
      LZMA_2                |
      LZMA_2_for_Zip_in_Zip |
      LZMA_for_JPEG         |
-     LZMA_for_ARW          |
+     LZMA_for_MP4          |
      LZMA_for_PNG            => Level_2,
      LZMA_3 |
      LZMA_3_for_Zip_in_Zip   => Level_3,
+     LZMA_for_ARW          |
+     LZMA_for_ORF          |
      LZMA_for_WAV            => Level_0);
 
   --  Set the LZMA parameters tuned for some data.
@@ -146,9 +149,11 @@ is
   lc: constant array(LZMA_Method) of Natural:=
     (LZMA_for_JPEG         |
      LZMA_for_ARW          |
+     LZMA_for_ORF          |
+     LZMA_for_MP4          |
      LZMA_for_PNG          |
      LZMA_2_for_Zip_in_Zip |
-     LZMA_3_for_Zip_in_Zip   => 8,
+     LZMA_3_for_Zip_in_Zip   => 8,  --  Full Markov on literals
      LZMA_for_GIF          |
      LZMA_for_WAV            => 0,
      others                  => 3
@@ -156,6 +161,7 @@ is
 
   lp: constant array(LZMA_Method) of Natural:=
     (LZMA_for_ARW          |
+     LZMA_for_MP4          |
      LZMA_2_for_Zip_in_Zip |
      LZMA_3_for_Zip_in_Zip   => 4,
      LZMA_for_WAV            => 1,
@@ -164,10 +170,12 @@ is
 
   pb: constant array(LZMA_Method) of Natural:=
     (LZMA_for_JPEG         |
+     LZMA_for_ORF          |
      LZMA_for_GIF          |
      LZMA_2_for_Zip_in_Zip |
      LZMA_3_for_Zip_in_Zip   => 0,
-     LZMA_for_ARW            => 4,
+     LZMA_for_ARW          |
+     LZMA_for_MP4            => 4,
      LZMA_for_WAV            => 1,
      others                  => 2
     );

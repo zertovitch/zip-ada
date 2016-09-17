@@ -224,10 +224,14 @@ package body Zip.Compress is
             else
               Compress_data_single_method(LZMA_3);                 --  LZMA with BT4 match finder
             end if;
-          when JPEG_and_Co =>
+          when JPEG =>
             Compress_data_single_method(LZMA_for_JPEG);
           when ARW_RW2 =>
             Compress_data_single_method(LZMA_for_ARW);
+          when ORF_CR2 =>
+            Compress_data_single_method(LZMA_for_ORF);
+          when MP4 =>
+            Compress_data_single_method(LZMA_for_MP4);
           when PNG =>
             Compress_data_single_method(LZMA_for_PNG);
           when WAV =>
@@ -253,11 +257,8 @@ package body Zip.Compress is
     ext_3: constant String:= Tail(up, 4);
     ext_4: constant String:= Tail(up, 5);
   begin
-    if ext_3 = ".JPG" or else ext_4 = ".JPEG"
-      --  Not related to JPEG, but are compressed as well better in "pure Markov" mode with LZMA:
-      or else ext_3 = ".ORF" or else ext_3 = ".CR2"  --  Raw camera files: Olympus, Canon
-    then
-      return JPEG_and_Co;
+    if ext_3 = ".JPG" or else ext_4 = ".JPEG" then
+      return JPEG;
     end if;
     --  Zip archives happen to be zipped...
     if ext_4 = ".EPUB"  --  EPUB: e-book reader format
@@ -268,11 +269,26 @@ package body Zip.Compress is
     then
       return Zip_in_Zip;
     end if;
-    if ext_3 = ".ARW" or else ext_3 = ".RW2"
-      or else ext_3 = ".MTS" or else ext_3 = ".MP3"
-      or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P"
+    --  Some raw camera picture data
+    if ext_3 = ".ORF"          --  Raw Olympus
+      or else ext_3 = ".CR2"   --  Raw Canon
+      or else ext_3 = ".RAF"   --  Raw Fujifilm
+      or else ext_3 = ".SRW"   --  Raw Samsung
+    then
+      return ORF_CR2;
+    end if;
+    if ext_3 = ".ARW"          --  Raw Sony
+      or else ext_3 = ".RW2"   --  Raw Panasonic
+      or else ext_3 = ".NEF"   --  Raw Nikon
+      or else ext_3 = ".DNG"   --  Raw Leica, Pentax
+      or else ext_3 = ".X3F"   --  Raw Sigma
     then
       return ARW_RW2;
+    end if;
+    if ext_3 = ".MTS" or else ext_3 = ".MP3"  --  MP3 too ?? !!
+      or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P"
+    then
+      return MP4;
     end if;
     if ext_3 = ".PNG" then
       return PNG;
