@@ -230,6 +230,8 @@ package body Zip.Compress is
             Compress_data_single_method(LZMA_for_ARW);
           when ORF_CR2 =>
             Compress_data_single_method(LZMA_for_ORF);
+          when MP3 =>
+            Compress_data_single_method(LZMA_for_MP3);
           when MP4 =>
             Compress_data_single_method(LZMA_for_MP4);
           when PNG =>
@@ -285,9 +287,10 @@ package body Zip.Compress is
     then
       return ARW_RW2;
     end if;
-    if ext_3 = ".MTS" or else ext_3 = ".MP3"  --  MP3 too ?? !!
-      or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P"
-    then
+    if ext_3  = ".MP3" then
+      return MP3;
+    end if;
+    if ext_3 = ".MTS" or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P" then
       return MP4;
     end if;
     if ext_3 = ".PNG" then

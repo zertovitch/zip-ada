@@ -126,58 +126,35 @@ is
     return not InputEoF;
   end More_bytes;
 
-  use LZMA.Encoding;
+  use LZMA, LZMA.Encoding;
 
-  LZ77_level_choice: constant array(LZMA_Method) of Compression_level:=
-    (LZMA_1                |
-     LZMA_for_GIF            => Level_1,
-     LZMA_2                |
-     LZMA_2_for_Zip_in_Zip |
-     LZMA_for_JPEG         |
-     LZMA_for_MP4          |
-     LZMA_for_PNG            => Level_2,
-     LZMA_3 |
-     LZMA_3_for_Zip_in_Zip   => Level_3,
-     LZMA_for_ARW          |
-     LZMA_for_ORF          |
-     LZMA_for_WAV            => Level_0);
+  type LZMA_param_bundle is record
+    lc: Literal_context_bits_range;
+    lp: Literal_position_bits_range;
+    pb: Position_bits_range;
+    lz: Compression_level;
+  end record;
 
-  --  Set the LZMA parameters tuned for some data.
+  --  Set the LZMA parameters tuned depending on the data type.
   --  Hints by Stephan Busch (Squeeze Chart) - thanks!
   --  Parameters optimality tested with commands like "lzma_enc picture.jpg out -b".
 
-  lc: constant array(LZMA_Method) of Natural:=
-    (LZMA_for_JPEG         |
-     LZMA_for_ARW          |
-     LZMA_for_ORF          |
-     LZMA_for_MP4          |
-     LZMA_for_PNG          |
-     LZMA_2_for_Zip_in_Zip |
-     LZMA_3_for_Zip_in_Zip   => 8,  --  Full Markov on literals
-     LZMA_for_GIF          |
-     LZMA_for_WAV            => 0,
-     others                  => 3
-    );
-
-  lp: constant array(LZMA_Method) of Natural:=
-    (LZMA_for_ARW          |
-     LZMA_for_MP4          |
-     LZMA_2_for_Zip_in_Zip |
-     LZMA_3_for_Zip_in_Zip   => 4,
-     LZMA_for_WAV            => 1,
-     others                  => 0
-    );
-
-  pb: constant array(LZMA_Method) of Natural:=
-    (LZMA_for_JPEG         |
-     LZMA_for_ORF          |
-     LZMA_for_GIF          |
-     LZMA_2_for_Zip_in_Zip |
-     LZMA_3_for_Zip_in_Zip   => 0,
-     LZMA_for_ARW          |
-     LZMA_for_MP4            => 4,
-     LZMA_for_WAV            => 1,
-     others                  => 2
+  LZMA_param: constant array(LZMA_Method) of LZMA_param_bundle:=
+    (
+      LZMA_1                => (3, 0, 2, Level_1),
+      LZMA_2                => (3, 0, 2, Level_2),
+      LZMA_3                => (3, 0, 2, Level_3),
+      --
+      LZMA_for_ARW          => (8, 4, 4, Level_0),
+      LZMA_for_GIF          => (0, 0, 0, Level_1),  --   !! review
+      LZMA_for_JPEG         => (8, 0, 0, Level_2),  --   !! review
+      LZMA_for_MP3          => (8, 4, 4, Level_2),
+      LZMA_for_MP4          => (8, 4, 4, Level_2),  --   !! review
+      LZMA_for_ORF          => (8, 0, 0, Level_0),  --  Full Markov model
+      LZMA_for_PNG          => (8, 0, 2, Level_2),  --   !! review
+      LZMA_for_WAV          => (0, 1, 1, Level_0),
+      LZMA_2_for_Zip_in_Zip => (8, 4, 0, Level_2),
+      LZMA_3_for_Zip_in_Zip => (8, 4, 0, Level_3)
     );
 
   procedure LZMA_Encode is
@@ -208,18 +185,18 @@ begin
     Put_byte(0);   --  LZMA properties size high byte
     if input_size_known then
       LZMA_Encode(
-        level                 => LZ77_level_choice(method),
-        literal_context_bits  => lc(method),
-        literal_position_bits => lp(method),
-        position_bits         => pb(method),
+        level                 => LZMA_param(method).lz,
+        literal_context_bits  => LZMA_param(method).lc,
+        literal_position_bits => LZMA_param(method).lp,
+        position_bits         => LZMA_param(method).pb,
         dictionary_size       => Integer(input_size)
       );
     else
       LZMA_Encode(
-        level                 => LZ77_level_choice(method),
-        literal_context_bits  => lc(method),
-        literal_position_bits => lp(method),
-        position_bits         => pb(method)
+        level                 => LZMA_param(method).lz,
+        literal_context_bits  => LZMA_param(method).lc,
+        literal_position_bits => LZMA_param(method).lp,
+        position_bits         => LZMA_param(method).pb
       );
     end if;
     Flush_output;

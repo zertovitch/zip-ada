@@ -47,12 +47,13 @@ package Zip.Compress is
      LZMA_1,
      LZMA_2,
      LZMA_3,           --  NB: LZMA_3 can be very slow on large data
-     --  LZMA with non-default parameters, target for specific data types:
+     --  LZMA with non-default parameters, targeted for specific data types:
      LZMA_2_for_Zip_in_Zip,
      LZMA_3_for_Zip_in_Zip,
      LZMA_for_JPEG,
      LZMA_for_ARW,   --  Raw camera picture
      LZMA_for_ORF,   --  Raw camera picture
+     LZMA_for_MP3,
      LZMA_for_MP4,
      LZMA_for_PNG,
      LZMA_for_GIF,
@@ -89,13 +90,14 @@ package Zip.Compress is
   User_abort: exception;
 
   type Data_content_type is (
-    Neutral, 
-    JPEG, 
+    Neutral,
+    JPEG,
     ARW_RW2,     --  Raw digital camera image
     ORF_CR2,     --  Raw digital camera image
-    Zip_in_Zip, 
-    PNG, GIF, 
-    WAV, MP4
+    Zip_in_Zip,
+    PNG, GIF,
+    WAV,
+    MP3, MP4
   );
 
   --  Compress data from an input stream to an output stream until
