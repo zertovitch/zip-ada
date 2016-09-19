@@ -55,8 +55,8 @@ package Zip.Compress is
      LZMA_for_ORF,   --  Raw camera picture
      LZMA_for_MP3,
      LZMA_for_MP4,
-     LZMA_for_PGM,
-     LZMA_for_PPM,
+     LZMA_for_PGM,  --  TBD: photo vs drawing (expect much LZ redundancy in the latter)
+     LZMA_for_PPM,  --  TBD: photo vs drawing (expect much LZ redundancy in the latter)
      LZMA_for_PNG,
      LZMA_for_GIF,
      LZMA_for_WAV,

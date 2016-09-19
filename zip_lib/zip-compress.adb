@@ -206,6 +206,19 @@ package body Zip.Compress is
     fast_presel: constant Boolean:=
       method = Preselection_1 or (input_size_known and input_size < 22_805);
 
+    data_type_to_LZMA_method: array(Data_content_type) of LZMA_Method:=
+      (JPEG    => LZMA_for_JPEG,
+       ARW_RW2 => LZMA_for_ARW,
+       ORF_CR2 => LZMA_for_ORF,
+       MP3     => LZMA_for_MP3,
+       MP4     => LZMA_for_MP4,
+       PGM     => LZMA_for_PGM,
+       PPM     => LZMA_for_PPM,
+       PNG     => LZMA_for_PNG,
+       WAV     => LZMA_for_WAV,
+       others  => LZMA_1  --  Fake, should be unused as such.
+      );
+
   begin
     case method is
       --
@@ -224,24 +237,12 @@ package body Zip.Compress is
             else
               Compress_data_single_method(LZMA_3);                 --  LZMA with BT4 match finder
             end if;
-          when JPEG =>
-            Compress_data_single_method(LZMA_for_JPEG);
-          when ARW_RW2 =>
-            Compress_data_single_method(LZMA_for_ARW);
-          when ORF_CR2 =>
-            Compress_data_single_method(LZMA_for_ORF);
-          when MP3 =>
-            Compress_data_single_method(LZMA_for_MP3);
-          when MP4 =>
-            Compress_data_single_method(LZMA_for_MP4);
-          when PGM =>
-            Compress_data_single_method(LZMA_for_PGM);
-          when PPM =>
-            Compress_data_single_method(LZMA_for_PPM);
-          when PNG =>
-            Compress_data_single_method(LZMA_for_PNG);
-          when WAV =>
-            Compress_data_single_method(LZMA_for_WAV);
+          when ARW_RW2 | ORF_CR2 | MP3 | MP4 | JPEG | PGM | PPM | PNG | WAV =>
+            if input_size_known and input_size < 4_500 then
+              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+            else
+              Compress_data_single_method(data_type_to_LZMA_method(content_hint));
+            end if;
           when GIF =>
             if input_size_known and input_size < 350 then
               Compress_data_single_method(Deflate_1);
