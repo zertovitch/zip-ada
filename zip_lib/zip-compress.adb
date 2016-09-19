@@ -238,7 +238,7 @@ package body Zip.Compress is
               Compress_data_single_method(LZMA_3);                 --  LZMA with BT4 match finder
             end if;
           when ARW_RW2 | ORF_CR2 | MP3 | MP4 | JPEG | PGM | PPM | PNG | WAV =>
-            if input_size_known and input_size < 4_500 then
+            if input_size_known and input_size < 2_250 then
               Compress_data_single_method(Deflation_Method'Last);  --  Deflate
             else
               Compress_data_single_method(data_type_to_LZMA_method(content_hint));
