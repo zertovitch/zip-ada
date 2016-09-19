@@ -55,6 +55,8 @@ package Zip.Compress is
      LZMA_for_ORF,   --  Raw camera picture
      LZMA_for_MP3,
      LZMA_for_MP4,
+     LZMA_for_PGM,
+     LZMA_for_PPM,
      LZMA_for_PNG,
      LZMA_for_GIF,
      LZMA_for_WAV,
@@ -95,7 +97,7 @@ package Zip.Compress is
     ARW_RW2,     --  Raw digital camera image
     ORF_CR2,     --  Raw digital camera image
     Zip_in_Zip,
-    PNG, GIF,
+    GIF, PNG, PGM, PPM,
     WAV,
     MP3, MP4
   );

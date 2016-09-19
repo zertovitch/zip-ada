@@ -234,6 +234,10 @@ package body Zip.Compress is
             Compress_data_single_method(LZMA_for_MP3);
           when MP4 =>
             Compress_data_single_method(LZMA_for_MP4);
+          when PGM =>
+            Compress_data_single_method(LZMA_for_PGM);
+          when PPM =>
+            Compress_data_single_method(LZMA_for_PPM);
           when PNG =>
             Compress_data_single_method(LZMA_for_PNG);
           when WAV =>
@@ -287,7 +291,13 @@ package body Zip.Compress is
     then
       return ARW_RW2;
     end if;
-    if ext_3  = ".MP3" then
+    if ext_3 = ".PGM" then
+      return PGM;
+    end if;
+    if ext_3 = ".PPM" then
+      return PPM;
+    end if;
+    if ext_3 = ".MP3" then
       return MP3;
     end if;
     if ext_3 = ".MTS" or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P" then
