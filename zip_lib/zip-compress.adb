@@ -250,7 +250,9 @@ package body Zip.Compress is
               Compress_data_single_method(LZMA_for_GIF);
             end if;
           when Zip_in_Zip =>
-            if fast_presel then
+            if input_size_known and input_size < 1_000 then
+              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+            elsif fast_presel then
               Compress_data_single_method(LZMA_2_for_Zip_in_Zip);
             else
               Compress_data_single_method(LZMA_3_for_Zip_in_Zip);
