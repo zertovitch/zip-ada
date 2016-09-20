@@ -130,6 +130,10 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '52', xxxx:
+  - Zip.Compress has the following new methods: 
+      LZMA_3, Preselection_1 (replaces Preselection), Preselection_2
+  
 * Changes in '51', 27-Aug-2016:
   - LZMA.Encoding has been added; it is a standalone compressor,
       see lzma_enc.adb for an example of use.
