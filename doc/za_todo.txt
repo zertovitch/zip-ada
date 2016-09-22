@@ -1,5 +1,10 @@
+- LZMA.Encoding.LZ77_emits_DL_code: evaluate alternatives to
+     calling Write_Simple_Match, with literal + repeat match if posssible
+- LZMA.Encoding & Zip.Compress.LZMA_E: tune performance with well
+     placed Inline pragmata
+     
 - Zip.Compress.Deflate, LZMA.Encoding and LZ77:
-  see specific "to do"'s in packages' bodies.
+     see also specific "to do"'s in packages' bodies.
 
 - tools: comp_zip: optionally, check only CRC
 - tools: a Freshen_Zip tool that freshen files from an archive, or files

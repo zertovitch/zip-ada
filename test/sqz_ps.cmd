@@ -1,7 +1,5 @@
 rem Test with SqueezeChart data set (5,156,295,185 bytes; 21,532 files)
 
-del *_ps.zip
-
 start /min /low sqz_ps_one app
 start /min /low sqz_ps_one aud
 start /min /low sqz_ps_one cam
