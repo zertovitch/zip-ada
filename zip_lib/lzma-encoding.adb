@@ -1,4 +1,5 @@
 --  LZMA.Encoding - a standalone, generic LZMA encoder.
+--  Author: G. de Montmollin (except parts mentioned below).
 --
 --  This encoder was built mostly by mirroring from LZMA.Decoding upon
 --  the format's symmetries between encoding and decoding.
@@ -7,9 +8,9 @@
 --    becomes:
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
 --
---  The base mechanism (mostly: the range encoding, encoding of literals) is
---  from the original LzmaEnc.c by Igor Pavlov.
---  Some parts are from the LZMAEncoder.java translation by Lasse Collin.
+--  The base mechanism (the range encoding, encoding of literals and DL codes)
+--  is from the original LzmaEnc.c by Igor Pavlov.
+--  The Get_dist_slot function is from the LZMAEncoder.java by Lasse Collin.
 --
 --  Change log:
 --------------
@@ -264,33 +265,42 @@ package body LZMA.Encoding is
       return MProb'Base(cp) / MProb'Base(Probability_model_count);
     end To_Math;
 
-    procedure LZ77_emits_literal_byte (b: Byte) is
-      lit_state : Integer;
-      probs_idx : Integer;
-      b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
+    function Short_Rep_Match_better_than_Literal return Boolean is
       --  Probability threshold for the "Short Rep Match" case, b = b_match.
       --  Some values:
       --    0.0                 : always do (when possible of course...)
       --    1.0 / 16.0 = 0.0625 : minimum is the equiprobable case
       --    1.0                 : never do
       threshold_short_rep_match: constant:= 0.01;  --  Empirical optimum
+      --  Currently modeled probability for the "Short Rep Match" comination in the decision tree.
+      --  We assume independent (multiplicative) probabilities, just like the range encoder does
+      --  when adapting the range width. With high probabilities, the width will decrease less
+      --  and the compression will be better. When choice bit is 1 the case's probability is 1-p.
+      prob_literal_choice: constant MProb:=
+        To_Math(probs.switch.match(state, pos_state));
+      prob_short_rep_match: constant MProb:=
+        (1.0 - prob_literal_choice) *                       --  1
+        (1.0 - To_Math(probs.switch.rep(state))) *          --  1
+        To_Math(probs.switch.rep_g0(state)) *               --  0
+        To_Math(probs.switch.rep0_long(state, pos_state));  --  0
+    begin
+      return prob_short_rep_match >= threshold_short_rep_match;
+    end Short_Rep_Match_better_than_Literal;
+
+    procedure LZ77_emits_literal_byte (b: Byte) is
+      lit_state : Integer;
+      probs_idx : Integer;
+      b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
     begin
       if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
-        --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match" case.
-        --  But wait: it costs 4 bits, so better to have already a probable case before proceeding.
-        --  For computing we assume independent probabilities, just like the range encoder does
-        --  when adapting the width. With high probabilities the width will decrease less and
-        --  the compression will be better. When choice bit is 1 the case's probability is 1-p.
-          and then
-            (1.0 - To_Math(probs.switch.match(state, pos_state))) *
-            (1.0 - To_Math(probs.switch.rep(state))) *
-            To_Math(probs.switch.rep_g0(state)) *
-            To_Math(probs.switch.rep0_long(state, pos_state)) >= threshold_short_rep_match
+        and then Short_Rep_Match_better_than_Literal
       then
-        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);               --  1
-        Encode_Bit(probs.switch.rep(state), Rep_match_choice);                          --  1
-        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);            --  0
-        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);   --  0
+        --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match" case.
+        --  The cost (4 bits) is affordable since the combined probabilities are high enough.
+        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);              --  1
+        Encode_Bit(probs.switch.rep(state), Rep_match_choice);                         --  1
+        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);           --  0
+        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);  --  0
         state := Update_State_ShortRep(state);
       else
         Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);

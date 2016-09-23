@@ -189,8 +189,8 @@ package body Zip.Compress is
         Set_Index(input, idx_in);
         if is_encrypted then
           Set_Index(output, idx_out + 12);
+          --  Restore the encryption keys to their state just after the encryption header:
           encrypt_pack:= mem_encrypt_pack;
-          -- ^ Restore the encryption keys to their state just after the encryption header
         else
           Set_Index(output, idx_out);
         end if;
@@ -206,7 +206,7 @@ package body Zip.Compress is
     fast_presel: constant Boolean:=
       method = Preselection_1 or (input_size_known and input_size < 22_805);
 
-    data_type_to_LZMA_method: array(Data_content_type) of LZMA_Method:=
+    data_type_to_LZMA_method: constant array(Data_content_type) of LZMA_Method:=
       (JPEG    => LZMA_for_JPEG,
        ARW_RW2 => LZMA_for_ARW,
        ORF_CR2 => LZMA_for_ORF,
