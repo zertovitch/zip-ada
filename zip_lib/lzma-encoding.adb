@@ -20,6 +20,7 @@
 with LZ77;
 
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
+with Ada.Unchecked_Deallocation;
 with Interfaces;                        use Interfaces;
 
 package body LZMA.Encoding is
@@ -157,15 +158,17 @@ package body LZMA.Encoding is
       return Integer'Max(p, x);
     end Ceiling_power_of_2;
 
+    --  String_buffer_size: the actual dictionary size used.
     String_buffer_size: constant array(Compression_level) of Positive:=
-      (Level_0            => 16,       --  Fake: actually we don't do any LZ77 for level 0
-       Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value
+      (Level_0            => 16,       --  Fake: actually we don't use any LZ77 for level 0
+       Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value: 32 KB
        Level_3            =>
          Integer'Max(
-           Min_dictionary_size,                    --  minimum: 4 KB
+           Min_dictionary_size,                --  minimum:  4 KB
            Integer'Min(
-             Ceiling_power_of_2(dictionary_size),  --  specified, default 32 KB
-             2**24                                 --  maximum: 16 MB
+             --    dictionary_size is specified; default is 32 KB
+             Ceiling_power_of_2(dictionary_size),
+             2 ** 25                           --  maximum: 32 MB
            )
          )
       );
@@ -246,7 +249,11 @@ package body LZMA.Encoding is
     subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size(level) - 1);
     type Text_Buffer is array (Text_Buffer_Index) of Byte;
     Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size(level) - 1);
-    Text_Buf: Text_Buffer;
+    --  NB: heap allocation used only for convenience because of
+    --      small default stack sizes on some compilers.
+    type p_Text_Buffer is access Text_Buffer;
+    procedure Dispose is new Ada.Unchecked_Deallocation(Text_Buffer, p_Text_Buffer);
+    Text_Buf: p_Text_Buffer:= new Text_Buffer;
     R: UInt32:= 0;
 
     type MProb is new Long_Float range 0.0 .. 1.0;
@@ -565,6 +572,7 @@ package body LZMA.Encoding is
       Write_Simple_Match(distance => 16#FFFF_FFFF#, length => Min_match_length);
     end if;
     Flush_range_encoder;
+    Dispose(Text_Buf);
   end Encode;
 
 end LZMA.Encoding;

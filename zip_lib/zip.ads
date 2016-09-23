@@ -380,7 +380,7 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "52, preview 3h";
+  version   : constant String:= "52, preview 3i";
   reference : constant String:= ">= 20-Sep-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^

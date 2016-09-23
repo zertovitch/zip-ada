@@ -150,7 +150,7 @@ is
       LZMA_for_JPEG         => (8, 0, 0, Level_2),
       LZMA_for_MP3          => (8, 4, 4, Level_2),
       LZMA_for_MP4          => (8, 4, 4, Level_2),
-      LZMA_for_ORF          => (8, 0, 0, Level_0),  --  No LZ compression; pure Markov model
+      LZMA_for_ORF          => (8, 0, 0, Level_0),
       LZMA_for_PGM          => (8, 0, 0, Level_0),
       LZMA_for_PPM          => (4, 0, 0, Level_2),
       LZMA_for_PNG          => (8, 0, 2, Level_2),
