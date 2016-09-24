@@ -131,12 +131,12 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '52', xxxx:
-  - UnZip.Streams: all procedures have an additional, optional
+  - UnZip.Streams: all procedures have an additional (optional)
       Ignore_Directory parameter.
   - Zip.Compress has the following new methods with improved compression:
       LZMA_3, Preselection_1 (replaces Preselection), Preselection_2.
-      Preselection methods use entry name extension for improving
-      compression while remaining 1-pass methods. 
+      Preselection methods use now entry name extension and size for
+      improving compression, while remaining 1-pass methods. 
   
 * Changes in '51', 27-Aug-2016:
   - LZMA.Encoding has been added; it is a standalone compressor,

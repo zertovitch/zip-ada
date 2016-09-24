@@ -122,7 +122,12 @@ procedure Demo_csv_into_zip is
         '_' & Peril_abbr(p) & ".csv"
       );
   begin
-    Output_results(g,p,temp_name);
+    Output_results(g, p, temp_name);
+    --  Alternatives:
+    --    1) use a string instead of a temporary file
+    --    2) use an input stream
+    --    3) instead of a .csv, an Excel file from Excel Writer
+    --         ( http://excel-writer.sf.net/ ) as a string or a stream.
     Zip.Create.Add_File(
       Info              => to_archive,
       Name              => temp_name,

@@ -52,7 +52,7 @@ package Zip.Create is
 
    function Name(Info: Zip_Create_info) return String;
 
-   -- Add a new entry to a Zip archive, from a general Zipstream
+   -- Add a new entry to a Zip archive, from a general input Zipstream
 
    procedure Add_Stream (Info     : in out Zip_Create_info;
                          Stream   : in out Root_Zipstream_Type'Class;
@@ -104,7 +104,7 @@ package Zip.Create is
    );
 
    -- Add a new entry to a Zip archive, copied from another Zip archive.
-   -- The stream is set at the beginning of a local header in the archive.
+   -- The stream's index is set at the beginning of a local header in the archive.
 
    procedure Add_Compressed_Stream (
      Info           : in out Zip_Create_info;

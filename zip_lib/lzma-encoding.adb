@@ -1,16 +1,19 @@
 --  LZMA.Encoding - a standalone, generic LZMA encoder.
---  Author: G. de Montmollin (except parts mentioned below).
+--  Author: G. de Montmollin (except parts mentioned below (*)).
 --
 --  This encoder was built mostly by mirroring from LZMA.Decoding upon
---  the format's symmetries between encoding and decoding.
---    For instance,
+--  the format's symmetries between encoding and decoding. For instance,
+--
 --      Bit_Tree_Decode(probs_len.low_coder(pos_state), Len_low_bits, len);
---    becomes:
+--  becomes:
 --      Bit_Tree_Encode(probs_len.low_coder(pos_state), Len_low_bits, len);
 --
---  The base mechanism (the range encoding, encoding of literals and DL codes)
---  is from the original LzmaEnc.c by Igor Pavlov.
---  The Get_dist_slot function is from the LZMAEncoder.java by Lasse Collin.
+--  Furthermore, cases for which there are alternatives are decided by comparing
+--  their respective probabilities (search "MProb" in the code).
+--
+--  (*) The base mechanism (the encoding of range, literals and DL codes)
+--      is from the original LzmaEnc.c by Igor Pavlov.
+--      The Get_dist_slot function is from the LZMAEncoder.java by Lasse Collin.
 --
 --  Change log:
 --------------
