@@ -268,6 +268,11 @@ package body LZMA.Encoding is
       return MProb'Base(cp) / MProb'Base(Probability_model_count);
     end To_Math;
 
+    --  In the following probability computations, we assume independent
+    --  (multiplicative) probabilities, just like the range encoder does
+    --  when adapting the range width. With higher probabilities, the width
+    --  will decrease less and the compression will be better.
+
     function Short_Rep_Match_better_than_Literal return Boolean is
       --  Probability threshold for the "Short Rep Match" case, b = b_match.
       --  Some values:
@@ -275,14 +280,9 @@ package body LZMA.Encoding is
       --    1.0 / 16.0 = 0.0625 : minimum is the equiprobable case
       --    1.0                 : never do
       threshold_short_rep_match: constant:= 0.01;  --  Empirical optimum
-      prob_literal_choice: constant MProb:=
-        To_Math(probs.switch.match(state, pos_state));
+      prob_literal_choice: constant MProb:= To_Math(probs.switch.match(state, pos_state));
       --  Currently modeled probability for the "Short Rep Match" combination
-      --  in the decision tree. We assume independent (multiplicative)
-      --  probabilities, just like the range encoder does when adapting the
-      --  range width. With high probabilities, the width will decrease less
-      --  and the compression will be better. When choice bit is 1 the case's
-      --  probability is 1-p.
+      --  in the decision tree.
       prob_short_rep_match: constant MProb:=
         (1.0 - prob_literal_choice) *                       --  1
         (1.0 - To_Math(probs.switch.rep(state))) *          --  1

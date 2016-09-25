@@ -274,6 +274,7 @@ package body Zip.Compress is
       or else ext_3 = ".JAR" or else ext_3 = ".ZIP"
       or else ext_3 = ".ODB" or else ext_3 = ".ODS" or else ext_3 = ".ODT"
       or else ext_3 = ".OTR" or else ext_3 = ".OTS" or else ext_3 = ".OTT"
+      or else ext_3 = ".CRX" or else ext_3 = ".NTH"
       or else ext_4 = ".XLSX"
     then
       return Zip_in_Zip;

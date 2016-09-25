@@ -52,7 +52,10 @@ rem Wrapping it all - update archive with all archives
 rem Funnily, upon zipping bench_matrix_*.zip, level 1-8 stores everything, but level 9 deflates to 26% !
 
 zip -9 all_bench_%1.zip bench_%1_*.zip
-7z t bench_%1_*.zip
+echo.
+echo Test the archives, bench_%1_*.zip
+echo.
+7z t bench_%1_*.zip | tail
 dir /OS- bench_%1_*.zip
 dir /OS- bench_%1_*.zip >>benchs.log
 del bench_%1_*.zip
