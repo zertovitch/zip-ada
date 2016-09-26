@@ -199,8 +199,8 @@ package body LZMA.Encoding is
 
     --  Finite state machine.
     state : State_range := 0;
-    --  Small stack of recent distances used for LZ.
-    subtype Repeat_stack_range is Integer range 0..3;
+    --  Small stack of recent distances used for LZ. Required: initialized with zero values.
+    subtype Repeat_stack_range is Integer range 0 .. 3;
     rep_dist: array(Repeat_stack_range) of UInt32 := (others => 0);
     --
     total_pos : Data_Bytes_Count := 0;

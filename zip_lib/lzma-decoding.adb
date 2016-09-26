@@ -75,9 +75,10 @@ package body LZMA.Decoding is
 
   procedure Decode_Contents(o: in out LZMA_Decoder_Info; res: out LZMA_Result) is
     state : State_range := 0;
-    rep0, rep1, rep2, rep3 : UInt32 := 0;  --  Recent distances used for LZ
+    --  Small stack of recent distances used for LZ. Required: initialized with zero values.
+    rep0, rep1, rep2, rep3 : UInt32 := 0;
     pos_state: Pos_state_range;
-    -- Local copies of invariant properties.
+    --  Local copies of invariant properties.
     unpack_size_def: constant Boolean:= o.unpackSizeDefined;
     literal_pos_mask: constant UInt32:= 2 ** o.lp - 1;
     lc: constant Literal_context_bits_range:= o.lc;
