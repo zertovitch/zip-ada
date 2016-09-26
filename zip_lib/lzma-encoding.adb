@@ -222,7 +222,7 @@ package body LZMA.Encoding is
       symb: UInt32:= symbol or 16#100#;
     begin
       loop
-        Encode_Bit(
+        Encode_Bit( --  Prob. offset is always 1, 2, 4, 8, .. , 128
           prob   => prob(Integer(Shift_Right(symb, 8)) + prob'First),
           symbol => Unsigned(Shift_Right(symb, 7)) and 1
         );
@@ -293,8 +293,12 @@ package body LZMA.Encoding is
     end Short_Rep_Match_better_than_Literal;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
-      lit_state : Integer;
-      probs_idx : Integer;
+      lit_state : constant Integer:=
+          Integer(
+            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
+            Shift_Right(UInt32(prev_byte), 8 - params.lc)
+          );
+      probs_lit_idx : constant Integer:= 16#300# * lit_state;
       b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
     begin
       if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
@@ -309,16 +313,10 @@ package body LZMA.Encoding is
         state := Update_State_ShortRep(state);
       else
         Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
-        lit_state :=
-          Integer(
-            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
-            Shift_Right(UInt32(prev_byte), 8 - params.lc)
-          );
-        probs_idx:= 16#300# * lit_state;
         if state < 7 then
-          Write_Literal(probs.lit(probs_idx..probs.lit'Last), UInt32(b));
+          Write_Literal(probs.lit(probs_lit_idx..probs.lit'Last), UInt32(b));
         else
-          Write_Literal_Matched(probs.lit(probs_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
+          Write_Literal_Matched(probs.lit(probs_lit_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
         end if;
         state := Update_State_Literal(state);
       end if;
