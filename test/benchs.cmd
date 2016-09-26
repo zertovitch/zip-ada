@@ -16,6 +16,8 @@ rem http://cs.fit.edu/~mmahoney/compression/enwik8.zip
 rem http://download.wikipedia.org/enwiki/20060303/enwiki-20060303-pages-articles.xml.bz2
 start /min /low bench enwik8 %1
 
+start /min /low bench silesia %1
+
 rem **********************
 rem *** Our benchmarks ***
 rem **********************
