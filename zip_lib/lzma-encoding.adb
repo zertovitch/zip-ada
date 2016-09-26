@@ -249,6 +249,17 @@ package body LZMA.Encoding is
     end Write_Literal_Matched;
 
     prev_byte: Byte:= 0;
+
+    function Idx_for_Literal_prob return Integer is
+    pragma Inline(Idx_for_Literal_prob);
+    begin
+      return 16#300# *
+          Integer(
+            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
+            Shift_Right(UInt32(prev_byte), 8 - params.lc)
+          );
+    end Idx_for_Literal_prob;
+
     --  We expand the DL codes in order to have some past data.
     subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size(level) - 1);
     type Text_Buffer is array (Text_Buffer_Index) of Byte;
@@ -273,39 +284,77 @@ package body LZMA.Encoding is
     --  when adapting the range width. With higher probabilities, the width
     --  will decrease less and the compression will be better.
 
-    function Short_Rep_Match_better_than_Literal return Boolean is
-      --  Probability threshold for the "Short Rep Match" case, b = b_match.
-      --  Some values:
-      --    0.0                 : always do (when possible of course...)
-      --    1.0 / 16.0 = 0.0625 : minimum is the equiprobable case
-      --    1.0                 : never do
-      threshold_short_rep_match: constant:= 0.01;  --  Empirical optimum
+    function Probability_of_Bit(prob_bit: MProb; bit: Unsigned) return MProb is
+    pragma Inline(Probability_of_Bit);
+    begin
+      if bit = 0 then
+        return prob_bit;
+      else
+        return 1.0 - prob_bit;
+      end if;
+    end Probability_of_Bit;
+
+    function Probability_of_Literal(b, b_match: Byte; prob: CProb_array) return MProb is
+      prob_lit: MProb:= To_Math(probs.switch.match(state, pos_state));
+      symb: UInt32:= UInt32(b) or 16#100#;
+      --
+      procedure Test_Literal is
+      begin
+        loop
+          prob_lit:= prob_lit *
+            Probability_of_Bit(
+              prob_bit => To_Math(prob(Integer(Shift_Right(symb, 8)) + prob'First)),
+              bit      => Unsigned(Shift_Right(symb, 7)) and 1
+            );
+          symb:= Shift_Left(symb, 1);
+          exit when symb >= 16#10000#;
+        end loop;
+      end Test_Literal;
+      --
+      procedure Test_Literal_Matched is
+        offs: UInt32:= 16#100#;
+        match: UInt32:= UInt32(b_match);
+      begin
+        loop
+          match:= Shift_Left(match, 1);
+          prob_lit:= prob_lit *
+            Probability_of_Bit(
+              prob_bit => To_Math(prob(Integer(offs + (match and offs) +
+                                               Shift_Right(symb, 8)) + prob'First)),
+              bit      => Unsigned(Shift_Right(symb, 7)) and 1
+            );
+          symb:= Shift_Left(symb, 1);
+          offs:= offs and not (match xor symb);
+          exit when symb >= 16#10000#;
+        end loop;
+      end Test_Literal_Matched;
+      --
+    begin
+      if state < 7 then
+        Test_Literal;
+      else
+        Test_Literal_Matched;
+      end if;
+      return prob_lit;
+    end Probability_of_Literal;
+
+    procedure LZ77_emits_literal_byte (b: Byte) is
+      probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
+      b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
       prob_literal_choice: constant MProb:= To_Math(probs.switch.match(state, pos_state));
-      --  Currently modeled probability for the "Short Rep Match" combination
-      --  in the decision tree.
+      --  Currently modeled probability for the "Short Rep Match" combination in the decision tree.
       prob_short_rep_match: constant MProb:=
         (1.0 - prob_literal_choice) *                       --  1
         (1.0 - To_Math(probs.switch.rep(state))) *          --  1
         To_Math(probs.switch.rep_g0(state)) *               --  0
         To_Math(probs.switch.rep0_long(state, pos_state));  --  0
     begin
-      return prob_short_rep_match >= threshold_short_rep_match;
-    end Short_Rep_Match_better_than_Literal;
-
-    procedure LZ77_emits_literal_byte (b: Byte) is
-      lit_state : constant Integer:=
-          Integer(
-            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
-            Shift_Right(UInt32(prev_byte), 8 - params.lc)
-          );
-      probs_lit_idx : constant Integer:= 16#300# * lit_state;
-      b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
-    begin
       if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
-        and then Short_Rep_Match_better_than_Literal
+        and then prob_short_rep_match >=
+                 Probability_of_Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last))
       then
-        --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match" case.
-        --  The cost (4 bits) is affordable since the combined probabilities are high enough.
+        --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
+        --  case, and its cost (4 bits) is more affordable than the literal's cost.
         Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);              --  1
         Encode_Bit(probs.switch.rep(state), Rep_match_choice);                         --  1
         Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);           --  0
