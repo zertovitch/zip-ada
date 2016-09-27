@@ -272,11 +272,12 @@ package body LZMA.Encoding is
     R: UInt32:= 0;
 
     type MProb is new Long_Float range 0.0 .. 1.0;
+    To_Prob_Factor: constant MProb:=  1.0 / MProb'Base(Probability_model_count);
 
     function To_Math(cp: CProb) return MProb is
     pragma Inline(To_Math);
     begin
-      return MProb'Base(cp) / MProb'Base(Probability_model_count);
+      return MProb'Base(cp) * To_Prob_Factor;
     end To_Math;
 
     --  In the following probability computations, we assume independent
@@ -348,9 +349,14 @@ package body LZMA.Encoding is
         (1.0 - To_Math(probs.switch.rep(state))) *          --  1
         To_Math(probs.switch.rep_g0(state)) *               --  0
         To_Math(probs.switch.rep0_long(state, pos_state));  --  0
+      --  Since the probability model is constantly adapting, we have kind of self-fulfilling
+      --  predictions - e.g. if a Short Rep Match is chosen against a Literal, the context
+      --  probabilities of the former will be increased at the expense of the latter.
+      --  A hurdle factor of < 1 is better for 5 Squeeze Chart data sets but much worse
+      --  for 2 other data sets. The greedy, unskewed test seems the best one.
     begin
       if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
-        and then prob_short_rep_match >=
+        and then prob_short_rep_match >
                  Probability_of_Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last))
       then
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
