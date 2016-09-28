@@ -280,91 +280,104 @@ package body LZMA.Encoding is
       return MProb'Base(cp) * To_Prob_Factor;
     end To_Math;
 
+    --  Package Pred_Prob
+    --  Purpose: compute predicted probabilities of different alternative encodings.
+    --
     --  In the following probability computations, we assume independent
     --  (multiplicative) probabilities, just like the range encoder does
     --  when adapting the range width. With higher probabilities, the width
     --  will decrease less and the compression will be better.
+    --  Since the probability model is constantly adapting, we have kind of self-fulfilling
+    --  predictions - e.g. if a Short Rep Match is chosen against a Literal, the context
+    --  probabilities of the former will be increased at the expense of the latter.
 
-    function Probability_of_Bit(prob_bit: MProb; bit: Unsigned) return MProb is
-    pragma Inline(Probability_of_Bit);
-    begin
-      if bit = 0 then
-        return prob_bit;
-      else
-        return 1.0 - prob_bit;
-      end if;
-    end Probability_of_Bit;
+    package Predicted is
+      function Literal(b, b_match: Byte; prob: CProb_array) return MProb;
+      function Short_Rep_Match return MProb;
+    end Predicted;
 
-    function Probability_of_Literal(b, b_match: Byte; prob: CProb_array) return MProb is
-      prob_lit: MProb:= To_Math(probs.switch.match(state, pos_state));
-      symb: UInt32:= UInt32(b) or 16#100#;
-      --
-      procedure Test_Literal is
+    package body Predicted is
+
+      function Probability_of_Bit(prob_bit: MProb; bit: Unsigned) return MProb is
+      pragma Inline(Probability_of_Bit);
       begin
-        loop
-          prob_lit:= prob_lit *
-            Probability_of_Bit(
-              prob_bit => To_Math(prob(Integer(Shift_Right(symb, 8)) + prob'First)),
-              bit      => Unsigned(Shift_Right(symb, 7)) and 1
-            );
-          symb:= Shift_Left(symb, 1);
-          exit when symb >= 16#10000#;
-        end loop;
-      end Test_Literal;
-      --
-      procedure Test_Literal_Matched is
-        offs: UInt32:= 16#100#;
-        match: UInt32:= UInt32(b_match);
+        if bit = 0 then
+          return prob_bit;
+        else
+          return 1.0 - prob_bit;
+        end if;
+      end Probability_of_Bit;
+
+      function Literal(b, b_match: Byte; prob: CProb_array) return MProb is
+        prob_lit: MProb:= To_Math(probs.switch.match(state, pos_state));
+        symb: UInt32:= UInt32(b) or 16#100#;
+        --
+        procedure Test_Literal is
+        begin
+          loop
+            prob_lit:= prob_lit *
+              Probability_of_Bit(
+                prob_bit => To_Math(prob(Integer(Shift_Right(symb, 8)) + prob'First)),
+                bit      => Unsigned(Shift_Right(symb, 7)) and 1
+              );
+            symb:= Shift_Left(symb, 1);
+            exit when symb >= 16#10000#;
+          end loop;
+        end Test_Literal;
+        --
+        procedure Test_Literal_Matched is
+          offs: UInt32:= 16#100#;
+          match: UInt32:= UInt32(b_match);
+        begin
+          loop
+            match:= Shift_Left(match, 1);
+            prob_lit:= prob_lit *
+              Probability_of_Bit(
+                prob_bit => To_Math(prob(Integer(offs + (match and offs) +
+                                                 Shift_Right(symb, 8)) + prob'First)),
+                bit      => Unsigned(Shift_Right(symb, 7)) and 1
+              );
+            symb:= Shift_Left(symb, 1);
+            offs:= offs and not (match xor symb);
+            exit when symb >= 16#10000#;
+          end loop;
+        end Test_Literal_Matched;
+        --
       begin
-        loop
-          match:= Shift_Left(match, 1);
-          prob_lit:= prob_lit *
-            Probability_of_Bit(
-              prob_bit => To_Math(prob(Integer(offs + (match and offs) +
-                                               Shift_Right(symb, 8)) + prob'First)),
-              bit      => Unsigned(Shift_Right(symb, 7)) and 1
-            );
-          symb:= Shift_Left(symb, 1);
-          offs:= offs and not (match xor symb);
-          exit when symb >= 16#10000#;
-        end loop;
-      end Test_Literal_Matched;
-      --
-    begin
-      if state < 7 then
-        Test_Literal;
-      else
-        Test_Literal_Matched;
-      end if;
-      return prob_lit;
-    end Probability_of_Literal;
+        if state < 7 then
+          Test_Literal;
+        else
+          Test_Literal_Matched;
+        end if;
+        return prob_lit;
+      end Literal;
+
+      function Short_Rep_Match return MProb is
+      begin
+        --  The 1 -> 1 -> 0 -> 0 sequence means the "Short Rep Match" case.
+        return
+          (1.0 - To_Math(probs.switch.match(state, pos_state))) *   --  bit = 1, DL_code_choice
+          (1.0 - To_Math(probs.switch.rep(state))) *                --  bit = 1, Rep_match_choice
+          To_Math(probs.switch.rep_g0(state)) *                     --  bit = 0
+          To_Math(probs.switch.rep0_long(state, pos_state));        --  bit = 0
+      end Short_Rep_Match;
+
+    end Predicted;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
       probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
       b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
-      prob_literal_choice: constant MProb:= To_Math(probs.switch.match(state, pos_state));
-      --  Currently modeled probability for the "Short Rep Match" combination in the decision tree.
-      prob_short_rep_match: constant MProb:=
-        (1.0 - prob_literal_choice) *                       --  1
-        (1.0 - To_Math(probs.switch.rep(state))) *          --  1
-        To_Math(probs.switch.rep_g0(state)) *               --  0
-        To_Math(probs.switch.rep0_long(state, pos_state));  --  0
-      --  Since the probability model is constantly adapting, we have kind of self-fulfilling
-      --  predictions - e.g. if a Short Rep Match is chosen against a Literal, the context
-      --  probabilities of the former will be increased at the expense of the latter.
-      --  A hurdle factor of < 1 is better for 5 Squeeze Chart data sets but much worse
-      --  for 2 other data sets. The greedy, unskewed test seems the best one.
     begin
       if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
-        and then prob_short_rep_match >
-                 Probability_of_Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last))
+        and then Predicted.Short_Rep_Match >
+                 Predicted.Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last))
       then
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
         --  case, and its cost (4 bits) is more affordable than the literal's cost.
-        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);              --  1
-        Encode_Bit(probs.switch.rep(state), Rep_match_choice);                         --  1
-        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);           --  0
-        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);  --  0
+        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);              --  bit = 1
+        Encode_Bit(probs.switch.rep(state), Rep_match_choice);                         --  bit = 1
+        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);           --  bit = 0
+        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);  --  bit = 0
         state := Update_State_ShortRep(state);
       else
         Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
