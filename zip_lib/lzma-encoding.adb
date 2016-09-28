@@ -210,69 +210,17 @@ package body LZMA.Encoding is
     literal_pos_mask : constant UInt32 := 2 ** params.lp - 1;
 
     procedure Update_pos_state is
+    pragma Inline(Update_pos_state);
     begin
       pos_state := Pos_state_range(UInt32(total_pos) and pos_bits_mask);
     end Update_pos_state;
 
-    -----------------------------------------------------------------------------------
-    --  This part processes the case where LZ77 sends a literal (a plain text byte)  --
-    -----------------------------------------------------------------------------------
-
-    procedure Write_Literal (prob: in out CProb_array; symbol: in UInt32) is
-      symb: UInt32:= symbol or 16#100#;
-    begin
-      loop
-        Encode_Bit( --  Prob. offset is always 1, 2, 4, 8, .. , 128
-          prob   => prob(Integer(Shift_Right(symb, 8)) + prob'First),
-          symbol => Unsigned(Shift_Right(symb, 7)) and 1
-        );
-        symb:= Shift_Left(symb, 1);
-        exit when symb >= 16#10000#;
-      end loop;
-    end Write_Literal;
-
-    procedure Write_Literal_Matched (prob: in out CProb_array; symbol, matched: in UInt32) is
-      symb: UInt32:= symbol or 16#100#;
-      offs: UInt32:= 16#100#;
-      match: UInt32:= matched;
-    begin
-      loop
-        match:= Shift_Left(match, 1);
-        Encode_Bit(
-          prob   => prob(Integer(offs + (match and offs) + Shift_Right(symb, 8)) + prob'First),
-          symbol => Unsigned(Shift_Right(symb, 7)) and 1
-        );
-        symb:= Shift_Left(symb, 1);
-        offs:= offs and not (match xor symb);
-        exit when symb >= 16#10000#;
-      end loop;
-    end Write_Literal_Matched;
-
-    prev_byte: Byte:= 0;
-
-    function Idx_for_Literal_prob return Integer is
-    pragma Inline(Idx_for_Literal_prob);
-    begin
-      return 16#300# *
-          Integer(
-            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
-            Shift_Right(UInt32(prev_byte), 8 - params.lc)
-          );
-    end Idx_for_Literal_prob;
-
-    --  We expand the DL codes in order to have some past data.
-    subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size(level) - 1);
-    type Text_Buffer is array (Text_Buffer_Index) of Byte;
-    Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size(level) - 1);
-    --  NB: heap allocation used only for convenience because of
-    --      small default stack sizes on some compilers.
-    type p_Text_Buffer is access Text_Buffer;
-    procedure Dispose is new Ada.Unchecked_Deallocation(Text_Buffer, p_Text_Buffer);
-    Text_Buf: p_Text_Buffer:= new Text_Buffer;
-    R: UInt32:= 0;
-
-    --  Package Predicted
-    --  Purpose: compute predicted probabilities of different alternative encodings.
+    ------------------------
+    --  Package Predicted --
+    ------------------------
+    --
+    --  Purpose: compute predicted probabilities of different alternative encodings,
+    --  in order to choose the most probable.
     --
     --  In the following probability computations, we assume independent
     --  (multiplicative) probabilities, just like the range encoder does
@@ -280,7 +228,7 @@ package body LZMA.Encoding is
     --  will decrease less and the compression will be better.
     --  Since the probability model is constantly adapting, we have kind of self-fulfilling
     --  predictions - e.g. if a Short Rep Match is chosen against a Literal, the context
-    --  probabilities of the former will be increased at the expense of the latter.
+    --  probabilities of the former will be increased instead of the latter.
 
     package Predicted is
       type MProb is new Long_Float range 0.0 .. 1.0;
@@ -297,7 +245,7 @@ package body LZMA.Encoding is
         b: constant MProb'Base:= MProb'Base(bit);
       begin
         return b + (1.0 - 2.0 * b) * prob_bit;
-        --  Branchless equivalent of:
+        --  Branch-less equivalent of:
         --    if bit = 0 then
         --      return prob_bit;
         --    else
@@ -368,6 +316,63 @@ package body LZMA.Encoding is
       end Short_Rep_Match;
 
     end Predicted;
+    
+    -----------------------------------------------------------------------------------
+    --  This part processes the case where LZ77 sends a literal (a plain text byte)  --
+    -----------------------------------------------------------------------------------
+
+    procedure Write_Literal (prob: in out CProb_array; symbol: in UInt32) is
+      symb: UInt32:= symbol or 16#100#;
+    begin
+      loop
+        Encode_Bit( --  Prob. offset is always 1, 2, 4, 8, .. , 128
+          prob   => prob(Integer(Shift_Right(symb, 8)) + prob'First),
+          symbol => Unsigned(Shift_Right(symb, 7)) and 1
+        );
+        symb:= Shift_Left(symb, 1);
+        exit when symb >= 16#10000#;
+      end loop;
+    end Write_Literal;
+
+    procedure Write_Literal_Matched (prob: in out CProb_array; symbol, matched: in UInt32) is
+      symb: UInt32:= symbol or 16#100#;
+      offs: UInt32:= 16#100#;
+      match: UInt32:= matched;
+    begin
+      loop
+        match:= Shift_Left(match, 1);
+        Encode_Bit(
+          prob   => prob(Integer(offs + (match and offs) + Shift_Right(symb, 8)) + prob'First),
+          symbol => Unsigned(Shift_Right(symb, 7)) and 1
+        );
+        symb:= Shift_Left(symb, 1);
+        offs:= offs and not (match xor symb);
+        exit when symb >= 16#10000#;
+      end loop;
+    end Write_Literal_Matched;
+
+    prev_byte: Byte:= 0;
+
+    function Idx_for_Literal_prob return Integer is
+    pragma Inline(Idx_for_Literal_prob);
+    begin
+      return 16#300# *
+          Integer(
+            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
+            Shift_Right(UInt32(prev_byte), 8 - params.lc)
+          );
+    end Idx_for_Literal_prob;
+
+    --  We expand the DL codes in order to have some past data.
+    subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size(level) - 1);
+    type Text_Buffer is array (Text_Buffer_Index) of Byte;
+    Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size(level) - 1);
+    --  NB: heap allocation used only for convenience because of
+    --      small default stack sizes on some compilers.
+    type p_Text_Buffer is access Text_Buffer;
+    procedure Dispose is new Ada.Unchecked_Deallocation(Text_Buffer, p_Text_Buffer);
+    Text_Buf: p_Text_Buffer:= new Text_Buffer;
+    R: UInt32:= 0;
 
     use type Predicted.MProb;
 
