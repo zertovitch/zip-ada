@@ -271,16 +271,7 @@ package body LZMA.Encoding is
     Text_Buf: p_Text_Buffer:= new Text_Buffer;
     R: UInt32:= 0;
 
-    type MProb is new Long_Float range 0.0 .. 1.0;
-    To_Prob_Factor: constant MProb:=  1.0 / MProb'Base(Probability_model_count);
-
-    function To_Math(cp: CProb) return MProb is
-    pragma Inline(To_Math);
-    begin
-      return MProb'Base(cp) * To_Prob_Factor;
-    end To_Math;
-
-    --  Package Pred_Prob
+    --  Package Predicted
     --  Purpose: compute predicted probabilities of different alternative encodings.
     --
     --  In the following probability computations, we assume independent
@@ -292,21 +283,35 @@ package body LZMA.Encoding is
     --  probabilities of the former will be increased at the expense of the latter.
 
     package Predicted is
+      type MProb is new Long_Float range 0.0 .. 1.0;
+      --
       function Literal(b, b_match: Byte; prob: CProb_array) return MProb;
       function Short_Rep_Match return MProb;
+      --  More functions could appear here...
     end Predicted;
 
     package body Predicted is
 
       function Probability_of_Bit(prob_bit: MProb; bit: Unsigned) return MProb is
       pragma Inline(Probability_of_Bit);
+        b: constant MProb'Base:= MProb'Base(bit);
       begin
-        if bit = 0 then
-          return prob_bit;
-        else
-          return 1.0 - prob_bit;
-        end if;
+        return b + (1.0 - 2.0 * b) * prob_bit;
+        --  Branchless equivalent of:
+        --    if bit = 0 then
+        --      return prob_bit;
+        --    else
+        --      return 1.0 - prob_bit;
+        --    end if;
       end Probability_of_Bit;
+
+      To_Prob_Factor: constant MProb:=  1.0 / MProb'Base(Probability_model_count);
+
+      function To_Math(cp: CProb) return MProb is
+      pragma Inline(To_Math);
+      begin
+        return MProb'Base(cp) * To_Prob_Factor;
+      end To_Math;
 
       function Literal(b, b_match: Byte; prob: CProb_array) return MProb is
         prob_lit: MProb:= To_Math(probs.switch.match(state, pos_state));
@@ -363,6 +368,8 @@ package body LZMA.Encoding is
       end Short_Rep_Match;
 
     end Predicted;
+
+    use type Predicted.MProb;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
       probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
