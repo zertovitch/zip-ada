@@ -145,7 +145,7 @@ is
       LZMA_2                => (3, 0, 2, Level_2),
       LZMA_3                => (3, 0, 2, Level_3),
       --
-      LZMA_for_ARW          => (8, 4, 4, Level_0),
+      LZMA_for_ARW          => (8, 4, 4, Level_2),
       LZMA_for_GIF          => (0, 0, 0, Level_1),
       LZMA_for_JPEG         => (8, 0, 0, Level_2),
       LZMA_for_MP3          => (8, 4, 4, Level_2),
@@ -154,7 +154,7 @@ is
       LZMA_for_PGM          => (8, 0, 0, Level_0),
       LZMA_for_PPM          => (4, 0, 0, Level_2),
       LZMA_for_PNG          => (8, 0, 2, Level_2),
-      LZMA_for_WAV          => (0, 1, 1, Level_0),
+      LZMA_for_WAV          => (0, 1, 1, Level_2),
       LZMA_2_for_Zip_in_Zip => (8, 4, 0, Level_2),
       LZMA_3_for_Zip_in_Zip => (8, 4, 0, Level_3)
     );

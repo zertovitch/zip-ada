@@ -293,7 +293,7 @@ package body LZMA.Encoding is
       function Literal(b, b_match: Byte; prob: CProb_array) return MProb;
       function Short_Rep_Match return MProb;
       --  Any_literal is either a Literal or a Short_Rep_Match.
-      function Any_literal (b: Byte) return MProb;
+      function Any_literal (b: Byte; offset: UInt32) return MProb;
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
       --  DL_code is either a Simple_Match or a Repeat_Match.
@@ -303,8 +303,8 @@ package body LZMA.Encoding is
       --
       --  Over the long run, it's better to let repeat matches happen:
       Malus_simple_match_vs_rep: constant:= 0.55;
-      --  DL code for length 2 is often overkill
-      Malus_DL_len_2: constant:= 0.69;
+      --  DL code for length 2 may be unnecessary
+      Malus_DL_len_2: constant:= 0.99;
     end Predicted;
 
     package body Predicted is
@@ -383,9 +383,9 @@ package body LZMA.Encoding is
       end Short_Rep_Match;
 
       --  We simulate here LZ77_emits_literal_byte.
-      function Any_literal (b: Byte) return MProb is
+      function Any_literal (b: Byte; offset: UInt32) return MProb is
         probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
-        b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
+        b_match: constant Byte:= Text_Buf((R + offset - rep_dist(0) - 1) and Text_Buf_Mask);
         srm: MProb;
         ltr: constant MProb:= Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last));
       begin
@@ -755,17 +755,21 @@ package body LZMA.Encoding is
       Copy_start: constant UInt32:= (R - UInt32(distance)) and Text_Buf_Mask;
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
-      b1, b2: Byte;
+      short: constant:= 17;  --  tuned - magic
+      b: array(1 .. short) of Byte;
+      l_prob: Predicted.MProb;
     begin
-      --  DL code of length 2. It may be better just to send both bytes.
-      if length = 2 and then distance >= 2 then
-        b1:= Text_Buf(Copy_start and Text_Buf_Mask);
-        b2:= Text_Buf((Copy_start+1) and Text_Buf_Mask);
-        if Predicted.Any_literal(b1) * Predicted.Any_literal(b2) >
-           Predicted.DL_code(distance, 2) * Predicted.Malus_DL_len_2
-        then
-          LZ77_emits_literal_byte(b1);
-          LZ77_emits_literal_byte(b2);
+      --  DL code of small length. It may be better just to send the bytes.
+      if length <= short and then distance >= length then
+        l_prob:= 1.0;
+        for x in 1 .. length loop
+          b(x):= Text_Buf(Copy_start + UInt32(x-1) and Text_Buf_Mask);
+          l_prob:= l_prob * Predicted.Any_literal(b(x), UInt32(x-1));
+        end loop;
+        if l_prob > Predicted.DL_code(distance, length) * Predicted.Malus_DL_len_2 then
+          for x in 1 .. length loop
+            LZ77_emits_literal_byte(b(x));
+          end loop;
           return;
         end if;
       end if;
