@@ -249,6 +249,29 @@ package body LZMA.Encoding is
       pos_state := Pos_state_range(UInt32(total_pos) and pos_bits_mask);
     end Update_pos_state;
 
+    --  We expand the DL codes in order to have some past data.
+    subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size(level) - 1);
+    type Text_Buffer is array (Text_Buffer_Index) of Byte;
+    Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size(level) - 1);
+    --  NB: heap allocation used only for convenience because of
+    --      small default stack sizes on some compilers.
+    type p_Text_Buffer is access Text_Buffer;
+    procedure Dispose is new Ada.Unchecked_Deallocation(Text_Buffer, p_Text_Buffer);
+    Text_Buf: p_Text_Buffer:= new Text_Buffer;
+    R: UInt32:= 0;
+
+    prev_byte: Byte:= 0;
+
+    function Idx_for_Literal_prob return Integer is
+    pragma Inline(Idx_for_Literal_prob);
+    begin
+      return 16#300# *
+          Integer(
+            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
+            Shift_Right(UInt32(prev_byte), 8 - params.lc)
+          );
+    end Idx_for_Literal_prob;
+
     ------------------------
     --  Package Predicted --
     ------------------------
@@ -269,17 +292,23 @@ package body LZMA.Encoding is
       --
       function Literal(b, b_match: Byte; prob: CProb_array) return MProb;
       function Short_Rep_Match return MProb;
+      --  Any_literal is either a Literal or a Short_Rep_Match.
+      function Any_literal (b: Byte) return MProb;
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
+      --  DL_code is either a Simple_Match or a Repeat_Match.
+      function DL_code (distance: Integer; length: Match_length_range) return MProb;
       --
       --  Empirical, tuned, magic numbers
       --
       --  Over the long run, it's better to let repeat matches happen:
       Malus_simple_match_vs_rep: constant:= 0.55;
+      --  DL code for length 2 is often overkill
+      Malus_DL_len_2: constant:= 0.69;
     end Predicted;
 
     package body Predicted is
-      To_Prob_Factor: constant MProb:=  1.0 / MProb'Base(Probability_model_count);
+      To_Prob_Factor: constant MProb:= 1.0 / MProb'Base(Probability_model_count);
 
       function To_Math(cp: CProb) return MProb is
       pragma Inline(To_Math);
@@ -301,7 +330,7 @@ package body LZMA.Encoding is
       end Test_bit;
 
       function Literal(b, b_match: Byte; prob: CProb_array) return MProb is
-        prob_lit: MProb:= To_Math(probs.switch.match(state, pos_state));
+        prob_lit: MProb:= Test_bit(probs.switch.match(state, pos_state), Literal_choice);
         symb: UInt32:= UInt32(b) or 16#100#;
         --
         procedure Test_Literal is
@@ -352,6 +381,22 @@ package body LZMA.Encoding is
           Test_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice) *
           Test_bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);
       end Short_Rep_Match;
+
+      --  We simulate here LZ77_emits_literal_byte.
+      function Any_literal (b: Byte) return MProb is
+        probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
+        b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
+        srm: MProb;
+        ltr: constant MProb:= Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last));
+      begin
+        if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1) then
+          srm:= Short_Rep_Match;
+          if srm > ltr then
+            return srm;
+          end if;
+        end if;
+        return ltr;
+      end Any_literal;
 
       function Test_Bit_Tree(prob: CProb_array; num_bits: Positive; symbol: Unsigned) return MProb is
         res: MProb:= 1.0;
@@ -467,6 +512,29 @@ package body LZMA.Encoding is
           Test_Distance;
       end Simple_Match;
 
+      --  We simulate here LZ77_emits_DL_code
+      function DL_code (distance: Integer; length: Match_length_range) return MProb is
+        dist_ip: constant UInt32:= UInt32(distance - 1);
+        found_repeat: Integer:= rep_dist'First - 1;
+        dlc: constant MProb:= Test_bit(probs.switch.match(state, pos_state), DL_code_choice);
+        sma: constant MProb:= Simple_Match(dist_ip, Unsigned(length));
+        rma: MProb;
+      begin
+        for i in rep_dist'Range loop
+          if dist_ip = rep_dist(i) then
+            found_repeat:= i;
+            exit;
+          end if;
+        end loop;
+        if found_repeat >= rep_dist'First then
+          rma:= Repeat_Match(found_repeat, Unsigned(length));
+          if rma >= sma * Malus_simple_match_vs_rep  then
+            return dlc * rma;
+          end if;
+        end if;
+        return dlc * sma;
+      end DL_code;
+
     end Predicted;
 
     -----------------------------------------------------------------------------------
@@ -502,29 +570,6 @@ package body LZMA.Encoding is
         exit when symb >= 16#10000#;
       end loop;
     end Write_Literal_Matched;
-
-    prev_byte: Byte:= 0;
-
-    function Idx_for_Literal_prob return Integer is
-    pragma Inline(Idx_for_Literal_prob);
-    begin
-      return 16#300# *
-          Integer(
-            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
-            Shift_Right(UInt32(prev_byte), 8 - params.lc)
-          );
-    end Idx_for_Literal_prob;
-
-    --  We expand the DL codes in order to have some past data.
-    subtype Text_Buffer_Index is UInt32 range 0 .. UInt32(String_buffer_size(level) - 1);
-    type Text_Buffer is array (Text_Buffer_Index) of Byte;
-    Text_Buf_Mask: constant UInt32:= UInt32(String_buffer_size(level) - 1);
-    --  NB: heap allocation used only for convenience because of
-    --      small default stack sizes on some compilers.
-    type p_Text_Buffer is access Text_Buffer;
-    procedure Dispose is new Ada.Unchecked_Deallocation(Text_Buffer, p_Text_Buffer);
-    Text_Buf: p_Text_Buffer:= new Text_Buffer;
-    R: UInt32:= 0;
 
     use type Predicted.MProb;
 
@@ -710,7 +755,20 @@ package body LZMA.Encoding is
       Copy_start: constant UInt32:= (R - UInt32(distance)) and Text_Buf_Mask;
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
+      b1, b2: Byte;
     begin
+      --  DL code of length 2. It may be better just to send both bytes.
+      if length = 2 and then distance >= 2 then
+        b1:= Text_Buf(Copy_start and Text_Buf_Mask);
+        b2:= Text_Buf((Copy_start+1) and Text_Buf_Mask);
+        if Predicted.Any_literal(b1) * Predicted.Any_literal(b2) >
+           Predicted.DL_code(distance, 2) * Predicted.Malus_DL_len_2
+        then
+          LZ77_emits_literal_byte(b1);
+          LZ77_emits_literal_byte(b2);
+          return;
+        end if;
+      end if;
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       for i in rep_dist'Range loop
         if dist_ip = rep_dist(i) then
@@ -721,7 +779,7 @@ package body LZMA.Encoding is
       if found_repeat >= rep_dist'First
         and then Predicted.Repeat_Match(found_repeat, Unsigned(length)) >=
                  Predicted.Simple_Match(dist_ip, Unsigned(length)) *
-                 Predicted.malus_simple_match_vs_rep
+                 Predicted.Malus_simple_match_vs_rep
       then
         Write_Repeat_Match(found_repeat, Unsigned(length));
       else
