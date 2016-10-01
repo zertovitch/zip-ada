@@ -37,8 +37,42 @@ package body LZMA.Encoding is
     cache     : Byte    := 0;
     cache_size: UInt64  := 1;
   end record;
-  --  (*) called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
+  --  (*) "width" is called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
   --      article about range encoding.
+
+    --  Gets an integer [0, 63] matching the highest two bits of an integer.
+    --  It is a log2 function with one "decimal".
+    --
+  function Get_dist_slot(dist: UInt32) return Unsigned is
+    n: UInt32;
+    i: Natural;
+  begin
+    if dist <= Start_dist_model_index then
+      return Unsigned(dist);
+    end if;
+    n := dist;
+    i := 31;
+    if (n and 16#FFFF_0000#) = 0 then
+      n := Shift_Left(n, 16);
+      i := 15;
+    end if;
+    if (n and 16#FF00_0000#) = 0 then
+      n := Shift_Left(n, 8);
+      i := i - 8;
+    end if;
+    if (n and 16#F000_0000#) = 0 then
+      n := Shift_Left(n, 4);
+      i := i - 4;
+    end if;
+    if (n and 16#C000_0000#) = 0 then
+      n := Shift_Left(n, 2);
+      i := i - 2;
+    end if;
+    if (n and 16#8000_0000#) = 0 then
+      i := i - 1;
+    end if;
+    return Unsigned(i * 2) + Unsigned(Shift_Right(dist, i - 1) and 1);
+  end Get_dist_slot;
 
   procedure Encode(
     level                  : Compression_level           := Level_1;
@@ -235,23 +269,11 @@ package body LZMA.Encoding is
       --
       function Literal(b, b_match: Byte; prob: CProb_array) return MProb;
       function Short_Rep_Match return MProb;
-      --  More functions could appear here...
+      function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
+      function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
     end Predicted;
 
     package body Predicted is
-
-      function Probability_of_Bit(prob_bit: MProb; bit: Unsigned) return MProb is
-      pragma Inline(Probability_of_Bit);
-        b: constant MProb'Base:= MProb'Base(bit);
-      begin
-        return b + (1.0 - 2.0 * b) * prob_bit;
-        --  Branch-less equivalent of:
-        --    if bit = 0 then
-        --      return prob_bit;
-        --    else
-        --      return 1.0 - prob_bit;
-        --    end if;
-      end Probability_of_Bit;
 
       To_Prob_Factor: constant MProb:=  1.0 / MProb'Base(Probability_model_count);
 
@@ -261,6 +283,19 @@ package body LZMA.Encoding is
         return MProb'Base(cp) * To_Prob_Factor;
       end To_Math;
 
+      function Test_bit(prob_bit: CProb; bit: Unsigned) return MProb is
+      pragma Inline(Test_bit);
+        b: constant MProb'Base:= MProb'Base(bit);
+      begin
+        return b + (1.0 - 2.0 * b) * To_Math(prob_bit);
+        --  Branch-less equivalent of:
+        --    if bit = 0 then
+        --      return prob_bit;
+        --    else
+        --      return 1.0 - prob_bit;
+        --    end if;
+      end Test_bit;
+
       function Literal(b, b_match: Byte; prob: CProb_array) return MProb is
         prob_lit: MProb:= To_Math(probs.switch.match(state, pos_state));
         symb: UInt32:= UInt32(b) or 16#100#;
@@ -269,8 +304,8 @@ package body LZMA.Encoding is
         begin
           loop
             prob_lit:= prob_lit *
-              Probability_of_Bit(
-                prob_bit => To_Math(prob(Integer(Shift_Right(symb, 8)) + prob'First)),
+              Test_bit(
+                prob_bit => prob(Integer(Shift_Right(symb, 8)) + prob'First),
                 bit      => Unsigned(Shift_Right(symb, 7)) and 1
               );
             symb:= Shift_Left(symb, 1);
@@ -285,9 +320,9 @@ package body LZMA.Encoding is
           loop
             match:= Shift_Left(match, 1);
             prob_lit:= prob_lit *
-              Probability_of_Bit(
-                prob_bit => To_Math(prob(Integer(offs + (match and offs) +
-                                                 Shift_Right(symb, 8)) + prob'First)),
+              Test_bit(
+                prob_bit => prob(Integer(offs + (match and offs) +
+                                                 Shift_Right(symb, 8)) + prob'First),
                 bit      => Unsigned(Shift_Right(symb, 7)) and 1
               );
             symb:= Shift_Left(symb, 1);
@@ -307,16 +342,130 @@ package body LZMA.Encoding is
 
       function Short_Rep_Match return MProb is
       begin
-        --  The 1 -> 1 -> 0 -> 0 sequence means the "Short Rep Match" case.
         return
-          (1.0 - To_Math(probs.switch.match(state, pos_state))) *   --  bit = 1, DL_code_choice
-          (1.0 - To_Math(probs.switch.rep(state))) *                --  bit = 1, Rep_match_choice
-          To_Math(probs.switch.rep_g0(state)) *                     --  bit = 0
-          To_Math(probs.switch.rep0_long(state, pos_state));        --  bit = 0
+          Test_bit(probs.switch.match(state, pos_state), DL_code_choice) *
+          Test_bit(probs.switch.rep(state), Rep_match_choice) *
+          Test_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice) *
+          Test_bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);
       end Short_Rep_Match;
 
+      function Test_Bit_Tree(prob: CProb_array; num_bits: Positive; symbol: Unsigned) return MProb is
+        res: MProb:= 1.0;
+        bit, m: Unsigned;
+      begin
+        m:= 1;
+        for i in reverse 0 .. num_bits - 1 loop
+          bit:= Unsigned(Shift_Right(UInt32(symbol), i)) and 1;
+          res:= res * Test_bit(prob(Integer(m) + prob'First), bit);
+          m:= m + m + bit;
+        end loop;
+        return res;
+      end Test_Bit_Tree;
+
+      function Test_Length(probs_len: Probs_for_LZ_Lengths; length: Unsigned) return MProb is
+        len: Unsigned:= length - Min_match_length;
+        res: MProb;
+      begin
+        if len < Len_low_symbols then
+          res:= Test_bit(probs_len.choice_1, 0);
+          res:= res * Test_Bit_Tree(probs_len.low_coder(pos_state), Len_low_bits, len);
+        else
+          res:= Test_bit(probs_len.choice_1, 1);
+          len:= len - Len_low_symbols;
+          if len < Len_mid_symbols then
+            res:= res * Test_bit(probs_len.choice_2, 0);
+            res:= res * Test_Bit_Tree(probs_len.mid_coder(pos_state), Len_mid_bits, len);
+          else
+            res:= res * Test_bit(probs_len.choice_2, 1);
+            len:= len - Len_mid_symbols;
+            res:= res * Test_Bit_Tree(probs_len.high_coder, Len_high_bits, len);
+          end if;
+        end if;
+        return res;
+      end Test_Length;
+
+      function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb is
+        res: MProb;
+      begin
+        res:= Test_bit(probs.switch.rep(state), Rep_match_choice);
+        case index is
+          when 0 =>
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
+            res:= res * Test_bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
+          when 1 =>
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
+            res:= res * Test_bit(probs.switch.rep_g1(state), The_distance_is_rep1_choice);
+          when 2 =>
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
+            res:= res * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
+            res:= res * Test_bit(probs.switch.rep_g2(state), The_distance_is_rep2_choice);
+          when 3 =>
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
+            res:= res * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
+            res:= res * Test_bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
+        end case;
+        return res * Test_Length(probs.rep_len, length);
+      end Repeat_Match;
+
+      function Simple_Match(distance: UInt32; length: Unsigned) return MProb is
+        --
+        function Test_Bit_Tree_Reverse(prob: CProb_array; num_bits: Natural; symbol: UInt32)
+        return MProb
+        is
+          res: MProb:= 1.0;
+          symb: UInt32:= symbol;
+          m: Unsigned := 1;
+          bit: Unsigned;
+        begin
+          for count in reverse 1 .. num_bits loop
+            bit:= Unsigned(symb) and 1;
+            res:= res * Test_bit(prob(Integer(m) + prob'First), bit);
+            m := m + m + bit;
+            symb:= Shift_Right(symb, 1);
+          end loop;
+          return res;
+        end Test_Bit_Tree_Reverse;
+        --
+        function Test_Distance return MProb is
+          len_state : constant Unsigned := Unsigned'Min(length - 2, Len_to_pos_states - 1);
+          dist_slot : constant Unsigned := Get_dist_slot(distance);
+          base, dist_reduced: UInt32;
+          footerBits: Natural;
+          res: MProb;
+        begin
+          res:= Test_Bit_Tree(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
+          if dist_slot >= Start_dist_model_index then
+            footerBits := Natural(Shift_Right(UInt32(dist_slot), 1)) - 1;
+            base := Shift_Left(UInt32(2 or (dist_slot and 1)), footerBits);
+            dist_reduced := distance - base;
+            if dist_slot < End_dist_model_index then
+              res:= res *
+                Test_Bit_Tree_Reverse(
+                  probs.dist.pos_coder(Integer(base) - Integer(dist_slot) - 1 .. Pos_coder_range'Last),
+                  footerBits,
+                  dist_reduced
+                );
+            else
+              res:= res *
+                (0.5 ** (footerBits - Align_bits)) *  --  direct bits
+                Test_Bit_Tree_Reverse(
+                  probs.dist.align_coder,
+                  Align_bits,
+                  dist_reduced and Align_mask
+                );
+            end if;
+          end if;
+          return res;
+        end Test_Distance;
+      begin
+        return
+          Test_bit(probs.switch.rep(state), Simple_match_choice) *
+          Test_Length(probs.len, length) *
+          Test_Distance;
+      end Simple_Match;
+
     end Predicted;
-    
+
     -----------------------------------------------------------------------------------
     --  This part processes the case where LZ77 sends a literal (a plain text byte)  --
     -----------------------------------------------------------------------------------
@@ -449,40 +598,6 @@ package body LZMA.Encoding is
       end if;
     end Encode_Length;
 
-    --  Gets an integer [0, 63] matching the highest two bits of an integer.
-    --  It is a log2 function with one "decimal".
-    --
-    function Get_dist_slot(dist: UInt32) return Unsigned is
-      n: UInt32;
-      i: Natural;
-    begin
-      if dist <= Start_dist_model_index then
-        return Unsigned(dist);
-      end if;
-      n := dist;
-      i := 31;
-      if (n and 16#FFFF_0000#) = 0 then
-        n := Shift_Left(n, 16);
-        i := 15;
-      end if;
-      if (n and 16#FF00_0000#) = 0 then
-        n := Shift_Left(n, 8);
-        i := i - 8;
-      end if;
-      if (n and 16#F000_0000#) = 0 then
-        n := Shift_Left(n, 4);
-        i := i - 4;
-      end if;
-      if (n and 16#C000_0000#) = 0 then
-        n := Shift_Left(n, 2);
-        i := i - 2;
-      end if;
-      if (n and 16#8000_0000#) = 0 then
-        i := i - 1;
-      end if;
-      return Unsigned(i * 2) + Unsigned(Shift_Right(dist, i - 1) and 1);
-    end Get_dist_slot;
-
     procedure Write_Simple_Match(distance: UInt32; length: Unsigned) is
       --
       procedure Bit_Tree_Reverse_Encode(
@@ -592,6 +707,8 @@ package body LZMA.Encoding is
       Copy_start: constant UInt32:= (R - UInt32(distance)) and Text_Buf_Mask;
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
+      --  Over the long run, it's better to let repeat matches happen
+      malus_simple_match: constant:= 0.55;  --  Empirical, tuned, magic number.
     begin
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       for i in rep_dist'Range loop
@@ -600,7 +717,10 @@ package body LZMA.Encoding is
           exit;
         end if;
       end loop;
-      if found_repeat >= rep_dist'First then
+      if found_repeat >= rep_dist'First
+        and then Predicted.Repeat_Match(found_repeat, Unsigned(length)) >=
+                 Predicted.Simple_Match(dist_ip, Unsigned(length)) * malus_simple_match
+      then
         Write_Repeat_Match(found_repeat, Unsigned(length));
       else
         Write_Simple_Match(dist_ip, Unsigned(length));
