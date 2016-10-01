@@ -40,9 +40,9 @@ package body LZMA.Encoding is
   --  (*) "width" is called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
   --      article about range encoding.
 
-    --  Gets an integer [0, 63] matching the highest two bits of an integer.
-    --  It is a log2 function with one "decimal".
-    --
+  --  Gets an integer [0, 63] matching the highest two bits of an integer.
+  --  It is a log2 function with one "decimal".
+  --
   function Get_dist_slot(dist: UInt32) return Unsigned is
     n: UInt32;
     i: Natural;
@@ -271,10 +271,14 @@ package body LZMA.Encoding is
       function Short_Rep_Match return MProb;
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
+      --
+      --  Empirical, tuned, magic numbers
+      --
+      --  Over the long run, it's better to let repeat matches happen:
+      Malus_simple_match_vs_rep: constant:= 0.55;
     end Predicted;
 
     package body Predicted is
-
       To_Prob_Factor: constant MProb:=  1.0 / MProb'Base(Probability_model_count);
 
       function To_Math(cp: CProb) return MProb is
@@ -385,24 +389,23 @@ package body LZMA.Encoding is
       end Test_Length;
 
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb is
-        res: MProb;
+        res: MProb:= Test_bit(probs.switch.rep(state), Rep_match_choice);
       begin
-        res:= Test_bit(probs.switch.rep(state), Rep_match_choice);
         case index is
           when 0 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
-            res:= res * Test_bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice)
+                      * Test_bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
           when 1 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
-            res:= res * Test_bit(probs.switch.rep_g1(state), The_distance_is_rep1_choice);
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
+                      * Test_bit(probs.switch.rep_g1(state), The_distance_is_rep1_choice);
           when 2 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
-            res:= res * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
-            res:= res * Test_bit(probs.switch.rep_g2(state), The_distance_is_rep2_choice);
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
+                      * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice)
+                      * Test_bit(probs.switch.rep_g2(state), The_distance_is_rep2_choice);
           when 3 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice);
-            res:= res * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice);
-            res:= res * Test_bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
+            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
+                      * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice)
+                      * Test_bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
         end case;
         return res * Test_Length(probs.rep_len, length);
       end Repeat_Match;
@@ -707,8 +710,6 @@ package body LZMA.Encoding is
       Copy_start: constant UInt32:= (R - UInt32(distance)) and Text_Buf_Mask;
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
-      --  Over the long run, it's better to let repeat matches happen
-      malus_simple_match: constant:= 0.55;  --  Empirical, tuned, magic number.
     begin
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       for i in rep_dist'Range loop
@@ -719,7 +720,8 @@ package body LZMA.Encoding is
       end loop;
       if found_repeat >= rep_dist'First
         and then Predicted.Repeat_Match(found_repeat, Unsigned(length)) >=
-                 Predicted.Simple_Match(dist_ip, Unsigned(length)) * malus_simple_match
+                 Predicted.Simple_Match(dist_ip, Unsigned(length)) *
+                 Predicted.malus_simple_match_vs_rep
       then
         Write_Repeat_Match(found_repeat, Unsigned(length));
       else
