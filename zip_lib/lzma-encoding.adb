@@ -277,7 +277,8 @@ package body LZMA.Encoding is
     ------------------------
     --
     --  Purpose: compute predicted probabilities of different alternative encodings,
-    --  in order to choose the most probable.
+    --  in order to choose the most probable. Note that the LZMA encoding is already very efficient
+    --  by taking the obvious choices and ignoring this package (see constant named "quick").
     --
     --  In the following probability computations, we assume independent
     --  (multiplicative) probabilities, just like the range encoder does
@@ -572,14 +573,18 @@ package body LZMA.Encoding is
     end Write_Literal_Matched;
 
     use type Predicted.MProb;
+    quick: constant Boolean:= level <= Level_1;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
       probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
       b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
     begin
       if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
-        and then Predicted.Short_Rep_Match >
-                 Predicted.Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last))
+        and then
+          (quick
+             or else
+           Predicted.Short_Rep_Match >
+           Predicted.Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last)))
       then
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
         --  case, and its cost (4 bits) is more affordable than the literal's cost.
@@ -760,7 +765,7 @@ package body LZMA.Encoding is
       l_prob: Predicted.MProb;
     begin
       --  DL code of small length. It may be better just to send the bytes.
-      if length <= short and then distance >= length then
+      if (not quick) and then length <= short and then distance >= length then
         l_prob:= 1.0;
         for x in 1 .. length loop
           b(x):= Text_Buf(Copy_start + UInt32(x-1) and Text_Buf_Mask);
@@ -773,6 +778,7 @@ package body LZMA.Encoding is
           return;
         end if;
       end if;
+      --  Go for the DL code.
       Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
       for i in rep_dist'Range loop
         if dist_ip = rep_dist(i) then
@@ -781,9 +787,12 @@ package body LZMA.Encoding is
         end if;
       end loop;
       if found_repeat >= rep_dist'First
-        and then Predicted.Repeat_Match(found_repeat, Unsigned(length)) >=
-                 Predicted.Simple_Match(dist_ip, Unsigned(length)) *
-                 Predicted.Malus_simple_match_vs_rep
+        and then
+          (quick
+             or else
+           Predicted.Repeat_Match(found_repeat, Unsigned(length)) >=
+           Predicted.Simple_Match(dist_ip, Unsigned(length)) *
+           Predicted.Malus_simple_match_vs_rep)
       then
         Write_Repeat_Match(found_repeat, Unsigned(length));
       else
