@@ -303,14 +303,18 @@ package body LZMA.Encoding is
       --  DL_code is either a Simple_Match or a Repeat_Match.
       function DL_code (distance: Integer; length: Match_length_range) return MProb;
       --  Expanded_DL_code is a DL code expanded as a string of literals.
-      function Expanded_DL_code (distance: Integer; length: Match_length_range) return MProb;
+      function Expanded_DL_code (
+        distance : Integer;
+        length   : Match_length_range;
+        give_up  : MProb)
+      return MProb;
       --
       --  Empirical, tuned, magic numbers
       --
       --  Over the long run, it's better to let repeat matches happen:
       Malus_simple_match_vs_rep: constant:= 0.55;
       --  DL code for length 2 may be unnecessary
-      Malus_DL_len_2: constant:= 0.99;
+      Malus_DL_len_2: constant:= 0.995;
     end Predicted;
 
     package body Predicted is
@@ -558,12 +562,17 @@ package body LZMA.Encoding is
         return dlc * sma;
       end DL_code;
 
-      function Expanded_DL_code (distance: Integer; length: Match_length_range) return MProb is
+      function Expanded_DL_code (
+        distance : Integer;
+        length   : Match_length_range;
+        give_up  : MProb)
+      return MProb
+      is
         b: Byte;
         sim_prev_byte: Byte:= prev_byte;
         sim_state: State_range:= state;
         --
-        l_prob: MProb:= 1.0;
+        expanded_string_prob: MProb:= 1.0;
       begin
         for x in 0 .. length-1 loop
           b:= Text_Buf((R + UInt32(x) - UInt32(distance)) and Text_Buf_Mask);
@@ -573,11 +582,13 @@ package body LZMA.Encoding is
             b_prev        => sim_prev_byte,
             offset        => Data_Bytes_Count(x),
             sim_state     => sim_state,
-            prob          => l_prob
+            prob          => expanded_string_prob
           );
+          --  Probability is decreasing over the loop, useless to continue under given threshold.
+          exit when expanded_string_prob < give_up;
           sim_prev_byte:= b;
         end loop;
-        return l_prob;
+        return expanded_string_prob;
       end Expanded_DL_code;
 
     end Predicted;
@@ -805,12 +816,12 @@ package body LZMA.Encoding is
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
       short: constant:= 18;  --  tuned - magic
+      dlc: Predicted.MProb;
     begin
       --  DL code of small length. It may be better just to expand it and send the bytes.
       if (not quick) and then length <= short and then distance >= length then
-        if Predicted.Expanded_DL_code(distance, length) >
-           Predicted.DL_code(distance, length) * Predicted.Malus_DL_len_2
-        then
+        dlc:= Predicted.DL_code(distance, length) * Predicted.Malus_DL_len_2;
+        if Predicted.Expanded_DL_code(distance, length, dlc) > dlc then
           for x in 1 .. length loop
             LZ77_emits_literal_byte(Text_Buf((Copy_start + UInt32(x-1)) and Text_Buf_Mask));
           end loop;
