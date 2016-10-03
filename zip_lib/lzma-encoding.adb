@@ -395,6 +395,31 @@ package body LZMA.Encoding is
       end Short_Rep_Match;
 
       --  We simulate here LZ77_emits_literal_byte.
+      procedure Any_literal(
+        b, b_match, b_prev : Byte;  --  b_match is the byte at distance rep_dist(0) + 1.
+        offset             : Data_Bytes_Count;
+        sim_state          : in out State_range;
+        prob               : in out MProb
+      )
+      is
+        probs_lit_idx : constant Integer:= Idx_for_Literal_prob(total_pos+offset, b_prev);
+        sim_pos_state : constant Pos_state_range:= Pos_state_range(UInt32(total_pos+offset) and pos_bits_mask);
+        ltr: constant MProb:=
+          Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last), sim_state, sim_pos_state);
+        srm: MProb;
+      begin
+        if b = b_match and then total_pos+offset > Data_Bytes_Count(rep_dist(0) + 1) then
+          srm:= Short_Rep_Match(sim_state, sim_pos_state);
+          if srm > ltr then
+            --  Short Rep would be preferred.
+            sim_state := Update_State_ShortRep(sim_state);
+            prob:= prob * srm;
+            return;
+          end if;
+        end if;
+        sim_state := Update_State_Literal(sim_state);
+        prob:= prob * ltr;
+      end Any_literal;
 
       function Test_Bit_Tree(prob: CProb_array; num_bits: Positive; symbol: Unsigned) return MProb is
         res: MProb:= 1.0;
@@ -534,34 +559,22 @@ package body LZMA.Encoding is
       end DL_code;
 
       function Expanded_DL_code (distance: Integer; length: Match_length_range) return MProb is
-        b, b_match: Byte;
+        b: Byte;
         sim_prev_byte: Byte:= prev_byte;
         sim_state: State_range:= state;
-        --
-        function Test_literal(x: Data_Bytes_Count) return MProb is
-          probs_lit_idx : constant Integer:= Idx_for_Literal_prob(total_pos+x, sim_prev_byte);
-          sim_pos_state : constant Pos_state_range:= Pos_state_range(UInt32(total_pos+x) and pos_bits_mask);
-          ltr: constant MProb:=
-            Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last), sim_state, sim_pos_state);
-          srm: MProb;
-        begin
-          if b = b_match and then total_pos+x > Data_Bytes_Count(rep_dist(0) + 1) then
-            srm:= Short_Rep_Match(sim_state, sim_pos_state);
-            if srm > ltr then
-              sim_state := Update_State_ShortRep(sim_state);
-              return srm;
-            end if;
-          end if;
-          sim_state := Update_State_Literal(sim_state);
-          return ltr;
-        end Test_literal;
         --
         l_prob: MProb:= 1.0;
       begin
         for x in 0 .. length-1 loop
-          b      := Text_Buf((R + UInt32(x) - UInt32(distance)) and Text_Buf_Mask);
-          b_match:= Text_Buf((R + UInt32(x) - rep_dist(0) - 1)  and Text_Buf_Mask);
-          l_prob:= l_prob * Test_literal(Data_Bytes_Count(x));
+          b:= Text_Buf((R + UInt32(x) - UInt32(distance)) and Text_Buf_Mask);
+          Any_literal(
+            b             => b,
+            b_match       => Text_Buf((R + UInt32(x) - rep_dist(0) - 1)  and Text_Buf_Mask),
+            b_prev        => sim_prev_byte,
+            offset        => Data_Bytes_Count(x),
+            sim_state     => sim_state,
+            prob          => l_prob
+          );
           sim_prev_byte:= b;
         end loop;
         return l_prob;
