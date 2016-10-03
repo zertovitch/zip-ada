@@ -50,6 +50,8 @@ package Zip.Compress is
      --  LZMA with non-default parameters, targeted for specific data types:
      LZMA_2_for_Zip_in_Zip,
      LZMA_3_for_Zip_in_Zip,
+     LZMA_2_for_Source,
+     LZMA_3_for_Source,
      LZMA_for_JPEG,
      LZMA_for_ARW,   --  Raw camera picture
      LZMA_for_ORF,   --  Raw camera picture
@@ -93,6 +95,7 @@ package Zip.Compress is
 
   type Data_content_type is (
     Neutral,
+    Source_code,
     JPEG,
     ARW_RW2,     --  Raw digital camera image
     ORF_CR2,     --  Raw digital camera image

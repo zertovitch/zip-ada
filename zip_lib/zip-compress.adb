@@ -257,17 +257,41 @@ package body Zip.Compress is
             else
               Compress_data_single_method(LZMA_3_for_Zip_in_Zip);
             end if;
+          when Source_code =>
+            if input_size_known and input_size < 8_000 then
+              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+            elsif fast_presel then
+              Compress_data_single_method(LZMA_2_for_Source);
+            else
+              Compress_data_single_method(LZMA_3_for_Source);
+            end if;
         end case;
     end case;
   end Compress_data;
 
   function Guess_type_from_name(name: String) return Data_content_type is
     up: constant String:= To_Upper(name);
+    ext_1: constant String:= Tail(up, 2);
+    ext_2: constant String:= Tail(up, 3);
     ext_3: constant String:= Tail(up, 4);
     ext_4: constant String:= Tail(up, 5);
   begin
     if ext_3 = ".JPG" or else ext_4 = ".JPEG" then
       return JPEG;
+    end if;
+    if ext_3 = ".ADA" or else ext_3 = ".ADS" or else ext_3 = ".ADB"
+      or else ext_1 = ".C" or else ext_1 = ".H"
+      or else ext_3 = ".CPP" or else ext_3 = ".HPP" 
+      or else ext_3 = ".DEF" or else ext_3 = ".ASM" 
+      or else ext_4 = ".JAVA" or else ext_2 = ".CS"
+      or else ext_3 = ".PAS" or else ext_3 = ".INC" or else ext_2 = ".PP" or else ext_3 = ".LPR"
+      or else ext_3 = ".MAK" or else ext_2 = ".IN"
+      or else ext_2 = ".SH" or else ext_3 = ".BAT" or else ext_3 = ".CMD"
+      or else ext_3 = ".XML" or else ext_4 = ".SGML"
+      or else ext_3 = ".HTM" or else ext_4 = ".HTML"      
+      or else ext_2 = ".JS"
+    then
+      return Source_code;
     end if;
     --  Zip archives happen to be zipped...
     if ext_4 = ".EPUB"  --  EPUB: e-book reader format

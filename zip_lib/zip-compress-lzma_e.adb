@@ -156,7 +156,9 @@ is
       LZMA_for_PNG          => (8, 0, 2, Level_2),
       LZMA_for_WAV          => (0, 1, 1, Level_2),
       LZMA_2_for_Zip_in_Zip => (8, 4, 0, Level_2),
-      LZMA_3_for_Zip_in_Zip => (8, 4, 0, Level_3)
+      LZMA_3_for_Zip_in_Zip => (8, 4, 0, Level_3),
+      LZMA_2_for_Source     => (3, 0, 0, Level_2),
+      LZMA_3_for_Source     => (3, 0, 0, Level_3)
     );
 
   procedure LZMA_Encode is
