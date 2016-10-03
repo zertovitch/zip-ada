@@ -260,9 +260,7 @@ package body LZMA.Encoding is
     Text_Buf: p_Text_Buffer:= new Text_Buffer;
     R: UInt32:= 0;
 
-    prev_byte: Byte:= 0;
-
-    function Idx_for_Literal_prob return Integer is
+    function Idx_for_Literal_prob(total_pos : Data_Bytes_Count; prev_byte: Byte) return Integer is
     pragma Inline(Idx_for_Literal_prob);
     begin
       return 16#300# *
@@ -271,6 +269,8 @@ package body LZMA.Encoding is
             Shift_Right(UInt32(prev_byte), 8 - params.lc)
           );
     end Idx_for_Literal_prob;
+
+    prev_byte: Byte:= 0;
 
     ------------------------
     --  Package Predicted --
@@ -291,14 +291,19 @@ package body LZMA.Encoding is
     package Predicted is
       type MProb is new Long_Float range 0.0 .. 1.0;
       --
-      function Literal(b, b_match: Byte; prob: CProb_array) return MProb;
-      function Short_Rep_Match return MProb;
-      --  Any_literal is either a Literal or a Short_Rep_Match.
-      function Any_literal (b: Byte; offset: UInt32) return MProb;
+      function Literal(
+        b, b_match : Byte;
+        prob       : CProb_array;
+        state      : State_range;
+        pos_state  : Pos_state_range
+      ) return MProb;
+      function Short_Rep_Match(state : State_range; pos_state : Pos_state_range) return MProb;
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
       --  DL_code is either a Simple_Match or a Repeat_Match.
       function DL_code (distance: Integer; length: Match_length_range) return MProb;
+      --  Expanded_DL_code is a DL code expanded as a string of literals.
+      function Expanded_DL_code (distance: Integer; length: Match_length_range) return MProb;
       --
       --  Empirical, tuned, magic numbers
       --
@@ -330,7 +335,13 @@ package body LZMA.Encoding is
         --    end if;
       end Test_bit;
 
-      function Literal(b, b_match: Byte; prob: CProb_array) return MProb is
+      function Literal(
+        b, b_match : Byte;
+        prob       : CProb_array;
+        state      : State_range;
+        pos_state  : Pos_state_range
+      ) return MProb
+      is
         prob_lit: MProb:= Test_bit(probs.switch.match(state, pos_state), Literal_choice);
         symb: UInt32:= UInt32(b) or 16#100#;
         --
@@ -374,7 +385,7 @@ package body LZMA.Encoding is
         return prob_lit;
       end Literal;
 
-      function Short_Rep_Match return MProb is
+      function Short_Rep_Match(state : State_range; pos_state : Pos_state_range) return MProb is
       begin
         return
           Test_bit(probs.switch.match(state, pos_state), DL_code_choice) *
@@ -384,20 +395,6 @@ package body LZMA.Encoding is
       end Short_Rep_Match;
 
       --  We simulate here LZ77_emits_literal_byte.
-      function Any_literal (b: Byte; offset: UInt32) return MProb is
-        probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
-        b_match: constant Byte:= Text_Buf((R + offset - rep_dist(0) - 1) and Text_Buf_Mask);
-        srm: MProb;
-        ltr: constant MProb:= Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last));
-      begin
-        if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1) then
-          srm:= Short_Rep_Match;
-          if srm > ltr then
-            return srm;
-          end if;
-        end if;
-        return ltr;
-      end Any_literal;
 
       function Test_Bit_Tree(prob: CProb_array; num_bits: Positive; symbol: Unsigned) return MProb is
         res: MProb:= 1.0;
@@ -536,6 +533,40 @@ package body LZMA.Encoding is
         return dlc * sma;
       end DL_code;
 
+      function Expanded_DL_code (distance: Integer; length: Match_length_range) return MProb is
+        b, b_match: Byte;
+        sim_prev_byte: Byte:= prev_byte;
+        sim_state: State_range:= state;
+        --
+        function Test_literal(x: Data_Bytes_Count) return MProb is
+          probs_lit_idx : constant Integer:= Idx_for_Literal_prob(total_pos+x, sim_prev_byte);
+          sim_pos_state : constant Pos_state_range:= Pos_state_range(UInt32(total_pos+x) and pos_bits_mask);
+          ltr: constant MProb:=
+            Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last), sim_state, sim_pos_state);
+          srm: MProb;
+        begin
+          if b = b_match and then total_pos+x > Data_Bytes_Count(rep_dist(0) + 1) then
+            srm:= Short_Rep_Match(sim_state, sim_pos_state);
+            if srm > ltr then
+              sim_state := Update_State_ShortRep(sim_state);
+              return srm;
+            end if;
+          end if;
+          sim_state := Update_State_Literal(sim_state);
+          return ltr;
+        end Test_literal;
+        --
+        l_prob: MProb:= 1.0;
+      begin
+        for x in 0 .. length-1 loop
+          b      := Text_Buf((R + UInt32(x) - UInt32(distance)) and Text_Buf_Mask);
+          b_match:= Text_Buf((R + UInt32(x) - rep_dist(0) - 1)  and Text_Buf_Mask);
+          l_prob:= l_prob * Test_literal(Data_Bytes_Count(x));
+          sim_prev_byte:= b;
+        end loop;
+        return l_prob;
+      end Expanded_DL_code;
+
     end Predicted;
 
     -----------------------------------------------------------------------------------
@@ -576,29 +607,29 @@ package body LZMA.Encoding is
     quick: constant Boolean:= level <= Level_1;
 
     procedure LZ77_emits_literal_byte (b: Byte) is
-      probs_lit_idx : constant Integer:= Idx_for_Literal_prob;
+      pb_lit_idx : constant Integer:= Idx_for_Literal_prob(total_pos, prev_byte);
       b_match: constant Byte:= Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
     begin
       if b = b_match and then total_pos > Data_Bytes_Count(rep_dist(0) + 1)
         and then
           (quick
              or else
-           Predicted.Short_Rep_Match >
-           Predicted.Literal(b, b_match, probs.lit(probs_lit_idx..probs.lit'Last)))
+           Predicted.Short_Rep_Match(state, pos_state) >
+           Predicted.Literal(b, b_match, probs.lit(pb_lit_idx..probs.lit'Last), state, pos_state))
       then
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
         --  case, and its cost (4 bits) is more affordable than the literal's cost.
-        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);              --  bit = 1
-        Encode_Bit(probs.switch.rep(state), Rep_match_choice);                         --  bit = 1
-        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);           --  bit = 0
-        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);  --  bit = 0
+        Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
+        Encode_Bit(probs.switch.rep(state), Rep_match_choice);
+        Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
+        Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);
         state := Update_State_ShortRep(state);
       else
         Encode_Bit(probs.switch.match(state, pos_state), Literal_choice);
         if state < 7 then
-          Write_Literal(probs.lit(probs_lit_idx..probs.lit'Last), UInt32(b));
+          Write_Literal(probs.lit(pb_lit_idx..probs.lit'Last), UInt32(b));
         else
-          Write_Literal_Matched(probs.lit(probs_lit_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
+          Write_Literal_Matched(probs.lit(pb_lit_idx..probs.lit'Last), UInt32(b), UInt32(b_match));
         end if;
         state := Update_State_Literal(state);
       end if;
@@ -760,20 +791,15 @@ package body LZMA.Encoding is
       Copy_start: constant UInt32:= (R - UInt32(distance)) and Text_Buf_Mask;
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
-      short: constant:= 17;  --  tuned - magic
-      b: array(1 .. short) of Byte;
-      l_prob: Predicted.MProb;
+      short: constant:= 18;  --  tuned - magic
     begin
-      --  DL code of small length. It may be better just to send the bytes.
+      --  DL code of small length. It may be better just to expand it and send the bytes.
       if (not quick) and then length <= short and then distance >= length then
-        l_prob:= 1.0;
-        for x in 1 .. length loop
-          b(x):= Text_Buf(Copy_start + UInt32(x-1) and Text_Buf_Mask);
-          l_prob:= l_prob * Predicted.Any_literal(b(x), UInt32(x-1));
-        end loop;
-        if l_prob > Predicted.DL_code(distance, length) * Predicted.Malus_DL_len_2 then
+        if Predicted.Expanded_DL_code(distance, length) >
+           Predicted.DL_code(distance, length) * Predicted.Malus_DL_len_2
+        then
           for x in 1 .. length loop
-            LZ77_emits_literal_byte(b(x));
+            LZ77_emits_literal_byte(Text_Buf((Copy_start + UInt32(x-1)) and Text_Buf_Mask));
           end loop;
           return;
         end if;
