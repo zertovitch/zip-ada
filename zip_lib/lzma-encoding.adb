@@ -298,6 +298,11 @@ package body LZMA.Encoding is
         pos_state  : Pos_state_range
       ) return MProb;
       function Short_Rep_Match(state : State_range; pos_state : Pos_state_range) return MProb;
+      function Any_literal(
+        b, b_match, b_prev : Byte;  --  b_match is the byte at distance rep_dist(0) + 1.
+        offset             : Data_Bytes_Count
+      ) return MProb;
+      --
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
       --  Strict_DL_code is either a Simple_Match or a Repeat_Match.
@@ -311,10 +316,12 @@ package body LZMA.Encoding is
       --
       --  Empirical, tuned, magic numbers
       --
-      --  Over the long run, it's better to let repeat matches happen:
+      --  Over the long run, it's better to let repeat matches happen.
       Malus_simple_match_vs_rep: constant:= 0.55;
       --  DL code for short lengths may be unnecessary and replaced by fully expanded bytes.
       Malus_DL_short_len: constant:= 0.995;
+      --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
+      Lit_then_DL_threshold: constant:= 0.875;
     end Predicted;
 
     package body Predicted is
@@ -423,6 +430,19 @@ package body LZMA.Encoding is
         end if;
         sim_state := Update_State_Literal(sim_state);
         prob:= prob * ltr;
+      end Any_literal;
+
+      function Any_literal(
+        b, b_match, b_prev : Byte;  --  b_match is the byte at distance rep_dist(0) + 1.
+        offset             : Data_Bytes_Count
+      )
+      return MProb
+      is
+        sim_state: State_range:= state;
+        prob: MProb:= 1.0;
+      begin
+        Any_literal(b, b_match, b_prev, offset, sim_state, prob);
+        return prob;
       end Any_literal;
 
       function Test_Bit_Tree(prob: CProb_array; num_bits: Positive; symbol: Unsigned) return MProb is
@@ -816,12 +836,31 @@ package body LZMA.Encoding is
       dist_ip: constant UInt32:= UInt32(distance - 1);
       found_repeat: Integer:= rep_dist'First - 1;
       short: constant:= 18;  --  tuned - magic
-      dlc: Predicted.MProb;
+      use Predicted;
+      strict_dlc, expanded_dlc, lit: MProb;
+      b: Byte;
     begin
       --  DL code of small length. It may be better just to expand it and send the bytes.
       if (not quick) and then length <= short and then distance >= length then
-        dlc:= Predicted.Strict_DL_code(distance, length) * Predicted.Malus_DL_short_len;
-        if Predicted.Expanded_DL_code(distance, length, dlc) > dlc then
+        if length > Min_match_length then
+          -- Lit + shorter DL
+          b:= Text_Buf(Copy_start and Text_Buf_Mask);
+          lit:=
+            Any_literal(
+              b,
+              Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask),
+              prev_byte,
+              0);
+          if lit >= Lit_then_DL_threshold then
+            LZ77_emits_literal_byte(b);
+            LZ77_emits_DL_code (distance, length-1);
+            return;
+          end if;
+        end if;
+        --
+        strict_dlc:= Predicted.Strict_DL_code(distance, length) * Predicted.Malus_DL_short_len;
+        expanded_dlc:= Predicted.Expanded_DL_code(distance, length, strict_dlc);
+        if expanded_dlc > strict_dlc then
           for x in 1 .. length loop
             LZ77_emits_literal_byte(Text_Buf((Copy_start + UInt32(x-1)) and Text_Buf_Mask));
           end loop;
