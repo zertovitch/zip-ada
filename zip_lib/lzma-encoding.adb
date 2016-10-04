@@ -313,7 +313,7 @@ package body LZMA.Encoding is
         length   : Match_length_range;
         give_up  : MProb)
       return MProb;
-      --  End of the obvious cases. Now things get thougher...
+      --  End of the obvious cases. Now things get tougher...
       --
       --  Case of DL code split into a shorter DL code (strict or expanded), then a literal.
       function DL_code_plus_Literal (
@@ -329,6 +329,8 @@ package body LZMA.Encoding is
       Malus_DL_short_len: constant:= 0.995;
       --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
       Lit_then_DL_threshold: constant:= 0.875;
+      --
+      Malus_DL_plus_lit: constant:= 0.45;
     end Predicted;
 
     package body Predicted is
@@ -632,10 +634,16 @@ package body LZMA.Encoding is
         sim_rep_dist_0: UInt32:= rep_dist(0);
         --
         prob: MProb:= 1.0;
-        strict_dlc: constant MProb:= Strict_DL_code(distance, length-1) * Malus_DL_short_len;
+        dlc: MProb:= Strict_DL_code(distance, length-1) * Malus_DL_short_len;
       begin
-        --  We have first a DL code of length 'length-1'. The real compression would try look
-        --  for a full expansion if it is more probable (=> less space). We simulate that.
+        if length > Min_match_length + 1 then
+          --  The "DL + Lit" optimization will be done recursively "in real",
+          --  we can do it as well in the simulation (doesn't seem to help).
+          dlc:= MProb'Max(dlc, Malus_DL_plus_lit * DL_code_plus_Literal(distance, length-1));
+        end if;
+        --
+        --  We have first a DL code of length 'length-1'. The real compression would try to
+        --  look for a full expansion if it is more probable (=> less space). We simulate that.
         for x in 0 .. length-2 loop
           b:= Text_Buf((R + UInt32(x) - UInt32(distance)) and Text_Buf_Mask);
           Any_literal(
@@ -647,11 +655,11 @@ package body LZMA.Encoding is
             sim_rep_dist_0 => sim_rep_dist_0,
             prob           => prob
           );
-          if prob < strict_dlc then
+          if prob < dlc then
             --  Expansion would be less efficient, so we simulate the DL code.
-            prob:= strict_dlc;
+            prob:= dlc;
             sim_prev_byte:= Text_Buf((R + UInt32(length-2) - UInt32(distance)) and Text_Buf_Mask);
-            sim_state:= Update_State_Match(state);  --  approximative: could be a rep match (sigh)...
+            sim_state:= Update_State_Match(state);  --  !! approximative: could be a rep match (sigh)...
             --  The match (any: simple or repeat) always sets this:
             sim_rep_dist_0:= UInt32(distance) - 1;
             exit;
@@ -920,7 +928,9 @@ package body LZMA.Encoding is
             return;
           end if;
           -- Shorter DL + Lit
-          dl_plus_lit:= Predicted.DL_code_plus_Literal(distance, length) * 0.75; --  !! malus to be tweaked futher !!
+          dl_plus_lit:=
+            Predicted.DL_code_plus_Literal(distance, length) *
+            Predicted.Malus_DL_plus_lit;
           if dl_plus_lit > MProb'Max(strict_dlc, expanded_dlc) then
             b:= Text_Buf((Copy_start + UInt32(length-1)) and Text_Buf_Mask);
             LZ77_emits_DL_code(distance, length-1);
