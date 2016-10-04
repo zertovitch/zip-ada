@@ -317,8 +317,9 @@ package body LZMA.Encoding is
       --
       --  Case of DL code split into a shorter DL code (strict or expanded), then a literal.
       function DL_code_plus_Literal (
-        distance : Integer;
-        length   : Match_length_range)
+        distance  : Integer;
+        length    : Match_length_range;
+        recursion : Natural)
       return MProb;
       --
       --  Empirical, tuned, magic numbers
@@ -330,7 +331,7 @@ package body LZMA.Encoding is
       --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
       Lit_then_DL_threshold: constant:= 0.875;
       --
-      Malus_DL_plus_lit: constant:= 0.45;
+      Malus_DL_plus_lit: constant:= 0.125;
     end Predicted;
 
     package body Predicted is
@@ -449,10 +450,9 @@ package body LZMA.Encoding is
       return MProb
       is
         sim_state: State_range:= state;
-        sim_rep_dist_0: UInt32:= rep_dist(0);
         prob: MProb:= 1.0;
       begin
-        Any_literal(b, b_match, b_prev, offset, sim_state, sim_rep_dist_0, prob);
+        Any_literal(b, b_match, b_prev, offset, sim_state, rep_dist(0), prob);
         return prob;
       end Any_literal;
 
@@ -624,8 +624,9 @@ package body LZMA.Encoding is
       end Expanded_DL_code;
 
       function DL_code_plus_Literal (
-        distance : Integer;
-        length   : Match_length_range)
+        distance  : Integer;
+        length    : Match_length_range;
+        recursion : Natural)
       return MProb
       is
         b: Byte;
@@ -636,10 +637,11 @@ package body LZMA.Encoding is
         prob: MProb:= 1.0;
         dlc: MProb:= Strict_DL_code(distance, length-1) * Malus_DL_short_len;
       begin
-        if length > Min_match_length + 1 then
+        if recursion > 0 and then length > Min_match_length + 1 then
           --  The "DL + Lit" optimization will be done recursively "in real",
-          --  we can do it as well in the simulation (doesn't seem to help).
-          dlc:= MProb'Max(dlc, Malus_DL_plus_lit * DL_code_plus_Literal(distance, length-1));
+          --  we can do it as well in the simulation.
+          dlc:= MProb'Max(dlc,
+            Malus_DL_plus_lit * DL_code_plus_Literal(distance, length-1, recursion-1));
         end if;
         --
         --  We have first a DL code of length 'length-1'. The real compression would try to
@@ -929,7 +931,7 @@ package body LZMA.Encoding is
           end if;
           -- Shorter DL + Lit
           dl_plus_lit:=
-            Predicted.DL_code_plus_Literal(distance, length) *
+            Predicted.DL_code_plus_Literal(distance, length, 1) *
             Predicted.Malus_DL_plus_lit;
           if dl_plus_lit > MProb'Max(strict_dlc, expanded_dlc) then
             b:= Text_Buf((Copy_start + UInt32(length-1)) and Text_Buf_Mask);

@@ -260,16 +260,16 @@ package body Zip.Compress is
     end if;
     if ext_3 = ".ADA" or else ext_3 = ".ADS" or else ext_3 = ".ADB"
       or else ext_1 = ".C" or else ext_1 = ".H"
-      or else ext_3 = ".CPP" or else ext_3 = ".HPP" 
-      or else ext_3 = ".DEF" or else ext_3 = ".ASM" 
+      or else ext_3 = ".CPP" or else ext_3 = ".HPP"
+      or else ext_3 = ".DEF" or else ext_3 = ".ASM"
       or else ext_4 = ".JAVA" or else ext_2 = ".CS"
       or else ext_3 = ".PAS" or else ext_3 = ".INC" or else ext_2 = ".PP" or else ext_3 = ".LPR"
       or else ext_3 = ".MAK" or else ext_2 = ".IN"
       or else ext_2 = ".SH" or else ext_3 = ".BAT" or else ext_3 = ".CMD"
       or else ext_3 = ".XML" or else ext_3 = ".XSL" or else ext_4 = ".SGML"
-      or else ext_3 = ".HTM" or else ext_4 = ".HTML"      
-      or else ext_2 = ".JS"
-      or else ext_3 = ".CSV" 
+      or else ext_3 = ".HTM" or else ext_4 = ".HTML"
+      or else ext_2 = ".JS" or else ext_3 = ".LSP"
+      or else ext_3 = ".CSV"
     then
       return Source_code;
     end if;
