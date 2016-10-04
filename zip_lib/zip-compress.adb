@@ -1,24 +1,3 @@
---  ________  ___   ______       ______     ___
--- /___..._/  |.|   |.___.\     /. __ .\  __|.|   ____
---    /../    |.|   |.____/     |.|__|.| /....|  __\..\
---  _/../___  |.|   |.|    ===  |..__..||. = .| | = ..|
--- /_______/  |_|  /__|        /__|  |_| \__\_|  \__\_|
-
--- Zip.Compress
----------------
---
--- Created 9-Dec-2007
---
--- This package facilitates the storage or compression of data.
---
--- Note that unlike decompression where the decoding is unique,
--- there are an indefinite number of ways of compressing data into
--- formats which include compression structures, like Deflate.
--- As a result, you may want to use your own way (e.g. interfacing
--- with zlib).
--- This package is only a portable one, and doesn't claim
--- to be the best or the fastest
-
 with Zip.CRC_Crypto,
      Zip.Compress.Shrink,
      Zip.Compress.Reduce,

@@ -1,12 +1,13 @@
---  ________  ___   ______       ______     ___
--- /___..._/  |.|   |.___.\     /. __ .\  __|.|   ____
---    /../    |.|   |.____/     |.|__|.| /....|  __\..\
---  _/../___  |.|   |.|    ===  |..__..||. = .| | = ..|
--- /_______/  |_|  /__|        /__|  |_| \__\_|  \__\_|
+--  ________  ___   ______       ______      ___
+-- /___..._/  |.|   |.___.\     /. __ .\   __|.|   ____
+--    /../    |.|   |.____/     |.|__|.|  /....|  __\..\
+--  _/../___  |.|   |.|    ===  |..__..| |. = .| | = ..|
+-- /_______/  |_|  /__|        /__|  |_|  \__\_|  \__\_|
 
 -- UnZip
 --------
--- This library allows to uncompress deflated, enhanced deflated, bzip2-ed,
+--
+-- This library allows to uncompress deflated, enhanced deflated, bzip2-ed, lzma-ed,
 -- imploded, reduced, shrunk and stored streams from a Zip archive stream.
 --
 -- Pure Ada 95 code, 100% portable: OS-, CPU- and compiler- independent.
@@ -23,7 +24,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 1999..2015 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2016 Gautier de Montmollin
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal

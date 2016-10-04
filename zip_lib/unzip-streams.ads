@@ -1,11 +1,12 @@
---  ________  ___   ______       ______     ___
--- /___..._/  |.|   |.___.\     /. __ .\  __|.|   ____
---    /../    |.|   |.____/     |.|__|.| /....|  __\..\
---  _/../___  |.|   |.|    ===  |..__..||. = .| | = ..|
--- /_______/  |_|  /__|        /__|  |_| \__\_|  \__\_|
+--  ________  ___   ______       ______      ___
+-- /___..._/  |.|   |.___.\     /. __ .\   __|.|   ____
+--    /../    |.|   |.____/     |.|__|.|  /....|  __\..\
+--  _/../___  |.|   |.|    ===  |..__..| |. = .| | = ..|
+-- /_______/  |_|  /__|        /__|  |_|  \__\_|  \__\_|
 
 -- UnZip.Streams
 ----------------
+--
 -- Extracts, as a stream, a file which is has been compressed into a Zip archive.
 -- The Zip archive itself (the input) can be a file or a more general stream.
 -- This package is resembling Ada.Streams.Stream_IO, to facilitate transition.

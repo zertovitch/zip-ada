@@ -1,11 +1,11 @@
---  ________  ___   ______       ______     ___
--- /___..._/  |.|   |.___.\     /. __ .\  __|.|   ____
---    /../    |.|   |.____/     |.|__|.| /....|  __\..\
---  _/../___  |.|   |.|    ===  |..__..||. = .| | = ..|
--- /_______/  |_|  /__|        /__|  |_| \__\_|  \__\_|
+--  ________  ___   ______       ______      ___
+-- /___..._/  |.|   |.___.\     /. __ .\   __|.|   ____
+--    /../    |.|   |.____/     |.|__|.|  /....|  __\..\
+--  _/../___  |.|   |.|    ===  |..__..| |. = .| | = ..|
+-- /_______/  |_|  /__|        /__|  |_|  \__\_|  \__\_|
 
--- Zip.Compress
----------------
+--  Zip.Compress
+----------------
 --
 --  Created 9-Dec-2007
 --
@@ -13,7 +13,7 @@
 --
 --  Note that unlike decompression where the decoding is unique,
 --  there is a quasi indefinite number of ways of compressing data into
---  most Zip-supported formats, including LZW (Shrink), Reduce, or Deflate.
+--  most Zip-supported formats, including LZW (Shrink), Reduce, Deflate, or LZMA.
 --  As a result, you may want to use your own way for compressing data.
 --  This package is a portable one and doesn't claim to be the "best".
 --  The term "best" is relative to the needs, since there are at least

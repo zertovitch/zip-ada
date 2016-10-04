@@ -9,14 +9,14 @@ rem Sub-batch of make_za.bat
 
 echo.
 echo  ________  ___   ______       ______     ___
-echo /___..._/  I.I   I.___.\     /. __ .\  __I.I   ____
-echo    /../    I.I   I.____/     I.I__I.I /....I  __\..\
-echo  _/../___  I.I   I.I    ===  I..__..II. = .I I = ..I
-echo /_______/  I_I  /__I        /__I  I_I \__\_I  \__\_I
+echo /___..._/  I.I   I.___.\     /. __ .\   __I.I   ____
+echo    /../    I.I   I.____/     I.I__I.I  /....I  __\..\
+echo  _/../___  I.I   I.I    ===  I..__..I I. = .I I = ..I
+echo /_______/  I_I  /__I        /__I  I_I  \__\_I  \__\_I
 echo.
-echo /====================================================\
+echo /=====================================================\
 echo    The Making of... %1
-echo \====================================================/
+echo \=====================================================/
 echo.
 
 gnatmake -PZipAda.gpr %1 -XBuild_Mode=%gnatoptions_87312863% -largs extras/zip_icons.rbj
