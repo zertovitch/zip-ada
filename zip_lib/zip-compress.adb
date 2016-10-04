@@ -287,9 +287,10 @@ package body Zip.Compress is
       or else ext_3 = ".PAS" or else ext_3 = ".INC" or else ext_2 = ".PP" or else ext_3 = ".LPR"
       or else ext_3 = ".MAK" or else ext_2 = ".IN"
       or else ext_2 = ".SH" or else ext_3 = ".BAT" or else ext_3 = ".CMD"
-      or else ext_3 = ".XML" or else ext_4 = ".SGML"
+      or else ext_3 = ".XML" or else ext_3 = ".XSL" or else ext_4 = ".SGML"
       or else ext_3 = ".HTM" or else ext_4 = ".HTML"      
       or else ext_2 = ".JS"
+      or else ext_3 = ".CSV" 
     then
       return Source_code;
     end if;
