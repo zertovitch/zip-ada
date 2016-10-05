@@ -45,7 +45,7 @@ package body Zip.Compress is
     use Byte_soup;
     cg: Byte_soup.Generator;
     --
-    --  Store data as is, or, if do_write = False, juste compute CRC (this is for encryption).
+    --  Store data as is, or, if do_write = False, just compute CRC (this is for encryption).
     --
     procedure Store_data(do_write: Boolean) is
       Buffer      : Byte_Buffer (1 .. buffer_size);
@@ -269,7 +269,7 @@ package body Zip.Compress is
       or else ext_3 = ".XML" or else ext_3 = ".XSL" or else ext_4 = ".SGML"
       or else ext_3 = ".HTM" or else ext_4 = ".HTML"
       or else ext_2 = ".JS" or else ext_3 = ".LSP"
-      or else ext_3 = ".CSV"
+      or else ext_3 = ".CSV" or else ext_3 = ".SQL"
     then
       return Source_code;
     end if;

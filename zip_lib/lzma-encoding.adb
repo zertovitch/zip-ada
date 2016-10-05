@@ -307,7 +307,12 @@ package body LZMA.Encoding is
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
       --  Strict_DL_code is either a Simple_Match or a Repeat_Match.
-      function Strict_DL_code (distance: Integer; length: Match_length_range) return MProb;
+      function Strict_DL_code (
+        distance   : Integer;
+        length     : Match_length_range;
+        state      : State_range;
+        pos_state  : Pos_state_range
+      ) return MProb;
       --  Expanded_DL_code is a DL code expanded as a string of literals.
       function Expanded_DL_code (
         distance : Integer;
@@ -317,7 +322,7 @@ package body LZMA.Encoding is
       --  End of the obvious cases. Now things get tougher...
       --
       --  Case of DL code split into a shorter DL code (strict or expanded), then a literal.
-      function DL_code_plus_Literal (
+      function DL_code_then_Literal (
         distance  : Integer;
         length    : Match_length_range;
         recursion : Natural)
@@ -330,9 +335,10 @@ package body LZMA.Encoding is
       --  DL code for short lengths may be unnecessary and replaced by fully expanded bytes.
       Malus_DL_short_len: constant:= 0.995;
       --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
-      Lit_then_DL_threshold: constant:= 0.875;
+      Lit_then_DL_threshold : constant:= 0.875;   -- naive approach: literal's prob. only considered
+      Malus_lit_then_DL     : constant:= 0.0625;  -- full evaluation
       --
-      Malus_DL_plus_lit: constant:= 0.125;
+      Malus_DL_then_lit: constant:= 0.125;
     end Predicted;
 
     package body Predicted is
@@ -573,7 +579,13 @@ package body LZMA.Encoding is
       end Simple_Match;
 
       --  We simulate here LZ77_emits_DL_code
-      function Strict_DL_code (distance: Integer; length: Match_length_range) return MProb is
+      function Strict_DL_code (
+        distance   : Integer;
+        length     : Match_length_range;
+        state      : State_range;
+        pos_state  : Pos_state_range
+      ) return MProb
+      is
         dist_ip: constant UInt32:= UInt32(distance - 1);
         found_repeat: Integer:= rep_dist'First - 1;
         dlc: constant MProb:= Test_bit(probs.switch.match(state, pos_state), DL_code_choice);
@@ -625,7 +637,7 @@ package body LZMA.Encoding is
         return expanded_string_prob;
       end Expanded_DL_code;
 
-      function DL_code_plus_Literal (
+      function DL_code_then_Literal (
         distance  : Integer;
         length    : Match_length_range;
         recursion : Natural)
@@ -637,13 +649,13 @@ package body LZMA.Encoding is
         sim_rep_dist_0: UInt32:= rep_dist(0);
         --
         prob: MProb:= 1.0;
-        dlc: MProb:= Strict_DL_code(distance, length-1) * Malus_DL_short_len;
+        dlc: MProb:= Strict_DL_code(distance, length-1, sim_state, pos_state) * Malus_DL_short_len;
       begin
         if recursion > 0 and then length > Min_match_length + 1 then
           --  The "DL + Lit" optimization will be done recursively "in real",
           --  we can do it as well in the simulation.
           dlc:= MProb'Max(dlc,
-            Malus_DL_plus_lit * DL_code_plus_Literal(distance, length-1, recursion-1));
+            Malus_DL_then_lit * DL_code_then_Literal(distance, length-1, recursion-1));
         end if;
         --
         --  We have first a DL code of length 'length-1'. The real compression would try to
@@ -682,7 +694,7 @@ package body LZMA.Encoding is
           prob           => prob
         );
         return prob;
-      end DL_code_plus_Literal;
+      end DL_code_then_Literal;
 
     end Predicted;
 
@@ -910,36 +922,48 @@ package body LZMA.Encoding is
       found_repeat: Integer:= rep_dist'First - 1;
       short: constant:= 18;  --  tuned - magic
       use Predicted;
-      strict_dlc, expanded_dlc, dl_plus_lit: MProb;
+      strict_dlc, expanded_dlc, any_dlc, dlc_after_lit, dl_then_lit, head_lit: MProb;
       b_head, b_match, b_tail: Byte;
       dlc_computed: Boolean:= False;
       procedure Compute_dlc_variants is
       begin
         if not dlc_computed then
-          strict_dlc:= Predicted.Strict_DL_code(distance, length) * Predicted.Malus_DL_short_len;
+          strict_dlc:= Predicted.Strict_DL_code(distance, length, state, pos_state) *
+                       Predicted.Malus_DL_short_len;
           expanded_dlc:= Predicted.Expanded_DL_code(distance, length, strict_dlc);
+          any_dlc:= MProb'Max(strict_dlc, expanded_dlc);
           dlc_computed:= True;
         end if;
       end;
+      sim_pos_state : Pos_state_range;
     begin
       --  DL code of small length. It may be better just to expand it, fully or partially.
       if (not quick) and then length <= short and then distance >= length then
         --  Consider shorten the DL code's length
         if length > Min_match_length then
-          --  Literal + shorter DL (naive approach)
           b_head  := Text_Buf(Copy_start and Text_Buf_Mask);
           b_match := Text_Buf((R - rep_dist(0) - 1) and Text_Buf_Mask);
-          if Any_literal(b_head, b_match, prev_byte, state, 0) >= Predicted.Lit_then_DL_threshold then
+          head_lit:= Any_literal(b_head, b_match, prev_byte, state, 0);
+          --  Literal + shorter DL (naive approach)
+          if head_lit >= Predicted.Lit_then_DL_threshold then
+            LZ77_emits_literal_byte(b_head);
+            LZ77_emits_DL_code (distance, length-1);
+            return;
+          end if;
+          Compute_dlc_variants;
+          --  Literal + shorter DL
+          sim_pos_state := Pos_state_range(UInt32(total_pos+1) and pos_bits_mask);
+          dlc_after_lit:= Predicted.Strict_DL_code(distance, length-1, Update_State_Literal(state), sim_pos_state);
+          if head_lit * dlc_after_lit * Predicted.Malus_lit_then_DL > any_dlc then
             LZ77_emits_literal_byte(b_head);
             LZ77_emits_DL_code (distance, length-1);
             return;
           end if;
           --  Shorter DL + literal
-          dl_plus_lit:=
-            Predicted.DL_code_plus_Literal(distance, length, 1) *
-            Predicted.Malus_DL_plus_lit;
-          Compute_dlc_variants;
-          if dl_plus_lit > MProb'Max(strict_dlc, expanded_dlc) then
+          dl_then_lit:=
+            Predicted.DL_code_then_Literal(distance, length, 1) *
+            Predicted.Malus_DL_then_lit;
+          if dl_then_lit > any_dlc then
             b_tail := Text_Buf((Copy_start + UInt32(length-1)) and Text_Buf_Mask);
             LZ77_emits_DL_code(distance, length-1);
             LZ77_emits_literal_byte(b_tail);
