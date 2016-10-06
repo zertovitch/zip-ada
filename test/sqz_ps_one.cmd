@@ -8,7 +8,7 @@ if "%1"=="" echo NB: sqz_ps does the whole test (9 archives)
 if "%1"=="" goto fin
 
 del %1_ps.zip
-zipada -r -eps %1_ps %1
+call zipada -r -eps %1_ps %1
 echo.
 echo Test the archive, %1_ps.zip
 echo.

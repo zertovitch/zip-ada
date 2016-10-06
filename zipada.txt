@@ -120,9 +120,11 @@ Contents
   by using unzip's "-aa" and "-L" options: "unzip -aa -L zipada*.zip".
 
 * The Zip format specification is as always in a file called appnote.txt.
-  You find a copy within the Zip-Ada pack but might find a fresher
-  version here:
+  You find a copy within the Zip-Ada pack ("doc" directory) but might
+  find a fresher version here:
   http://www.pkware.com/business_and_developers/developer/appnote/
+
+* A version of the LZMA specification is to be found in the "doc" directory.
 
 Other infos are in zip.ads and unzip.ads, specifications of Zip and UnZip
 packages.

@@ -1,8 +1,5 @@
-- LZMA.Encoding.LZ77_emits_DL_code: evaluate alternatives to
-     calling Write_Simple_Match, with literal + repeat match if possible
-
-- LZMA.Encoding.LZ77_emits_literal_byte: when deciding between
-     Sort Rep Match and Literal, take the literal's probabilities in account.
+- LZ77: 3rd procedure that sends a list of possible DL codes (BT4),
+     lets LZMA.Encoding choose the most predicted-probable one.
 
 - LZMA.Encoding & Zip.Compress.LZMA_E: tune performance with well
      placed Inline pragmata
