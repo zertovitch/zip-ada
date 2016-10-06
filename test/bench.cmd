@@ -15,19 +15,19 @@ cd %1
 if not "%2" == "full" goto skip
 
 rem   ### LZW
-zipada -es  ../bench_%1_shrink    *
+call zipada -es  ../bench_%1_shrink    *
 rem   ### Reduce (LZ & Markov)
-zipada -er4 ../bench_%1_reduce_4  *
+call zipada -er4 ../bench_%1_reduce_4  *
 rem   ### Deflate
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-zipada -edf ../bench_%1_deflate_f *
+call zipada -edf ../bench_%1_deflate_f *
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-zipada -ed1 ../bench_%1_deflate_1 *
+call zipada -ed1 ../bench_%1_deflate_1 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_1_%1.zcd
-zipada -ed2 ../bench_%1_deflate_2 *
+call zipada -ed2 ../bench_%1_deflate_2 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_2_%1.zcd
 rem   ### LZMA
-zipada -el1 ../bench_%1_lzma_1 *
+call zipada -el1 ../bench_%1_lzma_1 *
 rem   ### Deflate, external
 zip    -6   ../bench_%1_iz_6      *
 zip    -9   ../bench_%1_iz_9      *
@@ -41,12 +41,12 @@ rem   ### LZMA
 7z a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma *
 
 :skip
-zipada -ed3 ../bench_%1_deflate_3 *
+call zipada -ed3 ../bench_%1_deflate_3 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_3_%1.zcd
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-zipada -el2 ../bench_%1_lzma_2 *
-zipada -el3 ../bench_%1_lzma_3 *
-zipada -eps ../bench_%1_presel *
+call zipada -el2 ../bench_%1_lzma_2 *
+call zipada -el3 ../bench_%1_lzma_3 *
+call zipada -eps ../bench_%1_presel *
 
 cd ..
 

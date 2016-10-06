@@ -17,7 +17,6 @@
 --
 --  Variant 3/, LZ77_using_BT4, was added on 06-Sep-2016.
 --     The seems to be the best match finder for LZMA on data of the >= MB scale.
---     *Caution*: still experimental; it's working, but it's pretty recent.
 
 --  To do:
 --
@@ -1053,7 +1052,7 @@ package body LZ77 is
         end loop;
       end Hash234;
 
-      niceLen: constant Integer:= Integer'Min(64, Look_Ahead);
+      niceLen: constant Integer:= Integer'Min(162, Look_Ahead);  --  const. was 64
       depthLimit: constant:= 48;  --  Alternatively: 16 + niceLen / 2
 
       --  !! nicer: unconstr. array of (dist, len) pairs, 1-based array.
@@ -1422,7 +1421,7 @@ package body LZ77 is
         function changePair(smallDist, bigDist: Integer) return Boolean is
         pragma Inline(changePair);
         begin
-          return smallDist < bigDist / (2**7);
+          return smallDist < bigDist / 128;
         end changePair;
 
         --  This function is for debugging. The matches stored in the 'tree' array
