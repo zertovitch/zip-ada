@@ -29,51 +29,6 @@ with Interfaces;                        use Interfaces;
 
 package body LZMA.Encoding is
 
-  subtype UInt64 is Unsigned_64;
-
-  type Range_Encoder is record
-    width     : UInt32  := 16#FFFF_FFFF#;  --  (*)
-    low       : UInt64  := 0;  --  The current range is [low, low+width[
-    cache     : Byte    := 0;
-    cache_size: UInt64  := 1;
-  end record;
-  --  (*) "width" is called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
-  --      article about range encoding.
-
-  --  Gets an integer [0, 63] matching the highest two bits of an integer.
-  --  It is a log2 function with one "decimal".
-  --
-  function Get_dist_slot(dist: UInt32) return Unsigned is
-    n: UInt32;
-    i: Natural;
-  begin
-    if dist <= Start_dist_model_index then
-      return Unsigned(dist);
-    end if;
-    n := dist;
-    i := 31;
-    if (n and 16#FFFF_0000#) = 0 then
-      n := Shift_Left(n, 16);
-      i := 15;
-    end if;
-    if (n and 16#FF00_0000#) = 0 then
-      n := Shift_Left(n, 8);
-      i := i - 8;
-    end if;
-    if (n and 16#F000_0000#) = 0 then
-      n := Shift_Left(n, 4);
-      i := i - 4;
-    end if;
-    if (n and 16#C000_0000#) = 0 then
-      n := Shift_Left(n, 2);
-      i := i - 2;
-    end if;
-    if (n and 16#8000_0000#) = 0 then
-      i := i - 1;
-    end if;
-    return Unsigned(i * 2) + Unsigned(Shift_Right(dist, i - 1) and 1);
-  end Get_dist_slot;
-
   procedure Encode(
     level                  : Compression_level           := Level_1;
     literal_context_bits   : Literal_context_bits_range  := 3;   --  Bits of last byte are used.
@@ -88,6 +43,17 @@ package body LZMA.Encoding is
     -------------------------------------
     --  Range encoding of single bits. --
     -------------------------------------
+
+    subtype UInt64 is Unsigned_64;
+
+    type Range_Encoder is record
+      width     : UInt32  := 16#FFFF_FFFF#;  --  (*)
+      low       : UInt64  := 0;  --  The current range is [low, low+width[
+      cache     : Byte    := 0;
+      cache_size: UInt64  := 1;
+    end record;
+    --  (*) "width" is called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
+    --      article about range encoding.
 
     range_enc: Range_Encoder;
 
@@ -168,6 +134,50 @@ package body LZMA.Encoding is
       --      Same for "too high". See LZMA sheet in za_work.xls.
     end Encode_Bit;
 
+    --  Gets an integer [0, 63] matching the highest two bits of an integer.
+    --  It is a log2 function with one "decimal".
+    --
+    function Get_dist_slot(dist: UInt32) return Unsigned is
+      n: UInt32;
+      i: Natural;
+    begin
+      if dist <= Start_dist_model_index then
+        return Unsigned(dist);
+      end if;
+      n := dist;
+      i := 31;
+      if (n and 16#FFFF_0000#) = 0 then
+        n := Shift_Left(n, 16);
+        i := 15;
+      end if;
+      if (n and 16#FF00_0000#) = 0 then
+        n := Shift_Left(n, 8);
+        i := i - 8;
+      end if;
+      if (n and 16#F000_0000#) = 0 then
+        n := Shift_Left(n, 4);
+        i := i - 4;
+      end if;
+      if (n and 16#C000_0000#) = 0 then
+        n := Shift_Left(n, 2);
+        i := i - 2;
+      end if;
+      if (n and 16#8000_0000#) = 0 then
+        i := i - 1;
+      end if;
+      return Unsigned(i * 2) + Unsigned(Shift_Right(dist, i - 1) and 1);
+    end Get_dist_slot;
+
+    --  Round to the next power of two. BT4 borks without this for the window size.
+    function Ceiling_power_of_2(x: Natural) return Positive is
+      p: Positive:= 1;
+    begin
+      while p < Integer'Last / 2 and p < x loop
+        p:= p * 2;
+      end loop;
+      return Integer'Max(p, x);
+    end Ceiling_power_of_2;
+
     -----------------------------------
     --  LZ77 compression parameters  --
     -----------------------------------
@@ -185,16 +195,6 @@ package body LZMA.Encoding is
     Max_length : constant array(Compression_level) of Positive:=
       (Level_1 | Level_2  => 258,  --  Deflate's Value
        others             => 273);
-
-    --  Round to the next power of two. BT4 borks without this for the window size.
-    function Ceiling_power_of_2(x: Natural) return Positive is
-      p: Positive:= 1;
-    begin
-      while p < Integer'Last / 2 and p < x loop
-        p:= p * 2;
-      end loop;
-      return Integer'Max(p, x);
-    end Ceiling_power_of_2;
 
     --  String_buffer_size: the actual dictionary size used.
     String_buffer_size: constant array(Compression_level) of Positive:=
@@ -260,12 +260,12 @@ package body LZMA.Encoding is
     Text_Buf: p_Text_Buffer:= new Text_Buffer;
     R: UInt32:= 0;
 
-    function Idx_for_Literal_prob(total_pos : Data_Bytes_Count; prev_byte: Byte) return Integer is
+    function Idx_for_Literal_prob(position : Data_Bytes_Count; prev_byte: Byte) return Integer is
     pragma Inline(Idx_for_Literal_prob);
     begin
       return 16#300# *
           Integer(
-            Shift_Left(UInt32(total_pos) and literal_pos_mask, params.lc) +
+            Shift_Left(UInt32(position) and literal_pos_mask, params.lc) +
             Shift_Right(UInt32(prev_byte), 8 - params.lc)
           );
     end Idx_for_Literal_prob;
@@ -292,15 +292,18 @@ package body LZMA.Encoding is
       type MProb is new Long_Float range 0.0 .. 1.0;
       --
       function Strict_Literal(
-        b, b_match : Byte;
-        prob       : CProb_array;
-        state      : State_range;
-        pos_state  : Pos_state_range
+        b, b_match    : Byte;
+        prob          : CProb_array;
+        sim_state     : State_range;
+        sim_pos_state : Pos_state_range
       ) return MProb;
-      function Short_Rep_Match(state : State_range; pos_state : Pos_state_range) return MProb;
+      function Short_Rep_Match(
+        sim_state     : State_range;
+        sim_pos_state : Pos_state_range
+      ) return MProb;
       function Any_literal(
         b, b_match, b_prev : Byte;  --  b_match is the byte at distance rep_dist(0) + 1.
-        state              : State_range;
+        sim_state          : State_range;
         offset             : Data_Bytes_Count
       ) return MProb;
       --
@@ -308,10 +311,10 @@ package body LZMA.Encoding is
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
       --  Strict_DL_code is either a Simple_Match or a Repeat_Match.
       function Strict_DL_code (
-        distance   : Integer;
-        length     : Match_length_range;
-        state      : State_range;
-        pos_state  : Pos_state_range
+        distance      : Integer;
+        length        : Match_length_range;
+        sim_state     : State_range;
+        sim_pos_state : Pos_state_range
       ) return MProb;
       --  Expanded_DL_code is a DL code expanded as a string of literals.
       function Expanded_DL_code (
@@ -364,13 +367,13 @@ package body LZMA.Encoding is
       end Test_bit;
 
       function Strict_Literal(
-        b, b_match : Byte;
-        prob       : CProb_array;
-        state      : State_range;
-        pos_state  : Pos_state_range
+        b, b_match    : Byte;
+        prob          : CProb_array;
+        sim_state     : State_range;
+        sim_pos_state : Pos_state_range
       ) return MProb
       is
-        prob_lit: MProb:= Test_bit(probs.switch.match(state, pos_state), Literal_choice);
+        prob_lit: MProb:= Test_bit(probs.switch.match(sim_state, sim_pos_state), Literal_choice);
         symb: UInt32:= UInt32(b) or 16#100#;
         --
         procedure Test_Literal is
@@ -405,7 +408,7 @@ package body LZMA.Encoding is
         end Test_Literal_Matched;
         --
       begin
-        if state < 7 then
+        if sim_state < 7 then
           Test_Literal;
         else
           Test_Literal_Matched;
@@ -413,13 +416,17 @@ package body LZMA.Encoding is
         return prob_lit;
       end Strict_Literal;
 
-      function Short_Rep_Match(state : State_range; pos_state : Pos_state_range) return MProb is
+      function Short_Rep_Match(
+        sim_state     : State_range;
+        sim_pos_state : Pos_state_range
+      ) return MProb
+      is
       begin
         return
-          Test_bit(probs.switch.match(state, pos_state), DL_code_choice) *
-          Test_bit(probs.switch.rep(state), Rep_match_choice) *
-          Test_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice) *
-          Test_bit(probs.switch.rep0_long(state, pos_state), The_length_is_1_choice);
+          Test_bit(probs.switch.match(sim_state, sim_pos_state), DL_code_choice) *
+          Test_bit(probs.switch.rep(sim_state), Rep_match_choice) *
+          Test_bit(probs.switch.rep_g0(sim_state), The_distance_is_rep0_choice) *
+          Test_bit(probs.switch.rep0_long(sim_state, sim_pos_state), The_length_is_1_choice);
       end Short_Rep_Match;
 
       --  We simulate here LZ77_emits_literal_byte.
@@ -452,15 +459,15 @@ package body LZMA.Encoding is
 
       function Any_literal(
         b, b_match, b_prev : Byte;  --  b_match is the byte at distance rep_dist(0) + 1.
-        state              : State_range;
+        sim_state          : State_range;
         offset             : Data_Bytes_Count
       )
       return MProb
       is
-        sim_state: State_range:= state;
+        sim_state_var: State_range:= sim_state;
         prob: MProb:= 1.0;
       begin
-        Any_literal(b, b_match, b_prev, offset, sim_state, rep_dist(0), prob);
+        Any_literal(b, b_match, b_prev, offset, sim_state_var, rep_dist(0), prob);
         return prob;
       end Any_literal;
 
@@ -580,15 +587,15 @@ package body LZMA.Encoding is
 
       --  We simulate here LZ77_emits_DL_code
       function Strict_DL_code (
-        distance   : Integer;
-        length     : Match_length_range;
-        state      : State_range;
-        pos_state  : Pos_state_range
+        distance      : Integer;
+        length        : Match_length_range;
+        sim_state     : State_range;
+        sim_pos_state : Pos_state_range
       ) return MProb
       is
         dist_ip: constant UInt32:= UInt32(distance - 1);
         found_repeat: Integer:= rep_dist'First - 1;
-        dlc: constant MProb:= Test_bit(probs.switch.match(state, pos_state), DL_code_choice);
+        dlc: constant MProb:= Test_bit(probs.switch.match(sim_state, sim_pos_state), DL_code_choice);
         sma: constant MProb:= Simple_Match(dist_ip, Unsigned(length));
         rma: MProb;
       begin

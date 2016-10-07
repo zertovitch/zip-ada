@@ -17,7 +17,7 @@ upx --ultra-brute lzma_dec.exe
 upx --ultra-brute lzma_enc.exe
 :skip_upx
 
-set version=51
+set version=(ver)
 
 zipada -ed3 zipada%version%-bin-win32.zip comp_zip.exe find_zip.exe rezip.exe unzipada.exe zipada.exe bunzip.exe lzma_dec.exe lzma_enc.exe
 deflopt     zipada%version%-bin-win32.zip
