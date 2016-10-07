@@ -8,7 +8,7 @@ if "%1" == "" goto fin
 rem Sub-batch of make_za.bat
 
 echo.
-echo  ________  ___   ______       ______     ___
+echo  ________  ___   ______       ______      ___
 echo /___..._/  I.I   I.___.\     /. __ .\   __I.I   ____
 echo    /../    I.I   I.____/     I.I__I.I  /....I  __\..\
 echo  _/../___  I.I   I.I    ===  I..__..I I. = .I I = ..I

@@ -934,7 +934,7 @@ package body LZMA.Encoding is
           any_dlc:= MProb'Max(strict_dlc, expanded_dlc);
           dlc_computed:= True;
         end if;
-      end;
+      end Compute_dlc_variants;
       sim_pos_state : Pos_state_range;
     begin
       --  DL code of small length. It may be better just to expand it, fully or partially.
