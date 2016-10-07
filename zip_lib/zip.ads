@@ -381,8 +381,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "52, preview 5a";
-  reference : constant String:= ">= 06-Oct-2016";
+  version   : constant String:= "52";
+  reference : constant String:= "08-Oct-2016";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 

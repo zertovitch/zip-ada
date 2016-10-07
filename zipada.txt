@@ -132,7 +132,7 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '52', xxxx:
+* Changes in '52', 08-Oct-2016:
   - UnZip.Streams: all procedures have an additional (optional)
       Ignore_Directory parameter.
   - Zip.Compress has the following new methods with improved compression:
