@@ -1,6 +1,6 @@
 - LZ77: 3rd procedure that sends a list of possible DL codes (BT4),
      lets LZMA.Encoding choose the most predicted-probable one.
-     Alternatively (to ovoid complicating the LZ77 interface), hash
+     Alternatively (to avoid complicating the LZ77 interface), hash
      the distance-length pairs, use the hash for a frequency index
      and give a preference to the most frequent pairs.
 

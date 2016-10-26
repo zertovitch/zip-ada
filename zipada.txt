@@ -11,14 +11,14 @@ file format. It supplies:
  - encryption and decryption (portable Zip 2.0 encryption scheme)
  - unconditional portability - within limits of compiler's provided
      integer types and target architecture capacity; see below a list
-	 of in-use platforms
+     of in-use platforms
  - input (archive to decompress or data to compress) can be any data stream
  - output (archive to build or data to extract) can be any data stream
  - types Zip_info and Zip_Create_info to handle archives quickly and easily 
  - cross format compatibility with the most various tools and file formats
      based on the Zip format: 7-zip, Info-Zip's Zip, WinZip, PKZip, Java's JARs,
-     OpenDocument files, MS Office 2007+, Nokia themes, and many others
-    (see Open bugs list for the rare exceptions)
+     OpenDocument files, MS Office 2007+, Nokia themes, Google Chrome extensions,
+     E-Pub documents and many others
  - task safety: this library can be used ad libitum in parallel processing
  - endian-neutral I/O
 
