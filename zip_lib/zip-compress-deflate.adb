@@ -8,7 +8,7 @@
 --    - Taillaule: compare slider to random and fixed in addition to initial
 --    - Taillaule: try L_sup distance
 --    - Taillaule: restrict BL_Vector to short LZ distances (long distances perhaps too random)
---    - Taillaule: check LZ distances on literals only, too (consider distances & lengths as noise)
+--    - Taillaule: check LZ vector norms on literals only, too (consider distances & lengths as noise)
 --    - Taillaule: use a corpus of files badly compressed by our Deflate comparatively
 --        to other Deflates (e.g. 7Z seems better with databases)
 --    - Add DeflOpt to slowest method, or approximate it by tweaking
@@ -18,6 +18,8 @@
 --    - Improve LZ77 compression: see Zip.LZ77 to-do list; check with bypass_LZ77 below
 --        and various programs based on LZ77 using the trace >= some and the LZ77 dump
 --        in UnZip.Decompress.
+--    - Make this procedure standalone & generic like LZMA.Encoding;
+--        use it in the Zada project (Zlib replacement)
 --
 --  Change log:
 --------------

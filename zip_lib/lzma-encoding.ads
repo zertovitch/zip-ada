@@ -22,10 +22,10 @@ package LZMA.Encoding is
   );
 
   generic
-    -- Input of data:
+    --  Input of data:
     with function  Read_byte return Byte;
     with function  More_bytes return Boolean;
-    -- Output of LZMA-compressed data:
+    --  Output of LZMA-compressed data:
     with procedure Write_byte (b: Byte);
     --
   procedure Encode(
@@ -33,7 +33,7 @@ package LZMA.Encoding is
     literal_context_bits   : Literal_context_bits_range  := 3;   --  Bits of last byte are used.
     literal_position_bits  : Literal_position_bits_range := 0;   --  Position mod 2**bits is used.
     position_bits          : Position_bits_range         := 2;   --  Position mod 2**bits is used.
-    end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker ?
+    end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker (*) ?
     uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
     dictionary_size        : Natural := Default_dictionary_size  --  Not used by Level_1, Level_2.
   );
