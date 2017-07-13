@@ -353,9 +353,9 @@ package body LZMA.Encoding is
         return MProb'Base(cp) * To_Prob_Factor;
       end To_Math;
 
-      function Test_bit(prob_bit: CProb; bit: Unsigned) return MProb is
-      pragma Inline(Test_bit);
-        b: constant MProb'Base:= MProb'Base(bit);
+      function Simulate_bit(prob_bit: CProb; bit: Unsigned) return MProb is
+      pragma Inline(Simulate_bit);
+        b: constant MProb'Base:= MProb'Base(bit);  --  b = 0.0 or 1.0
       begin
         return b + (1.0 - 2.0 * b) * To_Math(prob_bit);
         --  Branch-less equivalent of:
@@ -364,7 +364,7 @@ package body LZMA.Encoding is
         --    else
         --      return 1.0 - prob_bit;
         --    end if;
-      end Test_bit;
+      end Simulate_bit;
 
       function Strict_Literal(
         b, b_match    : Byte;
@@ -373,30 +373,30 @@ package body LZMA.Encoding is
         sim_pos_state : Pos_state_range
       ) return MProb
       is
-        prob_lit: MProb:= Test_bit(probs.switch.match(sim_state, sim_pos_state), Literal_choice);
+        prob_lit: MProb:= Simulate_bit(probs.switch.match(sim_state, sim_pos_state), Literal_choice);
         symb: UInt32:= UInt32(b) or 16#100#;
         --
-        procedure Test_Literal is
+        procedure Simulate_Literal is
         begin
           loop
             prob_lit:= prob_lit *
-              Test_bit(
+              Simulate_bit(
                 prob_bit => prob(Integer(Shift_Right(symb, 8)) + prob'First),
                 bit      => Unsigned(Shift_Right(symb, 7)) and 1
               );
             symb:= Shift_Left(symb, 1);
             exit when symb >= 16#10000#;
           end loop;
-        end Test_Literal;
+        end Simulate_Literal;
         --
-        procedure Test_Literal_Matched is
+        procedure Simulate_Literal_Matched is
           offs: UInt32:= 16#100#;
           match: UInt32:= UInt32(b_match);
         begin
           loop
             match:= Shift_Left(match, 1);
             prob_lit:= prob_lit *
-              Test_bit(
+              Simulate_bit(
                 prob_bit => prob(Integer(offs + (match and offs) +
                                                  Shift_Right(symb, 8)) + prob'First),
                 bit      => Unsigned(Shift_Right(symb, 7)) and 1
@@ -405,13 +405,13 @@ package body LZMA.Encoding is
             offs:= offs and not (match xor symb);
             exit when symb >= 16#10000#;
           end loop;
-        end Test_Literal_Matched;
+        end Simulate_Literal_Matched;
         --
       begin
         if sim_state < 7 then
-          Test_Literal;
+          Simulate_Literal;
         else
-          Test_Literal_Matched;
+          Simulate_Literal_Matched;
         end if;
         return prob_lit;
       end Strict_Literal;
@@ -423,10 +423,10 @@ package body LZMA.Encoding is
       is
       begin
         return
-          Test_bit(probs.switch.match(sim_state, sim_pos_state), DL_code_choice) *
-          Test_bit(probs.switch.rep(sim_state), Rep_match_choice) *
-          Test_bit(probs.switch.rep_g0(sim_state), The_distance_is_rep0_choice) *
-          Test_bit(probs.switch.rep0_long(sim_state, sim_pos_state), The_length_is_1_choice);
+          Simulate_bit(probs.switch.match(sim_state, sim_pos_state), DL_code_choice) *
+          Simulate_bit(probs.switch.rep(sim_state), Rep_match_choice) *
+          Simulate_bit(probs.switch.rep_g0(sim_state), The_distance_is_rep0_choice) *
+          Simulate_bit(probs.switch.rep0_long(sim_state, sim_pos_state), The_length_is_1_choice);
       end Short_Rep_Match;
 
       --  We simulate here LZ77_emits_literal_byte.
@@ -471,66 +471,66 @@ package body LZMA.Encoding is
         return prob;
       end Any_literal;
 
-      function Test_Bit_Tree(prob: CProb_array; num_bits: Positive; symbol: Unsigned) return MProb is
+      function Simulate_Bit_Tree(prob: CProb_array; num_bits: Positive; symbol: Unsigned) return MProb is
         res: MProb:= 1.0;
         bit, m: Unsigned;
       begin
         m:= 1;
         for i in reverse 0 .. num_bits - 1 loop
           bit:= Unsigned(Shift_Right(UInt32(symbol), i)) and 1;
-          res:= res * Test_bit(prob(Integer(m) + prob'First), bit);
+          res:= res * Simulate_bit(prob(Integer(m) + prob'First), bit);
           m:= m + m + bit;
         end loop;
         return res;
-      end Test_Bit_Tree;
+      end Simulate_Bit_Tree;
 
-      function Test_Length(probs_len: Probs_for_LZ_Lengths; length: Unsigned) return MProb is
+      function Simulate_Length(probs_len: Probs_for_LZ_Lengths; length: Unsigned) return MProb is
         len: Unsigned:= length - Min_match_length;
         res: MProb;
       begin
         if len < Len_low_symbols then
-          res:= Test_bit(probs_len.choice_1, 0) *
-                Test_Bit_Tree(probs_len.low_coder(pos_state), Len_low_bits, len);
+          res:= Simulate_bit(probs_len.choice_1, 0) *
+                Simulate_Bit_Tree(probs_len.low_coder(pos_state), Len_low_bits, len);
         else
-          res:= Test_bit(probs_len.choice_1, 1);
+          res:= Simulate_bit(probs_len.choice_1, 1);
           len:= len - Len_low_symbols;
           if len < Len_mid_symbols then
-            res:= res * Test_bit(probs_len.choice_2, 0)
-                      * Test_Bit_Tree(probs_len.mid_coder(pos_state), Len_mid_bits, len);
+            res:= res * Simulate_bit(probs_len.choice_2, 0)
+                      * Simulate_Bit_Tree(probs_len.mid_coder(pos_state), Len_mid_bits, len);
           else
-            res:= res * Test_bit(probs_len.choice_2, 1);
+            res:= res * Simulate_bit(probs_len.choice_2, 1);
             len:= len - Len_mid_symbols;
-            res:= res * Test_Bit_Tree(probs_len.high_coder, Len_high_bits, len);
+            res:= res * Simulate_Bit_Tree(probs_len.high_coder, Len_high_bits, len);
           end if;
         end if;
         return res;
-      end Test_Length;
+      end Simulate_Length;
 
       function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb is
-        res: MProb:= Test_bit(probs.switch.rep(state), Rep_match_choice);
+        res: MProb:= Simulate_bit(probs.switch.rep(state), Rep_match_choice);
       begin
         case index is
           when 0 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice)
-                      * Test_bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
+            res:= res * Simulate_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice)
+                      * Simulate_bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
           when 1 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
-                      * Test_bit(probs.switch.rep_g1(state), The_distance_is_rep1_choice);
+            res:= res * Simulate_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
+                      * Simulate_bit(probs.switch.rep_g1(state), The_distance_is_rep1_choice);
           when 2 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
-                      * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice)
-                      * Test_bit(probs.switch.rep_g2(state), The_distance_is_rep2_choice);
+            res:= res * Simulate_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
+                      * Simulate_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice)
+                      * Simulate_bit(probs.switch.rep_g2(state), The_distance_is_rep2_choice);
           when 3 =>
-            res:= res * Test_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
-                      * Test_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice)
-                      * Test_bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
+            res:= res * Simulate_bit(probs.switch.rep_g0(state), The_distance_is_not_rep0_choice)
+                      * Simulate_bit(probs.switch.rep_g1(state), The_distance_is_not_rep1_choice)
+                      * Simulate_bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
         end case;
-        return res * Test_Length(probs.rep_len, length);
+        return res * Simulate_Length(probs.rep_len, length);
       end Repeat_Match;
 
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb is
         --
-        function Test_Bit_Tree_Reverse(prob: CProb_array; num_bits: Natural; symbol: UInt32)
+        function Simulate_Bit_Tree_Reverse(prob: CProb_array; num_bits: Natural; symbol: UInt32)
         return MProb
         is
           res: MProb:= 1.0;
@@ -540,28 +540,28 @@ package body LZMA.Encoding is
         begin
           for count in reverse 1 .. num_bits loop
             bit:= Unsigned(symb) and 1;
-            res:= res * Test_bit(prob(Integer(m) + prob'First), bit);
+            res:= res * Simulate_bit(prob(Integer(m) + prob'First), bit);
             m := m + m + bit;
             symb:= Shift_Right(symb, 1);
           end loop;
           return res;
-        end Test_Bit_Tree_Reverse;
+        end Simulate_Bit_Tree_Reverse;
         --
-        function Test_Distance return MProb is
+        function Simulate_Distance return MProb is
           len_state : constant Unsigned := Unsigned'Min(length - 2, Len_to_pos_states - 1);
           dist_slot : constant Unsigned := Get_dist_slot(distance);
           base, dist_reduced: UInt32;
           footerBits: Natural;
           res: MProb;
         begin
-          res:= Test_Bit_Tree(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
+          res:= Simulate_Bit_Tree(probs.dist.slot_coder(len_state), Dist_slot_bits, dist_slot);
           if dist_slot >= Start_dist_model_index then
             footerBits := Natural(Shift_Right(UInt32(dist_slot), 1)) - 1;
             base := Shift_Left(UInt32(2 or (dist_slot and 1)), footerBits);
             dist_reduced := distance - base;
             if dist_slot < End_dist_model_index then
               res:= res *
-                Test_Bit_Tree_Reverse(
+                Simulate_Bit_Tree_Reverse(
                   probs.dist.pos_coder(Integer(base) - Integer(dist_slot) - 1 .. Pos_coder_range'Last),
                   footerBits,
                   dist_reduced
@@ -569,7 +569,7 @@ package body LZMA.Encoding is
             else
               res:= res *
                 (0.5 ** (footerBits - Align_bits)) *  --  direct bits
-                Test_Bit_Tree_Reverse(
+                Simulate_Bit_Tree_Reverse(
                   probs.dist.align_coder,
                   Align_bits,
                   dist_reduced and Align_mask
@@ -577,12 +577,12 @@ package body LZMA.Encoding is
             end if;
           end if;
           return res;
-        end Test_Distance;
+        end Simulate_Distance;
       begin
         return
-          Test_bit(probs.switch.rep(state), Simple_match_choice) *
-          Test_Length(probs.len, length) *
-          Test_Distance;
+          Simulate_bit(probs.switch.rep(state), Simple_match_choice) *
+          Simulate_Length(probs.len, length) *
+          Simulate_Distance;
       end Simple_Match;
 
       --  We simulate here LZ77_emits_DL_code
@@ -595,7 +595,7 @@ package body LZMA.Encoding is
       is
         dist_ip: constant UInt32:= UInt32(distance - 1);
         found_repeat: Integer:= rep_dist'First - 1;
-        dlc: constant MProb:= Test_bit(probs.switch.match(sim_state, sim_pos_state), DL_code_choice);
+        dlc: constant MProb:= Simulate_bit(probs.switch.match(sim_state, sim_pos_state), DL_code_choice);
         sma: constant MProb:= Simple_Match(dist_ip, Unsigned(length));
         rma: MProb;
       begin
