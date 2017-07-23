@@ -1,8 +1,10 @@
+--  DRAFT - NOT YET FUNCTIONAL!
+
 --  PPMd library
----------------
+----------------
 --  Library for encoding and decoding data streams in the PPMd compression
---  format invented by Dmitry Subbotin, Dmitry Shkarin (PPMd var.H (2001))
---  and based on the recoding done by Igor Pavlov.
+--  format invented by Dmitry Subbotin and Dmitry Shkarin (PPMd var.H (2001)).
+--  The Ada code is based on the recoding done by Igor Pavlov.
 --  PPM means: Prediction by Partial Match.
 --
 --  Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
@@ -54,6 +56,20 @@ private
     Shift : Byte;    --  Speed of Freq change; low Shift is for fast change
     Count : Byte;    --  Count to next change of Shift
   end record;
+
+  procedure Ppmd_See_Update (p: in out CPpmd_See);
+  pragma Inline(Ppmd_See_Update);
+
+  type CPpmd_State is record
+    Symbol        : Byte;   
+    Freq          : Byte;   
+    SuccessorLow  : UInt16;
+    SuccessorHigh : UInt16;
+  end record;
+
+  subtype CPpmd_State_Ref is UInt32;
+  subtype CPpmd_Void_Ref  is UInt32;
+  subtype CPpmd_Byte_Ref  is UInt32;
   
   ----------------------
   --  Range encoding  --
