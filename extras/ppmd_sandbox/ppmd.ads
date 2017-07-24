@@ -31,25 +31,29 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found 21-Aug-2016 on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found 21-Aug-2016 on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 with Interfaces;
 with System;
 
 package PPMd is
 
+  --  The compression and decompression procedures are located
+  --  in child packages PPMd.Encoding and PPMd.Decoding respectively.
+
 private
 
   use Interfaces;
 
+  subtype Int32 is Integer_32;
   subtype Byte is Unsigned_8;
   subtype UInt16 is Unsigned_16;
   subtype UInt32 is Unsigned_32;
   type Unsigned is mod 2 ** System.Word_Size;
 
-  -- SEE-contexts for PPM-contexts with masked symbols.
-  -- SEE means: Secondary Escape Estimation.
+  --  SEE-contexts for PPM-contexts with masked symbols.
+  --  SEE means: Secondary Escape Estimation.
 
   type CPpmd_See is record
     Summ  : UInt16;  --  Freq
@@ -57,29 +61,64 @@ private
     Count : Byte;    --  Count to next change of Shift
   end record;
 
-  procedure Ppmd_See_Update (p: in out CPpmd_See);
-  pragma Inline(Ppmd_See_Update);
+  procedure Ppmd_See_Update (p : in out CPpmd_See);
+  pragma Inline (Ppmd_See_Update);
 
   type CPpmd_State is record
-    Symbol        : Byte;   
-    Freq          : Byte;   
+    Symbol        : Byte;
+    Freq          : Byte;
     SuccessorLow  : UInt16;
     SuccessorHigh : UInt16;
   end record;
 
   type void is new Integer;  --  !! get rid of that!
-  
+
   type CPpmd_State_Ref is access CPpmd_State;  --  Alt.: UInt32 if not PPMD_32BIT
   type CPpmd_Void_Ref  is access void;         --  Alt.: UInt32 if not PPMD_32BIT
   type CPpmd_Byte_Ref  is access Byte;         --  Alt.: UInt32 if not PPMD_32BIT
 
   type CPpmd7_Context;
   type CPpmd7_Context_Ref is access CPpmd7_Context;
+
   type CPpmd7_Context is record
     NumStats : UInt16;
     SummFreq : UInt16;
     Stats    : CPpmd_State_Ref;
     Suffix   : CPpmd7_Context_Ref;
+  end record;
+
+  PPMD_N1 : constant := 4;
+  PPMD_N2 : constant := 4;
+  PPMD_N3 : constant := 4;
+  PPMD_N4 : constant := ((128 + 3 - 1 * PPMD_N1 - 2 * PPMD_N2 - 3 * PPMD_N3) / 4);
+  PPMD_NUM_INDEXES : constant := (PPMD_N1 + PPMD_N2 + PPMD_N3 + PPMD_N4);
+
+  type Index_to_unit_array is array (0 .. PPMD_NUM_INDEXES - 1) of Byte;
+  type Unit_to_index_array is array (0 .. 127) of Byte;
+  type Free_list_array is array (0 .. PPMD_NUM_INDEXES - 1) of CPpmd_Void_Ref;
+  type NS_BS_HB_array is array (0 .. 255) of Byte;
+  type See_array is array (0 .. 24, 0 .. 15) of CPpmd_See;
+  type Bin_summ_array is array (0 .. 127, 0 .. 63) of UInt16;
+
+  type CPpmd7 is record
+    MinContext, MaxContext : CPpmd7_Context_Ref;
+    FoundState             : CPpmd_State_Ref;
+    OrderFall, InitEsc,
+    PrevSuccess,
+    MaxOrder, HiBitsFlag   : Unsigned;
+    RunLength, InitRL      : Int32;  --  must be 32-bit at least
+    Size                   : UInt32;
+    GlueCount              : UInt32;
+    Base, LoUnit, HiUnit,
+    Text, UnitsStart       : CPpmd_Byte_Ref;
+    AlignOffset            : UInt32;
+    Indx2Units             : Index_to_unit_array;
+    Units2Indx             : Unit_to_index_array;
+    FreeList               : Free_list_array;
+    NS2Indx, NS2BSIndx,
+    HB2Flag                : NS_BS_HB_array;
+    DummySee, See          : See_array;
+    BinSumm                : Bin_summ_array;
   end record;
 
   ----------------------
