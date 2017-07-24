@@ -67,10 +67,21 @@ private
     SuccessorHigh : UInt16;
   end record;
 
-  subtype CPpmd_State_Ref is UInt32;
-  subtype CPpmd_Void_Ref  is UInt32;
-  subtype CPpmd_Byte_Ref  is UInt32;
+  type void is new Integer;  --  !! get rid of that!
   
+  type CPpmd_State_Ref is access CPpmd_State;  --  Alt.: UInt32 if not PPMD_32BIT
+  type CPpmd_Void_Ref  is access void;         --  Alt.: UInt32 if not PPMD_32BIT
+  type CPpmd_Byte_Ref  is access Byte;         --  Alt.: UInt32 if not PPMD_32BIT
+
+  type CPpmd7_Context;
+  type CPpmd7_Context_Ref is access CPpmd7_Context;
+  type CPpmd7_Context is record
+    NumStats : UInt16;
+    SummFreq : UInt16;
+    Stats    : CPpmd_State_Ref;
+    Suffix   : CPpmd7_Context_Ref;
+  end record;
+
   ----------------------
   --  Range encoding  --
   ----------------------
