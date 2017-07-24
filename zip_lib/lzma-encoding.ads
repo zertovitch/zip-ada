@@ -1,4 +1,4 @@
---  LZMA_Encoding - a standalone, generic LZMA encoder.
+--  LZMA.Encoding - a standalone, generic LZMA encoder.
 --  See body for credits and other informations.
 
 --  Examples of use:

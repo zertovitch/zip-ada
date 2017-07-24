@@ -1,5 +1,5 @@
 --  LZMA library
----------------
+----------------
 --  Library for encoding and decoding data streams in the LZMA compression
 --  format invented by Igor Pavlov.
 --
@@ -34,6 +34,9 @@ with Interfaces;
 with System;
 
 package LZMA is
+
+  --  The compression and decompression procedures are located
+  --  in child packages LZMA.Encoding and LZMA.Decoding respectively. 
 
   --  Bits of last byte being used as context.
   --    With the value 8, LZMA uses a complete Markov chain for predicting
