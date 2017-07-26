@@ -1,3 +1,5 @@
+with Ada.Unchecked_Deallocation;
+
 package body PPMd is
 
   PPMD_INT_BITS    : constant := 7;
@@ -79,5 +81,26 @@ package body PPMd is
        16#40# .. 16#FF# => 8
       );
   end Ppmd7_Construct;
+
+  procedure Big_mem_free is
+    new Ada.Unchecked_Deallocation (Big_mem_array, Big_mem_array_access);
+
+  procedure Ppmd7_Free (p : in out CPpmd7) is
+  begin
+    Big_mem_free (p.Base);
+    p.Size := 0;
+  end Ppmd7_Free;
+
+  procedure Ppmd7_Alloc (p : in out CPpmd7; size : UInt32) is
+    size2 : UInt32;
+  begin
+    if p.Base /= null or else p.Size /= size then
+      Ppmd7_Free (p);
+      size2 := UNIT_SIZE;
+      p.AlignOffset := 4 - (size and 3);
+      p.Base        := new Big_mem_array (0 .. p.AlignOffset + size + size2 - 1);
+      p.Size        := size;
+    end if;
+  end Ppmd7_Alloc;
 
 end PPMd;
