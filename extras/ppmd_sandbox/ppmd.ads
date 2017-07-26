@@ -102,7 +102,7 @@ private
 
   type Index_to_unit_array is array (Unsigned'(0) .. PPMD_NUM_INDEXES - 1) of Byte;
   type Unit_to_index_array is array (Unsigned'(0) .. 127) of Byte;
-  type Free_list_array is array (0 .. PPMD_NUM_INDEXES - 1) of CPpmd_Void_Ref;
+  type Free_list_array is array (Unsigned'(0) .. PPMD_NUM_INDEXES - 1) of CPpmd_Void_Ref;
   type NS_BS_HB_array is array (0 .. 255) of Byte;
   type See_array is array (0 .. 24, 0 .. 15) of CPpmd_See;
   type Bin_summ_array is array (0 .. 127, 0 .. 63) of UInt16;
@@ -119,9 +119,9 @@ private
     OrderFall, InitEsc,
     PrevSuccess,
     MaxOrder, HiBitsFlag   : Unsigned;
-    RunLength, InitRL      : Int32;  --  must be 32-bit at least
-    Base                   : Big_mem_array_access;
-    Size                   : UInt32;
+    RunLength, InitRL      : Int32;  --  /* must be 32-bit at least */ !! Integer_M32 ?
+    Base                   : Big_mem_array_access := null;
+    Size                   : UInt32 := 0;
     GlueCount              : UInt32;
     LoUnit, HiUnit,
     Text, UnitsStart       : CPpmd_Byte_Ref;
