@@ -1,10 +1,14 @@
+--
 --  DRAFT - NOT YET FUNCTIONAL!
+--
 
 --  PPMd library
 ----------------
 --  Library for encoding and decoding data streams in the PPMd compression
 --  format invented by Dmitry Subbotin and Dmitry Shkarin (PPMd var.H (2001)).
 --  The Ada code is based on the recoding done by Igor Pavlov.
+--  Some de-obfuscation hints and de-pointerization techniques are
+--  from PpmdSharp by Michael Bone.
 --  PPM means: Prediction by Partial Match.
 --
 --  Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
@@ -55,6 +59,8 @@ private
   --  SEE-contexts for PPM-contexts with masked symbols.
   --  SEE means: Secondary Escape Estimation.
 
+  --  !! de-obfuscation: summ = summary
+
   type CPpmd_See is record
     Summ  : UInt16;  --  Freq
     Shift : Byte;    --  Speed of Freq change; low Shift is for fast change
@@ -71,13 +77,14 @@ private
     SuccessorHigh : UInt16;
   end record;
 
-  type void is new Integer;  --  !! get rid of that!
+  subtype Big_mem_index is UInt32;
 
-  type CPpmd_State_Ref is access CPpmd_State;  --  Alt.: UInt32 if not PPMD_32BIT
-  type CPpmd_Void_Ref  is access void;         --  Alt.: UInt32 if not PPMD_32BIT
-  type CPpmd_Byte_Ref  is access Byte;         --  Alt.: UInt32 if not PPMD_32BIT
+  subtype CPpmd_State_Ref is Big_mem_index;
+  subtype CPpmd_Void_Ref  is Big_mem_index;
+  subtype CPpmd_Byte_Ref  is Big_mem_index;
 
   type CPpmd7_Context;
+
   type CPpmd7_Context_Ref is access CPpmd7_Context;
 
   type CPpmd7_Context is record
@@ -93,12 +100,18 @@ private
   PPMD_N4 : constant := ((128 + 3 - 1 * PPMD_N1 - 2 * PPMD_N2 - 3 * PPMD_N3) / 4);
   PPMD_NUM_INDEXES : constant := (PPMD_N1 + PPMD_N2 + PPMD_N3 + PPMD_N4);
 
-  type Index_to_unit_array is array (0 .. PPMD_NUM_INDEXES - 1) of Byte;
-  type Unit_to_index_array is array (0 .. 127) of Byte;
+  type Index_to_unit_array is array (Unsigned'(0) .. PPMD_NUM_INDEXES - 1) of Byte;
+  type Unit_to_index_array is array (Unsigned'(0) .. 127) of Byte;
   type Free_list_array is array (0 .. PPMD_NUM_INDEXES - 1) of CPpmd_Void_Ref;
   type NS_BS_HB_array is array (0 .. 255) of Byte;
   type See_array is array (0 .. 24, 0 .. 15) of CPpmd_See;
   type Bin_summ_array is array (0 .. 127, 0 .. 63) of UInt16;
+
+  --  PPMd uses a large memory chunk and defines its own memory
+  --  management (allocate, free, ...) within it.
+
+  type Big_mem_array is array (Big_mem_index range <>) of Byte;
+  type Big_mem_array_access is access Big_mem_array;
 
   type CPpmd7 is record
     MinContext, MaxContext : CPpmd7_Context_Ref;
@@ -107,15 +120,17 @@ private
     PrevSuccess,
     MaxOrder, HiBitsFlag   : Unsigned;
     RunLength, InitRL      : Int32;  --  must be 32-bit at least
+    Base                   : Big_mem_array_access;
     Size                   : UInt32;
     GlueCount              : UInt32;
-    Base, LoUnit, HiUnit,
+    LoUnit, HiUnit,
     Text, UnitsStart       : CPpmd_Byte_Ref;
     AlignOffset            : UInt32;
     Indx2Units             : Index_to_unit_array;
     Units2Indx             : Unit_to_index_array;
     FreeList               : Free_list_array;
-    NS2Indx, NS2BSIndx,
+    NS2Indx,
+    NS2BSIndx,                                  --  NumberStatistics To BinarySummary
     HB2Flag                : NS_BS_HB_array;
     DummySee, See          : See_array;
     BinSumm                : Bin_summ_array;
