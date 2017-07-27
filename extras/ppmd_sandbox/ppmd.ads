@@ -110,7 +110,7 @@ private
   --  PPMd uses a large memory chunk and defines its own memory
   --  management (allocate, free, ...) within it.
 
-  type Big_mem_array is array (Big_mem_index range <>) of Byte;
+  type Big_mem_array is array (Big_mem_index range <>) of aliased Byte;
   type Big_mem_array_access is access Big_mem_array;
 
   type CPpmd7 is record

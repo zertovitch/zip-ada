@@ -1,4 +1,5 @@
 with Ada.Unchecked_Deallocation;
+with Ada.Unchecked_Conversion;
 
 package body PPMd is
 
@@ -31,7 +32,8 @@ package body PPMd is
 
   type CPpmd7_Node;
 
-  type CPpmd7_Node_Ref is access CPpmd7_Node;
+  type CPpmd7_Node_access is access CPpmd7_Node;
+  subtype CPpmd7_Node_Ref is Big_mem_index;
 
   type CPpmd7_Node is record
     Stamp : UInt16;  --  /* must be at offset 0 as CPpmd7_Context::NumStats. Stamp=0 means free */
@@ -148,5 +150,106 @@ package body PPMd is
     p.FreeList (indx) := node_ref;
     node := From_Intel_Bytes (p.Base (node_ref .. node_ref + 3));
   end RemoveNode;
+
+  --  Block management
+
+  function U2B (nu : Unsigned) return Big_mem_index is
+  pragma Inline (U2B);
+  begin
+    return Big_mem_index (nu) * UNIT_SIZE;
+  end U2B;
+
+  procedure SplitBlock (p : in out CPpmd7; ptr_0 : Big_mem_index; oldIndx, newIndx : Unsigned) is
+    i, nu, k : Unsigned;
+    ptr : Big_mem_index;
+  begin
+    --  !! perhaps convert before subtraction :
+    nu := Unsigned (p.Indx2Units (oldIndx) - p.Indx2Units (newIndx));
+    ptr := ptr_0 + U2B (Unsigned (p.Indx2Units (newIndx)));
+    i := Unsigned (p.Units2Indx (nu - 1));
+    if Unsigned (p.Indx2Units (i)) /= nu then
+      i := i - 1;
+      k := Unsigned (p.Indx2Units (i));
+      InsertNode (p, ptr + U2B (k), nu - k - 1);
+    end if;
+    InsertNode (p, ptr, i);
+  end SplitBlock;
+
+  type Byte_access is access all Byte;
+
+  procedure GlueFreeBlocks (p : in out CPpmd7) is
+    function NNODE (ref : CPpmd7_Node_Ref) return CPpmd7_Node_access is
+      function Convert is new Ada.Unchecked_Conversion (Byte_access, CPpmd7_Node_access);
+    begin
+      return Convert (p.Base (ref)'Access);
+    end NNODE;
+    head  : CPpmd7_Node_Ref := p.AlignOffset + p.Size;
+    n     : CPpmd7_Node_Ref := head;
+    next  : CPpmd7_Node_Ref;
+    node,
+    node2 : CPpmd7_Node_access;
+    nu16  : UInt16;
+    nu32  : UInt32;
+    nuuu, iu, k  : Unsigned;
+  begin
+    p.GlueCount := 255;
+    --  /* create doubly-linked list of free blocks */
+    for i in Free_list_array'Range loop
+      nu16 := UInt16 (p.Indx2Units (i));
+      next := p.FreeList (i);
+      p.FreeList (i) := 0;
+      while next /= 0 loop
+        node := NNODE (next);
+        node.Next := n;
+        NNODE (n).Prev := next;
+        n := next;
+        --  !!!  next = *(const CPpmd7_Node_Ref *)node;
+        node.Stamp := 0;
+        node.NU := UInt16 (nu16);
+      end loop;
+    end loop;
+    NNODE (head).Stamp := 1;
+    NNODE (head).Next := n;
+    NNODE (n).Prev := head;
+    if p.LoUnit /= p.HiUnit then
+      null;  -- !!! ((CPpmd7_Node *)p->LoUnit)->Stamp = 1;
+    end if;
+
+    --  /* Glue free blocks */
+    while n /= head loop
+      node := NNODE (n);
+      nu32 := UInt32 (node.NU);
+      loop
+        node2 := NNODE (n + nu32);
+        nu32 := nu32 + UInt32 (node2.NU);
+        exit when node2.Stamp /= 0 or else nu32 >= 16#10000#;
+        NNODE (node2.Prev).Next := node2.Next;
+        NNODE (node2.Next).Prev := node2.Prev;
+        node.NU := UInt16 (nu32);
+      end loop;
+      n := node.Next;
+    end loop;
+
+    --  /* Fill lists of free blocks */
+    n := NNODE (head).Next;
+    while n /= head loop
+      node := NNODE (n);
+      next := node.Next;
+      nuuu := Unsigned (node.NU);
+      while nuuu > 128 loop
+        InsertNode (p, node, PPMD_NUM_INDEXES - 1);
+        nuuu := nuuu - 128;
+        node := node + 128;
+      end loop;
+      iu := Unsigned (p.Units2Indx (nuuu - 1));
+      if p.Indx2Units (iu) /= nuuu then
+        iu := iu - 1;
+        k := p.Indx2Units (iu);
+        InsertNode (p, node + k, nuuu - k - 1);
+      end if;
+      InsertNode (p, node, iu);
+      n := next;
+    end loop;
+  end GlueFreeBlocks;
 
 end PPMd;
