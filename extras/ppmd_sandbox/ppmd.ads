@@ -78,7 +78,11 @@ private
     SuccessorHigh : UInt16;
   end record;
 
+  --  Variables of type Big_mem_index are to be used as indexes
+  --  for the big internally 32-bit managed memory, p.Base.all .
   subtype Big_mem_index is UInt32;
+
+  type CPpmd_State_access is access CPpmd_State;
 
   subtype CPpmd_State_Ref is Big_mem_index;
   subtype CPpmd_Void_Ref  is Big_mem_index;
@@ -86,7 +90,10 @@ private
 
   type CPpmd7_Context;
 
-  type CPpmd7_Context_Ref is access CPpmd7_Context;
+  type CPpmd7_Context_access is access CPpmd7_Context;
+  subtype CTX_PTR is CPpmd7_Context_access;
+
+  subtype CPpmd7_Context_Ref is Big_mem_index;
 
   type CPpmd7_Context is record
     NumStats : UInt16;
@@ -115,7 +122,7 @@ private
   type Big_mem_array_access is access Big_mem_array;
 
   type CPpmd7 is record
-    MinContext, MaxContext : CPpmd7_Context_Ref;
+    MinContext, MaxContext : CPpmd7_Context_access;
     FoundState             : CPpmd_State_Ref;
     OrderFall, InitEsc,
     PrevSuccess,

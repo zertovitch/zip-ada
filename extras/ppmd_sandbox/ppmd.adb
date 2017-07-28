@@ -159,6 +159,12 @@ package body PPMd is
     return Big_mem_index (nu) * UNIT_SIZE;
   end U2B;
 
+  function U2I (p : CPpmd7; nu : Unsigned) return Unsigned is
+  pragma Inline (U2I);
+  begin
+    return Unsigned (p.Units2Indx (nu - 1));
+  end U2I;
+
   procedure SplitBlock (p : in out CPpmd7; ptr_0 : Big_mem_index; oldIndx, newIndx : Unsigned) is
     i, nu, k : Unsigned;
     ptr : Big_mem_index;
@@ -166,7 +172,7 @@ package body PPMd is
     --  !! perhaps convert before subtraction :
     nu := Unsigned (p.Indx2Units (oldIndx) - p.Indx2Units (newIndx));
     ptr := ptr_0 + U2B (Unsigned (p.Indx2Units (newIndx)));
-    i := Unsigned (p.Units2Indx (nu - 1));
+    i := U2I (p, nu);
     if Unsigned (p.Indx2Units (i)) /= nu then
       i := i - 1;
       k := Unsigned (p.Indx2Units (i));
@@ -179,6 +185,7 @@ package body PPMd is
 
   procedure GlueFreeBlocks (p : in out CPpmd7) is
     function NNODE (ref : CPpmd7_Node_Ref) return CPpmd7_Node_access is
+      pragma Inline (NNODE);
       function Convert is new Ada.Unchecked_Conversion (Byte_access, CPpmd7_Node_access);
     begin
       return Convert (p.Base (ref)'Access);
@@ -243,7 +250,7 @@ package body PPMd is
         nuuu := nuuu - 128;
         n_copy := n_copy + 128;
       end loop;
-      iu := Unsigned (p.Units2Indx (nuuu - 1));
+      iu := U2I (p, nuuu);
       if Unsigned (p.Indx2Units (iu)) /= nuuu then
         iu := iu - 1;
         k := Unsigned (p.Indx2Units (iu));
@@ -304,5 +311,107 @@ package body PPMd is
     end if;
     AllocUnitsRare (p, indx, node_ref);
   end AllocUnits;
+
+  procedure ShrinkUnits (
+    p            : in out CPpmd7;
+    oldPtr       :        Big_mem_index;
+    oldNU, newNU :        Unsigned;
+    newPtr       : out    Big_mem_index)
+  is
+    i0 : Unsigned := U2I (p, oldNU);
+    i1 : Unsigned := U2I (p, newNU);
+    ptr : Big_mem_index;
+  begin
+    if i0 = i1 then
+      newPtr := oldPtr;
+      return;
+    end if;
+    if p.FreeList (i1) /= 0 then
+      RemoveNode (p, i1, ptr);
+      --  MyMem12Cpy(ptr, oldPtr, newNU);
+      p.Base (ptr .. ptr + Big_mem_index (newNU) - 1) :=
+        p.Base (oldPtr .. oldPtr + Big_mem_index (newNU) - 1);
+      InsertNode (p, oldPtr, i0);
+      newPtr := ptr;
+      return;
+    end if;
+    SplitBlock (p, oldPtr, i0, i1);
+    newPtr := oldPtr;
+    return;
+  end ShrinkUnits;
+
+  --  !! Does this successor stuff need to be split into 16-bit variables ?...
+
+  function SUCCESSOR (p : CPpmd_State) return CPpmd_Void_Ref is
+  begin
+    return UInt32 (p.SuccessorLow) or Shift_Left (UInt32 (p.SuccessorHigh), 16);
+  end SUCCESSOR;
+
+  procedure SetSuccessor (p : in out CPpmd_State; v : CPpmd_Void_Ref) is
+  begin
+    p.SuccessorLow  := UInt16 (UInt32 (v) and 16#FFFF#);
+    p.SuccessorHigh := UInt16 (Shift_Right (UInt32 (v), 16) and 16#FFFF#);
+  end SetSuccessor;
+
+  procedure RestartModel (p : in out CPpmd7) is
+    i, k, m : Unsigned;
+    function Convert is new Ada.Unchecked_Conversion (Byte_access, CTX_PTR);
+    function Convert is new Ada.Unchecked_Conversion (Byte_access, CPpmd_State_access);
+  begin
+    p.FreeList := (others => 0);
+    p.Text := p.AlignOffset;
+    p.HiUnit := p.Text + p.Size;
+    p.UnitsStart := p.HiUnit - p.Size / 8 / UNIT_SIZE * 7 * UNIT_SIZE;
+    p.LoUnit := p.UnitsStart;
+    p.GlueCount := 0;
+
+    p.OrderFall := p.MaxOrder;
+    p.InitRL := -Int32 (Unsigned'Min (p.MaxOrder, 12)) - 1;
+    p.RunLength := p.InitRL;
+    p.PrevSuccess := 0;
+
+    p.HiUnit := p.HiUnit - UNIT_SIZE;
+    p.MaxContext := Convert (p.Base (p.HiUnit)'Access); --  /* AllocContext(p); */
+    p.MinContext := p.MaxContext;
+    p.MinContext.Suffix := 0;
+    p.MinContext.NumStats := 256;
+    p.MinContext.SummFreq := 256 + 1;
+    p.FoundState := p.LoUnit; --  /* AllocUnits(p, PPMD_NUM_INDEXES - 1); */
+    p.LoUnit := p.LoUnit + U2B (256 / 2);
+    p.MinContext.Stats := p.FoundState;
+    for i in 0 .. 255 loop
+      declare
+        --  !!! C question: does i index an array of bytes or CPpmd_State ??
+        s : CPpmd_State renames Convert (p.FoundState (i)).all;
+      begin
+        s.Symbol := Byte (i);
+        s.Freq := 1;
+        SetSuccessor (s, 0);
+      end;
+    end loop;
+
+    for i in 0 .. 127 loop
+      for k in 0 .. 7 loop
+        null; -- !!!
+        --
+        --  UInt16 *dest = p.BinSumm[i] + k;
+        --  UInt16 val = (UInt16)(PPMD_BIN_SCALE - kInitBinEsc[k] / (i + 2));
+        --  for (m = 0; m < 64; m += 8)
+          --  dest[m] = val;
+      end loop;
+    end loop;
+
+    for i in 0 .. 24 loop
+      for k in 0 .. 15 loop
+        declare
+          s : CPpmd_See renames p.See (i)(k);
+        begin
+          s.Shift := PPMD_PERIOD_BITS - 4;
+          s.Summ  := Shift_Left (UInt16 (5 * i + 10), Natural (s.Shift));
+          s.Count := 4;
+        end;
+      end loop;
+    end loop;
+  end RestartModel;
 
 end PPMd;
