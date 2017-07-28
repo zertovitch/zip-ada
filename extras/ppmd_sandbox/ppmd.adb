@@ -183,13 +183,14 @@ package body PPMd is
     begin
       return Convert (p.Base (ref)'Access);
     end NNODE;
-    head  : CPpmd7_Node_Ref := p.AlignOffset + p.Size;
-    n     : CPpmd7_Node_Ref := head;
-    next  : CPpmd7_Node_Ref;
+    head   : CPpmd7_Node_Ref := p.AlignOffset + p.Size;
+    n      : CPpmd7_Node_Ref := head;
+    next   : CPpmd7_Node_Ref;
+    n_copy : CPpmd7_Node_Ref;
     node,
-    node2 : CPpmd7_Node_access;
-    nu16  : UInt16;
-    nu32  : UInt32;
+    node2  : CPpmd7_Node_access;
+    nu16   : UInt16;
+    nu32   : UInt32;
     nuuu, iu, k  : Unsigned;
   begin
     p.GlueCount := 255;
@@ -236,20 +237,72 @@ package body PPMd is
       node := NNODE (n);
       next := node.Next;
       nuuu := Unsigned (node.NU);
+      n_copy := n;
       while nuuu > 128 loop
-        InsertNode (p, node, PPMD_NUM_INDEXES - 1);
+        InsertNode (p, n_copy, PPMD_NUM_INDEXES - 1);
         nuuu := nuuu - 128;
-        node := node + 128;
+        n_copy := n_copy + 128;
       end loop;
       iu := Unsigned (p.Units2Indx (nuuu - 1));
-      if p.Indx2Units (iu) /= nuuu then
+      if Unsigned (p.Indx2Units (iu)) /= nuuu then
         iu := iu - 1;
-        k := p.Indx2Units (iu);
-        InsertNode (p, node + k, nuuu - k - 1);
+        k := Unsigned (p.Indx2Units (iu));
+        InsertNode (p, n_copy + Big_mem_index (k), nuuu - k - 1);
       end if;
-      InsertNode (p, node, iu);
+      InsertNode (p, n_copy, iu);
       n := next;
     end loop;
   end GlueFreeBlocks;
+
+  procedure AllocUnitsRare (p : in out CPpmd7; indx : Unsigned; node_ref : out Big_mem_index) is
+    i : Unsigned;
+    retVal : Big_mem_index;
+    numBytes : UInt32;
+  begin
+    if p.GlueCount = 0 then
+      GlueFreeBlocks (p);
+      if p.FreeList (indx) /= 0 then
+        RemoveNode (p, indx, node_ref);
+        return;
+      end if;
+    end if;
+    i := indx;
+    loop
+      i := i + 1;
+      if i = PPMD_NUM_INDEXES then
+        numBytes := U2B (Unsigned (p.Indx2Units (indx)));
+        p.GlueCount := p.GlueCount - 1;
+        if UInt32 (p.UnitsStart - p.Text) > numBytes then
+          p.UnitsStart := p.UnitsStart - numBytes;
+          node_ref := p.UnitsStart;
+        else
+          node_ref := 0;
+        end if;
+        return;
+      end if;
+      exit when p.FreeList (i) /= 0;
+    end loop;
+    RemoveNode (p, i, retVal);
+    SplitBlock (p, retVal, i, indx);
+    node_ref := retVal;
+  end AllocUnitsRare;
+
+  procedure AllocUnits (p : in out CPpmd7; indx : Unsigned; node_ref : out Big_mem_index) is
+    retVal : Big_mem_index;
+    numBytes : UInt32;
+  begin
+    if p.FreeList (indx) /= 0 then
+      RemoveNode (p, indx, node_ref);
+      return;
+    end if;
+    numBytes := U2B (Unsigned (p.Indx2Units (indx)));
+    if numBytes <= UInt32 (p.HiUnit - p.LoUnit) then
+      retVal := p.LoUnit;
+      p.LoUnit := p.LoUnit + numBytes;
+      node_ref := retVal;
+      return;
+    end if;
+    AllocUnitsRare (p, indx, node_ref);
+  end AllocUnits;
 
 end PPMd;

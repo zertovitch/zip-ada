@@ -9,7 +9,8 @@
 --  The Ada code is based on the recoding done by Igor Pavlov.
 --  Some de-obfuscation hints and de-pointerization techniques are
 --  from PpmdSharp by Michael Bone.
---  PPM means: Prediction by Partial Match.
+--
+--  PPM means: Prediction by Partial Matching.
 --
 --  Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
 
