@@ -26,3 +26,25 @@
       Zip & UnZip
 
 - more profiling - see prof_za.cmd and test/prof.cmd
+
+- zipada command-line tool: outputs sometimes progress like this:
+
+    Adding ...xxxxxxxxxxxxxxxxx.mht [........] Deflate  , to  44.88%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.mht [........] Deflate  , to  30.22%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.png ...][........] Deflate  , to  99.79%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.mp3 [........][........] Deflate  , to  97.16%, do
+    Adding ...xxxxxxxxxxxxxxxxx.doc [........] Deflate  , to  16.46%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.ppt .......][........] Deflate  , to  97.89%, done
+    Adding ...xxxxxxxxxxxxxxxxx.wma .....][........] Deflate  , to  97.72%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.wma ....][........] Deflate  , to  97.67%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.wma .][........] Deflate  , to  97.62%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.wma [........] Deflate  , to  97.56%, done.
+    Adding ...xxxxxxxxxxxxxxxx.tiff ......][........] Deflate  , to  98.46%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.pdf [........] Deflate  , to  90.50%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.xls [........] Deflate  , to  29.10%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.doc [........] Deflate  , to  24.14%, done.
+    Adding ...xxxxxxxxxxxxxxxxx.doc [........] Deflate  , to  17.86%, done.
+
+  * Would be normal when defaulting to store, but Deflate seems to be chosen in the end.
+  * Seems to occurr with data difficult to compress.
+  * Compressed archive is OK, only the display is strange.
