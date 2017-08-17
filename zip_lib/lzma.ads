@@ -36,7 +36,7 @@ with System;
 package LZMA is
 
   --  The compression and decompression procedures are located
-  --  in child packages LZMA.Encoding and LZMA.Decoding respectively. 
+  --  in child packages LZMA.Encoding and LZMA.Decoding respectively.
 
   --  Bits of last byte being used as context.
   --    With the value 8, LZMA uses a complete Markov chain for predicting

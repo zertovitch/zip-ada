@@ -7,7 +7,7 @@ package Zip.CRC_Crypto is
   -------------------------------------------------------------
   --  CRC: Cyclic Redundancy Check to verify data integrity  --
   -------------------------------------------------------------
-  
+
   procedure Init( CRC: out Unsigned_32 );
 
   procedure Update( CRC: in out Unsigned_32; InBuf: Zip.Byte_Buffer );
@@ -19,7 +19,7 @@ package Zip.CRC_Crypto is
   ------------------
   --  Encryption  --
   ------------------
-  
+
   type Crypto_pack is private;
   --
   type Crypto_Mode is (clear, encrypted);
