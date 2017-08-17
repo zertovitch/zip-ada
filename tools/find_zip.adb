@@ -9,6 +9,7 @@ with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Ada.Streams;
 
 with Zip;
 with UnZip.Streams;                     use UnZip.Streams;
@@ -24,7 +25,83 @@ procedure Find_Zip is
 
   ignore_case: constant Boolean:= True;
 
-  procedure Search_1_file( name: String ) is
+  procedure Search_1_file_using_output_stream( name: String ) is
+    occ: Natural:= 0;
+    -- Define a circular buffer
+    siz: constant:= max;
+    type Buffer_range is mod siz;
+    buf: array(Buffer_range) of Character:= (others => ' ');
+    bup: Buffer_range:= 0;
+    --  We define a local, ad-hoc stream type.
+    --
+    type Search_stream is new Ada.Streams.Root_Stream_Type with null record;
+    --
+    overriding procedure Read
+      (Stream : in out Search_stream;
+       Item   :    out Ada.Streams.Stream_Element_Array;
+       Last   :    out Ada.Streams.Stream_Element_Offset);
+    overriding procedure Write
+     (Stream : in out Search_stream;
+      Item   : in     Ada.Streams.Stream_Element_Array);
+
+    --  Implementation of Read & Write:
+
+    overriding procedure Read
+      (Stream : in out Search_stream;
+       Item   :    out Ada.Streams.Stream_Element_Array;
+       Last   :    out Ada.Streams.Stream_Element_Offset) is null;  --  Not used.
+
+    overriding procedure Write
+     (Stream : in out Search_stream;
+      Item   : in     Ada.Streams.Stream_Element_Array)
+    is
+      pragma Unreferenced (Stream);
+      c: Character;
+      i: Buffer_range:= 0;
+      j: Natural;
+    begin
+      for sei in Item'Range loop
+        c:= Character'Val(Item(sei));
+        if ignore_case then
+          c:= To_Upper(c);
+        end if;
+        if c = l then -- last character do match, search further...
+          i:= bup;
+          j:= stl;
+          match: loop
+            i:= i-1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
+            j:= j-1;
+            if j = 0 then -- we survived the whole search string
+              occ:= occ+1;
+              exit match;
+            end if;
+            exit match when str(j) /= buf(i);
+          end loop match;
+        end if;
+        buf(bup):= c;
+        bup:= bup+1;
+      end loop;
+    end Write;
+
+    sst: Search_stream;
+
+  begin
+    Extract(
+      Destination      => sst,
+      Archive_Info     => z,
+      Name             => name,
+      Ignore_Directory => False
+    );
+    if occ > 0 then
+      Put(occ, 5);
+      Put_Line(" in [" & To_Lower(name) & "] (outward stream method)");
+    end if;
+  end Search_1_file_using_output_stream;
+
+  --  Old variant using an input stream (memory footprint is uncompressed
+  --  size plus fixed amounts: can be large!)
+
+  procedure Search_1_file_using_input_stream( name: String ) is
     f: Zipped_File_Type;
     s: Stream_Access;
     c: Character;
@@ -47,7 +124,7 @@ procedure Find_Zip is
         i:= bup;
         j:= stl;
         match: loop
-          i:= i-1;
+          i:= i-1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
           j:= j-1;
           if j = 0 then -- we survived the whole search string
             occ:= occ+1;
@@ -62,11 +139,12 @@ procedure Find_Zip is
     Close(f);
     if occ > 0 then
       Put(occ, 5);
-      Put_Line(" in [" & To_Lower(name) & "]");
+      Put_Line(" in [" & To_Lower(name) & "] (inward stream method)");
     end if;
-  end Search_1_file;
+  end Search_1_file_using_input_stream;
+  pragma Unreferenced (Search_1_file_using_input_stream);
 
-  procedure Search_all_files is new Zip.Traverse( Search_1_file );
+  procedure Search_all_files is new Zip.Traverse( Search_1_file_using_output_stream );
 
   function Try_with_zip(name: String) return String is
   begin

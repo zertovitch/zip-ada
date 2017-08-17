@@ -49,6 +49,3 @@
   * Seems to occurr with data difficult to compress.
   * Compressed archive is OK, only the display is strange.
 
-  - tools: find_zip: use an outward stream instead of decompressing completely each entry before searching (inward stream).
-      This would use almost no memory, instead of the amount of the entry's uncompressed size.
-      Same topic in AZip.
