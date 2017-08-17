@@ -5,6 +5,8 @@ with Zip;
 
 procedure Test_UnZ_Streams is
 
+  --  Test archive extraction as an *input* stream.
+
   procedure Test_Input_Stream is
     f: Zipped_File_Type;
     s: UnZip.Streams.Stream_Access;
@@ -19,9 +21,9 @@ procedure Test_UnZ_Streams is
           Case_sensitive => False
     );
     s:= Stream(f);
-    while not End_Of_File(f) loop -- We just output the contents of file
-      Character'Read(s,c);        -- named in 'n' to standard output
-      Put(c);
+    while not End_Of_File(f) loop --  We just output the contents of file
+      Character'Read(s,c);        --  named in 'n' to standard output
+      Put(c);                     --  character by character
     end loop;
     Close(f);
     --
@@ -33,6 +35,8 @@ procedure Test_UnZ_Streams is
     when UnZip.Wrong_password      =>
       Put_Line( "Password doesn't fit!" );
   end Test_Input_Stream;
+
+  --  Test archive extraction as an *output* stream.
 
   procedure Test_Output_Stream(suffix: String; trash_dir: Boolean) is
     o: Ada.Streams.Stream_IO.File_Type;

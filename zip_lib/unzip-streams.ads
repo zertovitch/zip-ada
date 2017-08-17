@@ -18,8 +18,18 @@ with Ada.Streams, Ada.IO_Exceptions;
 package UnZip.Streams is
 
    ----------------------------------------------------------------------------
-   -- ** Input Stream **     The workflow is: open z: Zipped_File_Type, then --
-   -- do something with Stream(z), for instance read the data, then close z. --
+   --                           ** Input Stream **                           --
+   --                                                                        --
+   --  Extract a Zip archive entry as an input stream.                       --
+   --                                                                        --
+   --  The workflow is similar to a "physical" file's:                       --
+   --                                                                        --
+   --    - Open z: Zipped_File_Type                                          --
+   --    - do something with Stream(z), usually: read the data               --
+   --    - Close z                                                           --
+   --                                                                        --
+   --  NB: the whole entry is unpacked into memory at Open, so it uses       --
+   --      the uncompressed amount as work memory between Open and Close.    --
    ----------------------------------------------------------------------------
 
    type Zipped_File_Type is private;
@@ -77,10 +87,17 @@ package UnZip.Streams is
    Use_Error    : exception renames Ada.IO_Exceptions.Use_Error;
    End_Error    : exception renames Ada.IO_Exceptions.End_Error;
 
-   ----------------------------------------------------------------
-   -- ** Output Stream **                                        --
-   -- Extract a Zip archive entry to an available output stream. --
-   ----------------------------------------------------------------
+   ------------------------------------------------------------------
+   --                    ** Output Stream **                       --
+   --                                                              --
+   --  Extract a Zip archive entry to an available output stream.  --
+   --                                                              --
+   --  NB: the memory footprint is limited to the decompression    --
+   --      structures and buffering, so the outward stream can be  --
+   --      an interesting alternative to the inward, albeit less   --
+   --      comfortable.                                            --
+   --                                                              --
+   ------------------------------------------------------------------
 
    procedure Extract(
      Destination      : in out Ada.Streams.Root_Stream_Type'Class;
