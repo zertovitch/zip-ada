@@ -35,7 +35,6 @@ procedure ZipAda is
     Put_Line("ZipAda * minimalistic standalone zipping tool.");
     Put_Line("Demo for Zip-Ada library, by G. de Montmollin");
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
-    Put_Line("Tool version: rev. 582 or later, 12-Sep-2017");
     Put_Line("URL: " & Zip.web);
     New_Line;
   end Blurb;

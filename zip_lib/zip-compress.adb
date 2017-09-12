@@ -51,7 +51,7 @@ package body Zip.Compress is
       Buffer      : Byte_Buffer (1 .. buffer_size);
       Last_Read   : Natural;
     begin
-      zip_type:= 0; -- "Store" method
+      zip_type:= compression_format_code.store;
       counted:= 0;
       while not End_Of_Stream(input) loop
         if input_size_known and counted >= input_size then
@@ -120,6 +120,12 @@ package body Zip.Compress is
       else
         Set_mode(encrypt_pack, clear);
       end if;
+      --
+      --  Dispatch the work to child procedures doing the stream compression
+      --  in different formats, depending on the actual compression method.
+      --  For example, for methods LZMA_for_JPEG, LZMA_for_WAV, or LZMA_3, we
+      --  logically call Zip.Compress.LZMA_E for the job.
+      --
       case actual_method is
         --
         when Store =>
@@ -130,7 +136,7 @@ package body Zip.Compress is
             input, output, input_size_known, input_size, feedback,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= 1; -- code for "Shrink" method
+          zip_type:= compression_format_code.shrink;
         --
         when Reduction_Method =>
           Zip.Compress.Reduce(
@@ -138,24 +144,25 @@ package body Zip.Compress is
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= 2 + Unsigned_16(
-            Compression_Method'Pos(actual_method) -
-            Compression_Method'Pos(Reduce_1)
-          );
+          zip_type:= compression_format_code.reduce +
+            Unsigned_16(
+              Compression_Method'Pos(actual_method) -
+              Compression_Method'Pos(Reduce_1)
+            );
         when Deflation_Method =>
           Zip.Compress.Deflate(
             input, output, input_size_known, input_size, feedback,
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= 8;
+          zip_type:= compression_format_code.deflate;
         when LZMA_Method =>
           Zip.Compress.LZMA_E(
             input, output, input_size_known, input_size, feedback,
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= 14;
+          zip_type:= compression_format_code.lzma;
       end case;
       CRC:= Final(CRC);
       --

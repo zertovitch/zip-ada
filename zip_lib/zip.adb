@@ -938,19 +938,19 @@ package body Zip is
     -- curiously an Unchecked_Conversion... (RM 13.4)
   begin
     case x is
-      when  0 => return store;
-      when  1 => return shrink;
-      when  2 => return reduce_1;
-      when  3 => return reduce_2;
-      when  4 => return reduce_3;
-      when  5 => return reduce_4;
-      when  6 => return implode;
-      when  7 => return tokenize;
-      when  8 => return deflate;
-      when  9 => return deflate_e;
-      when 12 => return bzip2;
-      when 14 => return lzma_meth;
-      when 98 => return ppmd;
+      when compression_format_code.store      => return store;
+      when compression_format_code.shrink     => return shrink;
+      when compression_format_code.reduce     => return reduce_1;
+      when compression_format_code.reduce + 1 => return reduce_2;
+      when compression_format_code.reduce + 2 => return reduce_3;
+      when compression_format_code.reduce + 3 => return reduce_4;
+      when compression_format_code.implode    => return implode;
+      when compression_format_code.tokenize   => return tokenize;
+      when compression_format_code.deflate    => return deflate;
+      when compression_format_code.deflate_e  => return deflate_e;
+      when compression_format_code.bzip2      => return bzip2;
+      when compression_format_code.lzma       => return lzma_meth;
+      when compression_format_code.ppmd       => return ppmd;
       when others => return unknown;
     end case;
   end Method_from_code;

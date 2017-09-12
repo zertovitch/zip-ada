@@ -16,7 +16,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 1999 .. 2016 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2017 Gautier de Montmollin
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal
@@ -381,8 +381,8 @@ package Zip is
   -- Information about this package - e.g. for an "about" box --
   --------------------------------------------------------------
 
-  version   : constant String:= "52";
-  reference : constant String:= "08-Oct-2016";
+  version   : constant String:= "53 preview 1";
+  reference : constant String:= "12-Sep-2017";
   web       : constant String:= "http://unzip-ada.sf.net/";
   -- hopefully the latest version is at that URL...  ---^
 
@@ -449,5 +449,21 @@ private
 
   type Unsigned_M16 is mod 2**min_bits_16;
   type Unsigned_M32 is mod 2**min_bits_32;
+
+  --  Codes for compression formats in Zip archives
+  --  See PKWARE's Appnote, "4.4.5 compression method"
+  --
+  package compression_format_code is
+    store     : constant :=  0;
+    shrink    : constant :=  1;
+    reduce    : constant :=  2;
+    implode   : constant :=  6;
+    tokenize  : constant :=  7;
+    deflate   : constant :=  8;
+    deflate_e : constant :=  9;
+    bzip2     : constant := 12;
+    lzma      : constant := 14;
+    ppmd      : constant := 98;
+  end compression_format_code;
 
 end Zip;
