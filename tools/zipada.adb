@@ -35,6 +35,7 @@ procedure ZipAda is
     Put_Line("ZipAda * minimalistic standalone zipping tool.");
     Put_Line("Demo for Zip-Ada library, by G. de Montmollin");
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
+    Put_Line("Tool version: rev. 582 or later, 12-Sep-2017");
     Put_Line("URL: " & Zip.web);
     New_Line;
   end Blurb;
@@ -116,55 +117,62 @@ procedure ZipAda is
       Put_Line("  ** Warning: skipping invalid entry: " & arg);
   end Zip_a_file;
 
-  len: Natural:= 0;
+  len: Natural:= 0;  --  absolute directory prefix, to be skipped.
 
   -- Recursive directory scan expanded from this example:
   --
   -- http://rosettacode.org/wiki/Walk_a_directory/Recursively#Ada
 
   procedure Walk (Name : String; Pattern : String; Level: Natural; Recursive: Boolean) is
-    procedure Process (Item : Directory_Entry_Type) is
+    --
+    procedure Process_file (Item : Directory_Entry_Type) is
     begin
-      if Simple_Name (Item) = "." then
-        if Level = 0 then
-          len:= Full_Name (Item)'Length - 2 - Name'Length;
-          if Name = "." then
-            len:= len + 2;
-          end if;
-        end if;
-      elsif Simple_Name (Item) = ".." then
-        null;
-      else
+      if Simple_Name (Item) /= "." and then Simple_Name (Item) /= ".." then
         declare
           fn: constant String:= Full_Name (Item);
         begin
           Zip_a_file (fn(fn'First+len..fn'Last));
         end;
       end if;
-    end Process;
-    procedure Walk (Item : Directory_Entry_Type) is
+    end Process_file;
+    --
+    procedure Walk_subdirectory (Item : Directory_Entry_Type) is
     begin
       if Simple_Name (Item) /= "." and then Simple_Name (Item) /= ".." then
         Walk (Full_Name (Item), Pattern, Level+1, True);
       end if;
     exception
       when Ada.Directories.Name_Error => null;
-    end Walk;
+    end Walk_subdirectory;
+    --
   begin
+    if Level = 0 then  --  Figure out the length of the absolute path
+      len:= Full_Name(".")'Length + 1;
+    end if;
     -- Process files
-    Search (Name, Pattern, (others => True), Process'Access);
+    Search (Name, Pattern, (Directory => False, others => True), Process_file'Access);
     -- Process subdirectories
     if Recursive then
-      Search (Name, "", (Directory => True, others => False), Walk'Access);
+      Search (Name, "", (Directory => True, others => False), Walk_subdirectory'Access);
     end if;
   exception
     when Ada.Directories.Name_Error => -- "unknown directory" -> probably a file.
       if Level = 0 then
+            if Zip.Exists(Name) then
+              Zip_a_file(Name);
+            else
+              Put_Line("  ** Warning [a]: name not matched: " & Name);
+            end if;
         Zip_a_file(Name);
       end if;
   end Walk;
 
-  type Scan_mode is (files_only, files_and_dirs, files_and_dirs_recursive);
+  type Scan_mode is (
+    files_only,
+    files_and_dirs,
+    files_and_dirs_recursive,
+    patterns_recursive
+  );
   scan: Scan_mode:= files_only;
 
   procedure Enter_password(title: String; pwd: out Unbounded_String) is
@@ -223,6 +231,8 @@ procedure ZipAda is
           scan:= Scan_mode'Max(scan, files_and_dirs);
         elsif eX = "r " then
           scan:= files_and_dirs_recursive;
+        elsif eX = "r2" then
+          scan:= patterns_recursive;
         elsif opt(opt'First) = 's' then
           if arg'Length > 2 then  --  Password is appended to the option
             password:= To_Unbounded_String(arg(arg'First+2..arg'Last));
@@ -257,17 +267,21 @@ procedure ZipAda is
         Put_Line("  ** Warning: skipping archive's name as entry: " & arg);
         -- avoid zipping the archive itself!
         -- NB: case insensitive
-      elsif Zip.Exists(arg) then
+      else
         case scan is
           when files_only =>
-            Zip_a_file(arg);
+            if Zip.Exists(arg) then
+              Zip_a_file(arg);
+            else
+              Put_Line("  ** Warning [b]: name not matched: " & arg);
+            end if;
           when files_and_dirs =>
             Walk (arg, "*", 0, False);
           when files_and_dirs_recursive =>
             Walk (arg, "*", 0, True);
+          when patterns_recursive =>
+            Walk (".", arg, 0, True);
         end case;
-      else
-        Put_Line("  ** Warning: name not matched: " & arg);
       end if;
     end if;
   end Process_argument;
@@ -297,8 +311,12 @@ begin
     Put_Line("      NB: default method is ""Deflate"", strength 1 (-ed1)");
     New_Line;
     Put_Line("          -dir   : name(s) may be also directories,");
-    Put_Line("                      whose contents will be archived");
-    Put_Line("          -r     : same as ""-dir"", but recursive");
+    Put_Line("                      whose entire contents will be archived");
+    Put_Line("          -r     : same as ""-dir"", but recursively archives full subdirectories");
+    Put_Line("                      of the named directories as well");
+    Put_Line("          -r2    : search name(s) in current and all subdirectories as well;");
+    Put_Line("                      please enclose name(s) that have wildcards with");
+    Put_Line("                      single quotes, for example: '*.adb'");
     Put_Line("          -s[X]  : set password X");
   end if;
 end ZipAda;
