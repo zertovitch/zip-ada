@@ -129,7 +129,7 @@ package body LZMA.Encoding is
         --  The truncation represented by {} ensures that prob >= 2**m - 1. See note (*).
         prob:= cur_prob - Shift_Right(cur_prob, Probability_change_bits);
       end if;
-      --  (*) It can be exhaustively checked that it is always he case.
+      --  (*) It can be checked exhaustively that it is always the case.
       --      A too low prob could cause the width to be too small or even zero.
       --      Same for "too high". See LZMA sheet in za_work.xls.
     end Encode_Bit;
