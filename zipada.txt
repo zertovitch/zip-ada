@@ -132,6 +132,12 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '53', xx-yyy-2017:
+  - (Tools) ZipAda tool has a more useful recursive
+      directory search (-r2 option)
+  - Zip.Compress: fix in local header generation: EOS flag for LZMA
+      format is properly set in any situation LZMA is actually used.
+
 * Changes in '52', 08-Oct-2016:
   - UnZip.Streams: all procedures have an additional (optional)
       Ignore_Directory parameter.
