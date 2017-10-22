@@ -194,8 +194,8 @@ package Zip.Headers is
     -- The real offset of the end-of-central-dir
     -- will be N + central_dir_size + central_dir_offset.
     -- This way, we have an unique chance to determine N when reading the
-    -- end-of-central-dir. N is stored in the field hereafter.
-    offset_shifting    : Unsigned_32;
+    -- end-of-central-dir. N is stored in the field hereafter:
+    offset_shifting    : ZS_Size_Type;  --  NB: type is at least 32 bits.
   end record;
 
   end_of_central_dir_length : constant:= 22;

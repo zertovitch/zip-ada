@@ -153,6 +153,7 @@ package body Zip is
     duplicate_names : in     Duplicate_name_policy:= error_on_duplicate
   )
   is
+    use type Zip_Streams.ZS_Size_Type;
     procedure Insert(
       dico_name        : String; -- UPPER if case-insensitive search
       file_name        : String;
@@ -169,7 +170,6 @@ package body Zip is
       )
     is
       procedure Insert_into_tree(node: in out p_Dir_node) is
-        use type Zip_Streams.ZS_Size_Type;
       begin
         if node = null then
           node:= new Dir_node'
@@ -241,10 +241,7 @@ package body Zip is
     -- Process central directory:
     Zip_Streams.Set_Index(
       from,
-      Zip_Streams.ZS_Index_Type(
-        1 +
-        the_end.offset_shifting + the_end.central_dir_offset
-      )
+      Zip_Streams.ZS_Index_Type(1 + the_end.central_dir_offset) + the_end.offset_shifting
     );
 
     for i in 1..the_end.total_entries loop
@@ -266,8 +263,8 @@ package body Zip is
         -- Now the whole i_th central directory entry is behind
         Insert( dico_name   => Normalize(this_name, case_sensitive),
                 file_name   => Normalize(this_name, True),
-                file_index  => Zip_Streams.ZS_Index_Type
-                 (1 + header.local_header_offset + the_end.offset_shifting),
+                file_index  => Zip_Streams.ZS_Index_Type (1 + header.local_header_offset) +
+                               the_end.offset_shifting,
                 comp_size   => header.short_info.dd.compressed_size,
                 uncomp_size => header.short_info.dd.uncompressed_size,
                 crc_32      => header.short_info.dd.crc_32,
@@ -536,7 +533,7 @@ package body Zip is
     Zip.Headers.Load(file, the_end);
     Set_Index(
       file,
-      ZS_Index_Type (1 + the_end.offset_shifting + the_end.central_dir_offset)
+      ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting
     );
 
     min_offset:= the_end.central_dir_offset; -- will be lowered if the archive is not empty.
@@ -562,7 +559,7 @@ package body Zip is
       end if;
     end loop;
 
-    file_index:= Zip_Streams.ZS_Index_Type (1 + min_offset + the_end.offset_shifting);
+    file_index:= Zip_Streams.ZS_Index_Type (1 + min_offset) + the_end.offset_shifting;
 
   exception
     when Zip.Headers.bad_end =>
@@ -589,7 +586,7 @@ package body Zip is
     use Zip_Streams;
   begin
     Zip.Headers.Load(file, the_end);
-    Set_Index(file, ZS_Index_Type(1 + the_end.central_dir_offset + the_end.offset_shifting));
+    Set_Index(file, ZS_Index_Type(1 + the_end.central_dir_offset) + the_end.offset_shifting);
     for i in 1..the_end.total_entries loop
       Zip.Headers.Read_and_check(file, header);
       declare
@@ -608,7 +605,7 @@ package body Zip is
            Normalize(name,case_sensitive)
         then
           -- Name found in central directory !
-          file_index := Zip_Streams.ZS_Index_Type (1 + header.local_header_offset + the_end.offset_shifting);
+          file_index := Zip_Streams.ZS_Index_Type (1 + header.local_header_offset) + the_end.offset_shifting;
           comp_size  := File_size_type(header.short_info.dd.compressed_size);
           uncomp_size:= File_size_type(header.short_info.dd.uncompressed_size);
           crc_32     := header.short_info.dd.crc_32;
