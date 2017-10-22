@@ -647,6 +647,9 @@ package body UnZip.Decompress is
 
         Read_Code;
         Last_Incode  := Incode;
+        if Incode not in 0 .. 255 then
+          Raise_Exception(Zip.Zip_file_Error'Identity, "Wrong LZW (Shrink) 1st byte");
+        end if;
         Last_Outcode := Zip.Byte( Incode );
         Write_Byte ( Last_Outcode );
         S:= S - 1;

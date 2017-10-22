@@ -266,7 +266,14 @@ package body UnZip is
 
     if name_from_header then -- Name from local header is used as output name
       the_name_len:= Natural(local_header.filename_length);
-      String'Read(zip_file'Access, the_name(1..the_name_len));
+      String'Read(zip_file'Access, the_name(1..Integer'Min(the_name_len,the_name'Length)));
+      if the_name_len > the_name'Length then
+        Ada.Exceptions.Raise_Exception(
+          Read_Error'Identity,
+          "Name too long, >" & Integer'Image(the_name'Length) & " characters: " &
+          the_name(1..10) & " ... " & the_name(the_name'Last-9 .. the_name'Last)
+        );
+      end if;
       if not data_descriptor_after_data then
         Inform_User(
           the_name(1..the_name_len),
