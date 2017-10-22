@@ -1387,6 +1387,10 @@ package body UnZip.Decompress is
         -- inflate the coded data
         main_loop:
         while not Zip_EOF loop
+          if Tl = null then
+            Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+              "Null table list (on data decoding, Huffman tree for literals or LZ lengths)");
+          end if;
           CT:= Tl.table;
           CT_idx:= UnZ_IO.Bit_buffer.Read(Bl);
           loop
@@ -1406,7 +1410,7 @@ package body UnZip.Decompress is
           UnZ_IO.Bit_buffer.Dump ( CT(CT_idx).bits );
 
           case E is
-            when 16 =>     -- CT(CT_idx).N is a Literal
+            when 16 =>     -- CT(CT_idx).N is a Literal (code 0 .. 255)
               literal:= Zip.Byte( CT(CT_idx).n );
               if some_trace then
                 lt_count:= lt_count + 1;
@@ -1426,7 +1430,7 @@ package body UnZip.Decompress is
               end if;
               exit main_loop;
 
-            when others => -- We have a length/distance
+            when others => -- We have a length/distance code
               if some_trace then
                 dl_count:= dl_count + 1;
               end if;
@@ -1434,6 +1438,10 @@ package body UnZip.Decompress is
               length:= CT(CT_idx).n + UnZ_IO.Bit_buffer.Read_and_dump(E);
 
               -- Decode distance of block to copy:
+              if Td = null then
+                Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+                  "Null table list (on data decoding, Huffman tree for LZ distances)");
+              end if;
               CT:= Td.table;
               CT_idx:= UnZ_IO.Bit_buffer.Read(Bd);
               loop
@@ -1624,7 +1632,7 @@ package body UnZip.Decompress is
           raise Zip.Zip_archive_corrupted;
         end if;
 
-        -- Read in bit-length-code lengths.
+        -- Read in bit-length-code lengths for decoding the compression structure.
         -- The rest, Ll( Bit_Order( Nb .. 18 ) ), is already = 0
         for J in  0 .. Nb - 1  loop
           Ll ( bit_order_for_dynamic_block( J ) ) := UnZ_IO.Bit_buffer.Read_and_dump(3);
@@ -1645,33 +1653,37 @@ package body UnZip.Decompress is
             Raise_Exception(Zip.Zip_archive_corrupted'Identity, "Error when building tables for compression structure");
         end;
 
-        -- Read in literal and distance code lengths
+        -- Read in the compression structure: literal and distance code lengths
         number_of_lengths := Nl + Nd;
         defined := 0;
         current_length := 0;
 
         while  defined < number_of_lengths  loop
+          if Tl = null then
+            Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+            "Null table list (on compression structure)");
+          end if;
           CT:= Tl.table;
           CT_idx:= UnZ_IO.Bit_buffer.Read(Bl);
           UnZ_IO.Bit_buffer.Dump( CT(CT_idx).bits );
 
           case CT(CT_idx).n is
-            when 0..15 =>       -- length of code in bits (0..15)
+            when 0..15 =>       -- length of code for symbol of index defined, in bits (0..15)
               current_length:= CT(CT_idx).n;
               Ll (defined) := current_length;
               defined:= defined + 1;
-            when 16 =>          -- repeat last length 3 to 6 times
+            when 16 =>          -- 16 means: repeat last bit length 3 to 6 times
               Repeat_length_code(3 + UnZ_IO.Bit_buffer.Read_and_dump(2));
-            when 17 =>          -- 3 to 10 zero length codes
+            when 17 =>          -- 17 means: the next 3 to 10 symbols' codes have zero bit lengths
               current_length:= 0;
               Repeat_length_code(3 + UnZ_IO.Bit_buffer.Read_and_dump(3));
-            when 18 =>          -- 11 to 138 zero length codes
+            when 18 =>          -- 18 means: the next 11 to 138 symbols' codes have zero bit lengths
               current_length:= 0;
               Repeat_length_code(11 + UnZ_IO.Bit_buffer.Read_and_dump(7));
             when others =>      --  Shouldn't occur if this tree is correct
-              if full_trace then
-                Ada.Text_IO.Put_Line("Illegal length code: " & Integer'Image(CT(CT_idx).n));
-              end if;
+              Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+                "Illegal data for compression structure (values should be in the range 0 .. 18): "
+                & Integer'Image(CT(CT_idx).n));
           end case;
         end loop;
         HufT_free ( Tl );
