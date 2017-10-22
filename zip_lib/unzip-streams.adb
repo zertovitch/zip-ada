@@ -1,5 +1,6 @@
 with Zip.Headers, UnZip.Decompress;
 
+with Ada.Exceptions;                    use Ada.Exceptions;
 with Ada.Strings.Unbounded;
 with Ada.Unchecked_Deallocation;
 with Interfaces;                        use Interfaces;
@@ -47,9 +48,9 @@ package body UnZip.Streams is
       Zip.Headers.Read_and_check(zip_stream, local_header);
     exception
       when Zip.Headers.bad_local_header =>
-        raise;
+        Raise_Exception(Zip.Zip_archive_corrupted'Identity, "Bad local header");
       when others =>
-        raise Read_Error;
+        raise Zip.Zip_archive_corrupted;
     end;
 
     method:= Method_from_code(local_header.zip_type);
@@ -86,7 +87,7 @@ package body UnZip.Streams is
     begin
       Zip_Streams.Set_Index ( zip_stream, work_index ); -- eventually skips the file name
     exception
-      when others => raise Read_Error;
+      when others => raise UnZip.Read_Error;
     end;
 
     if out_stream_ptr = null then

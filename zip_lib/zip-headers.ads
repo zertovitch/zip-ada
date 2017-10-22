@@ -200,8 +200,11 @@ package Zip.Headers is
 
   end_of_central_dir_length : constant:= 22;
 
-  -- This header needs to be read in special
-  -- ways (see Load) -> access to a buffer
+  --  The End-of-Central-Dir header is followed by a comment of
+  --  unkown size and hence needs to be searched in special ways (see Load).
+
+  --  Copy_and_check and Read_and_check assume a buffer or a stream
+  --  pointing to the End-of-Central-Dir signature.
   procedure Copy_and_check(
     buffer  : in     Byte_Buffer;
     the_end :    out End_of_Central_Dir
@@ -214,8 +217,7 @@ package Zip.Headers is
 
   bad_end: exception;
 
-  -- A bit more elaborated: from an open file (not a stream),
-  -- find the End-of-Central-dir and load it; keep the file open.
+  --  A bit more elaborated variant: find the End-of-Central-Dir and load it.
   procedure Load(
     stream  : in out Root_Zipstream_Type'Class;
     the_end :    out End_of_Central_Dir

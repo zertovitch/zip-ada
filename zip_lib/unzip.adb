@@ -1,7 +1,7 @@
 with Zip.Headers, UnZip.Decompress;
 with Zip_Streams;
 
-with Ada.Exceptions;
+with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
 
 package body UnZip is
@@ -219,9 +219,9 @@ package body UnZip is
       Zip.Headers.Read_and_check(zip_file, local_header );
     exception
       when Zip.Headers.bad_local_header =>
-        raise;
+        raise;  --  Processed later, on Extract
       when others =>
-        raise Read_Error;
+        raise Zip.Zip_archive_corrupted;
     end;
 
     method:= Zip.Method_from_code(local_header.zip_type);
@@ -533,6 +533,9 @@ package body UnZip is
       file_system_routines => file_system_routines
     );
     Close(zip_file);
+  exception
+    when Zip.Headers.bad_local_header =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
   end Extract;
 
   -- Extract one precise file (what) from an archive (from),
@@ -589,6 +592,9 @@ package body UnZip is
       file_system_routines => file_system_routines
     );
     Close(zip_file);
+  exception
+    when Zip.Headers.bad_local_header =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
   end Extract;
 
   -- Extract all files from an archive (from)
@@ -637,12 +643,12 @@ package body UnZip is
     end loop all_files;
   exception
     when Zip.Headers.bad_local_header | Zip.Archive_is_empty =>
-      Close(zip_file); -- normal case: end was hit
+      Close(zip_file);  --  Normal case: end of archived entries (of fuzzy data) was hit
     when Zip.Zip_file_open_error =>
-      raise;    -- couldn't open zip file
+      raise;    --  Couldn't open zip file
     when others =>
       Close(zip_file);
-      raise;    -- something else wrong
+      raise;    --  Something else went wrong
   end Extract;
 
   -- Extract all files from an archive (from)
@@ -742,6 +748,11 @@ package body UnZip is
       Close (zip_file);
     end if;
   exception
+    when Zip.Headers.bad_local_header =>
+      if use_a_file and then Is_Open(zip_file) then
+        Close (zip_file);
+      end if;
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
     when others =>
       if use_a_file and then Is_Open(zip_file) then
         Close (zip_file);
@@ -814,6 +825,11 @@ package body UnZip is
       Close (zip_file);
     end if;
   exception
+    when Zip.Headers.bad_local_header =>
+      if use_a_file and then Is_Open(zip_file) then
+        Close (zip_file);
+      end if;
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
     when others =>
       if use_a_file and then Is_Open(zip_file) then
         Close (zip_file);

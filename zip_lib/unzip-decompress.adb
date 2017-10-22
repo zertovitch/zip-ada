@@ -1028,7 +1028,7 @@ package body UnZip.Decompress is
 
         UnZ_IO.Flush ( W );
         if Zip_EOF then
-          raise UnZip.Read_Error;
+          Raise_Exception(Zip.Zip_archive_corrupted'Identity, "End of stream reached");
         end if;
 
         if full_trace then
@@ -1122,7 +1122,7 @@ package body UnZip.Decompress is
 
         UnZ_IO.Flush ( W );
         if Zip_EOF then
-          raise UnZip.Read_Error;
+          Raise_Exception(Zip.Zip_archive_corrupted'Identity, "End of stream reached");
         end if;
 
         if full_trace then
@@ -1916,7 +1916,7 @@ package body UnZip.Decompress is
           Zip_Streams.Set_Index ( zip_file, work_index );
         exception
           when others =>
-            raise Read_Error;
+            raise UnZip.Read_Error;
         end;
         UnZ_IO.Init_Buffers;
       end loop password_passes;

@@ -2,7 +2,7 @@ with Zip.Headers;
 
 with Ada.Characters.Handling;
 with Ada.Unchecked_Deallocation;
-with Ada.Exceptions;
+with Ada.Exceptions;                    use Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;
@@ -300,6 +300,11 @@ package body Zip is
              total_entries    => Integer(the_end.total_entries),
              zip_file_comment => main_comment
            );
+  exception
+    when Zip.Headers.bad_end =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
+    when Zip.Headers.bad_central_header =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad central directory entry header");
   end Load;
 
   -----------------------------------------------------------
@@ -321,8 +326,7 @@ package body Zip is
       Open (MyStream, In_File);
     exception
       when others =>
-        Ada.Exceptions.Raise_Exception
-          (Zip_file_open_error'Identity, "Archive: [" & from & ']');
+        Raise_Exception (Zip_file_open_error'Identity, "Archive: [" & from & ']');
     end;
     -- Call the stream version of Load(...)
     Load(
@@ -560,6 +564,11 @@ package body Zip is
 
     file_index:= Zip_Streams.ZS_Index_Type (1 + min_offset + the_end.offset_shifting);
 
+  exception
+    when Zip.Headers.bad_end =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
+    when Zip.Headers.bad_central_header =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad central directory entry header");
   end Find_first_offset;
 
   -- Internal: find offset of a zipped file by reading sequentially the
@@ -607,7 +616,12 @@ package body Zip is
         end if;
       end;
     end loop;
-    Ada.Exceptions.Raise_Exception(File_name_not_found'Identity, "Entry: [" & name & ']');
+    Raise_Exception (File_name_not_found'Identity, "Entry: [" & name & ']');
+  exception
+    when Zip.Headers.bad_end =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
+    when Zip.Headers.bad_central_header =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad central directory entry header");
   end Find_offset;
 
   -- Internal: find offset of a zipped file using the zip_info tree 8-)
