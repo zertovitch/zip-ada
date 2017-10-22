@@ -712,6 +712,9 @@ package body UnZip.Decompress is
             end if;
             Incode := Next_Free;
             if Incode <= Max_Code then
+              if Incode not in Previous_Code'Range then
+                Raise_Exception(Zip.Zip_file_Error'Identity, "Wrong LZW (Shrink) index");
+              end if;
               Next_Free := - Previous_Code( Incode );
               -- Next node in free list
               Previous_Code( Incode ) := Last_Incode;
