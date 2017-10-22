@@ -227,7 +227,7 @@ package body UnZip is
     method:= Zip.Method_from_code(local_header.zip_type);
     if method = unknown then
       Ada.Exceptions.Raise_Exception
-        (Unsupported_method'Identity,
+        (UnZip.Unsupported_method'Identity,
          "Format (method) #" & Unsigned_16'Image(local_header.zip_type) &
          " is unknown");
     end if;
@@ -269,9 +269,9 @@ package body UnZip is
       String'Read(zip_file'Access, the_name(1..Integer'Min(the_name_len,the_name'Length)));
       if the_name_len > the_name'Length then
         Ada.Exceptions.Raise_Exception(
-          Read_Error'Identity,
+          UnZip.Read_Error'Identity,
           "Name too long, >" & Integer'Image(the_name'Length) & " characters: " &
-          the_name(1..10) & " ... " & the_name(the_name'Last-9 .. the_name'Last)
+          the_name(1..10) & " ... " & the_name(the_name'Last-9 .. the_name'Last) & " ..."
         );
       end if;
       if not data_descriptor_after_data then

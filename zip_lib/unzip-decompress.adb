@@ -667,7 +667,7 @@ package body UnZip.Decompress is
                   );
                 end if;
                 if Code_Size > Maximum_Code_Size then
-                  raise Zip.Zip_file_Error;
+                  Raise_Exception(Zip.Zip_file_Error'Identity, "Wrong LZW (Shrink) code size");
                 end if;
               when Code_Clear_table =>
                 Clear_Leaf_Nodes;

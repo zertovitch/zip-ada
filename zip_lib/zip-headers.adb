@@ -234,30 +234,32 @@ package body Zip.Headers is
       ilb: Integer;
     begin
       BlockRead(stream, large_buffer);
-      for i in reverse min_end_start .. Size(stream) - 21 loop
-        -- Yes, we must _search_ for the header...
-        -- because PKWARE put a variable-size comment _after_ it 8-(
-        ilb:= Integer(i - min_end_start);
-        if PK_signature(large_buffer(ilb .. ilb + 3), 5) then
-          Copy_and_check( large_buffer(ilb .. ilb + 21), the_end );
-          -- At this point, the buffer was successfully read, the_end is
-          -- is set with its standard contents.
-          the_end.offset_shifting:=
-          -- This is the real position of the end-of-central-directory block.
-          Unsigned_32(i)
-          -
-          -- This is the theoretical position of the end-of-central-directory,
-          -- block. Should coincide with the real position if the zip file
-          -- is not appended.
-          (
-            1 +
-            the_end.central_dir_offset +
-            the_end.central_dir_size
-          );
-          Set_Index(stream, i + 22);
-          return; -- the_end found and filled -> exit
-        end if;
-      end loop;
+      if Size(stream) > 21 then
+        for i in reverse min_end_start .. Size(stream) - 21 loop
+          -- Yes, we must _search_ for the header...
+          -- because PKWARE put a variable-size comment _after_ it 8-(
+          ilb:= Integer(i - min_end_start);
+          if PK_signature(large_buffer(ilb .. ilb + 3), 5) then
+            Copy_and_check( large_buffer(ilb .. ilb + 21), the_end );
+            -- At this point, the buffer was successfully read, the_end is
+            -- is set with its standard contents.
+            the_end.offset_shifting:=
+            -- This is the real position of the end-of-central-directory block.
+            Unsigned_32(i)
+            -
+            -- This is the theoretical position of the end-of-central-directory,
+            -- block. Should coincide with the real position if the zip file
+            -- is not appended.
+            (
+              1 +
+              the_end.central_dir_offset +
+              the_end.central_dir_size
+            );
+            Set_Index(stream, i + 22);
+            return; -- the_end found and filled -> exit
+          end if;
+        end loop;
+      end if;
       raise bad_end; -- Definitely no "end-of-central-directory" in this stream
     end;
   end Load;
