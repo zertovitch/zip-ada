@@ -49,7 +49,7 @@ begin
     begin
       Zip.Load( z(i), n );
     exception
-      when Zip.Zip_file_open_Error =>
+      when Zip.Zip_file_open_error =>
         Put( "Can't open archive [" & n & ']' ); raise;
       when UnZip.Wrong_password      =>
         Put( "Archive has a password" ); raise;

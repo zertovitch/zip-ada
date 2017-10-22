@@ -322,7 +322,7 @@ package body Zip is
     exception
       when others =>
         Ada.Exceptions.Raise_Exception
-          (Zip_file_open_Error'Identity, "Archive: [" & from & ']');
+          (Zip_file_open_error'Identity, "Archive: [" & from & ']');
     end;
     -- Call the stream version of Load(...)
     Load(
@@ -538,7 +538,7 @@ package body Zip is
     min_offset:= the_end.central_dir_offset; -- will be lowered if the archive is not empty.
 
     if the_end.total_entries = 0 then
-      raise archive_is_empty;
+      raise Archive_is_empty;
     end if;
 
     for i in 1..the_end.total_entries loop

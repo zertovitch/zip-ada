@@ -82,9 +82,15 @@ package Zip is
     duplicate_names : in     Duplicate_name_policy:= error_on_duplicate
   );
 
-  Zip_file_Error,
-  Zip_file_open_Error,
+  Zip_archive_corrupted,
+  Zip_file_open_error,
   Duplicate_name: exception;
+
+  --  Old name for Zip_archive_corrupted. Change: 22-Oct-2017
+  --  Issues: stream is not necessarily a file; name didn't
+  --  clarify that it covered cases where the data is corrupted.
+  Zip_file_Error: exception renames Zip_archive_corrupted;
+  pragma Obsolescent(Zip_file_Error);
 
   function Is_loaded( info: in Zip_info ) return Boolean;
 
@@ -209,7 +215,7 @@ package Zip is
     file_index     :    out Zip_Streams.ZS_Index_Type );
 
   --  If the archive is empty (the 22 byte .zip file), there is no first entry or offset.
-  archive_is_empty: exception;
+  Archive_is_empty: exception;
 
   -- Find offset of a certain compressed file
   -- in a Zip file (file opened and kept open)

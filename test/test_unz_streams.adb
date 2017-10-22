@@ -28,7 +28,7 @@ procedure Test_UnZ_Streams is
     Close(f);
     --
   exception
-    when Zip.Zip_file_open_Error =>
+    when Zip.Zip_file_open_error =>
       Put_Line( "Can't open archive [" & a & ']' );
     when Zip.File_name_not_found =>
       Put_Line( "Cannot find [" & n & "] in archive [" & a & ']' );
@@ -57,7 +57,7 @@ procedure Test_UnZ_Streams is
     );
     Close(o);
   exception
-    when Zip.Zip_file_open_Error =>
+    when Zip.Zip_file_open_error =>
       Put_Line( "Can't open archive [" & a & ']' );
     when Zip.File_name_not_found =>
       Put_Line( "Cannot find [" & n & "] in archive [" & a & ']' );
