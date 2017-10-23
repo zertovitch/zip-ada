@@ -4,6 +4,8 @@ with Zip_Streams;
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
 
+with Ada.IO_Exceptions;
+
 package body UnZip is
 
   use Ada.Streams, Ada.Strings.Unbounded;
@@ -395,6 +397,9 @@ package body UnZip is
         header_index + ZS_Size_Type(Zip.Headers.data_descriptor_length);
     end if;
 
+  exception
+    when Ada.IO_Exceptions.End_Error =>
+      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "End of stream reached");
   end UnZipFile;
 
   ----------------------------------

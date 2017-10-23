@@ -562,7 +562,7 @@ package body Zip is
     file_index:= Zip_Streams.ZS_Index_Type (1 + min_offset) + the_end.offset_shifting;
 
   exception
-    when Zip.Headers.bad_end =>
+    when Zip.Headers.bad_end | Ada.IO_Exceptions.End_Error =>
       Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
     when Zip.Headers.bad_central_header =>
       Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad central directory entry header");
