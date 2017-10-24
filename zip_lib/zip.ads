@@ -87,8 +87,8 @@ package Zip is
   Duplicate_name: exception;
 
   --  Old name for Zip_archive_corrupted. Change: 22-Oct-2017
-  --  Issues: stream is not necessarily a file; name didn't
-  --  clarify that it covered cases where the data is corrupted.
+  --  Issues: archive stream is not necessarily a file; naming ("Error")
+  --  didn't clarify that it covered cases where the data is corrupted.
   Zip_file_Error: exception renames Zip_archive_corrupted;
   pragma Obsolescent(Zip_file_Error);
 

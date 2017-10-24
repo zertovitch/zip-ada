@@ -109,8 +109,6 @@ Contents
   - ZipAda.gpr for GNAT's gprbuild or the GNAT Programming Studio
   - ZipAda_ObjectAda.prj for ObjectAda 7.2.2 and later (this is the
       project file for the ObjectAda's IDE)
-  - UnZipAda_A#.sln for Microsoft Visual Studio and A# (uses files
-      UnZipAda_A#.adaproj and UnZipAda_Asharp.gpr)
 
 * The file extensions of source files are GNAT-ish:
   .ads is specification; .adb is body.
@@ -132,11 +130,13 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '53', xx-yyy-2017:
-  - (Tools) ZipAda tool has a more useful recursive
-      directory search (-r2 option)
+* Changes in '53', xx-Oct-2017:
+  - Decompression and loading of archive directory are more
+      resistant to fuzzing attacks.
   - Zip.Compress: fix in local header generation: EOS flag for LZMA
       format is properly set in any situation LZMA is actually used.
+  - (Tools) ZipAda tool has a more useful recursive
+      directory search (-r2 option).
 
 * Changes in '52', 08-Oct-2016:
   - UnZip.Streams: all procedures have an additional (optional)
@@ -443,7 +443,7 @@ Nicolas Brunot, Stratégies, for constructive discussions and
    libraries as well!) 
 
 Jérôme Haguet, Stratégies, for nice discussions and contributions:
-   the major performance boost in v. 35 and later,
+   the major performance boost in v.35 and later,
    UnZip.File_System_Routines.Compose_File_Name,
    Unicode (UTF-8) support and other things
 
@@ -458,15 +458,16 @@ Pascal Pignard, for testing the UnZipAda.adb tool under Mac OS X
 Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
 
-Stephan Busch (Squeeze Chart) for encouragements and remarks on
-   special LZMA / PPMd settings for specific data types (applied so far:
-   JPEG, EPUB, ORF, CR2, ARW, RW2)
-   http://www.squeezechart.com/
+Stephan Busch (Squeeze Chart - http://www.squeezechart.com/)
+   for encouragements and remarks on special LZMA / PPMd settings for
+   specific data types (applied so far: see function Guess_type_from_name
+   in package Zip.Compress)
+   
 
-Open bugs (as of v.49)
+Open bugs (as of v.53)
 ======================
 
-  - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's reduce_* archives,
+  - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's Reduce_* archives,
       but unzip <=5.12 and WinZip accept them all
   - Info-Zip's Zip: since data are stored without prior knowledge of size,
       data is stored with a data descriptor after each entry.
@@ -520,10 +521,7 @@ FreeBSD                     Intel x64 (64 bit)
 Android 2.3+                ARM
 
 MS Windows 95,98;
-           NT,2K,XP         Intel x86 (32 bit)  PTC - ObjectAda
-
-MS Windows 95,98;
-           NT,2K,XP         Intel x86 (32 bit)  RR Software - Janus/Ada
+           NT,2K,XP,7       Intel x86 (32 bit)  PTC - ObjectAda
 
 MS Windows NT+              Intel x86 (32 bit)  SofCheck - AdaMagic
 MS Windows NT+              Intel x64 (64 bit)

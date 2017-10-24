@@ -1818,7 +1818,7 @@ package body UnZip.Decompress is
           Raise_Exception(Zip.Zip_archive_corrupted'Identity,
             "BZip2 error: " & Exception_Name(E) & " - " & Exception_Message(E));
         when E: My_BZip2.randomized_not_yet_implemented =>
-          Raise_Exception(UnZip.Unsupported_method'Identity, 
+          Raise_Exception(UnZip.Unsupported_method'Identity,
             "BZip2: " & Exception_Name(E) & " - " & Exception_Message(E));
       end Bunzip2;
 
@@ -1853,7 +1853,7 @@ package body UnZip.Decompress is
         UnZ_IO.Flush( UnZ_Glob.slide_index );
       exception
         when E: My_LZMA_Decoding.LZMA_Error =>
-          Raise_Exception(Zip.Zip_archive_corrupted'Identity, 
+          Raise_Exception(Zip.Zip_archive_corrupted'Identity,
             "LZMA error: " & Exception_Name(E) & " - " & Exception_Message(E));
       end LZMA_Decode;
 

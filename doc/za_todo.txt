@@ -1,6 +1,3 @@
-- (Underway) Simplify exceptions when a Zip archive is in the input side, to
-  a single exception: Zip_archive_corrupted, with message for details.
-
 - LZ77: 3rd procedure that sends a list of possible DL codes (BT4),
      lets LZMA.Encoding choose the most predicted-probable one.
      Alternatively (to avoid complicating the LZ77 interface), hash
