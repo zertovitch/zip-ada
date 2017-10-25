@@ -458,11 +458,13 @@ Pascal Pignard, for testing the UnZipAda.adb tool under Mac OS X
 Manuel Op de Coul, Huygens-Fokker Foundation
    http://www.huygens-fokker.org/scala/
 
-Stephan Busch (Squeeze Chart - http://www.squeezechart.com/)
+Stephan Busch (Squeeze Chart - http://www.squeezechart.com/),
    for encouragements and remarks on special LZMA / PPMd settings for
    specific data types (applied so far: see function Guess_type_from_name
    in package Zip.Compress)
-   
+
+Lionel Matias, for performing extensive fuzzing attacks in order
+   to find vulnerabilities - and correct them (v.53)
 
 Open bugs (as of v.53)
 ======================

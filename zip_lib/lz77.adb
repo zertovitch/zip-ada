@@ -16,7 +16,7 @@
 --     the String_buffer_size, Look_Ahead, Threshold LZ77 parameters - those for Deflate.
 --
 --  Variant 3/, LZ77_using_BT4, was added on 06-Sep-2016.
---     The seems to be the best match finder for LZMA on data of the >= MB scale.
+--     The seems to be the best match finder for LZMA on data of the >= 1 MB scale.
 
 --  To do:
 --
