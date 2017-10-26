@@ -48,9 +48,9 @@ package body UnZip.Streams is
       Zip.Headers.Read_and_check(zip_stream, local_header);
     exception
       when Zip.Headers.bad_local_header =>
-        Raise_Exception(Zip.Zip_archive_corrupted'Identity, "Bad local header");
+        Raise_Exception(Zip.Archive_corrupted'Identity, "Bad local header");
       when others =>
-        raise Zip.Zip_archive_corrupted;
+        raise Zip.Archive_corrupted;
     end;
 
     method:= Method_from_code(local_header.zip_type);
@@ -88,7 +88,7 @@ package body UnZip.Streams is
       Zip_Streams.Set_Index ( zip_stream, work_index ); -- eventually skips the file name
     exception
       when others =>
-        Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+        Raise_Exception(Zip.Archive_corrupted'Identity,
           "End of stream reached (location: between local header and archived data)");
     end;
 

@@ -223,7 +223,7 @@ package body UnZip is
       when Zip.Headers.bad_local_header =>
         raise;  --  Processed later, on Extract
       when others =>
-        raise Zip.Zip_archive_corrupted;
+        raise Zip.Archive_corrupted;
     end;
 
     method:= Zip.Method_from_code(local_header.zip_type);
@@ -335,7 +335,7 @@ package body UnZip is
         Set_Index ( zip_file, work_index ); -- eventually skips the file name
       exception
         when others =>
-          Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+          Raise_Exception(Zip.Archive_corrupted'Identity,
             "End of stream reached (location: between local header and archived data)");
       end;
       UnZip.Decompress.Decompress_data(
@@ -401,7 +401,7 @@ package body UnZip is
 
   exception
     when Ada.IO_Exceptions.End_Error =>
-      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "End of stream reached");
+      Raise_Exception (Zip.Archive_corrupted'Identity, "End of stream reached");
   end UnZipFile;
 
   ----------------------------------
@@ -537,7 +537,7 @@ package body UnZip is
     Close(zip_file);
   exception
     when Zip.Headers.bad_local_header =>
-      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
+      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
   end Extract;
 
   -- Extract one precise file (what) from an archive (from),
@@ -596,7 +596,7 @@ package body UnZip is
     Close(zip_file);
   exception
     when Zip.Headers.bad_local_header =>
-      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
+      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
   end Extract;
 
   -- Extract all files from an archive (from)
@@ -754,7 +754,7 @@ package body UnZip is
       if use_a_file and then Is_Open(zip_file) then
         Close (zip_file);
       end if;
-      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
+      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
     when others =>
       if use_a_file and then Is_Open(zip_file) then
         Close (zip_file);
@@ -831,7 +831,7 @@ package body UnZip is
       if use_a_file and then Is_Open(zip_file) then
         Close (zip_file);
       end if;
-      Raise_Exception (Zip.Zip_archive_corrupted'Identity, "Bad local header");
+      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
     when others =>
       if use_a_file and then Is_Open(zip_file) then
         Close (zip_file);

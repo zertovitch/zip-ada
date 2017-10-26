@@ -82,15 +82,18 @@ package Zip is
     duplicate_names : in     Duplicate_name_policy:= error_on_duplicate
   );
 
-  Zip_archive_corrupted,
+  Archive_corrupted,
   Zip_file_open_error,
   Duplicate_name: exception;
 
-  --  Old name for Zip_archive_corrupted. Change: 22-Oct-2017
+  --  Old name for Archive_corrupted. Change: 22-Oct-2017
   --  Issues: archive stream is not necessarily a file; naming ("Error")
   --  didn't clarify that it covered cases where the data is corrupted.
-  Zip_file_Error: exception renames Zip_archive_corrupted;
+  Zip_file_Error: exception renames Archive_corrupted;
   pragma Obsolescent(Zip_file_Error);
+  --  This naming was only a few days alive...:
+  Zip_Archive_Corrupted : exception renames Archive_corrupted;
+  pragma Obsolescent(Zip_Archive_Corrupted);
 
   function Is_loaded( info: in Zip_info ) return Boolean;
 
