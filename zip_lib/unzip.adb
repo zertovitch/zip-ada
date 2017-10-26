@@ -334,7 +334,9 @@ package body UnZip is
       begin
         Set_Index ( zip_file, work_index ); -- eventually skips the file name
       exception
-        when others => raise Read_Error;
+        when others =>
+          Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+            "End of stream reached (location: between local header and archived data)");
       end;
       UnZip.Decompress.Decompress_data(
         zip_file                   => zip_file,

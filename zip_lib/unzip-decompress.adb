@@ -1349,7 +1349,8 @@ package body UnZip.Decompress is
             end loop;
           exception
             when others=>
-              raise UnZip.Read_Error;
+              Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+                "End of stream reached (format: Store)");
           end;
           begin
             UnZ_IO.Flush ( Natural(read_in) );  -- Takes care of CRC too
@@ -1936,7 +1937,7 @@ package body UnZip.Decompress is
           Zip_Streams.Set_Index ( zip_file, work_index );
         exception
           when others =>
-            raise UnZip.Read_Error;
+            Raise_Exception(UnZip.Read_Error'Identity, "Failure after password interaction");
         end;
         UnZ_IO.Init_Buffers;
       end loop password_passes;

@@ -87,7 +87,9 @@ package body UnZip.Streams is
     begin
       Zip_Streams.Set_Index ( zip_stream, work_index ); -- eventually skips the file name
     exception
-      when others => raise UnZip.Read_Error;
+      when others =>
+        Raise_Exception(Zip.Zip_archive_corrupted'Identity,
+          "End of stream reached (location: between local header and archived data)");
     end;
 
     if out_stream_ptr = null then
