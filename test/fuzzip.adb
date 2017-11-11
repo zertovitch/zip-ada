@@ -1,4 +1,9 @@
 --  Fuzzing for the various Zip-Ada compression methods.
+--  Test is derived from ZipTest.
+--  What is tested here:
+--    x --[compression]--> zip --[decompression]--> x'
+--  x should be equal to x' - and of course
+--  there should be no error inbetween.
 
 with Zip_Streams; use Zip_Streams;
 with Zip.Compress;
@@ -10,31 +15,33 @@ with Ada.IO_Exceptions, Ada.Text_IO;
 
 procedure Fuzzip is
 
-   MyStream_memory : aliased Memory_Zipstream;
+   mem_stream_Zip_archive : aliased Memory_Zipstream;
 
    Info1 : Zip_Create_info;
 
    UnbZipFile : Unbounded_String;
-   UnbFile1 : Unbounded_String;
+   Original : Unbounded_String;
 
-   MyStream1 : aliased Memory_Zipstream;
+   Mem_Stream_Content : aliased Memory_Zipstream;
 
 begin
-   Create (Info1, MyStream_memory'Unchecked_Access, "to_memo.zip");
-
    -- Read the file1.txt in unbounded string (see also the specific Zip.Create.Add_String)
-   RW_File.Read_File ("test/file1.txt", UnbFile1);
+   RW_File.Read_File ("test/file1.txt", Original);
    -- Set a stream to the unbounded string
-   Set (MyStream1, UnbFile1);
-   Set_Name(MyStream1, "my_dir/file1_z.txt"); -- any name we like to store it with
+   Set (Mem_Stream_Content, Original);
+   Set_Name(Mem_Stream_Content, "my_dir/file1_z.txt"); -- any name we like to store it with
 
    --  Add stream to the list
-   Add_Stream (Info1, MyStream1);
+   Create (Info1, mem_stream_Zip_archive'Unchecked_Access, "to_memo.zip");
+   Add_Stream (Info1, Mem_Stream_Content);
 
    Finish (Info1);
 
-   Get (MyStream_memory, UnbZipFile);
-   RW_File.Write_File (Get_Name(MyStream_memory), UnbZipFile);
+   Get (mem_stream_Zip_archive, UnbZipFile);
+
+   --  !! Here: unzip the archive to another string and compar to original
+
+   RW_File.Write_File (Get_Name(mem_stream_Zip_archive), UnbZipFile);
 
    --  exception
    --     when Ada.IO_Exceptions.Name_Error =>
