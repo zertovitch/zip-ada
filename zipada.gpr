@@ -13,6 +13,7 @@ project ZipAda is
      "zipada.adb", "comp_zip.adb", "find_zip.adb",
      "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb",
      "demo_unzip.adb", "test_unz_streams.adb",
+     "fuzzip.adb",
      "test_chunk.adb", "ziptest.adb", "zip_with_many_files.adb",
      "test_zip_info_timing.adb",
      "test_stream_performance.adb",

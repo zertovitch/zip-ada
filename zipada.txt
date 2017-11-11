@@ -463,8 +463,9 @@ Stephan Busch (Squeeze Chart - http://www.squeezechart.com/),
    specific data types (applied so far: see function Guess_type_from_name
    in package Zip.Compress)
 
-Lionel Matias, for performing extensive fuzzing attacks in order
-   to find vulnerabilities - and correct them (v.53)
+Lionel Matias, for performing extensive fuzzing attacks with "american fuzzy lop"
+   on the archive reading / decoding / decompression side, in order to find
+   vulnerabilities - and correct them (v.53)
 
 Open bugs (as of v.53)
 ======================
