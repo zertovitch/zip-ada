@@ -130,13 +130,14 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '53', xx-Oct-2017:
+* Changes in '53', xx-Nov-2017:
   - Decompression and loading of archive directory are more
       resistant to fuzzing attacks.
-  - Zip.Compress: fix in local header generation: EOS flag for LZMA
-      format is properly set in any situation LZMA is actually used.
+  - Zip.Compress & ReZip: fix in local header generation: EOS flag for
+      LZMA format is properly set in any situation LZMA is actually used.
   - (Tools) ZipAda tool has a more useful recursive
       directory search (-r2 option).
+  - (Tests) Added Fuzzip, a fuzzing tool for the compression side.
 
 * Changes in '52', 08-Oct-2016:
   - UnZip.Streams: all procedures have an additional (optional)
