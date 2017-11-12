@@ -512,7 +512,7 @@ package body Rezip_lib is
       info.uncomp_size:= Unsigned_64(header.dd.uncompressed_size);
       -- uncomp_size should not matter (always the same).
       info.zfm        := zfm;
-      info.LZMA_EOS   := (header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
+      info.LZMA_EOS   := (zfm = 14) and (header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
       -- We jump back to the startup directory.
       Set_Directory(cur_dir);
     end Process_External;
@@ -542,6 +542,7 @@ package body Rezip_lib is
         output_size      => e.info(a).size,
         zip_type         => e.info(a).zfm
       );
+      e.info(a).LZMA_EOS := e.info(a).zfm = 14;
       Close(File_in);
       Close(File_out);
     end Process_Internal_Raw;
@@ -578,6 +579,8 @@ package body Rezip_lib is
       );
       e.info(a).size:= header.dd.compressed_size;
       e.info(a).zfm := header.zip_type;
+      e.info(a).LZMA_EOS :=
+        (header.zip_type = 14) and (header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
       Close(MyStream);
       Delete_File(temp_zip);
       Zip.Delete(zi_ext);
@@ -594,7 +597,7 @@ package body Rezip_lib is
 
       list, e, curr: p_Dir_entry:= null;
       repacked_zip_file   : aliased File_Zipstream;
-      null_packer_info: Packer_info := (0,0,0,0,0,NN,1,False);
+      null_packer_info: constant Packer_info := (0,0,0,0,0,NN,1,False);
       total: Packer_info_array:= (others => null_packer_info);
       -- total(a).count counts the files where approach 'a' was optimal
       -- total(a).saved counts the saved bytes when approach 'a' was optimal
@@ -728,6 +731,9 @@ package body Rezip_lib is
                 -- This is from the original .zip - just record size and method
                 e.info(a).size:= comp_size;
                 e.info(a).zfm := e.head.short_info.zip_type;
+                e.info(a).LZMA_EOS :=
+                  (e.info(a).zfm = 14) and
+                  (e.head.short_info.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
                 mth:= Zip.Method_from_code(e.info(a).zfm);
                 --
               when Internal =>
