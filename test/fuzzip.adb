@@ -13,7 +13,7 @@
 --  What is *not* tested here: random data sent to decompression,
 --  which triggers Zip.Archive_Corrupted or similar.
 
---  WIP (proper fuzzing TBD) !!
+--  TBD: more fuzzing!
 
 with Zip;
 with Zip.Compress; use Zip.Compress;
@@ -24,14 +24,27 @@ with Zip_Streams; use Zip_Streams;
 
 with RW_File; use RW_File;
 
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Command_Line;                  use Ada.Command_Line;
+with Ada.Numerics.Float_Random;         use Ada.Numerics.Float_Random;
+with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
+with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure Fuzzip is
 
   dump : constant Boolean:= False;
-  trace : constant := 1;
+  trace : Natural := 1;
   test_counter: Natural := 0;
+
+  Seed : Generator;
+  function R (N : Positive) return Positive is
+    S : constant Natural := Integer (Float (N) * Random (Seed));
+  begin
+    if S >= N then
+      return 1;
+    else
+      return 1 + S;
+    end if;
+  end R;
 
   procedure Test_all_methods_single_data (the_original : Unbounded_String) is
 
@@ -42,13 +55,13 @@ procedure Fuzzip is
       zci : Zip.Create.Zip_Create_info;
       zi: Zip.Zip_info;
       some_copy : Unbounded_String;
-      name_for_original : constant String := "test/original.dat";
-      name_in_zip: constant String := "test/some_copy_" & method'Image & ".dat";
+      name_for_original : constant String := "original.dat";
+      name_in_zip: constant String := "some_copy_" & method'Image & ".dat";
       check_ok : Boolean;
       use Zip.Create;
     begin
       test_counter := test_counter + 1;
-      if trace > 1 then
+      if trace > 2 then
         Put_Line ("    Testing method " & method'Image);
       end if;
       --  Step 2
@@ -84,6 +97,29 @@ procedure Fuzzip is
     end loop;
   end Test_all_methods_single_data;
 
+  -------------------------------------
+  --  Here is the part with fuzzing  --
+  -------------------------------------
+
+  patches : constant Integer := 20;
+
+  procedure Patchwork (original : Unbounded_String) is
+    copy : Unbounded_String := original;
+  begin
+    if trace > 1 then
+      Put_Line ("  No Patchwork");
+    end if;
+    Test_all_methods_single_data (original);
+    for i in 1 .. patches loop
+      if trace > 1 then
+        Put_Line ("  Patchwork" & i'Image & " /" & patches'Image);
+      end if;
+      --  Insert a random slice at a random place:
+      Insert (copy, R (Length (copy)), Slice (copy, R (Length (copy)), R (Length (copy))));
+      Test_all_methods_single_data (copy);
+    end loop;
+  end Patchwork;
+
   procedure All_tests_single_initial_data (file_name : String) is
     the_original : Unbounded_String;
   begin
@@ -93,7 +129,10 @@ procedure Fuzzip is
     --  Step 1 : store data to string x = the_original
     RW_File.Read_File (file_name, the_original);
     --
-    Test_all_methods_single_data (the_original);
+    if trace > 0 then
+      Put_Line ("Fuzzing and testing...");
+    end if;
+    Patchwork (the_original);
     if trace > 0 then
       Put_Line (
         "Completed" & test_counter'Image &
@@ -103,5 +142,13 @@ procedure Fuzzip is
   end All_tests_single_initial_data;
 
 begin
-  All_tests_single_initial_data ("test/fuzzip.adb");
+  Reset (Seed, 1);  --  Fixed seed for reproducibility
+  if Argument_Count > 0 then
+    if Argument_Count > 1 then
+      trace := Integer'Value (Argument (2));
+    end if;
+    All_tests_single_initial_data (Argument (1));
+  else
+    All_tests_single_initial_data ("test/fuzzip.adb");
+  end if;
 end Fuzzip;
