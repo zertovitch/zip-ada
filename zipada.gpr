@@ -88,14 +88,14 @@ project ZipAda is
               "-gnatybfhiu",  --  Style: check b:no blanks at end of lines, f:no ff/vtabs, h: no htabs, i:if-then layout, u:no unnecessary blank lines
               "-gnatyx",      --  Style: check x:no extra parens
               "-gnatye",      --  Style: check e:end/exit labels present
-              "-gnat05", "-gnatf", "-gnato", 
+              "-gnat12", "-gnatf", "-gnato", 
               "-fstack-check", "-g", "-gnatwa", "-gnatVa",
               "-gnatec../debug.pra"
               );
 
          when "Fast" =>
             for Default_Switches ("ada") use (
-              "-gnat05", "-O2", "-gnatp", "-gnatn", 
+              "-gnat12", "-O2", "-gnatp", "-gnatn", 
               "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", 
               "-fpredictive-commoning", "-fgcse-after-reload", "-ftree-vectorize", "-fipa-cp-clone",
               "-ffunction-sections", 
@@ -104,7 +104,7 @@ project ZipAda is
 
          when "Profiling" =>
             for Default_Switches ("ada") use (
-              "-gnat05", "-O2", "-gnatp",  
+              "-gnat12", "-O2", "-gnatp",  
               "-fno-inline", 
               "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers",
               "-fpredictive-commoning", "-fgcse-after-reload", "-ftree-vectorize", "-fipa-cp-clone",
