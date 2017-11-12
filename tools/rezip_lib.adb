@@ -220,6 +220,7 @@ package body Rezip_lib is
       -- summed uncompressed sizes might be more than 2**32
       expanded_options: Unbounded_String;
       iter            : Positive; -- iterations needed
+      LZMA_EOS        : Boolean;
     end record;
 
     type Packer_info_array is array(Approach) of Packer_info;
@@ -511,6 +512,7 @@ package body Rezip_lib is
       info.uncomp_size:= Unsigned_64(header.dd.uncompressed_size);
       -- uncomp_size should not matter (always the same).
       info.zfm        := zfm;
+      info.LZMA_EOS   := (header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
       -- We jump back to the startup directory.
       Set_Directory(cur_dir);
     end Process_External;
@@ -592,10 +594,11 @@ package body Rezip_lib is
 
       list, e, curr: p_Dir_entry:= null;
       repacked_zip_file   : aliased File_Zipstream;
-      total: Packer_info_array:= (others => (0,0,0,0,0,NN,1));
+      null_packer_info: Packer_info := (0,0,0,0,0,NN,1,False);
+      total: Packer_info_array:= (others => null_packer_info);
       -- total(a).count counts the files where approach 'a' was optimal
       -- total(a).saved counts the saved bytes when approach 'a' was optimal
-      total_choice: Packer_info:= (0,0,0,0,0,NN,1);
+      total_choice: Packer_info:= null_packer_info;
       summary: Ada.Text_IO.File_Type;
       T0, T1 : Ada.Calendar.Time;
       seconds: Duration;
@@ -848,6 +851,10 @@ package body Rezip_lib is
         -- No data descriptor after data (bit 3); no EOS for LZMA (bit 1):
         e.head.short_info.bit_flag:=
           e.head.short_info.bit_flag and (2#1111_1111_1111_0101#);
+        --  Set the LZMA EOS flag if present in winner entry (checked by 7-Zip v.17.01):
+        if e.info(choice).LZMA_EOS then
+          e.head.short_info.bit_flag:= e.head.short_info.bit_flag or Zip.Headers.LZMA_EOS_Flag_Bit;
+        end if;
         -- Set or adjust the pre-data data descriptor:
         -- NB: even if missing pre-data, CRC will have been computed
         --     at least with one internal method
