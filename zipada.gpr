@@ -5,41 +5,52 @@
 project ZipAda is
 
    type Build_Mode_Type is
-      ("Debug", "Fast", "Profiling");
+      ("Debug", "Fast", "Profiling",
+       --  This is for checking that the *library* is Ada 95 compliant.
+       --  The tools & tests are using some Ada 2005 & 2012 features.
+       "Check_95"  
+      );
    Build_Mode : Build_Mode_Type := external ("Build_Mode", "Fast");
-   for Source_Dirs use (".", "zip_lib", "test", "extras", "tools", "demo");
    for Exec_Dir use ".";
-   for Main use (
-     "zipada.adb", "comp_zip.adb", "find_zip.adb",
-     "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb",
-     "demo_unzip.adb", "test_unz_streams.adb",
-     "fuzzip.adb",
-     "test_chunk.adb", "ziptest.adb", "zip_with_many_files.adb",
-     "test_zip_info_timing.adb",
-     "test_stream_performance.adb",
-     "test_extract.adb", 
-     "test_extract_tb.ads",
-     --  Trace-Back-enabled version of some tools
-     "za_gnat.ads", 
-     "rz_gnat.ads", 
-     --  Misc.
-     "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
-     "lz",       --  A simple LZ-Huffman coder/decoder
-     "lzma_dec", --  LZMA decoder
-     "lzma_enc", --  LZMA encoder
-     "test_lz_scramble",  --  Test LZ_Scramble
-     "test_llhc",         --  Test for Length_limited_Huffman_code_lengths
-     "test_lz77.adb",     --  Test the LZ77 package
-     "lz77_stats.adb",    --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
-     "random_data.adb",   --  Produces n bytes of pseudo-random data
-     "several_sizes.adb"  --  Truncates a file into partial copies of several sizes
-     -- "demo_csv_gnat.ads",
-     -- "unzipada.adb", "uza_gnat.ads"
-   );
+   
+   case Build_Mode is
+      when "Check_95" =>
+         for Source_Dirs use ("zip_lib");
+         for Main use ();
+      when others =>
+         for Source_Dirs use (".", "zip_lib", "test", "extras", "tools", "demo");
+         for Main use (
+           "zipada.adb", "comp_zip.adb", "find_zip.adb",
+           "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb",
+           "demo_unzip.adb", "test_unz_streams.adb",
+           "fuzzip.adb",
+           "test_chunk.adb", "ziptest.adb", "zip_with_many_files.adb",
+           "test_zip_info_timing.adb",
+           "test_stream_performance.adb",
+           "test_extract.adb", 
+           "test_extract_tb.ads",
+           --  Trace-Back-enabled version of some tools
+           "za_gnat.ads", 
+           "rz_gnat.ads", 
+           --  Misc.
+           "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
+           "lz",       --  A simple LZ-Huffman coder/decoder
+           "lzma_dec", --  LZMA decoder
+           "lzma_enc", --  LZMA encoder
+           "test_lz_scramble",  --  Test LZ_Scramble
+           "test_llhc",         --  Test for Length_limited_Huffman_code_lengths
+           "test_lz77.adb",     --  Test the LZ77 package
+           "lz77_stats.adb",    --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
+           "random_data.adb",   --  Produces n bytes of pseudo-random data
+           "several_sizes.adb"  --  Truncates a file into partial copies of several sizes
+           -- "demo_csv_gnat.ads",
+           -- "unzipada.adb", "uza_gnat.ads"
+         );
+   end case;
 
    case Build_Mode is
 
-      when "Debug" =>
+      when "Debug" | "Check_95" =>
          for Object_Dir use "obj_dbg";
 
       when "Fast" =>
@@ -53,7 +64,7 @@ project ZipAda is
 
       case Build_Mode is
 
-         when "Debug" =>
+         when "Debug" | "Check_95" =>
             for Default_Switches ("ada") use ("-E");
 
          when "Fast" =>
@@ -67,7 +78,7 @@ project ZipAda is
 
       case Build_Mode is
 
-         when "Debug" =>
+         when "Debug" | "Check_95" =>
             for Default_Switches ("ada") use ("-g");
 
          when "Fast" =>
@@ -82,6 +93,8 @@ project ZipAda is
 
       case Build_Mode is
 
+         when "Check_95" => for Default_Switches ("ada") use ("-gnat95", "-gnatwa");
+      
          when "Debug" =>
             for Default_Switches ("ada") use (
               "-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
