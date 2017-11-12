@@ -124,7 +124,7 @@ procedure Fuzzip is
     the_original : Unbounded_String;
   begin
     if trace > 0 then
-      Put_Line ("Reading initial data");
+      Put_Line ("Reading initial data...");
     end if;
     --  Step 1 : store data to string x = the_original
     RW_File.Read_File (file_name, the_original);
@@ -141,14 +141,21 @@ procedure Fuzzip is
     end if;
   end All_tests_single_initial_data;
 
+  default_file_name : String := "test/fuzzip.adb";
+
 begin
+  if Argument_Count > 1 then
+    trace := Integer'Value (Argument (2));
+  end if;
+  if trace > 0 then
+    Put_Line ("Fuzzip - testing compress-decompress-compare on randomized data");
+    Put_Line ("Syntax: fuzzip [original file] [trace level = 0, 1, 2,...]");
+    Put_Line ("Default: fuzzip " & default_file_name & trace'Image);
+  end if;
   Reset (Seed, 1);  --  Fixed seed for reproducibility
   if Argument_Count > 0 then
-    if Argument_Count > 1 then
-      trace := Integer'Value (Argument (2));
-    end if;
     All_tests_single_initial_data (Argument (1));
   else
-    All_tests_single_initial_data ("test/fuzzip.adb");
+    All_tests_single_initial_data (default_file_name);
   end if;
 end Fuzzip;
