@@ -32,7 +32,8 @@ with Ada.Text_IO;                       use Ada.Text_IO;
 procedure Fuzzip is
 
   dump : constant Boolean:= False;
-  trace : Natural := 1;
+  max_trace: constant := 4;
+  trace : Natural := max_trace;
   test_counter: Natural := 0;
 
   Seed : Generator;
@@ -61,8 +62,11 @@ procedure Fuzzip is
       use Zip.Create;
     begin
       test_counter := test_counter + 1;
-      if trace > 2 then
-        Put_Line ("    Testing method " & method'Image);
+      if trace >= max_trace then
+        Put (
+          "      Method " & method'Image &
+          " size:" & Length (the_original)'Image
+        );
       end if;
       --  Step 2
       Create (zci, mem_stream_Zip_archive'Unchecked_Access, "to_memo.zip", method);
@@ -72,10 +76,16 @@ procedure Fuzzip is
       Finish (zci);
 
       --  State 3 : we have a Zip archive in memory, in mem_stream_Zip_archive
+      if trace >= max_trace then
+        Put (" - Zip size:" & Size (mem_stream_Zip_archive)'Image);
+      end if;
 
       --  Step 4
       Zip.Load (zi, mem_stream_Zip_archive);
       UnZip.Streams.Extract (mem_stream_unpacked, zi, name_in_zip);
+      if trace >= max_trace then
+        Put_Line (" - unpacked.");
+      end if;
 
       --  Step 5 : retrieve unpacked data to string x' = some_copy
       Get (mem_stream_unpacked, some_copy);
@@ -102,21 +112,48 @@ procedure Fuzzip is
   -------------------------------------
 
   patches : constant Integer := 20;
+  slices  : constant Integer :=  5;
+
+  procedure Slicing (original : Unbounded_String) is
+    i1, i2, mi, ma: Natural;
+  begin
+    if trace > 2 then
+      Put_Line ("    No Slicing");
+    end if;
+    Test_all_methods_single_data (original);
+    for i in 1 .. slices loop
+      if trace > 2 then
+        Put_Line ("    Slicing" & i'Image & " /" & slices'Image);
+      end if;
+      i1 := R (Length (original));
+      i2 := R (Length (original));
+      mi := Integer'Min (i1, i2);
+      ma := Integer'Max (i1, i2);
+      Test_all_methods_single_data (
+        To_Unbounded_String (Slice (original, mi, ma))
+      );
+    end loop;
+  end Slicing;
 
   procedure Patchwork (original : Unbounded_String) is
     copy : Unbounded_String := original;
+    i1, i2, mi, ma: Natural;
   begin
     if trace > 1 then
       Put_Line ("  No Patchwork");
     end if;
-    Test_all_methods_single_data (original);
+    Slicing (original);
     for i in 1 .. patches loop
       if trace > 1 then
         Put_Line ("  Patchwork" & i'Image & " /" & patches'Image);
       end if;
       --  Insert a random slice at a random place:
-      Insert (copy, R (Length (copy)), Slice (copy, R (Length (copy)), R (Length (copy))));
-      Test_all_methods_single_data (copy);
+      i1 := R (Length (copy));
+      i2 := R (Length (copy));
+      mi := Integer'Min (i1, i2);
+      ma := Integer'Max (i1, i2);
+      Insert (copy, R (Length (copy)), Slice (copy, mi, ma));
+      Slicing (copy);
     end loop;
   end Patchwork;
 
@@ -141,7 +178,7 @@ procedure Fuzzip is
     end if;
   end All_tests_single_initial_data;
 
-  default_file_name : String := "test/fuzzip.adb";
+  default_file_name : constant String := "test/fuzzip.adb";
 
 begin
   if Argument_Count > 1 then
