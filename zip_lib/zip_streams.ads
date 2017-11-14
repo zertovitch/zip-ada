@@ -1,19 +1,19 @@
 --  Contributed by ITEC - NXP Semiconductors
 --  June 2008
---  
+--
 --  The Zip_Streams package defines an abstract stream
 --  type, Root_Zipstream_Type, with name, time and an index for random access.
 --  Zip_Streams can be used as such, independently of the Zip-Ada library.
 --
 --  In addition, this package provides two ready-to-use derivations:
---  
+--
 --    - Memory_Zipstream, for using in-memory streaming
---  
+--
 --    - File_Zipstream, for accessing files
 --
 --  Change log:
 --  ==========
--- 
+--
 --   5-Jul-2013: GdM: Added proper types for stream sizes and index
 --  20-Nov-2012: GdM: Added Is_Open method for File_Zipstream
 --  30-Oct-2012: GdM/NB: - Removed method profiles with 'access' as

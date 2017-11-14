@@ -1,5 +1,4 @@
 --  Fuzzing for the various Zip-Ada compression methods.
---  Test is derived from ZipTest.
 --
 --  What is tested here:
 --
@@ -12,8 +11,6 @@
 --
 --  What is *not* tested here: random data sent to decompression,
 --  which triggers Zip.Archive_Corrupted or similar.
-
---  TBD: more fuzzing!
 
 with Zip;
 with Zip.Compress; use Zip.Compress;
@@ -47,7 +44,7 @@ procedure Fuzzip is
     end if;
   end R;
 
-  procedure Test_all_methods_single_data (the_original : Unbounded_String) is
+  procedure Test_all_methods_single_data (data_for_testing : Unbounded_String) is
 
     procedure Single_test (method : Compression_Method) is
       mem_stream_Zip_archive,
@@ -55,9 +52,9 @@ procedure Fuzzip is
       mem_stream_unpacked : aliased Memory_Zipstream;
       zci : Zip.Create.Zip_Create_info;
       zi: Zip.Zip_info;
-      some_copy : Unbounded_String;
-      name_for_original : constant String := "original.dat";
-      name_in_zip: constant String := "some_copy_" & method'Image & ".dat";
+      unpacked : Unbounded_String;
+      name_for_data_for_testing : constant String := "data_for_testing.dat";
+      name_in_zip: constant String := "packed_" & method'Image & ".dat";
       check_ok : Boolean;
       use Zip.Create;
     begin
@@ -65,19 +62,25 @@ procedure Fuzzip is
       if trace >= max_trace then
         Put (
           "      Method " & method'Image &
-          " size:" & Length (the_original)'Image
+          " size:" & Length (data_for_testing)'Image
         );
       end if;
       --  Step 2
       Create (zci, mem_stream_Zip_archive'Unchecked_Access, "to_memo.zip", method);
-      Set (mem_stream_content, the_original);
+      Set (mem_stream_content, data_for_testing);
       Set_Name (mem_stream_content, name_in_zip);
       Add_Stream (zci, mem_stream_content);
       Finish (zci);
 
       --  State 3 : we have a Zip archive in memory, in mem_stream_Zip_archive
       if trace >= max_trace then
-        Put (" - Zip size:" & Size (mem_stream_Zip_archive)'Image);
+        Put (
+          " - Zip size:" & Size (mem_stream_Zip_archive)'Image & ',' &
+          Integer'Image (Integer (
+            100.0 * Float(Size (mem_stream_Zip_archive)) /
+            Float(Length (data_for_testing))
+          )) & '%'
+        );
       end if;
 
       --  Step 4
@@ -87,17 +90,17 @@ procedure Fuzzip is
         Put_Line (" - unpacked.");
       end if;
 
-      --  Step 5 : retrieve unpacked data to string x' = some_copy
-      Get (mem_stream_unpacked, some_copy);
+      --  Step 5 : retrieve unpacked data to string x' = packed
+      Get (mem_stream_unpacked, unpacked);
 
-      check_ok := some_copy = the_original;
+      check_ok := unpacked = data_for_testing;
 
       if dump or not check_ok then
-        RW_File.Write_File (name_for_original, the_original);
-        RW_File.Write_File (name_in_zip, some_copy);
+        RW_File.Write_File (name_for_data_for_testing, data_for_testing);
+        RW_File.Write_File (name_in_zip, unpacked);
       end if;
       if not check_ok then
-        raise Constraint_Error with "Copy /= Original !";
+        raise Constraint_Error with "Unpacked data /= Test data !";
       end if;
     end Single_test;
 
@@ -111,8 +114,13 @@ procedure Fuzzip is
   --  Here is the part with fuzzing  --
   -------------------------------------
 
-  patches : constant Integer := 20;
-  slices  : constant Integer :=  5;
+  patches               : constant Integer :=  15;  --  successive patches
+  alterations           : constant Integer :=  10;  --  occurs within a patch
+  alteration_max_length : constant Integer :=  50;
+  alteration_max_ampl   : constant Integer :=   3;
+  noises                : constant Integer :=   2;  --  occurs within a patch
+  noise_max_length      : constant Integer := 300;
+  slices                : constant Integer :=   5;  --  test various random slices of each patch
 
   procedure Slicing (original : Unbounded_String) is
     i1, i2, mi, ma: Natural;
@@ -137,7 +145,8 @@ procedure Fuzzip is
 
   procedure Patchwork (original : Unbounded_String) is
     copy : Unbounded_String := original;
-    i1, i2, mi, ma: Natural;
+    i1, i2, mi, ma : Natural;
+    c : Character;
   begin
     if trace > 1 then
       Put_Line ("  No Patchwork");
@@ -153,6 +162,29 @@ procedure Fuzzip is
       mi := Integer'Min (i1, i2);
       ma := Integer'Max (i1, i2);
       Insert (copy, R (Length (copy)), Slice (copy, mi, ma));
+      --  Alter some stripes of the contents:
+      for j in 1 .. alterations loop
+        i1 := R (Length (copy));
+        i2 := i1 + R (alteration_max_length);
+        for k in i1 .. Integer'Min (i2, Length (copy)) loop
+          c := Element (copy, k);
+          c := Character'Val (
+                 (Character'Pos (c) +
+                  R (alteration_max_ampl * 2) - alteration_max_ampl
+                 ) mod 256
+               );
+          Replace_Element (copy, k, c);
+        end loop;
+      end loop;
+      --  Replace some stripes of the contents by pure noise:
+      for j in 1 .. noises loop
+        i1 := R (Length (copy));
+        i2 := i1 + R (noise_max_length);
+        for k in i1 .. Integer'Min (i2, Length (copy)) loop
+          Replace_Element (copy, k, Character'Val (R (256) - 1));
+        end loop;
+      end loop;
+      --  Further test with current copy:
       Slicing (copy);
     end loop;
   end Patchwork;
