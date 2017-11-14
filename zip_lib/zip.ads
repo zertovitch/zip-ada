@@ -87,13 +87,11 @@ package Zip is
   Duplicate_name: exception;
 
   --  Old name for Archive_corrupted. Change: 22-Oct-2017
-  --  Issues: archive stream is not necessarily a file; naming ("Error")
-  --  didn't clarify that it covered cases where the data is corrupted.
+  --  Issues: archive stream is not necessarily a *file*; the naming
+  --  ("Error") didn't clarify that it covered cases where the data
+  --  is corrupted, which is different than an usual I/O error.
   Zip_file_Error: exception renames Archive_corrupted;
   pragma Obsolescent(Zip_file_Error);
-  --  This naming was only a few days alive...:
-  Zip_Archive_Corrupted : exception renames Archive_corrupted;
-  pragma Obsolescent(Zip_Archive_Corrupted);
 
   function Is_loaded( info: in Zip_info ) return Boolean;
 
@@ -386,18 +384,18 @@ package Zip is
 
   function Hexadecimal(x: Interfaces.Unsigned_32) return String;
 
-  --------------------------------------------------------------
-  -- Information about this package - e.g. for an "about" box --
-  --------------------------------------------------------------
+  -----------------------------------------------------------------
+  --  Information about this package - e.g., for an "about" box  --
+  -----------------------------------------------------------------
 
-  version   : constant String:= "53 preview 3";
-  reference : constant String:= "xx-Nov-2017";
+  version   : constant String:= "53";
+  reference : constant String:= "14-Nov-2017";
   web       : constant String:= "http://unzip-ada.sf.net/";
-  -- hopefully the latest version is at that URL...  ---^
+  --  Hopefully the latest version is at that URL...  --^
 
-  -------------------
-  -- Private items --
-  -------------------
+  ---------------------
+  --  Private items  --
+  ---------------------
 
 private
   -- Zip_info, 23.VI.1999.

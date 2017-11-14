@@ -629,7 +629,7 @@ package body UnZip.Decompress is
         Stack        := (others=> 0);
         Writebuf     := (others=> 0);
 
-        if UnZ_Glob.compsize = Unsigned_32'Last then
+        if UnZ_Glob.compsize = File_size_type'Last then
           -- Compressed Size was not in header!
           raise UnZip.Not_supported;
         elsif UnZ_Glob.uncompsize = 0 then

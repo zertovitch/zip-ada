@@ -295,8 +295,7 @@ package UnZip is
   Wrong_password,
   User_abort,
   Not_supported,
-  Unsupported_method,
-  Internal_Error : exception;
+  Unsupported_method : exception;
 
   tolerance_wrong_password: constant:= 4;
   -- If password is wrong at the Nth attempt, Wrong_password is raised

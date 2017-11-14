@@ -130,9 +130,14 @@ packages.
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '53', xx-Nov-2017:
+* Changes in '53', 14-Nov-2017:
   - Decompression and loading of archive directory are more
-      resistant to fuzzing attacks.
+      resistant to fuzzing attacks. From that version, a random data
+      passed as a Zip archive will be either valid (with an extremely tiny
+      probability), or, for loading the archive directory, issue
+      Zip.Archive_Corrupted. Data extraction will issue one of:
+      Zip.Archive_Corrupted, UnZip.CRC_Error, UnZip.Wrong_password,
+      UnZip.Unsupported_method, UnZip.Not_supported.
   - Zip.Compress & ReZip: fix in local header generation: EOS flag for
       LZMA format is properly set in any situation LZMA is actually used.
   - (Tools) ZipAda tool has a more useful recursive
