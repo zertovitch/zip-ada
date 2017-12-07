@@ -1,0 +1,5 @@
+-- Ensure absence of any compiler-specific attributes and pragamata
+-- Idea: Yannick Duchene
+--
+--  pragma Restrictions (No_Implementation_Pragmas);  --  This pragma rejects itself!... (GNAT GPL 2016)
+pragma Restrictions (No_Implementation_Attributes); 

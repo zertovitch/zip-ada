@@ -6,8 +6,9 @@ project ZipAda is
 
    type Build_Mode_Type is
       ("Debug", "Fast", "Profiling",
-       --  This is for checking that the *library* is Ada 95 compliant.
-       --  The tools & tests are using some Ada 2005 & 2012 features.
+       --  Check_95 mode is for checking that the *library* is strictly
+       --  Ada-95-compliant for being compiled by the broadest set of compilers.
+       --  The demos, tools and tests are using some Ada 2005 & 2012 features.
        "Check_95"  
       );
    Build_Mode : Build_Mode_Type := external ("Build_Mode", "Fast");
@@ -93,7 +94,10 @@ project ZipAda is
 
       case Build_Mode is
 
-         when "Check_95" => for Default_Switches ("ada") use ("-gnat95", "-gnatwa");
+         when "Check_95" => for Default_Switches ("ada") use (
+              "-gnat95", "-gnatwa",
+              "-gnatec=" & project'Project_Dir & "restrictions.pra"
+              );
       
          when "Debug" =>
             for Default_Switches ("ada") use (

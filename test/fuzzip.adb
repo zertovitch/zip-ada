@@ -87,13 +87,16 @@ procedure Fuzzip is
       Zip.Load (zi, mem_stream_Zip_archive);
       UnZip.Streams.Extract (mem_stream_unpacked, zi, name_in_zip);
       if trace >= max_trace then
-        Put_Line (" - unpacked.");
+        Put (" - unpacked");
       end if;
 
       --  Step 5 : retrieve unpacked data to string x' = packed
       Get (mem_stream_unpacked, unpacked);
 
       check_ok := unpacked = data_for_testing;
+      if trace >= max_trace then
+        Put_Line (" - compared.");
+      end if;
 
       if dump or not check_ok then
         RW_File.Write_File (name_for_data_for_testing, data_for_testing);
@@ -116,11 +119,12 @@ procedure Fuzzip is
 
   patches               : constant Integer :=  15;  --  successive patches
   alterations           : constant Integer :=  10;  --  occurs within a patch
+  noises                : constant Integer :=   2;  --  occurs within a patch
+  slices                : constant Integer :=   5;  --  test various random slices of each patch
+  --
   alteration_max_length : constant Integer :=  50;
   alteration_max_ampl   : constant Integer :=   3;
-  noises                : constant Integer :=   2;  --  occurs within a patch
   noise_max_length      : constant Integer := 300;
-  slices                : constant Integer :=   5;  --  test various random slices of each patch
 
   procedure Slicing (original : Unbounded_String) is
     i1, i2, mi, ma: Natural;
