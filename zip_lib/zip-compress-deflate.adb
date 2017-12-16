@@ -573,8 +573,8 @@ is
   --  content is a vector of length max 320, whose contents typically look like
   --    ... 8, 8, 9, 7, 8, 10, 6, 8, 8, 8, 8, 8, 11, 8, 9, 8, ...
   --  In this example the RLE will compress the string of 8's with a code 8, then a code 17
-  -- (repeat x times) and the very frequent 8's will be encoded with a small number of
-  --  bits anyway. 
+  --  (repeat x times) and the very frequent 8's will be encoded with a small number of
+  --  bits anyway (less than the 5 bits needed for encoding integers in the 0 .. 18 range).
   --
   procedure Put_compression_structure(
     dhd           :        Deflate_Huff_descriptors;
