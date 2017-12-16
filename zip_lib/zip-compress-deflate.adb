@@ -274,9 +274,9 @@ is
   --  to be compressed, the Huffman trees might be suboptimal.
   --
   --  Zopfli comment:
-  --  Changes the population counts in a way that the consequent Huffman tree
-  --  compression, especially its rle-part, will be more likely to compress this data
-  --  more efficiently.
+  --    Changes the population counts in a way that the consequent Huffman tree
+  --    compression, especially its rle-part, will be more likely to compress this data
+  --    more efficiently.
   --
   procedure Tweak_for_better_RLE(counts: in out Stats_type) is
     length: Integer:= counts'Length;
@@ -565,9 +565,16 @@ is
   end Put_Huffman_code;
 
   --  This is where the "dynamic" Huffman trees are sent before the block's data are sent.
-  --  The decoder needs to know the tree pair (literal-eob-length, distance) for decoding data.
+  --  The decoder needs to know the tree pair (1st tree for literals-eob-LZ lengths,
+  --  2nd tree for LZ distances) for decoding the compressed data.
   --  But this information takes some room. Fortunately Deflate allows for compressing it
   --  with a combination of Huffman and Run-Length (RLE) encoding to make this header smaller.
+  --  Concretely, the trees are described by the bit length of each symbol, so the header's
+  --  content is a vector of length max 320, whose contents typically look like
+  --    ... 8, 8, 9, 7, 8, 10, 6, 8, 8, 8, 8, 8, 11, 8, 9, 8, ...
+  --  In this example the RLE will compress the string of 8's with a code 8, then a code 17
+  -- (repeat x times) and the very frequent 8's will be encoded with a small number of
+  --  bits anyway. 
   --
   procedure Put_compression_structure(
     dhd           :        Deflate_Huff_descriptors;
@@ -662,11 +669,11 @@ is
       end loop;
     end Emit_data_compression_structures;
     --  Alphabet permutation for shortening in-use alphabet.
-    --  After the RLE codes 16, 17, 18 and the bit length 0, which is assumed to be always used,
+    --  After the RLE codes 16, 17, 18 and the bit length 0, which are assumed to be always used,
     --  the most usual bit lengths (around 8, which is the "neutral" bit length) appear first.
     --  For example, if the rare bit lengths 1 and 15 don't occur in any of the two Huffman trees
-    --  for LZ data, then 1 and 15 have a length 0 in the local Alphabet and we can omit sending
-    --  the last two lengths.
+    --  for LZ data, then codes 1 and 15 have a length 0 in the local Alphabet and we can omit
+    --  sending the last two bit lengths.
     alphabet_permutation : constant array (Alphabet) of Natural :=
        ( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 );
     procedure LLHCL is new
