@@ -3,14 +3,43 @@
 --
 --  The Zip_Streams package defines an abstract stream
 --  type, Root_Zipstream_Type, with name, time and an index for random access.
---  Zip_Streams can be used as such, independently of the Zip-Ada library.
 --
 --  In addition, this package provides two ready-to-use derivations:
 --
 --    - Memory_Zipstream, for using in-memory streaming
---
 --    - File_Zipstream, for accessing files
 --
+--  The Zip_Streams package can be used as such, independently
+--  of the Zip-Ada library.
+--
+--  Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
+
+--  Legal licensing note:
+
+--  Copyright (c) 2008 .. 2018 Gautier de Montmollin (maintainer)
+--  SWITZERLAND
+
+--  Permission is hereby granted, free of charge, to any person obtaining a copy
+--  of this software and associated documentation files (the "Software"), to deal
+--  in the Software without restriction, including without limitation the rights
+--  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+--  copies of the Software, and to permit persons to whom the Software is
+--  furnished to do so, subject to the following conditions:
+
+--  The above copyright notice and this permission notice shall be included in
+--  all copies or substantial portions of the Software.
+
+--  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+--  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+--  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+--  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+--  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+--  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+--  THE SOFTWARE.
+
+-- NB: this is the MIT License, as found 21-Aug-2016 on the site
+-- http://www.opensource.org/licenses/mit-license.php
+
 --  Change log:
 --  ==========
 --

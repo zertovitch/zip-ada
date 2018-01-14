@@ -1,6 +1,6 @@
--- BZip2.Decoding - a standalone, generic BZip2 decoding package.
+-- BZip2_Decoding - a standalone, generic BZip2 decoding package.
 --
---    Decompress: decompression of bzip2 data streams.
+-- Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
 --
 -- bzip2 compresses files using the Burrows-Wheeler block-sorting text
 -- compression algorithm, and Huffman coding. Compression is generally
@@ -72,9 +72,9 @@ generic
 
   type Buffer is array(Natural range <>) of Interfaces.Unsigned_8;
 
+  --  CRC checking is useless if the whole bzip stream is enclosed
+  --  in another CRC-checked stream, like a in Zip archive.
   check_CRC: Boolean;
-  -- ^ useless if the whole bzip stream is in
-  -- another CRC-checked stream, like a Zip archive
 
   -- Input:
   with procedure Read(buf: out Buffer);
@@ -89,6 +89,7 @@ package BZip2_Decoding is
   block_crc_check_failed,
   randomized_not_yet_implemented: exception;
 
+  --  Decompress: decompression of bzip2 data streams.
   procedure Decompress;
 
 end BZip2_Decoding;
