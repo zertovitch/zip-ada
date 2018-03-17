@@ -5,7 +5,10 @@
 project ZipAda is
 
    type Build_Mode_Type is
-      ("Debug", "Fast", "Profiling",
+      ("Debug", 
+			 "Fast", 
+			 "Small",
+			 "Profiling",
        --  Check_95 mode is for checking that the *library* is strictly
        --  Ada-95-compliant for being compiled by the broadest set of compilers.
        --  The demos, tools and tests are using some Ada 2005 & 2012 features.
@@ -57,6 +60,9 @@ project ZipAda is
       when "Fast" =>
          for Object_Dir use "obj_opt";
 
+      when "Small" =>
+         for Object_Dir use "obj_small";
+
       when "Profiling" =>
          for Object_Dir use "obj_pro";
    end case;
@@ -68,9 +74,7 @@ project ZipAda is
          when "Debug" | "Check_95" =>
             for Default_Switches ("ada") use ("-E");
 
-         when "Fast" =>
-
-         when "Profiling" =>
+         when "Fast" | "Small" | "Profiling" =>
 
       end case;
    end Binder;
@@ -82,7 +86,7 @@ project ZipAda is
          when "Debug" | "Check_95" =>
             for Default_Switches ("ada") use ("-g");
 
-         when "Fast" =>
+         when "Fast" | "Small" =>
             for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections");
 
          when "Profiling" =>
@@ -115,6 +119,13 @@ project ZipAda is
               "-gnat12", "-O2", "-gnatp", "-gnatn", 
               "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", 
               "-fpredictive-commoning", "-fgcse-after-reload", "-ftree-vectorize", "-fipa-cp-clone",
+              "-ffunction-sections", 
+              "-gnatec=" & project'Project_Dir & "za_elim.pra"
+              );
+
+         when "Small" =>
+            for Default_Switches ("ada") use (
+              "-gnat12", "-Os", "-gnatp",
               "-ffunction-sections", 
               "-gnatec=" & project'Project_Dir & "za_elim.pra"
               );
