@@ -21,7 +21,8 @@ project ZipAda is
       when others =>
          for Source_Dirs use (".", "zip_lib", "test", "extras", "tools", "demo");
          for Main use (
-           "zipada.adb", "comp_zip.adb", "find_zip.adb",
+           "zipada.adb", "unzipada.adb",
+					 "comp_zip.adb", "find_zip.adb",
            "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb",
            "demo_unzip.adb", "test_unz_streams.adb",
            "fuzzip.adb",
@@ -33,6 +34,7 @@ project ZipAda is
            --  Trace-Back-enabled version of some tools
            "za_gnat.ads", 
            "rz_gnat.ads", 
+					 "uza_gnat.ads",
            --  Misc.
            "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
            "lz",       --  A simple LZ-Huffman coder/decoder
@@ -44,8 +46,6 @@ project ZipAda is
            "lz77_stats.adb",    --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
            "random_data.adb",   --  Produces n bytes of pseudo-random data
            "several_sizes.adb"  --  Truncates a file into partial copies of several sizes
-           -- "demo_csv_gnat.ads",
-           -- "unzipada.adb", "uza_gnat.ads"
          );
    end case;
 

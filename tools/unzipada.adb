@@ -14,14 +14,14 @@ with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Interfaces;                        use Interfaces;
 
-with Ada.Directories; -- Ada 2005
-with Ada_Directories_Extensions;
--- ^Non-standard; Ada 20XX items absent in Ada 2012...
+with Ada.Directories;  --  Ada 2005
+--  Non-standard; Ada 20XX items absent in Ada 2012:
+--  with Ada_Directories_Extensions;  --  This package's body is system-dependent
 
 with Zip, UnZip;
 
--- Pure Ada Text_IO-fashion feedback; should work on every
--- computer having a screen [and some text console too] :
+--  Pure Ada Text_IO-fashion feedback; should work on every
+--  computer having a screen [and some text console too] :
 
 with My_feedback, My_resolve_conflict, My_tell_data, My_get_password;
 with Summary;
@@ -31,16 +31,19 @@ procedure UnZipAda is
   procedure Set_Modification_Time_B (Name : in String;
                                      To   : in Ada.Calendar.Time) is
   begin
-    Ada_Directories_Extensions.Set_Modification_Time(Name, To);
-    -- alt.: null;
+    null;  --  If you want the time stamps, uncomment the following and the "with" above.
+    --  Ada_Directories_Extensions.Set_Modification_Time(Name, To);
   exception
     when others =>
       null; -- !! utf-8 or ascii names with characters > pos 127 fail
   end Set_Modification_Time_B;
 
   Set_Time_Stamp: constant UnZip.Set_Time_Stamp_proc:=
-    Set_Modification_Time_B'Unrestricted_Access;
-  -- alt.: null;
+    --    If you want the time stamps, uncomment the following
+    --    and look into Set_Modification_Time_B above.
+    --
+    --  Set_Modification_Time_B'Unrestricted_Access;
+    null;
 
   use UnZip;
 
