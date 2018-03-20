@@ -1,5 +1,10 @@
 --  This is a GNAT, GCC or GNAT Programming Studio (GPS) project file
---  for the Zip-Ada project ( http://unzip-ada.sf.net/ )
+--  for the Zip-Ada project:
+--
+--      home page:     http://unzip-ada.sf.net/
+--      project page:  http://sf.net/projects/unzip-ada/
+--      mirror:        https://github.com/svn2github/unzip-ada
+--
 --  Build me with "gprbuild -p -P zipada", or open me with GPS
 --
 project ZipAda is
@@ -142,7 +147,9 @@ project ZipAda is
    end Compiler;
 
    package Builder is
-      for Default_Switches ("ada") use ("-j3", "-C");  --  use 3 cores/CPUs when available
+      --   "If -j0 is used, then the maximum number of simultaneous compilation
+      --    jobs is the number of core processors on the platform."
+      for Default_Switches ("ada") use ("-j0");
    end Builder;
 
    package Ide is

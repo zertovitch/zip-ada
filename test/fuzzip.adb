@@ -54,15 +54,15 @@ procedure Fuzzip is
       zi: Zip.Zip_info;
       unpacked : Unbounded_String;
       name_for_data_for_testing : constant String := "data_for_testing.dat";
-      name_in_zip: constant String := "packed_" & method'Image & ".dat";
+      name_in_zip: constant String := "packed_" & Compression_Method'Image(method) & ".dat";
       check_ok : Boolean;
       use Zip.Create;
     begin
       test_counter := test_counter + 1;
       if trace >= max_trace then
         Put (
-          "      Method " & method'Image &
-          " size:" & Length (data_for_testing)'Image
+          "      Method " & Compression_Method'Image(method) &
+          " size:" & Integer'Image(Length (data_for_testing))
         );
       end if;
       --  Step 2
@@ -75,7 +75,7 @@ procedure Fuzzip is
       --  State 3 : we have a Zip archive in memory, in mem_stream_Zip_archive
       if trace >= max_trace then
         Put (
-          " - Zip size:" & Size (mem_stream_Zip_archive)'Image & ',' &
+          " - Zip size:" & ZS_Size_Type'Image(Size (mem_stream_Zip_archive)) & ',' &
           Integer'Image (Integer (
             100.0 * Float(Size (mem_stream_Zip_archive)) /
             Float(Length (data_for_testing))
@@ -135,7 +135,7 @@ procedure Fuzzip is
     Test_all_methods_single_data (original);
     for i in 1 .. slices loop
       if trace > 2 then
-        Put_Line ("    Slicing" & i'Image & " /" & slices'Image);
+        Put_Line ("    Slicing" & Integer'Image(i) & " /" & Integer'Image(slices));
       end if;
       i1 := R (Length (original));
       i2 := R (Length (original));
@@ -158,7 +158,7 @@ procedure Fuzzip is
     Slicing (original);
     for i in 1 .. patches loop
       if trace > 1 then
-        Put_Line ("  Patchwork" & i'Image & " /" & patches'Image);
+        Put_Line ("  Patchwork" & Integer'Image(i) & " /" & Integer'Image(patches));
       end if;
       --  Insert a random slice at a random place:
       i1 := R (Length (copy));
@@ -208,7 +208,7 @@ procedure Fuzzip is
     Patchwork (the_original);
     if trace > 0 then
       Put_Line (
-        "Completed" & test_counter'Image &
+        "Completed" & Integer'Image(test_counter) &
         " compress-decompress-compare tests successfully"
       );
     end if;
@@ -223,7 +223,7 @@ begin
   if trace > 0 then
     Put_Line ("Fuzzip - testing compress-decompress-compare on randomized data");
     Put_Line ("Syntax: fuzzip [original file] [trace level = 0, 1, 2,...]");
-    Put_Line ("Default: fuzzip " & default_file_name & trace'Image);
+    Put_Line ("Default: fuzzip " & default_file_name & Integer'Image(trace));
   end if;
   Reset (Seed, 1);  --  Fixed seed for reproducibility
   if Argument_Count > 0 then
