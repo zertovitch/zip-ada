@@ -39,18 +39,13 @@ procedure Find_Zip is
     overriding procedure Read
       (Stream : in out Search_stream;
        Item   :    out Ada.Streams.Stream_Element_Array;
-       Last   :    out Ada.Streams.Stream_Element_Offset);
+       Last   :    out Ada.Streams.Stream_Element_Offset) is null;  --  Not used.
+
     overriding procedure Write
      (Stream : in out Search_stream;
       Item   : in     Ada.Streams.Stream_Element_Array);
 
-    --  Implementation of Read & Write:
-
-    overriding procedure Read
-      (Stream : in out Search_stream;
-       Item   :    out Ada.Streams.Stream_Element_Array;
-       Last   :    out Ada.Streams.Stream_Element_Offset) is null;  --  Not used.
-
+    --  Implementation of Write:
     overriding procedure Write
      (Stream : in out Search_stream;
       Item   : in     Ada.Streams.Stream_Element_Array)
