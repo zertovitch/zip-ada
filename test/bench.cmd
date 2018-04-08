@@ -24,10 +24,15 @@ call zipada -edf ../bench_%1_deflate_f *
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 call zipada -ed1 ../bench_%1_deflate_1 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_1_%1.zcd
+if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 call zipada -ed2 ../bench_%1_deflate_2 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_2_%1.zcd
 rem   ### LZMA
 call zipada -el1 ../bench_%1_lzma_1 *
+call zipada -el2 ../bench_%1_lzma_2 *
+call zipada -el3 ../bench_%1_lzma_3 *
+call zipada -eps ../bench_%1_presel *
+
 rem   ### Deflate, external
 zip    -6   ../bench_%1_iz_6      *
 zip    -9   ../bench_%1_iz_9      *
@@ -41,12 +46,10 @@ rem   ### LZMA
 7z a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma *
 
 :skip
+if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 call zipada -ed3 ../bench_%1_deflate_3 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_3_%1.zcd
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-call zipada -el2 ../bench_%1_lzma_2 *
-call zipada -el3 ../bench_%1_lzma_3 *
-call zipada -eps ../bench_%1_presel *
 
 cd ..
 

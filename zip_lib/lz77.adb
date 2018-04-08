@@ -52,7 +52,6 @@
 -- NB: this is the MIT License, as found 21-Aug-2016 on the site
 -- http://www.opensource.org/licenses/mit-license.php
 
-
 with Ada.Unchecked_Deallocation;
 with Interfaces; use Interfaces;
 with System;

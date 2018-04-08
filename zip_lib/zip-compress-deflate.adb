@@ -92,6 +92,7 @@ is
   bypass_LZ77         : constant Boolean:= False;  --  Use LZ data encoded by another program
   deactivate_scanning : constant Boolean:= False;  --  Impact analysis of the scanning method
   trace               : constant Boolean:= False;  --  Log file with details
+  trace_descriptors   : constant Boolean:= False;  --  Additional logging of Huffman descriptors
 
   --  A log file is used when trace = True.
   log         : File_Type;
@@ -267,6 +268,7 @@ is
   --  Setting upper bound to 285 for literals leads to invalid codes, sometimes.
 
   --  Copy bit length vectors into Deflate Huffman descriptors
+
   function Build_descriptors(
     bl_for_lit_len : Bit_length_array_lit_len;
     bl_for_dis     : Bit_length_array_dis
@@ -277,17 +279,17 @@ is
   begin
     for i in new_d.lit_len'Range loop
       new_d.lit_len(i):= (bit_length => bl_for_lit_len(i), code => invalid);
-      if trace and then Is_Open(log) then
+      if trace_descriptors and then trace and then Is_Open(log) then
         Put(log, Integer'Image(bl_for_lit_len(i)) & sep);
       end if;
     end loop;
     for i in new_d.dis'Range loop
       new_d.dis(i):= (bit_length => bl_for_dis(i), code => invalid);
-      if trace and then Is_Open(log) then
+      if trace_descriptors and then trace and then Is_Open(log) then
         Put(log, Integer'Image(bl_for_dis(i)) & sep);
       end if;
     end loop;
-    if trace and then Is_Open(log) then
+    if trace_descriptors and then trace and then Is_Open(log) then
       New_Line(log);
     end if;
     return new_d;
@@ -440,7 +442,8 @@ is
   --  Bit length vector. Convention: 16 is unused bit length (close to the bit length for the
   --  rarest symbols, 15, and far from the bit length for the most frequent symbols, 1).
   --  Deflate uses 0 for unused.
-  type BL_vector is array(1..288+32) of Integer range 1..16;
+  subtype BL_code is Integer_M32 range 1..16;
+  type BL_vector is array(1..288+32) of BL_code;
 
   function Convert(h: Deflate_Huff_descriptors) return BL_vector is
     bv: BL_vector;
@@ -450,7 +453,7 @@ is
       if h.lit_len(i).bit_length = 0 then
         bv(j):= 16;
       else
-        bv(j):= h.lit_len(i).bit_length;
+        bv(j):= Integer_M32 (h.lit_len(i).bit_length);
       end if;
       j:= j + 1;
     end loop;
@@ -458,7 +461,7 @@ is
       if h.dis(i).bit_length = 0 then
         bv(j):= 16;
       else
-        bv(j):= h.dis(i).bit_length;
+        bv(j):= Integer_M32 (h.dis(i).bit_length);
       end if;
       j:= j + 1;
     end loop;
@@ -466,18 +469,34 @@ is
   end Convert;
 
   --  L1 or Manhattan distance
-  function L1_distance(b1, b2: BL_vector) return Natural is
-    s: Natural:= 0;
+  function L1_distance(b1, b2: BL_vector) return Natural_M32 is
+    s: Natural_M32:= 0;
   begin
     for i in b1'Range loop
-      s:= s + abs(b1(i) - b2(i));
+      s:= s + abs (b1(i) - b2(i));
     end loop;
     return s;
   end L1_distance;
 
+  --  L1, tweaked
+  --
+  tweak: constant array(BL_code) of Positive_M32 :=
+    --  For the origin of the tweak function, see za_work, sheet "Deflate".
+    --  NB: all values are multiplied by 100 for accuracy.
+    (100, 250, 371, 482, 588, 690, 788, 885, 979, 1072, 1163, 1252, 1341, 1428, 1515, 1600);
+  --
+  function L1_tweaked(b1, b2: BL_vector) return Natural_M32 is
+    s: Natural_M32:= 0;
+  begin
+    for i in b1'Range loop
+      s:= s + abs (tweak(b1(i)) - tweak(b2(i)));
+    end loop;
+    return s;
+  end L1_tweaked;
+
   --  L2 or Euclidean distance
-  function L2_distance_square(b1, b2: BL_vector) return Natural is
-    s: Natural:= 0;
+  function L2_distance_square(b1, b2: BL_vector) return Natural_M32 is
+    s: Natural_M32:= 0;
   begin
     for i in b1'Range loop
       s:= s + (b1(i) - b2(i)) ** 2;
@@ -485,31 +504,47 @@ is
     return s;
   end L2_distance_square;
 
-  type Distance_type is (L1, L2);
+  --  L2, tweaked
+  function L2_tweaked_square(b1, b2: BL_vector) return Natural_M32 is
+    s: Natural_M32:= 0;
+  begin
+    for i in b1'Range loop
+      s:= s + (tweak(b1(i)) - tweak(b2(i))) ** 2;
+    end loop;
+    return s;
+  end L2_tweaked_square;
 
-  function Similar(
+  type Distance_type is (L1, L1_tweaked, L2, L2_tweaked);
+
+  function Similar (
     h1, h2    : Deflate_Huff_descriptors;
     dist_kind : Distance_type;
     threshold : Natural;
     comment   : String
   )
   return Boolean is
-    dist  : Natural;
-    thres : Natural:= threshold;
+    dist  : Natural_M32;
+    thres : Natural_M32:= Natural_M32 (threshold);
   begin
     case dist_kind is
       when L1 =>
-        dist:= L1_distance(Convert(h1), Convert(h2));
+        dist:= L1_distance (Convert(h1), Convert(h2));
+      when L1_tweaked =>
+        thres := thres * tweak(1);
+        dist := L1_tweaked (Convert(h1), Convert(h2));
       when L2 =>
         thres := thres * thres;
-        dist  := L2_distance_square(Convert(h1), Convert(h2));
+        dist  := L2_distance_square (Convert(h1), Convert(h2));
+      when L2_tweaked =>
+        thres := (thres * thres) * (tweak(1) * tweak(1));
+        dist  := L2_tweaked_square (Convert(h1), Convert(h2));
     end case;
     if trace then
       Put_Line(log,
-        "Checking similarity" & sep & sep & sep & sep & sep &
+        "Checking similarity." & sep &
         Distance_type'Image(dist_kind) & sep &
-        "Distance (ev. **2):" & sep & sep & sep & sep & Integer'Image(dist) & sep & sep &
-        "Threshold (ev. **2):" & sep & sep & Integer'Image(thres) & sep & sep &
+        "Distance (ev. x100, **2):" & sep & Integer_M32'Image(dist) & sep & sep &
+        "Threshold (ev. x100, **2):" & sep & Integer_M32'Image(thres) & sep & sep &
         comment
       );
     end if;
@@ -1343,11 +1378,11 @@ is
   end record;
 
   --  *Tuned* thresholds
+  --  NB: the enwik8, then silesia, then others tests are tough for lowering any!
   step_choice: constant array(Positive range <>) of Step_threshold_metric:=
-    ( ( 8 * min_step,  465, L1),  --  Deflate_1, Deflate_2, Deflate_3
-      ( 4 * min_step,  470, L1),  --             Deflate_2, Deflate_3
-      ( 2 * min_step, 2300, L1),  --                        Deflate_3
-      (     min_step, 2400, L1)   --                        Deflate_3
+    ( ( 8 * min_step,  465, L1),  --  Deflate_1, Deflate_2, Deflate_3 (enwik8)
+      ( 4 * min_step,  470, L1),  --             Deflate_2, Deflate_3 (enwik8)
+      (     min_step, 2300, L1)   --                        Deflate_3 (DB test)
     );
 
   max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
