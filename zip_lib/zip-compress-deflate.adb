@@ -1383,7 +1383,7 @@ is
   --  NB: the enwik8, then silesia, then others tests are tough for lowering any!
   step_choice: constant array(Positive range <>) of Step_threshold_metric:=
     ( ( 8 * min_step,  465, L1),  --  Deflate_1, Deflate_2, Deflate_3 (enwik8)
-      ( 4 * min_step,  470, L1),  --             Deflate_2, Deflate_3 (enwik8)
+      ( 4 * min_step,  430, L1_tweaked),  --     Deflate_2, Deflate_3 (silesia)
       (     min_step, 2050, L1_tweaked)   --                Deflate_3 (DB test)
     );
 

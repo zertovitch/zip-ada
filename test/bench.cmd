@@ -53,6 +53,8 @@ if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 
 cd ..
 
+dir /OS- bench_%1_*.zip
+
 rem Wrapping it all - update archive with all archives 
 rem Funnily, upon zipping bench_matrix_*.zip, level 1-8 stores everything, but level 9 deflates to 26% !
 
