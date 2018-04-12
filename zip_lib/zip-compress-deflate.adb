@@ -482,8 +482,10 @@ is
   --
   tweak: constant array(BL_code) of Positive_M32 :=
     --  For the origin of the tweak function, see za_work, sheet "Deflate".
+    --  function f3 = 0.20 f1 [logarithmic] + 0.80 * identity
     --  NB: all values are multiplied by 100 for accuracy.
-    (100, 250, 371, 482, 588, 690, 788, 885, 979, 1072, 1163, 1252, 1341, 1428, 1515, 1600);
+    (100, 255, 379, 490, 594, 694, 791, 885, 978, 1069, 1159, 1249, 1338, 1426, 1513, 1600);
+
   --
   function L1_tweaked(b1, b2: BL_vector) return Natural_M32 is
     s: Natural_M32:= 0;
@@ -1382,7 +1384,7 @@ is
   step_choice: constant array(Positive range <>) of Step_threshold_metric:=
     ( ( 8 * min_step,  465, L1),  --  Deflate_1, Deflate_2, Deflate_3 (enwik8)
       ( 4 * min_step,  470, L1),  --             Deflate_2, Deflate_3 (enwik8)
-      (     min_step, 2300, L1)   --                        Deflate_3 (DB test)
+      (     min_step, 2050, L1_tweaked)   --                Deflate_3 (DB test)
     );
 
   max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
