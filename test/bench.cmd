@@ -21,12 +21,6 @@ call zipada -er4 ../bench_%1_reduce_4  *
 rem   ### Deflate
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 call zipada -edf ../bench_%1_deflate_f *
-if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-call zipada -ed1 ../bench_%1_deflate_1 *
-if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_1_%1.zcd
-if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-call zipada -ed2 ../bench_%1_deflate_2 *
-if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_2_%1.zcd
 rem   ### LZMA
 call zipada -el1 ../bench_%1_lzma_1 *
 call zipada -el2 ../bench_%1_lzma_2 *
@@ -47,8 +41,17 @@ rem   ### LZMA
 
 :skip
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
+call zipada -ed1 ../bench_%1_deflate_1 *
+if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_1_%1.zcd
+
+if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
+call zipada -ed2 ../bench_%1_deflate_2 *
+if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_2_%1.zcd
+
+if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 call zipada -ed3 ../bench_%1_deflate_3 *
 if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_3_%1.zcd
+
 if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
 
 cd ..

@@ -481,10 +481,12 @@ is
   --  L1, tweaked
   --
   tweak: constant array(BL_code) of Positive_M32 :=
-    --  For the origin of the tweak function, see za_work, sheet "Deflate".
+    --  For the origin of the tweak function, see "za_work.xls", sheet "Deflate".
     --  function f3 = 0.20 f1 [logarithmic] + 0.80 * identity
     --  NB: all values are multiplied by 100 for accuracy.
-    (100, 255, 379, 490, 594, 694, 791, 885, 978, 1069, 1159, 1249, 1338, 1426, 1513, 1600);
+        (100, 255, 379, 490, 594, 694, 791, 885, 978, 1069, 1159, 1249, 1338, 1426, 1513, 1600);
+    --  Neutral is:
+    --  (100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600)
 
   --
   function L1_tweaked(b1, b2: BL_vector) return Natural_M32 is
@@ -1382,9 +1384,9 @@ is
   --  *Tuned* thresholds
   --  NB: the enwik8, then silesia, then others tests are tough for lowering any!
   step_choice: constant array(Positive range <>) of Step_threshold_metric:=
-    ( ( 8 * min_step,  465, L1),  --  Deflate_1, Deflate_2, Deflate_3 (enwik8)
-      ( 4 * min_step,  430, L1_tweaked),  --     Deflate_2, Deflate_3 (silesia)
-      (     min_step, 2050, L1_tweaked)   --                Deflate_3 (DB test)
+    ( ( 8 * min_step,  420, L1_tweaked),  --  Deflate_1, Deflate_2, Deflate_3 (enwik8)
+      ( 4 * min_step,  430, L1_tweaked),  --             Deflate_2, Deflate_3 (silesia)
+      (     min_step, 2050, L1_tweaked)   --                        Deflate_3 (DB test)
     );
 
   max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
