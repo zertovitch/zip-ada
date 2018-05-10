@@ -37,4 +37,6 @@ package body PPMd is
     end if;
   end Update;
 
+begin
+  PpmContext_Zero.Address := 0;
 end PPMd;

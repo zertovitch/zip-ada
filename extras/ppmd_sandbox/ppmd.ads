@@ -2,6 +2,7 @@
 --  DRAFT - NOT YET FUNCTIONAL!
 --
 --  2nd port attempt, completely from PpmdSharp.
+--  Mess is elsewhere (C# object identification, see Equals and other operators)...
 --
 
 --  PPMd library
@@ -31,6 +32,9 @@ private
   type Unsigned is mod 2 ** System.Word_Size;
   subtype uint is UInt32;  --  !!  Check this !!  Simplify to U(whatever)
 
+  type Byte_array is array (Integer range <>) of Byte;
+  type p_Byte_array is access Byte_array;
+
   UpperFrequency   : constant :=  5;
   IntervalBitCount : constant :=  7;
   PeriodBitCount   : constant :=  7;
@@ -40,10 +44,10 @@ private
   MaximumFrequency : constant :=  124;
   OrderBound       : constant :=  9;
 
-  --
-  --  From: See2Context.cs
-  --  SEE2 (secondary escape estimation) contexts for PPM contexts with masked symbols.
-  --
+  -----------------------------------------------------------------------------------------
+  --  From: See2Context.cs                                                               --
+  --  SEE2 (secondary escape estimation) contexts for PPM contexts with masked symbols.  --
+  -----------------------------------------------------------------------------------------
 
   type See2Context is record
     Summary      : ushort;
@@ -54,10 +58,37 @@ private
   procedure Mean       (self : in out See2Context; result : out uint);
   procedure Update     (self : in out See2Context);
 
-  --  From: Model.cs
+  -----------------------------------------------------------------------
+  --  From: PpmContext.cs                                              --
+  --  The PPM context structure.  This is tightly coupled with Model.  --
+  -----------------------------------------------------------------------
+
+  PpmContext_Size : constant := 12;
+
+  type PpmContext;
+
+  type p_PpmContext is access PpmContext;
+
+  --  The structure which represents the current PPM context.
+
+  type PpmContext is record
+    Address : uint;
+    Memory  : p_Byte_array;
+  end record;
+
+  PpmContext_Zero : p_PpmContext := new PpmContext;
+
+  ----------------------
+  --  From: Model.cs  --
+  ----------------------
+
+  type See2_matrix is array (Integer range <>, Integer range <>) of See2Context;
+  type p_See2_matrix is access See2_matrix;  --  Perhaps we don't need access !!
 
   type Model is record
-    dummy : Integer;
+    see2Contexts     : p_See2_matrix;
+    emptySee2Context : See2Context;
+    --  maximumContext
   end record;
 
 end PPMd;
