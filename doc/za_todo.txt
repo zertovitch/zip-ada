@@ -1,5 +1,5 @@
-- LZ77: 3rd procedure that sends a list of possible DL codes (BT4),
-     lets LZMA.Encoding choose the most predicted-probable one.
+- LZ77: add a 3rd procedure that sends a list of possible DL codes (BT4),
+     letting LZMA.Encoding choose the most predicted-probable one.
      Alternatively (to avoid complicating the LZ77 interface), hash
      the distance-length pairs, use the hash for a frequency index
      and give a preference to the most frequent pairs.
@@ -14,16 +14,23 @@
      see also specific "to do"'s in packages' bodies.
 
 - tools: comp_zip: optionally, check only CRC
+- tools: comp_zip: optionally or not, compare the compression sizes
+
 - tools: a Freshen_Zip tool that freshen files from an archive, or files
       to an archive, or both (i.e. like "zip -f" and/or "unzip -f" combined);
       possible with Zip.Create's Add_Compressed_Stream.
       NB: AZip does the archive update part; so a command-line invocation
       of AZip would fit this need.
 
-- Make a public access to UnZip.Decompress, e.g. for a zlib proxy
-      (see the Zada project), or the other way round: transpose whole
-      code for Deflate (compress & decompress) to Zada, then use it from
-      Zip & UnZip
+- Make a standalone & generic Deflate, Deflate.Decoding, Deflate.Encoding,
+      structured after the already existing LZMA, LZMA.Decoding, LZMA.Encoding.
+      This could be used by at least two projects: the Zip-Ada project and
+      the Zada project (an implementation of zlib fully in Ada).
+
+- Port PPMd variant I (see attempts in /extras/ppmd_sandbox) or reprogram it
+      from scratch (both are tough!), in order to have a complete coverage
+      of the Zip format and of compression methods in general.
+      A clean reprogramming could cover many algorithms of the PPM family.
 
 - more profiling - see prof_za.cmd and test/prof.cmd
 
