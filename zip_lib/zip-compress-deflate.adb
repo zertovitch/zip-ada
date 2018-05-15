@@ -1220,11 +1220,11 @@ is
       Put_LZ_buffer(lzb);
       last_block_type:= dynamic;
     end Send_dynamic_block;
-    --  The following variables will contain the *exact* number of bits
-    --  taken by block to be sent, using different Huffman encodings, or stored.
+    --  The following variables will contain the *exact* number of bits taken
+    --  by the block to be sent, using different Huffman encodings, or stored.
     stored_format_bits,                     --  Block is stored (no compression)
-    fixed_format_bits,                      --  Preset Huffman codes
-    dynamic_format_bits,                    --  Dynamic Huffman codes
+    fixed_format_bits,                      --  Fixed (preset) Huffman codes
+    dynamic_format_bits,                    --  Dynamic Huffman codes using block's statistics
     dynamic_format_bits_2,                  --  Dynamic Huffman codes after Tweak_for_better_RLE
     recycled_format_bits : Count_type:= 0;  --  Continue previous block, use current Huffman codes
     stored_format_possible : Boolean;  --  Can we store (needs expansion of DL codes) ?
