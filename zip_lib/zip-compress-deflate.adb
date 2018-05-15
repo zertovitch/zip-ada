@@ -1220,14 +1220,15 @@ is
       Put_LZ_buffer(lzb);
       last_block_type:= dynamic;
     end Send_dynamic_block;
-    --
-    stored_format_bits,
-    fixed_format_bits,
-    dynamic_format_bits,
-    dynamic_format_bits_2,
-    recycled_format_bits: Count_type:= 0;
-    stored_format_possible: Boolean;
-    recycling_possible: Boolean;  --  Can we recycle current Huffman codes ?
+    --  The following variables will contain the *exact* number of bits
+    --  taken by block to be sent, using different Huffman encodings, or stored.
+    stored_format_bits,                     --  Block is stored (no compression)
+    fixed_format_bits,                      --  Preset Huffman codes
+    dynamic_format_bits,                    --  Dynamic Huffman codes
+    dynamic_format_bits_2,                  --  Dynamic Huffman codes after Tweak_for_better_RLE
+    recycled_format_bits : Count_type:= 0;  --  Continue previous block, use current Huffman codes
+    stored_format_possible : Boolean;  --  Can we store (needs expansion of DL codes) ?
+    recycling_possible     : Boolean;  --  Can we recycle current Huffman codes ?
     --
     procedure Compute_sizes_of_variants is
       c     : Count_type;
@@ -1286,6 +1287,7 @@ is
       fixed_format_bits     := fixed_format_bits + c + 2;
       dynamic_format_bits   := dynamic_format_bits + c + 2;
       dynamic_format_bits_2 := dynamic_format_bits_2 + c + 2;
+      --  For both dynamic formats, we also counts the bits taken by the compression header!
       Put_compression_structure(new_descr,   cost_analysis => True, bits => dynamic_format_bits);
       Put_compression_structure(new_descr_2, cost_analysis => True, bits => dynamic_format_bits_2);
     end Compute_sizes_of_variants;
