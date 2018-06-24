@@ -1,7 +1,6 @@
 ------------------------------------------------------------------------------
 --  File:            Find_Zip.adb
 --  Description:     Search a text string in files packed in a zip archive.
---  Date/version:    3-Feb-2009
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -10,6 +9,7 @@ with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Streams;
+with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 
 with Zip;
 with UnZip.Streams;                     use UnZip.Streams;
@@ -89,7 +89,7 @@ procedure Find_Zip is
     );
     if occ > 0 then
       Put(occ, 5);
-      Put_Line(" in [" & To_Lower(name) & "] (outward stream method)");
+      Put_Line(" in [" & To_Lower(name) & "]'s contents");
     end if;
   end Search_1_file_using_output_stream;
 
@@ -141,6 +141,19 @@ procedure Find_Zip is
 
   procedure Search_all_files is new Zip.Traverse( Search_1_file_using_output_stream );
 
+  procedure Search_in_entry_name( name: String ) is
+    un : String := name;
+  begin
+    if ignore_case then
+      un:= To_Upper(un);
+    end if;
+    if Index (un, str(1..stl)) > 0 then
+      Put_Line(" Found in [" & To_Lower(name) & "]'s entry name");
+    end if;
+  end Search_in_entry_name;
+
+  procedure Search_all_file_names is new Zip.Traverse( Search_in_entry_name );
+
   function Try_with_zip(name: String) return String is
   begin
     if Zip.Exists(name) then
@@ -186,4 +199,5 @@ begin
     l:= str(stl);
   end;
   Search_all_files(z);
+  Search_all_file_names(z);
 end Find_Zip;
