@@ -8,7 +8,7 @@
 with Rezip_lib, Comp_Zip_Prc, Zip;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Text_IO;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 
 procedure ReZip is

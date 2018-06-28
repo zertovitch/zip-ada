@@ -5,7 +5,8 @@
 --      project page:  http://sf.net/projects/unzip-ada/
 --      mirror:        https://github.com/svn2github/unzip-ada
 --
---  Build me with "gprbuild -p -P zipada", or open me with GPS
+--  Build me with "gprbuild -p -P zipada", or "gprbuild -p -P zipada",
+--  or open me with GPS.
 --
 project ZipAda is
 
@@ -158,4 +159,3 @@ project ZipAda is
    end Ide;
    
 end ZipAda;
-

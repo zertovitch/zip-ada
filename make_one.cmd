@@ -19,6 +19,8 @@ echo    The Making of... %1
 echo \=====================================================/
 echo.
 
-gnatmake -PZipAda.gpr %1 -XBuild_Mode=%gnatoptions_87312863% -largs extras/zip_icons.rbj
+gnatmake -PZipAda.gpr %1 -XBuild_Mode=%gnatoptions_87312863%
+
+rem -largs extras/zip_icons.rbj
 
 :fin

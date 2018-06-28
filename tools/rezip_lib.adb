@@ -23,9 +23,7 @@ with My_feedback, Flexible_temp_files;
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Directories;                   use Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
-with Dual_IO;                           use Dual_IO;
--- NB about 'use': no worry, Ada detects all conflicts
--- between Dual_IO and Text_IO
+with Dual_IO;
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
@@ -591,7 +589,6 @@ package body Rezip_lib is
 
     procedure Repack_contents(orig_name, repacked_name, html_report_name: String)
     is
-      use type Zip.PKZip_method;
       zi: Zip.Zip_info;
       MyStream   : aliased File_Zipstream;
 

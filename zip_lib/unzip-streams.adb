@@ -404,7 +404,7 @@ package body UnZip.Streams is
      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
    )
   is
-    use Zip_Streams, Ada.Streams;
+    use Zip_Streams;
     zip_stream   : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
     use_a_file   : constant Boolean:= Zip.Zip_stream(Archive_Info) = null;

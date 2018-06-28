@@ -294,7 +294,6 @@ package body Zip_Streams is
       is
          d_date : constant Integer:= Integer(Date  /  65536);
          d_time : constant Integer:= Integer(Date and 65535);
-         use Interfaces;
          x           : Integer;
          hours       : Integer;
          minutes     : Integer;

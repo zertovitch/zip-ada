@@ -322,7 +322,7 @@ package body UnZip.Decompress is
       end Bit_buffer;
 
       procedure Flush ( x: Natural ) is
-        use Zip, UnZip, Ada.Streams;
+        use Zip, Ada.Streams;
       begin
         if full_trace then
           Ada.Text_IO.Put("[Flush...");
@@ -547,7 +547,7 @@ package body UnZip.Decompress is
       Writebuf : Zip.Byte_Buffer ( 0..Write_Max );  -- Write buffer
 
       procedure Unshrink_Flush is
-        use Zip, UnZip, Ada.Streams, Ada.Streams.Stream_IO;
+        use Zip, Ada.Streams, Ada.Streams.Stream_IO;
       begin
         if full_trace then
           Ada.Text_IO.Put("[Unshrink_Flush]");

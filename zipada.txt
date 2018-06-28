@@ -78,7 +78,7 @@ Contents
   - ZipAda.adb           : minimal standalone zipping tool
   - UnZipAda.adb         : minimal standalone unzipping tool
   - Comp_Zip.adb         : tool for comparing two Zip archives
-  - Find_Zip.adb         : tool for searching a string across an archive
+  - Find_Zip.adb         : tool for searching a string across an archive (contents + names)
   - ReZip.adb            : tool for recompressing Zip archives and make them smaller
   
 *  In the test subdirectory, there is
@@ -91,8 +91,7 @@ Contents
 
   These demos can be built as main programs. 
   Some are using Ada 2005's Ada.Directories for directory creation (UnZipAda)
-  or reading time stamps (ZipAda). A Ada 95-only compiler will protest and
-  you can use custom functions instead of the Ada 2005 ones.
+  or reading time stamps (ZipAda).
 
   UnZipAda uses a procedure from an extension to Ada.Directories for setting
   time stamps of extracted files.
@@ -107,7 +106,7 @@ Contents
   There are also the following project files for building them
   with various systems:
   - ZipAda.gpr for GNAT's gprbuild or the GNAT Programming Studio
-  - ZipAda_ObjectAda.prj for ObjectAda 7.2.2 and later (this is the
+  - ZipAda_ObjectAda.prj for ObjectAda 9.2 and later (this is the
       project file for the ObjectAda's IDE)
 
 * The file extensions of source files are GNAT-ish:
@@ -129,6 +128,12 @@ packages.
 
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
+
+* Changes in '54', 28-Jun-2018:
+  - Zip.Compress.Deflate: use of L1_tweaked measure; adjusted
+      threshold for activating new compression block
+  - Source gardening: removal of needless "use" clauses, these cases
+      are detected by GNAT Community 2018
 
 * Changes in '53', 14-Nov-2017:
   - Decompression and loading of archive directory are more

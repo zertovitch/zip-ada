@@ -3,10 +3,6 @@ echo.
 echo This batch file will perform a small test of UnZipAda tool.
 echo Don't hesitate to tune it your way!
 echo.
-echo You need to have in your path:
-echo.
-echo   unzipada.exe
-echo.
 echo The test will try to call the following compressors,
 echo they should be also visible in the path:
 echo.

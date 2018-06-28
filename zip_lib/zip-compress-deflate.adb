@@ -84,8 +84,6 @@ procedure Zip.Compress.Deflate
   compression_ok  : out Boolean -- indicates compressed < uncompressed
 )
 is
-  use Zip_Streams;
-
   --  Options for testing.
   --  All should be on False for normal use of this procedure.
 

@@ -34,7 +34,7 @@ with Ada.IO_Exceptions;
 
 package body UnZip is
 
-  use Ada.Streams, Ada.Strings.Unbounded;
+  use Ada.Strings.Unbounded;
 
   boolean_to_encoding: constant array(Boolean) of Zip.Zip_name_encoding:=
     (False => Zip.IBM_437, True => Zip.UTF_8);
