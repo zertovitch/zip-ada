@@ -247,8 +247,11 @@ package body Zip.Headers is
     -- In appnote.txt :
     -- .ZIP file comment length        2 bytes
   begin
+    if Size (stream) < 22 then
+      raise bad_end;
+    end if;
     -- 20-Jun-2001: abandon search below min_end_start.
-    if Size(stream) <= max_comment then
+    if Size (stream) <= max_comment then
       min_end_start:= 1;
     else
       min_end_start:= Size(stream) - max_comment;
