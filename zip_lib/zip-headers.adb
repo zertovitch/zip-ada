@@ -242,7 +242,7 @@ package body Zip.Headers is
     the_end :    out End_of_Central_Dir
   )
   is
-    min_end_start: ZS_Size_Type;
+    min_end_start: ZS_Index_Type;  --  min_end_start >= 1
     max_comment: constant:= 65_535;
     -- In appnote.txt :
     -- .ZIP file comment length        2 bytes
@@ -256,7 +256,7 @@ package body Zip.Headers is
     else
       min_end_start:= Size(stream) - max_comment;
     end if;
-    Set_Index(stream, ZS_Index_Type(min_end_start));
+    Set_Index(stream, min_end_start);
     declare
       -- We copy a large chunk of the zip stream's tail into a buffer.
       large_buffer: Byte_Buffer(0 .. Natural(Size(stream) - min_end_start));
@@ -264,36 +264,36 @@ package body Zip.Headers is
       x : ZS_Size_Type;
     begin
       BlockRead(stream, large_buffer);
-      if Size(stream) > 21 then
-        for i in reverse min_end_start .. Size(stream) - 21 loop
-          -- Yes, we must _search_ for the header...
-          -- because PKWARE put a variable-size comment _after_ it 8-(
-          ilb:= Integer(i - min_end_start);
-          if PK_signature(large_buffer(ilb .. ilb + 3), 5) then
-            Copy_and_check( large_buffer(ilb .. ilb + 21), the_end );
-            -- At this point, the buffer was successfully read, the_end is
-            -- is set with its standard contents.
-            --
-            --  This is the *real* position of the end-of-central-directory block, to begin with:
-            x:= i;
-            --  We subtract the *theoretical* position of the end-of-central-directory,
-            --  which should be smaller or equal than the real one - unless the archive is corrupted.
-            --  step by step, because type is modular.
-            x := x - 1;  --  i >= 1, so no dragons here.
-            exit when ZS_Index_Type(the_end.central_dir_offset) > x;  --  fuzzy, will trigger bad_end
-            x := x - ZS_Index_Type(the_end.central_dir_offset);
-            exit when ZS_Index_Type(the_end.central_dir_size) > x;  --  fuzzy, will trigger bad_end
-            x := x - ZS_Index_Type(the_end.central_dir_size);
-            --  Now, x is the difference : real - theoretical.
-            --  x > 0 if the archive was appended to another file (typically an executable
-            --  for self-extraction purposes).
-            --  x = 0 if this is a "pure" Zip archive.
-            the_end.offset_shifting:= x;
-            Set_Index(stream, i + 22);
-            return; -- the_end found and filled -> exit
-          end if;
-        end loop;
-      end if;
+      for i in reverse min_end_start .. Size(stream) - 21 loop
+        -- Yes, we must _search_ for the header...
+        -- because PKWARE put a variable-size comment _after_ it 8-(
+        ilb:= Integer(i - min_end_start);
+        if PK_signature(large_buffer(ilb .. ilb + 3), 5) then
+          Copy_and_check( large_buffer(ilb .. ilb + 21), the_end );
+          -- At this point, the buffer was successfully read, the_end is
+          -- is set with its standard contents.
+          --
+          --  This is the *real* position of the end-of-central-directory block, to begin with:
+          x:= i;
+          --  We subtract the *theoretical* (stored) position of the end-of-central-directory.
+          --  The theoretical position is equal to central_dir_offset + central_dir_size.
+          --  The theoretical position should be smaller or equal than the real position -
+          --  unless the archive is corrupted.
+          --  We do it step by step, because type is modular.
+          x := x - 1;  --  i >= 1, so no dragons here.
+          exit when ZS_Size_Type(the_end.central_dir_offset) > x;  --  fuzzy value, will trigger bad_end
+          x := x - ZS_Size_Type(the_end.central_dir_offset);
+          exit when ZS_Size_Type(the_end.central_dir_size) > x;  --  fuzzy value, will trigger bad_end
+          x := x - ZS_Size_Type(the_end.central_dir_size);
+          --  Now, x is the difference : real - theoretical.
+          --    x > 0  if the archive was appended to another file (typically an executable
+          --           for self-extraction purposes).
+          --    x = 0  if this is a "pure" Zip archive.
+          the_end.offset_shifting:= x;
+          Set_Index(stream, i + 22);
+          return; -- the_end found and filled -> exit
+        end if;
+      end loop;
       raise bad_end; -- Definitely no "end-of-central-directory" in this stream
     end;
   end Load;
