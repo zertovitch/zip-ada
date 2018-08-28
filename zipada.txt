@@ -12,9 +12,11 @@ file format. It supplies:
  - unconditional portability - within limits of compiler's provided
      integer types and target architecture capacity; see below a list
      of in-use platforms
- - input (archive to decompress or data to compress) can be any data stream
- - output (archive to build or data to extract) can be any data stream
- - types Zip_info and Zip_Create_info to handle archives quickly and easily 
+ - input archive to decompress can be any kind of indexed data stream
+ - output archive to build can be any kind of indexed data stream
+ - input data to compress can be any kind of data stream
+ - output data to extract can be any kind of data stream
+ - types Zip_info and Zip_Create_info are provided to handle archives quickly and easily 
  - cross format compatibility with the most various tools and file formats
      based on the Zip format: 7-zip, Info-Zip's Zip, WinZip, PKZip, Java's JARs,
      OpenDocument files, MS Office 2007+, Nokia themes, Google Chrome extensions,
