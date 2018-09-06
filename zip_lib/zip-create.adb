@@ -396,7 +396,7 @@ package body Zip.Create is
       ed.main_comment_length := 0;
       if Info.Last_entry > Integer(Unsigned_16'Last) then
         Ada.Exceptions.Raise_Exception
-          (Constraint_Error'Identity, "Too many entries - need ZIP64");
+          (Zip_Capacity_Exceeded'Identity, "Too many entries: more than 65535.");
       end if;
       if Info.Contains /= null then
         for e in 1..Info.Last_entry loop
