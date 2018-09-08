@@ -390,7 +390,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String:= "55 preview 1";
-  reference : constant String:= ">= 6-Sep-2018";
+  reference : constant String:= ">= 8-Sep-2018";
   web       : constant String:= "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -426,17 +426,20 @@ private
     user_code        : Integer;
   end record;
 
+  type Zip_archive_format_type is (Zip_32, Zip_64);  --  Supported so far: Zip_32.
+
   type p_String is access String;
 
   type Zip_info is record
-    loaded          : Boolean:= False;
-    case_sensitive  : Boolean;
-    zip_file_name   : p_String;        -- a file name...
-    zip_input_stream: Zip_Streams.Zipstream_Class_Access; -- ...or an input stream
-    -- ^ when not null, we use this and not zip_file_name
-    dir_binary_tree : p_Dir_node;
-    total_entries   : Natural;
-    zip_file_comment: p_String;
+    loaded             : Boolean:= False;
+    case_sensitive     : Boolean;
+    zip_file_name      : p_String;                           -- a file name...
+    zip_input_stream   : Zip_Streams.Zipstream_Class_Access; -- ...or an input stream
+    -- ^ when not null, we use this, and not zip_file_name
+    dir_binary_tree    : p_Dir_node;
+    total_entries      : Natural;
+    zip_file_comment   : p_String;
+    zip_archive_format : Zip_archive_format_type := Zip_32;
   end record;
 
   --  System.Word_Size: 13.3(8): A word is the largest amount of storage

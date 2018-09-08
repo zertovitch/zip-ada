@@ -145,7 +145,7 @@ package Zip.Create is
    procedure Finish (Info       : in out Zip_Create_info);
 
    --  The following is raised on cases when the Zip archive creation exceeds
-   --  the format's capacity: 4GB total size and 65535 entries.
+   --  the Zip_32 format's capacity: 4GB total size and 65535 entries.
    --  !! Work in progress.
 
    Zip_Capacity_Exceeded : exception;
@@ -168,14 +168,15 @@ private
    end record;
 
    type Zip_Create_info is record
-      Stream     : Zipstream_Class_Access;
-      Compress   : Zip.Compress.Compression_Method;
-      Contains   : Pdir_entries:= null;
-      --  'Contains' has unused room, to avoid reallocating each time:
-      Last_entry : Natural:= 0;
-      Duplicates : Duplicate_name_policy;
-      --  We set up a name dictionary just for avoiding duplicate entries:
-      dir        : p_Dir_node:= null;
+     Stream             : Zipstream_Class_Access;
+     Compress           : Zip.Compress.Compression_Method;
+     Contains           : Pdir_entries := null;
+     --  'Contains' has unused room, to avoid reallocating each time:
+     Last_entry         : Natural := 0;
+     Duplicates         : Duplicate_name_policy;
+     --  We set up a name dictionary just for avoiding duplicate entries:
+     dir                : p_Dir_node := null;
+     zip_archive_format : Zip_archive_format_type := Zip_32;
    end record;
 
 end Zip.Create;

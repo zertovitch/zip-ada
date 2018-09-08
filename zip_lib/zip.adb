@@ -314,13 +314,14 @@ package body Zip is
       end;
     end loop;
     Binary_tree_rebalancing.Rebalance(p);
-    info:= ( loaded           => True,
-             case_sensitive   => case_sensitive,
-             zip_file_name    => new String'("This is a stream, no direct file!"),
-             zip_input_stream => from'Unchecked_Access,
-             dir_binary_tree  => p,
-             total_entries    => Integer(the_end.total_entries),
-             zip_file_comment => main_comment
+    info:= ( loaded             => True,
+             case_sensitive     => case_sensitive,
+             zip_file_name      => new String'("This is a stream, no direct file!"),
+             zip_input_stream   => from'Unchecked_Access,
+             dir_binary_tree    => p,
+             total_entries      => Integer(the_end.total_entries),
+             zip_file_comment   => main_comment,
+             zip_archive_format => Zip_32
            );
   exception
     when Zip.Headers.bad_end =>

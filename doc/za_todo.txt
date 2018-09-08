@@ -1,3 +1,6 @@
+- Support the Zip_64 format - see ZIP64 in appnote.txt and
+     Zip_archive_format_type in zip.ads .
+
 - LZ77: add a 3rd procedure that sends a list of possible DL codes (BT4),
      letting LZMA.Encoding choose the most predicted-probable one.
      Alternatively (to avoid complicating the LZ77 interface), hash

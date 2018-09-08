@@ -394,9 +394,12 @@ package body Zip.Create is
       ed.total_entries := 0;
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
-      if Info.Last_entry > Integer(Unsigned_16'Last) then
+      if Info.zip_archive_format = Zip_32
+        and then Info.Last_entry > Integer (Unsigned_16'Last)
+      then
         Ada.Exceptions.Raise_Exception
-          (Zip_Capacity_Exceeded'Identity, "Too many entries: more than 65535.");
+          (Zip_Capacity_Exceeded'Identity,
+           "Too many entries (for Zip_32 archive format): more than 65535.");
       end if;
       if Info.Contains /= null then
         for e in 1..Info.Last_entry loop
