@@ -43,6 +43,8 @@
 --  Change log:
 --  ==========
 --
+--   8-Sep-2018: GdM: ZS_Size_Type is now 64-bit signed, enabling Zip.Create
+--                    to capture archive size overflows.
 --   5-Jul-2013: GdM: Added proper types for stream sizes and index
 --  20-Nov-2012: GdM: Added Is_Open method for File_Zipstream
 --  30-Oct-2012: GdM/NB: - Removed method profiles with 'access' as
@@ -67,8 +69,7 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Streams.Stream_IO;
 
 with Ada.Calendar, Interfaces;
-
-with System;
+use Interfaces;
 
 package Zip_Streams is
 
@@ -86,14 +87,8 @@ package Zip_Streams is
    type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with private;
    type Zipstream_Class_Access is access all Root_Zipstream_Type'Class;
 
-   --  13.3(8): A word is the largest amount of storage that can be
-   --  conveniently and efficiently manipulated by the hardware,
-   --  given the implementation's run-time model.
-   min_bits: constant:= Integer'Max(32, System.Word_Size);
-
-   type ZS_Size_Type is mod 2**min_bits;
-
-   subtype ZS_Index_Type is ZS_Size_Type range 1..ZS_Size_Type'Last;
+   subtype ZS_Size_Type is Integer_64 range 0 .. Integer_64'Last;
+   subtype ZS_Index_Type is ZS_Size_Type range 1 .. ZS_Size_Type'Last;
 
    --  Set the index on the stream
    procedure Set_Index (S : in out Root_Zipstream_Type;

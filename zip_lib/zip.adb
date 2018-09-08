@@ -179,7 +179,6 @@ package body Zip is
     duplicate_names : in     Duplicate_name_policy:= error_on_duplicate
   )
   is
-    use type Zip_Streams.ZS_Size_Type;
     procedure Insert(
       dico_name        : String; -- UPPER if case-insensitive search
       file_name        : String;

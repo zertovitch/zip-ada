@@ -25,8 +25,8 @@ procedure Zip_with_many_files is
   end Add_one_entry;
 
 begin
-  Create(archive, stream'Unchecked_Access, "Large.zip", Zip.Compress.Deflate_1);
-  for i in 1..65_535 loop
+  Create(archive, stream'Unchecked_Access, "many.zip", Zip.Compress.Deflate_1);
+  for i in 1 .. 65_535 loop
     Add_one_entry(
       "Entry #" & Integer'Image(i) & ".txt",
       Integer'Max(0, i / 100 - 10)  --  Obtain a certain number of incompressible entries.

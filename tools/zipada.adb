@@ -18,6 +18,7 @@ with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Interfaces;
 
 with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress, Zip.Create;          use Zip.Create;
@@ -57,6 +58,7 @@ procedure ZipAda is
   procedure Add_1_Stream(Stream : in out Root_Zipstream_Type'Class) is
     Compressed_Size: Zip.File_size_type;
     Final_Method   : Natural;
+    use Interfaces;
   begin
     Put("  Adding ");
     declare

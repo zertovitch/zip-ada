@@ -329,7 +329,6 @@ package body Zip_Streams is
          Seconds : Day_Duration := 0.0) return Time
       is
          year_2          : Integer:= Year;
-         use Interfaces;
          hours           : Unsigned_32;
          minutes         : Unsigned_32;
          seconds_only    : Unsigned_32;
@@ -353,7 +352,6 @@ package body Zip_Streams is
       end Time_Of;
 
       function ">"  (Left, Right : Time) return Boolean is
-        use Interfaces;
       begin
         return Unsigned_32(Left) > Unsigned_32(Right);
       end ">";
