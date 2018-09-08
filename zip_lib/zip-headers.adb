@@ -279,8 +279,10 @@ package body Zip.Headers is
           --  The theoretical position is equal to central_dir_offset + central_dir_size.
           --  The theoretical position should be smaller or equal than the real position -
           --  unless the archive is corrupted.
-          --  We do it step by step, because type is modular.
-          x := x - 1;  --  i >= 1, so no dragons here.
+          --  We do it step by step, because ZS_Size_Type was modular until rev. 644.
+          --  Now it's a signed 64 bits, but we don't want to change anything again...
+          --
+          x := x - 1;  --  i >= 1, so no dragons here. The "- 1" is for adapting from the 1-based Ada index. 
           exit when ZS_Size_Type(the_end.central_dir_offset) > x;  --  fuzzy value, will trigger bad_end
           x := x - ZS_Size_Type(the_end.central_dir_offset);
           exit when ZS_Size_Type(the_end.central_dir_size) > x;  --  fuzzy value, will trigger bad_end
