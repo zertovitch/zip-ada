@@ -16,7 +16,8 @@ project ZipAda_Test is
      "test_stream_performance.adb",
      "test_unz_streams.adb",
      "ziptest.adb", 
-     "zip_with_many_files.adb"
+     "zip_with_many_files.adb",
+     "zip_with_big_files.adb"
    );
 
 end ZipAda_Test;

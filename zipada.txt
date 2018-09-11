@@ -82,9 +82,10 @@ Contents
   - Find_Zip.adb         : tool for searching a string across an archive (contents + names)
   - ReZip.adb            : tool for recompressing Zip archives and make them smaller
   
-*  In the test subdirectory, there is
-  - ZipTest.adb          : test for Zip archive creation with various stream types
-  - Zip_with_many_files.adb
+*  In the test subdirectory, there is, among others:
+  - ZipTest.adb              : test for Zip archive creation with various stream types
+  - Zip_with_many_files.adb  : test archive with a large number of entries - and test limits
+  - Zip_with_big_files.adb   : test archive with large entries - and test limits
 
 *  In the extras subdirectory, there is
   - bunzip               : a standalone decompressor for BZip2 files (.bz2)
