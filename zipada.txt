@@ -73,7 +73,6 @@ Contents
   - Demo_UnZip.adb       : tiny demo for UnZip and UnZip.Streams
   - Demo_csv_into_zip.adb: demo showing how to produce many files directly
                              into a Zip file, with only 1 temp file
-  - Zip_with_many_files.adb
 
 * In the tools subdirectory, you have the following command-line tools
   using the Zip-Ada library:
@@ -85,6 +84,7 @@ Contents
   
 *  In the test subdirectory, there is
   - ZipTest.adb          : test for Zip archive creation with various stream types
+  - Zip_with_many_files.adb
 
 *  In the extras subdirectory, there is
   - bunzip               : a standalone decompressor for BZip2 files (.bz2)
@@ -102,12 +102,13 @@ Contents
   and remove the line with Ada_Directories_Extensions to get a totally portable
   tool using only Zip-Ada and Ada standard libraries.
 
-* To build the tests, simply "gprbuild" or "adabuild" them.
-  You can also start "make_za" for minimal effort with GNAT.
+* To build the tools, demos and tests, simply "gprbuild" or "adabuild" them.
+  You can also start "make_za.cmd" for minimal effort with GNAT on Windows.
 
-  There are also the following project files for building them
+  There are also the following project files for building the tools, demos and tests
   with various systems:
-  - ZipAda.gpr for GNAT's gprbuild or the GNAT Programming Studio
+  - ZipAda.gpr for GNAT's gprbuild or the GNAT Programming Studio (tools and demos only)
+  - ZipAda_Test.gpr for GNAT's gprbuild or the GNAT Programming Studio (tests only)
   - ZipAda_ObjectAda.prj for ObjectAda 9.2 and later (this is the
       project file for the ObjectAda's IDE)
 

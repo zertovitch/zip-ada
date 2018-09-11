@@ -28,28 +28,21 @@ project ZipAda is
          for Source_Dirs use ("zip_lib");
          for Main use ();
       when others =>
-         for Source_Dirs use (".", "zip_lib", "test", "extras", "tools", "demo");
+         for Source_Dirs use ("zip_lib", "test", "extras", "tools", "demo");
          for Main use (
-           "zipada.adb", "unzipada.adb",
-           "comp_zip.adb", "find_zip.adb",
-           "rezip.adb", "demo_csv_into_zip.adb", "demo_zip.adb",
-           "demo_unzip.adb", "test_unz_streams.adb",
-           "fuzzip.adb",
-           "test_chunk.adb", "ziptest.adb", "zip_with_many_files.adb",
-           "test_zip_info_timing.adb",
-           "test_stream_performance.adb",
-           "test_extract.adb", 
+           "zipada.adb", 
+           "unzipada.adb",
+           "comp_zip.adb", 
+           "find_zip.adb",
+           "rezip.adb", 
+           "demo_csv_into_zip.adb", 
+           "demo_zip.adb",
+           "demo_unzip.adb",
            --  Misc.
            "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
            "lz",       --  A simple LZ-Huffman coder/decoder
            "lzma_dec", --  LZMA decoder
-           "lzma_enc", --  LZMA encoder
-           "test_lz_scramble",  --  Test LZ_Scramble
-           "test_llhc",         --  Test for Length_limited_Huffman_code_lengths
-           "test_lz77.adb",     --  Test the LZ77 package
-           "lz77_stats.adb",    --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
-           "random_data.adb",   --  Produces n bytes of pseudo-random data
-           "several_sizes.adb"  --  Truncates a file into partial copies of several sizes
+           "lzma_enc"  --  LZMA encoder
          );
    end case;
 

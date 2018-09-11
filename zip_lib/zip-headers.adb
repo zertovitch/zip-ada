@@ -282,7 +282,7 @@ package body Zip.Headers is
           --  We do it step by step, because ZS_Size_Type was modular until rev. 644.
           --  Now it's a signed 64 bits, but we don't want to change anything again...
           --
-          x := x - 1;  --  i >= 1, so no dragons here. The "- 1" is for adapting from the 1-based Ada index. 
+          x := x - 1;  --  i >= 1, so no dragons here. The "- 1" is for adapting from the 1-based Ada index.
           exit when ZS_Size_Type(the_end.central_dir_offset) > x;  --  fuzzy value, will trigger bad_end
           x := x - ZS_Size_Type(the_end.central_dir_offset);
           exit when ZS_Size_Type(the_end.central_dir_size) > x;  --  fuzzy value, will trigger bad_end

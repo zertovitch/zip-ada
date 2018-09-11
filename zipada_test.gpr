@@ -1,0 +1,22 @@
+with "ZipAda";  --  Check zipada.gpr for details
+
+project ZipAda_Test is
+
+   for Main use (
+     "fuzzip.adb",
+     "lz77_stats.adb",     --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
+     "random_data.adb",    --  Produces n bytes of pseudo-random data
+     "several_sizes.adb",  --  Truncates a file into partial copies of several sizes
+     "test_chunk.adb", 
+     "test_extract.adb", 
+     "test_lz_scramble",  --  Test LZ_Scramble
+     "test_llhc",         --  Test for Length_limited_Huffman_code_lengths
+     "test_lz77.adb",     --  Test the LZ77 package
+     "test_zip_info_timing.adb",
+     "test_stream_performance.adb",
+     "test_unz_streams.adb",
+     "ziptest.adb", 
+     "zip_with_many_files.adb"
+   );
+
+end ZipAda_Test;
