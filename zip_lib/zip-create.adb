@@ -386,11 +386,24 @@ package body Zip.Create is
    procedure Finish (Info : in out Zip_Create_info) is
       ed : Zip.Headers.End_of_Central_Dir;
       procedure Dispose is new Ada.Unchecked_Deallocation (String, p_String);
+      current_index : ZS_Index_Type;
+      procedure Get_index_and_check_Zip_32_limit is
+      begin
+        current_index := Index (Info.Stream.all);
+        if Info.zip_archive_format = Zip_32
+          and then current_index > 4 * (1024 ** 3)
+        then
+          Ada.Exceptions.Raise_Exception
+            (Zip_Capacity_Exceeded'Identity,
+             "Zip file too large (for Zip_32 archive format): more than 4GB.");
+        end if;
+      end Get_index_and_check_Zip_32_limit;
    begin
       --
       --  2/ Almost done - write Central Directory:
       --
-      ed.central_dir_offset := Unsigned_32 (Index (Info.Stream.all)) - 1;
+      Get_index_and_check_Zip_32_limit;
+      ed.central_dir_offset := Unsigned_32 (current_index) - 1;
       ed.total_entries := 0;
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
@@ -402,7 +415,7 @@ package body Zip.Create is
            "Too many entries (for Zip_32 archive format): more than 65535.");
       end if;
       if Info.Contains /= null then
-        for e in 1..Info.Last_entry loop
+        for e in 1 .. Info.Last_entry loop
            ed.total_entries := ed.total_entries + 1;
            Zip.Headers.Write (Info.Stream.all, Info.Contains (e).head);
            String'Write(Info.Stream, Info.Contains (e).name.all);
@@ -412,6 +425,7 @@ package body Zip.Create is
                Zip.Headers.central_header_length +
                  Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
           Dispose(Info.Contains(e).name);
+          Get_index_and_check_Zip_32_limit;
         end loop;
         Dispose (Info.Contains);
       end if;
@@ -421,6 +435,7 @@ package body Zip.Create is
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;
       Zip.Headers.Write (Info.Stream.all, ed);
+      Get_index_and_check_Zip_32_limit;
       --
       -- If we have a real file (File_Zipstream or descendent), close the file too:
       --
