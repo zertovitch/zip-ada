@@ -29,7 +29,7 @@ with Zip;
 procedure ZipAda is
 
   T0, T1 : Ada.Calendar.Time;
-  seconds: Duration;
+  seconds_elapsed : Duration;
 
   procedure Blurb is
   begin
@@ -295,9 +295,9 @@ begin
   if Is_Created (Info) then
     Finish (Info);
     T1:= Clock;
-    seconds:= T1-T0;
+    seconds_elapsed:= T1-T0;
     Put("Time elapsed : ");
-    Put( Float( seconds ), 4, 2, 0 );
+    Put( Float( seconds_elapsed ), 4, 2, 0 );
     Put_Line( " sec");
   else
     Put_Line("Usage: zipada [options] archive[.zip] name(s)");

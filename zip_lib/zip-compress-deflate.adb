@@ -660,7 +660,7 @@ is
     type Emission_mode is (simulate, effective);
     --
     procedure Emit_data_compression_structures(mode: Emission_mode) is
-      procedure Emit_data_compression_atom(x: Natural; extra: U32:= 0; bits: Natural:= 0) is
+      procedure Emit_data_compression_atom(x: Natural; extra_code: U32:= 0; extra_bits: Natural:= 0) is
       --  x is a bit length (value in 0..15), or a RLE instruction
       begin
         case mode is
@@ -668,8 +668,8 @@ is
             truc_freq(x):= truc_freq(x) + 1;  --  +1 for x's histogram bar
           when effective =>
             Put_Huffman_code(truc(x));
-            if bits > 0 then
-              Put_code(extra, bits);
+            if extra_bits > 0 then
+              Put_code(extra_code, extra_bits);
             end if;
         end case;
       end Emit_data_compression_atom;

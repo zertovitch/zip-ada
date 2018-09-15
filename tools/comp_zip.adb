@@ -13,12 +13,12 @@ with Ada.Text_IO;                       use Ada.Text_IO;
 procedure Comp_Zip is
   z: array(1..2) of Zip.Zip_info;
 
-  function Try_with_zip(name: String) return String is
+  function Try_with_zip(zip_name: String) return String is
   begin
-    if Zip.Exists(name) then
-      return name;
+    if Zip.Exists(zip_name) then
+      return zip_name;
     else
-      return name & ".zip";
+      return zip_name & ".zip";
       -- Maybe the file doesn't exist, but we tried our best...
     end if;
   end Try_with_zip;

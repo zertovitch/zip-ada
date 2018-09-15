@@ -89,11 +89,11 @@ package body Zip is
       leaf_count: Integer;
       size : Integer:= size_given;
 
-      procedure Compression( root: p_Dir_node; count: Integer ) is
-        --  compress "count" spine nodes in the tree with pseudo-root "root^"
+      procedure Compression( root_compress: p_Dir_node; count: Integer ) is
+        --  compress "count" spine nodes in the tree with pseudo-root "root_compress^"
         scanner, child: p_Dir_node;
       begin
-        scanner := root;
+        scanner := root_compress;
         for i in 1..count loop
           child := scanner.right;
           scanner.right := child.right;
@@ -440,17 +440,17 @@ package body Zip is
 
   procedure Traverse_private( z: Zip_info ) is
 
-    procedure Traverse( p: p_Dir_node ) is
+    procedure Traverse_tree( p: p_Dir_node ) is
     begin
       if p /= null then
-        Traverse(p.left);
-        Action_private(p.all);
-        Traverse(p.right);
+        Traverse_tree (p.left);
+        Action_private (p.all);
+        Traverse_tree (p.right);
       end if;
-    end Traverse;
+    end Traverse_tree;
 
   begin
-    Traverse(z.dir_binary_tree);
+    Traverse_tree (z.dir_binary_tree);
   end Traverse_private;
 
   -----------------------
@@ -511,7 +511,7 @@ package body Zip is
   is
     sum_depth: Natural:= 0;
 
-    procedure Traverse( p: p_Dir_node; depth: Natural ) is
+    procedure Traverse_tree( p: p_Dir_node; depth: Natural ) is
     begin
       if p /= null then
         total:= total + 1;
@@ -519,15 +519,15 @@ package body Zip is
           max_depth:= depth;
         end if;
         sum_depth:= sum_depth + depth;
-        Traverse(p.left, depth + 1);
-        Traverse(p.right, depth + 1);
+        Traverse_tree (p.left, depth + 1);
+        Traverse_tree (p.right, depth + 1);
       end if;
-    end Traverse;
+    end Traverse_tree;
 
   begin
     total:= 0;
     max_depth:= 0;
-    Traverse(z.dir_binary_tree, 0);
+    Traverse_tree(z.dir_binary_tree, 0);
     if total = 0 then
       avg_depth:= 0.0;
     else

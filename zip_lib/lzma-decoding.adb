@@ -51,10 +51,10 @@ package body LZMA.Decoding is
     total_pos : Unsigned      := 0;
   end record;
 
-  procedure Create(o: in out Out_Window; dictionary_size: UInt32) is
+  procedure Create (o: in out Out_Window; new_dictionary_size: UInt32) is
   begin
-    o.buf  := new Byte_buffer(0..dictionary_size-1);
-    o.size := dictionary_size;
+    o.buf  := new Byte_buffer (0 .. new_dictionary_size - 1);
+    o.size := new_dictionary_size;
   end Create;
 
   type Range_Decoder is record
@@ -188,7 +188,7 @@ package body LZMA.Decoding is
       symbol       : Unsigned:= 1;
       lit_state    : Integer;
       probs_idx    : Integer;
-      bit          : Unsigned;
+      bit_nomatch  : Unsigned;
     begin
       if o.unpackSize = 0 and then unpack_size_def then
         Raise_Exception(
@@ -208,8 +208,8 @@ package body LZMA.Decoding is
       probs_idx:= 16#300# * lit_state;
       if state < 7 then
         loop
-          Decode_Bit(probs.lit(probs_idx + Integer(symbol)), bit);
-          symbol := (symbol + symbol) or bit;
+          Decode_Bit(probs.lit(probs_idx + Integer(symbol)), bit_nomatch);
+          symbol := (symbol + symbol) or bit_nomatch;
           exit when symbol >= 16#100#;
         end loop;
       else

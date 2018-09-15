@@ -334,7 +334,7 @@ package body LZMA.Encoding is
         offset             : Data_Bytes_Count
       ) return MProb;
       --
-      function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb;
+      function Repeat_Match(index_rm: Repeat_stack_range; length: Unsigned) return MProb;
       function Simple_Match(distance: UInt32; length: Unsigned) return MProb;
       --  Strict_DL_code is either a Simple_Match or a Repeat_Match.
       function Strict_DL_code (
@@ -533,10 +533,10 @@ package body LZMA.Encoding is
         return res;
       end Simulate_Length;
 
-      function Repeat_Match(index: Repeat_stack_range; length: Unsigned) return MProb is
+      function Repeat_Match(index_rm: Repeat_stack_range; length: Unsigned) return MProb is
         res: MProb:= Simulate_bit(probs.switch.rep(state), Rep_match_choice);
       begin
-        case index is
+        case index_rm is
           when 0 =>
             res:= res * Simulate_bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice)
                       * Simulate_bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
@@ -565,7 +565,7 @@ package body LZMA.Encoding is
           m: Unsigned := 1;
           bit: Unsigned;
         begin
-          for count in reverse 1 .. num_bits loop
+          for count_bits in reverse 1 .. num_bits loop
             bit:= Unsigned(symb) and 1;
             res:= res * Simulate_bit(prob(Integer(m) + prob'First), bit);
             m := m + m + bit;
@@ -857,7 +857,7 @@ package body LZMA.Encoding is
         m: Unsigned := 1;
         bit: Unsigned;
       begin
-        for count in reverse 1 .. num_bits loop
+        for count_bits in reverse 1 .. num_bits loop
           bit:= Unsigned(symb) and 1;
           Encode_Bit(prob(Integer(m) + prob'First), bit);
           m := m + m + bit;
@@ -919,11 +919,11 @@ package body LZMA.Encoding is
       rep_dist(0) := distance;
     end Write_Simple_Match;
 
-    procedure Write_Repeat_Match(index: Repeat_stack_range; length: Unsigned) is
+    procedure Write_Repeat_Match(index_rm: Repeat_stack_range; length: Unsigned) is
       aux: UInt32;
     begin
       Encode_Bit(probs.switch.rep(state), Rep_match_choice);
-      case index is
+      case index_rm is
         when 0 =>
           Encode_Bit(probs.switch.rep_g0(state), The_distance_is_rep0_choice);
           Encode_Bit(probs.switch.rep0_long(state, pos_state), The_length_is_not_1_choice);
@@ -940,8 +940,8 @@ package body LZMA.Encoding is
           Encode_Bit(probs.switch.rep_g2(state), The_distance_is_not_rep2_choice);
       end case;
       --  Roll the stack of recent distances up to the found item, which becomes first.
-      aux:= rep_dist(index);
-      for i in reverse 1..index loop
+      aux:= rep_dist(index_rm);
+      for i in reverse 1..index_rm loop
         rep_dist(i) := rep_dist(i-1);
       end loop;
       rep_dist(0):= aux;

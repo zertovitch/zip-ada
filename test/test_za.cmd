@@ -1,6 +1,12 @@
+copy /b ..\zipada.exe      .
+copy /b ..\comp_zip.exe    .
+copy /b ..\random_data.exe .
+
 @echo off
 echo.
-echo Testing the ZipAda tool with Comp_Zip
+echo  ==================================================
+echo       Testing the ZipAda tool with Comp_Zip
+echo  ==================================================
 echo.
 
 if exist test_za??.zip del test_za??.zip
@@ -8,9 +14,6 @@ if exist test_ifz?.zip del test_ifz?.zip
 if exist test_kzip.zip del test_kzip.zip
 if exist test_7z_?.zip del test_7z_?.zip
 if exist test_zopf.zip del test_zopf.zip
-
-copy /b ..\zipada.exe .
-copy /b ..\random_data.exe .
 
 rem Have a badly compressible file (random.bin), a bit more than 2**n because of rare repetitions
 if not exist rnd_1.bin for /l %%i in (0,10,100) do random_data %%i rnd_%%i.bin

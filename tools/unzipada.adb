@@ -50,7 +50,7 @@ procedure UnZipAda is
   z_options : UnZip.Option_set:= UnZip.no_option;
   quiet     : Boolean:= False;
   verbose   : Boolean:= False;
-  lower_case: Boolean:= False;
+  lower_case_match: Boolean:= False;
   comment   : Boolean:= False;
 
   fda:          Zip.Feedback_proc     := My_feedback'Access;
@@ -87,7 +87,7 @@ procedure UnZipAda is
   pragma Unreferenced (Name_encoding);
     fn1: String:= File_Name;
   begin
-    if lower_case then
+    if lower_case_match then
       fn1:= To_Lower(fn1);
     end if;
     return Add_extract_directory(fn1);
@@ -101,7 +101,7 @@ procedure UnZipAda is
    );
 
   T0, T1 : Time;
-  seconds: Duration;
+  seconds_elapsed : Duration;
 
   package IIO is new Integer_IO(Integer);
   package MIO is new Modular_IO(UnZip.File_size_type);
@@ -189,7 +189,7 @@ begin
           when 'c' =>
             z_options( case_sensitive_match ):= True;
           when 'l' =>
-            lower_case:= True;
+            lower_case_match:= True;
           when 'a' =>
             z_options( extract_as_text ):= True;
           when 's' =>
@@ -307,7 +307,7 @@ begin
     T1:= Clock;
   end;
 
-  seconds:= T1-T0;
+  seconds_elapsed:= T1-T0;
 
   if not (quiet or comment) then
     New_Line(2);
@@ -361,7 +361,7 @@ begin
     end if;
 
     Put("Time elapsed : ");
-    Put( Float( seconds ), 4, 2, 0 );
+    Put( Float( seconds_elapsed ), 4, 2, 0 );
     Put_Line( " sec");
 
     Put_Line("Archive successfully processed (or empty archive, or no archive!)");

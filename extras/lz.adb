@@ -78,7 +78,7 @@ procedure  LZ  is
   Action: T_Action;
 
   T0, T1 : Time;
-  Seconds: Duration;
+  seconds_elapsed: Duration;
 
 begin
   if Argument_Count/=3 then
@@ -125,7 +125,7 @@ begin
     end case;
     Put("%,");
   end if;
-  Seconds:= T1-T0;
-  FIO.Put( Float( Seconds ), 4, 2, 0 );
+  seconds_elapsed:= T1-T0;
+  FIO.Put( Float( seconds_elapsed ), 4, 2, 0 );
   Put_Line( " seconds.");
 end LZ;

@@ -81,19 +81,19 @@ is
   length_exceeds_length_limit       : exception;
   buggy_sorting                     : exception;
 
-  procedure Init_Node(weight, count: Count_Type; tail, node: Index_Type) is
+  procedure Init_Node(weight, count: Count_Type; tail, node_idx: Index_Type) is
   begin
-    pool(node).weight := weight;
-    pool(node).count  := count;
-    pool(node).tail   := tail;
-    pool(node).in_use := True;
+    pool(node_idx).weight := weight;
+    pool(node_idx).count  := count;
+    pool(node_idx).tail   := tail;
+    pool(node_idx).in_use := True;
   end Init_Node;
 
   --  Finds a free location in the memory pool. Performs garbage collection if needed.
   --  If use_lists = True, used to mark in-use nodes during garbage collection.
 
   function Get_Free_Node(use_lists: Boolean) return Index_Type is
-    node: Index_Type;
+    node_idx: Index_Type;
   begin
     loop
       if pool_next > pool'Last then
@@ -103,10 +103,10 @@ is
         end loop;
         if use_lists then
           for i in 0 .. Index_Type(max_bits * 2 - 1) loop
-            node:= lists(i / 2)(i mod 2);
-            while node /= null_index loop
-              pool(node).in_use := True;
-              node := pool(node).tail;
+            node_idx:= lists(i / 2)(i mod 2);
+            while node_idx /= null_index loop
+              pool(node_idx).in_use := True;
+              node_idx := pool(node_idx).tail;
             end loop;
           end loop;
         end if;
@@ -176,13 +176,13 @@ is
   --  chain: Chain to extract the bit length from (last chain from last list).
 
   procedure Extract_Bit_Lengths(chain: Index_Type) is
-    node: Index_Type:= chain;
+    node_idx: Index_Type:= chain;
   begin
-    while node /= null_index loop
-      for i in 0 .. pool(node).count - 1 loop
+    while node_idx /= null_index loop
+      for i in 0 .. pool(node_idx).count - 1 loop
         bit_lengths(leaves(i).symbol):= bit_lengths(leaves(i).symbol) + 1;
       end loop;
-      node := pool(node).tail;
+      node_idx := pool(node_idx).tail;
     end loop;
   end Extract_Bit_Lengths;
 
