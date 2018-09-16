@@ -9,9 +9,10 @@ project ZipAda_Test is
      "several_sizes.adb",  --  Truncates a file into partial copies of several sizes
      "test_chunk.adb", 
      "test_extract.adb", 
-     "test_lz_scramble",  --  Test LZ_Scramble
-     "test_llhc",         --  Test for Length_limited_Huffman_code_lengths
-     "test_lz77.adb",     --  Test the LZ77 package
+     "test_lz_scramble",             --  Test LZ_Scramble
+     "test_llhc",                    --  Test for Length_limited_Huffman_code_lengths
+     "test_lz77.adb",                --  Test the LZ77 package
+     "test_non_zip.adb",             --  Test compression raw schemes without Zip archive format
      "test_zip_info_timing.adb",
      "test_stream_performance.adb",
      "test_unz_streams.adb",

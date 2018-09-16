@@ -1101,7 +1101,6 @@ package body LZ77 is
       max_dist: constant Integer:= cyclicSize;
 
       package BT4_Algo is
-        function movePos return Integer;
         procedure skip(len: Natural);
         pragma Inline(skip);
         function getMatches return Matches_type;
