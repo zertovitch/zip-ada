@@ -1100,18 +1100,17 @@ package body LZ77 is
 
       max_dist: constant Integer:= cyclicSize;
 
-      package BT4 is
+      package BT4_Algo is
         function movePos return Integer;
-        procedure skip_update_tree(niceLenLimit: Integer; currentMatch: in out Integer);
         procedure skip(len: Natural);
         pragma Inline(skip);
         function getMatches return Matches_type;
-      end BT4;
+      end BT4_Algo;
 
       buf : p_Byte_array;
       tree : p_Int_array;
 
-      package body BT4 is
+      package body BT4_Algo is
 
         function movePos return Integer is
           avail : constant Integer:= movePos(requiredForFlushing => niceLen, requiredForFinishing => 4);
@@ -1351,7 +1350,7 @@ package body LZ77 is
         --      small default stack sizes on some compilers.
         tree:= new Int_array(0 .. cyclicSize * 2 - 1);
         tree.all:= (others => Null_position);
-      end BT4;
+      end BT4_Algo;
 
       --  Moves data from the end of the buffer to the beginning, discarding
       --  old data and making space for new input.
@@ -1383,7 +1382,7 @@ package body LZ77 is
            readPos := readPos - pendingSize;
            oldPendingSize := pendingSize;
            pendingSize := 0;
-           BT4.skip(oldPendingSize);
+           BT4_Algo.skip(oldPendingSize);
          end if;
        end processPendingBytes;
        --
@@ -1427,14 +1426,14 @@ package body LZ77 is
       function getMatches return Matches_type is
       begin
         readAhead:= readAhead + 1;
-        return BT4.getMatches;
+        return BT4_Algo.getMatches;
       end getMatches;
 
       procedure skip(len: Natural) is
       pragma Inline(skip);
       begin
         readAhead:= readAhead + len;
-        BT4.skip(len);
+        BT4_Algo.skip(len);
       end skip;
 
       --  Small stack of recent distances used for LZ.
