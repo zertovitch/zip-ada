@@ -66,5 +66,19 @@ package LZMA.Encoding is
   );
 
   --  (*) In PKWARE's Appnote (5.8.9), the use of an EOS marker is "highly recommended" for LZMA.
+  --
+  --  NB: the value of uncompressed_size_info actually determines two variants
+  --      of the LZMA header, which are *not* compatible with each other!
+  --
+  --      In .zip files, uncompressed_size_info = False.
+  --      This information is already available in Zip entry headers.
+  --      In .lzma files, uncompressed_size_info = True.
+  --
+  --      When uncompressed_size_info = True, this implementation sets
+  --      a special size value indicating that the size is unknown.
+  --      Reason: size is not known in advance and the header cannot be
+  --      rewritten when processing is done.
+  --
+  --      See also the has_size field of the LZMA_Hints record in LZMA.Decoding.
 
 end LZMA.Encoding;

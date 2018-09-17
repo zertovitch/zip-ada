@@ -54,6 +54,10 @@ package LZMA.Decoding is
 
   dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
 
+  --  The hints represent knowledge prior to decompressing a LZMA
+  --  stream. Notably, the LZMA header with has_size = True is *not*
+  --  compatible with the LZMA header with has_size = False.
+  --
   type LZMA_Hints is record
     has_size               : Boolean;           -- Is size is part of header data ?
     given_size             : Data_Bytes_Count;  -- If has_size = False, we use given_size.
@@ -68,6 +72,9 @@ package LZMA.Decoding is
   -------------------------------------------------------------------------------
 
   procedure Decompress(hints: LZMA_Hints);
+  --  The parameter uncompressed_size_info in LZMA.Encoding.Encode
+  --  must have the same value as hints.has_size (two incompatible LZMA
+  --  header variants). uncompressed_size_info = True for .lzma files.
 
   ------------------------------------------------------------------------
   -- Usage 2 : Object-oriented, with stored technical details as output --
@@ -76,15 +83,18 @@ package LZMA.Decoding is
   type LZMA_Decoder_Info is limited private;
   procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result);
 
-  -- The technical details:
+  --  The technical details:
   function Literal_context_bits(o: LZMA_Decoder_Info) return Natural;
   function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural;
   function Pos_bits(o: LZMA_Decoder_Info) return Natural;
 
   function Unpack_size_defined(o: LZMA_Decoder_Info) return Boolean;
-  function Unpack_size_as_defined(o: LZMA_Decoder_Info) return  Data_Bytes_Count;
+  function Unpack_size_as_defined(o: LZMA_Decoder_Info) return Data_Bytes_Count;
+  --  Sizes in bytes:
+  function Probability_model_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
   function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
   function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  --
   function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean;
 
   LZMA_Error: exception;

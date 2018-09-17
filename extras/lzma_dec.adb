@@ -75,12 +75,20 @@ begin
     ", lp=" & Natural'Image(Literal_pos_bits(lzma_decoder)) &
     ", pb=" & Natural'Image(Pos_bits(lzma_decoder))
   );
-  Put_Line("Dictionary size in properties =" & Unsigned_32'Image(Dictionary_size_in_properties(lzma_decoder)));
-  Put_Line("Dictionary size for decoding  =" & Unsigned_32'Image(Dictionary_size(lzma_decoder)));
+  Put_Line("Probability model size =" &
+    Unsigned_32'Image(Probability_model_size(lzma_decoder)) & " bytes"
+  );
+  Put_Line("Dictionary size in properties =" &
+    Unsigned_32'Image(Dictionary_size_in_properties(lzma_decoder)) & " bytes"
+  );
+  Put_Line("Dictionary size for decoding  =" &
+    Unsigned_32'Image(Dictionary_size(lzma_decoder)) & " bytes"
+  );
   New_Line;
 
   if Unpack_size_defined(lzma_decoder) then
-    Print_Data_Bytes_Count("Uncompressed size", Unpack_size_as_defined(lzma_decoder));
+    Print_Data_Bytes_Count("Uncompressed size as in data header",
+      Unpack_size_as_defined(lzma_decoder));
   else
     Put_Line("Uncompressed size not defined, end marker is expected.");
   end if;

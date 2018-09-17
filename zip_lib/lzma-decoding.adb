@@ -662,6 +662,12 @@ package body LZMA.Decoding is
     return o.unpackSize_as_defined;
   end Unpack_size_as_defined;
 
+  function Probability_model_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
+    probs: All_probabilities(last_lit_prob_index => 16#300# * 2 ** (o.lc + o.lp) - 1);
+  begin
+    return probs'Size / 8;
+  end Probability_model_size;
+
   function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
     return o.dictionary_size;

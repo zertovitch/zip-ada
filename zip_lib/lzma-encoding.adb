@@ -247,6 +247,9 @@ package body LZMA.Encoding is
 
     type LZMA_Params_Info is record
       unpack_size          : Data_Bytes_Count:= 0;
+      --  unpack_size_defined is always False in this implementation:
+      --  size is not known in advance and the header cannot be
+      --  rewritten when processing is done.
       unpack_size_defined  : Boolean := False;
       header_has_size      : Boolean := uncompressed_size_info;
       has_end_mark         : Boolean := end_marker;
@@ -1066,7 +1069,9 @@ package body LZMA.Encoding is
         Write_byte(Byte(dw mod 256));
         dw:= dw / 256;
       end loop;
-      --  8 bytes for unpacked size; optional => you need a "pre-header" with that option :-(
+      --  8 bytes for unpacked size.
+      --  This part of the header is optional => you need a
+      --  prior knowledge or a "pre-header" indicating its presence or not.
       if params.header_has_size then
         for i in 0 .. 7 loop
           if params.unpack_size_defined then
