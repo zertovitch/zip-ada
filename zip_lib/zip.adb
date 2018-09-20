@@ -90,16 +90,16 @@ package body Zip is
       size : Integer:= size_given;
 
       procedure Compression( root_compress: p_Dir_node; count: Integer ) is
-        --  compress "count" spine nodes in the tree with pseudo-root "root_compress^"
+        --  Compress "count" spine nodes in the tree with pseudo-root "root_compress^"
         scanner, child: p_Dir_node;
       begin
         scanner := root_compress;
-        for i in 1..count loop
-          child := scanner.right;
+        for counter in reverse 1 .. count loop
+          child         := scanner.right;
           scanner.right := child.right;
-          scanner := scanner.right;
-          child.right := scanner.left;
-          scanner.left := child;
+          scanner       := scanner.right;
+          child.right   := scanner.left;
+          scanner.left  := child;
         end loop;
       end Compression;
 

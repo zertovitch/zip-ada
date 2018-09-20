@@ -2,7 +2,6 @@
 --  File:            UnZipAda.adb
 --  Description:     A minimal standalone command-line unzipping tool
 --                     using the Zip-Ada library.
---  Date/version:    15-Feb-2012; 18-Jun-2009; ... ; 1-Dec-1999
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -47,11 +46,11 @@ procedure UnZipAda is
 
   use UnZip;
 
-  z_options : UnZip.Option_set:= UnZip.no_option;
-  quiet     : Boolean:= False;
-  verbose   : Boolean:= False;
-  lower_case_match: Boolean:= False;
-  comment   : Boolean:= False;
+  z_options        : UnZip.Option_set := UnZip.no_option;
+  quiet            : Boolean := False;
+  verbose          : Boolean := False;
+  lower_case_match : Boolean := False;
+  comment          : Boolean := False;
 
   fda:          Zip.Feedback_proc     := My_feedback'Access;
   rca:          Resolve_conflict_proc := My_resolve_conflict'Access;
