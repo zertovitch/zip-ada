@@ -31,6 +31,7 @@
 -- NB: this is the MIT License, as found 21-Aug-2016 on the site
 -- http://www.opensource.org/licenses/mit-license.php
 
+with Ada.Direct_IO;  --  Only used for the type Data_Bytes_Count below.
 with Interfaces;
 with System;
 
@@ -50,9 +51,16 @@ package LZMA is
   --  Position mod 2**bits is used in various places.
   subtype Position_bits_range         is Integer range 0..4;
 
-  Default_dictionary_size : constant := 2 ** 15;
+  Default_dictionary_size : constant := 2 ** 15;  --  32 KB, like Deflate.
 
   subtype Byte is Interfaces.Unsigned_8;
+
+  --  Ada.Direct_IO is only there for the Data_Bytes_Count type.
+  --  In case you want to avoid reference to Ada.Direct_IO,
+  --  you can customize the definition of Data_Bytes_Count, provided
+  --  it has enough capacity for counting bytes in the streams involved.
+  package BIO is new Ada.Direct_IO (Byte);
+  subtype Data_Bytes_Count is BIO.Count;
 
 private
 

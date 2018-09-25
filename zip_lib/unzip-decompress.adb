@@ -1873,7 +1873,7 @@ package body UnZip.Decompress is
         end if;
         My_LZMA_Decoding.Decompress(
           (has_size               => False,
-           given_size             => My_LZMA_Decoding.Data_Bytes_Count(UnZ_Glob.uncompsize),
+           given_size             => LZMA.Data_Bytes_Count (UnZ_Glob.uncompsize),
            marker_expected        => explode_slide_8KB_LZMA_EOS,
            fail_on_bad_range_code => True)
         );

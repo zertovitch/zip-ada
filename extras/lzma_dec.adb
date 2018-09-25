@@ -9,7 +9,7 @@ with Interfaces;                        use Interfaces;
 
 procedure LZMA_Dec is
 
-  subtype Byte is Unsigned_8;
+  use LZMA;
 
   f_in, f_out: Ada.Streams.Stream_IO.File_Type;
 

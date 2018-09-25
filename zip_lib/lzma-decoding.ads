@@ -34,8 +34,6 @@
 -- NB: this is the MIT License, as found on the site
 -- http://www.opensource.org/licenses/mit-license.php
 
-with Ada.Direct_IO;
-
 generic
   --  Input:
   with function Read_Byte return Byte;
@@ -48,9 +46,6 @@ package LZMA.Decoding is
     LZMA_finished_with_marker,
     LZMA_finished_without_marker
   );
-
-  package BIO is new Ada.Direct_IO(Byte); -- BIO is only there for the Count type
-  subtype Data_Bytes_Count is BIO.Count;
 
   dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
 

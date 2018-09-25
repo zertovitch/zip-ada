@@ -5,13 +5,8 @@ with LZMA.Encoding;
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
-with Interfaces;                        use Interfaces;
 
 procedure LZMA_Enc is
-
-  subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
-
-  subtype Byte is Unsigned_8;
 
   use LZMA, LZMA.Encoding;
 

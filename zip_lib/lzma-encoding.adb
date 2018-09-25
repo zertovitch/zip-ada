@@ -50,10 +50,11 @@
 
 with LZ77;
 
-with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Ada.Unchecked_Deallocation;
 
 package body LZMA.Encoding is
+
+  use type Data_Bytes_Count;
 
   procedure Encode(
     level                  : Compression_level           := Level_1;
@@ -241,8 +242,6 @@ package body LZMA.Encoding is
     --  The LZMA "machine": here the LZ codes are processed  --
     --  and sent to the above bit encoder in a smart way.    --
     -----------------------------------------------------------
-
-    subtype Data_Bytes_Count is Ada.Streams.Stream_IO.Count;
 
     type LZMA_Params_Info is record
       unpack_size          : Data_Bytes_Count:= 0;
