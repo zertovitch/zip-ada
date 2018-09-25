@@ -221,6 +221,9 @@ private
 
   subtype Match_length_range is Integer range Min_match_length .. Max_match_length;
 
+  --  Fake distance, used as an end-of-stream marker.
+  end_of_stream_magic_distance : constant := 16#FFFF_FFFF#;
+
   --------------------------------------------------
   --  Binary values of various decision switches  --
   --------------------------------------------------

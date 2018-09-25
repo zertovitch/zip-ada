@@ -444,7 +444,7 @@ package body LZMA.Decoding is
         Decode_Length(probs.len);
         state := Update_State_Match(state);
         Decode_Distance(dist => rep0);
-        if rep0 = 16#FFFF_FFFF# then
+        if rep0 = end_of_stream_magic_distance then
           if Is_Finished_OK then
             return End_Of_Stream;
           else

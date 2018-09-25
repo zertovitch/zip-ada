@@ -1094,8 +1094,11 @@ package body LZMA.Encoding is
     end if;
     if params.has_end_mark then
       --  The end-of-stream marker is a fake "Simple Match" with a special distance.
-      Encode_Bit(probs.switch.match(state, pos_state), DL_code_choice);
-      Write_Simple_Match(distance => 16#FFFF_FFFF#, length => Min_match_length);
+      Encode_Bit (probs.switch.match(state, pos_state), DL_code_choice);
+      Write_Simple_Match (
+        distance => end_of_stream_magic_distance,
+        length   => Min_match_length
+      );
     end if;
     Flush_range_encoder;
     Dispose(Text_Buf);
