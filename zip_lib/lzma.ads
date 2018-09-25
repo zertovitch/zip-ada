@@ -52,6 +52,8 @@ package LZMA is
 
   Default_dictionary_size : constant := 2 ** 15;
 
+  subtype Byte is Interfaces.Unsigned_8;
+
 private
 
   use Interfaces;
@@ -59,7 +61,6 @@ private
   --  These integer types are defined in the LZMA specification
   --  (DRAFT version, 2015-06-14, by Igor Pavlov)
 
-  subtype Byte is Unsigned_8;
   subtype UInt16 is Unsigned_16;
   subtype UInt32 is Unsigned_32;
   type Unsigned is mod 2 ** System.Word_Size;

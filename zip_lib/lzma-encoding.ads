@@ -32,11 +32,7 @@
 -- NB: this is the MIT License, as found on the site
 -- http://www.opensource.org/licenses/mit-license.php
 
-with Interfaces;
-
 package LZMA.Encoding is
-
-  subtype Byte is Interfaces.Unsigned_8;
 
   --  Low level: faster but weaker compression
   --  High level: slower but stronger compression
@@ -50,10 +46,10 @@ package LZMA.Encoding is
 
   generic
     --  Input of data:
-    with function  Read_byte return Byte;
-    with function  More_bytes return Boolean;
+    with function  Read_Byte return Byte;
+    with function  More_Bytes return Boolean;
     --  Output of LZMA-compressed data:
-    with procedure Write_byte (b: Byte);
+    with procedure Write_Byte (b: Byte);
     --
   procedure Encode(
     level                  : Compression_level           := Level_1;

@@ -52,7 +52,6 @@ with LZ77;
 
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Ada.Unchecked_Deallocation;
-with Interfaces;                        use Interfaces;
 
 package body LZMA.Encoding is
 
@@ -98,7 +97,7 @@ package body LZMA.Encoding is
         temp:= range_enc.cache;
         lb_bits_33_40:= Byte(lb_top32 and 16#FF#);
         loop
-          Write_byte(temp + lb_bits_33_40);
+          Write_Byte(temp + lb_bits_33_40);
           temp:= 16#FF#;
           range_enc.cache_size:= range_enc.cache_size - 1;
           exit when range_enc.cache_size = 0;
@@ -1053,8 +1052,8 @@ package body LZMA.Encoding is
           Look_Ahead         => Max_length(level),
           Threshold          => Min_length(level) - 1,
           Method             => LZ77_choice(level),
-          Read_byte          => Read_byte,
-          More_bytes         => More_bytes,
+          Read_byte          => Read_Byte,
+          More_bytes         => More_Bytes,
           Write_literal      => LZ77_emits_literal_byte,
           Write_DL_code      => LZ77_emits_DL_code
         );
@@ -1064,9 +1063,9 @@ package body LZMA.Encoding is
       uw: Data_Bytes_Count:= params.unpack_size;
     begin
       --  5-byte header
-      Write_byte(Byte(params.lc + 9 * params.lp + 9 * 5 * params.pb));
+      Write_Byte(Byte(params.lc + 9 * params.lp + 9 * 5 * params.pb));
       for i in 0 .. 3 loop
-        Write_byte(Byte(dw mod 256));
+        Write_Byte(Byte(dw mod 256));
         dw:= dw / 256;
       end loop;
       --  8 bytes for unpacked size.
@@ -1075,10 +1074,10 @@ package body LZMA.Encoding is
       if params.header_has_size then
         for i in 0 .. 7 loop
           if params.unpack_size_defined then
-            Write_byte(Byte(uw mod 256));
+            Write_Byte(Byte(uw mod 256));
             uw:= uw / 256;
           else
-            Write_byte(16#FF#);
+            Write_Byte(16#FF#);
           end if;
         end loop;
       end if;
@@ -1087,8 +1086,9 @@ package body LZMA.Encoding is
   begin
     Write_LZMA_header;
     if level = Level_0 then
-      while More_bytes loop
-        LZ77_emits_literal_byte(Read_byte);
+      --  No LZ77 compression at all, we just send literals (plain bytes).
+      while More_Bytes loop
+        LZ77_emits_literal_byte(Read_Byte);
       end loop;
     else
       My_LZ77;

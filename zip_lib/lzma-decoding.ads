@@ -34,13 +34,13 @@
 -- NB: this is the MIT License, as found on the site
 -- http://www.opensource.org/licenses/mit-license.php
 
-with Ada.Direct_IO, Interfaces;
+with Ada.Direct_IO;
 
 generic
-  -- Input:
-  with function Read_Byte return Interfaces.Unsigned_8;
-  -- Output:
-  with procedure Write_Byte(b: Interfaces.Unsigned_8);
+  --  Input:
+  with function Read_Byte return Byte;
+  --  Output:
+  with procedure Write_Byte (b: Byte);
 
 package LZMA.Decoding is
 
@@ -49,7 +49,7 @@ package LZMA.Decoding is
     LZMA_finished_without_marker
   );
 
-  package BIO is new Ada.Direct_IO(Interfaces.Unsigned_8); -- BIO is only there for the Count type
+  package BIO is new Ada.Direct_IO(Byte); -- BIO is only there for the Count type
   subtype Data_Bytes_Count is BIO.Count;
 
   dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
