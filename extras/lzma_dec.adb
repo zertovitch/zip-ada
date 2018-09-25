@@ -45,7 +45,7 @@ procedure LZMA_Dec is
   lzma_decoder: LZMA_Decoder_Info;
   res: LZMA_Result;
 
-  use type BIO.Count;
+  use type Data_Bytes_Count;
 
   default_hints: constant LZMA_Hints:=
     ( has_size               => True,

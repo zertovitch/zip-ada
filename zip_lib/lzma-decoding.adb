@@ -110,8 +110,7 @@ package body LZMA.Decoding is
     literal_pos_mask: constant UInt32:= 2 ** o.lp - 1;
     lc: constant Literal_context_bits_range:= o.lc;
     --
-    use type BIO.Count;
-    Marker_exit: exception;
+    use type Data_Bytes_Count;
     out_win : Out_Window;
     --  Local range decoder
     range_dec: Range_Decoder;
@@ -257,7 +256,9 @@ package body LZMA.Decoding is
       return range_dec.code = 0;
     end Is_Finished_OK;
 
-    procedure Process_Distance_and_Length is
+    type DL_Return_Code is (Normal, End_Of_Stream);
+
+    function Process_Distance_and_Length return DL_Return_Code is
     pragma Inline(Process_Distance_and_Length);
       --
       procedure Bit_Tree_Decode(
@@ -445,7 +446,7 @@ package body LZMA.Decoding is
         Decode_Distance(dist => rep0);
         if rep0 = 16#FFFF_FFFF# then
           if Is_Finished_OK then
-            raise Marker_exit;
+            return End_Of_Stream;
           else
             Raise_Exception(
               LZMA_Error'Identity,
@@ -486,7 +487,7 @@ package body LZMA.Decoding is
             state := Update_State_ShortRep(state);
             Put_Byte(Get_Byte(dist => rep0 + 1));
             o.unpackSize:= o.unpackSize - 1;
-            return;  -- GdM: this way, we go to the next iteration (C++: continue)
+            return Normal;  -- GdM: this way, we go to the next iteration (C++: continue)
           end if;
         else
           Decode_Bit(probs.switch.rep_g1(state), bit_d);
@@ -523,6 +524,7 @@ package body LZMA.Decoding is
           "Decoded data will exceed expected data size (in Process_Distance_and_Length, #3)"
         );
       end if;
+      return Normal;
     end Process_Distance_and_Length;
 
     bit_choice: Unsigned;
@@ -551,23 +553,27 @@ package body LZMA.Decoding is
       end if;
       pos_state := Pos_state_range(UInt32(out_win.total_pos) and pos_bits_mask);
       Decode_Bit(probs.switch.match(state, pos_state), bit_choice);
-      -- LZ decoding happens here: either we have a new literal in 1 byte, or we copy past data.
+      --  LZ decoding happens here: either we have a new literal
+      --  in 1 byte, or we copy a slice of past data.
       if bit_choice = Literal_choice then
         Process_Literal;
       else
-        Process_Distance_and_Length;
+        case Process_Distance_and_Length is
+          when Normal =>
+            null;
+          when End_Of_Stream =>
+            res:= LZMA_finished_with_marker;
+            Finalize;
+            return;
+        end case;
       end if;
     end loop;
-  exception
-    when Marker_exit =>
-      res:= LZMA_finished_with_marker;
-      Finalize;
   end Decode_Contents;
 
   procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints) is
     header: Byte_buffer(0..12);
     b: Byte;
-    use type BIO.Count;
+    use type Data_Bytes_Count;
     last_bit: Natural;
   begin
     o.unpackSize := 0;
