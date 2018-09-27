@@ -170,6 +170,11 @@ package body Zip.Create is
      Add_Stream(Info, Stream, null, Password, Compressed_Size, Final_Method);
    end Add_Stream;
 
+   four_gb : constant := 4 * (1024 ** 3);
+
+   Zip_32_exceeded_message : constant String :=
+     "Zip file too large (for Zip_32 archive format): more than 4GB.";
+
    procedure Add_Stream (Info           : in out Zip_Create_info;
                          Stream         : in out Root_Zipstream_Type'Class;
                          Feedback       : in     Feedback_proc;
@@ -249,6 +254,13 @@ package body Zip.Create is
           shi.bit_flag := shi.bit_flag or LZMA_EOS_Flag_Bit;
         end if;
         mem2 := Index (Info.Stream.all);
+        if Info.zip_archive_format = Zip_32
+          and then mem2 > four_gb
+        then
+          Ada.Exceptions.Raise_Exception
+            (Zip_Capacity_Exceeded'Identity,
+             Zip_32_exceeded_message);
+        end if;
         --  Go back to the local header to rewrite it with complete informations
         --  known after the compression: CRC value, compressed size, actual compression format.
         Set_Index (Info.Stream.all, mem1);
@@ -391,11 +403,11 @@ package body Zip.Create is
       begin
         current_index := Index (Info.Stream.all);
         if Info.zip_archive_format = Zip_32
-          and then current_index > 4 * (1024 ** 3)
+          and then current_index > four_gb
         then
           Ada.Exceptions.Raise_Exception
             (Zip_Capacity_Exceeded'Identity,
-             "Zip file too large (for Zip_32 archive format): more than 4GB.");
+             Zip_32_exceeded_message);
         end if;
       end Get_index_and_check_Zip_32_limit;
    begin

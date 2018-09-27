@@ -21,4 +21,9 @@ project ZipAda_Test is
      "zip_with_big_files.adb"
    );
 
+   package Builder  renames ZipAda.Builder;
+   package Compiler renames ZipAda.Compiler;
+   package Binder   renames ZipAda.Binder;
+   package Linker   renames ZipAda.Linker;
+   
 end ZipAda_Test;
