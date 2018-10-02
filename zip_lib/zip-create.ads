@@ -145,8 +145,7 @@ package Zip.Create is
    procedure Finish (Info       : in out Zip_Create_info);
 
    --  The following is raised on cases when the Zip archive creation exceeds
-   --  the Zip_32 format's capacity: 4GB total size and 65535 entries.
-   --  !! Work in progress.
+   --  the Zip_32 format's capacity: 4GB total size, 65535 entries.
 
    Zip_Capacity_Exceeded : exception;
 

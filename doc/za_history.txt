@@ -4,6 +4,8 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 * Changes in '55':
   - Zip_Streams: ZS_Size_Type is now 64-bit signed, enabling Zip.Create
       to capture archive size overflows.
+  - Zip.Create raises Zip_Capacity_Exceeded when archive creation exceeds
+      the Zip_32 format's capacity: 4GB total size, 65,535 entries.
 
 * Changes in '54', 28-Jun-2018:
   - Zip.Compress.Deflate: use of L1_tweaked measure; adjusted
