@@ -9,7 +9,7 @@
 --
 -- Library for manipulating archive files in the Zip format
 --
--- Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
+-- Pure Ada 2005+ code, 100% portable: OS-, CPU- and compiler- independent.
 --
 -- Version / date / download info: see the version, reference, web strings
 --   defined at the end of the public part of this package.
@@ -42,6 +42,10 @@
 
 with Zip_Streams;
 with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO;
+with Ada.Containers.Hashed_Maps;
+with Ada.Containers.Vectors;
+with Ada.Strings.Unbounded.Hash;
+
 with Interfaces;
 with System;
 
@@ -91,8 +95,9 @@ package Zip is
   --  Issues: archive stream is not necessarily a *file*; the naming
   --  ("Error") didn't clarify that it covered cases where the data
   --  is corrupted, which is different than an usual I/O error.
-  Zip_file_Error: exception renames Archive_corrupted;
-  pragma Obsolescent(Zip_file_Error);
+
+  --  Zip_file_Error: exception renames Archive_corrupted;   --   Now really obsolete.
+  --  pragma Obsolescent(Zip_file_Error);                    --   Now really obsolete.
 
   function Is_loaded( info: in Zip_info ) return Boolean;
 
@@ -194,17 +199,26 @@ package Zip is
       name_encoding    : Zip_name_encoding;
       read_only        : Boolean;
       encrypted_2_x    : Boolean; -- PKZip 2.x encryption
-      user_code        : in out Integer
+      user_code        : Integer
     );
   procedure Traverse_verbose( z: Zip_info );
 
-  -- Academic: see how well the name tree is balanced
-  procedure Tree_stat(
-    z        : in     Zip_info;
-    total    :    out Natural;
-    max_depth:    out Natural;
-    avg_depth:    out Float
-  );
+  -- Same as Traverse_verbose, but Action allows to alter the user code.
+  generic
+    with procedure Action(
+      name             : String; -- 'name' is compressed entry's name
+      file_index       : Zip_Streams.ZS_Index_Type;
+      comp_size        : File_size_type;
+      uncomp_size      : File_size_type;
+      crc_32           : Interfaces.Unsigned_32;
+      date_time        : Time;
+      method           : PKZip_method;
+      name_encoding    : Zip_name_encoding;
+      read_only        : Boolean;
+      encrypted_2_x    : Boolean; -- PKZip 2.x encryption
+      user_code        : in out Integer
+    );
+  procedure Traverse_verbose_altering( z: in out Zip_info );
 
   --------------------------------------------------------------------------
   -- Offsets - various procedures giving 1-based indexes to local headers --
@@ -269,9 +283,9 @@ package Zip is
   -- archive comparison, archive update, recompression,...
 
   procedure Set_user_code(
-    info           : in Zip_info;
-    name           : in String;
-    code           : in Integer
+    info           : in out Zip_info;
+    name           : in     String;
+    code           : in     Integer
   );
 
   function User_code(
@@ -389,8 +403,8 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String:= "55 preview 1";
-  reference : constant String:= ">= 16-Sep-2018";
+  version   : constant String:= "55 preview 2";
+  reference : constant String:= ">= 08-Oct-2018";
   web       : constant String:= "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -399,21 +413,12 @@ package Zip is
   ---------------------
 
 private
-  -- Zip_info, 23.VI.1999.
 
-  -- The PKZIP central directory is coded here as a binary tree
-  -- to allow a fast retrieval of the searched offset in zip file.
-  -- E.g. for a 1000-file archive, the offset will be found in less
-  -- than 11 moves: 2**10=1024 (balanced case), without any read
-  -- in the archive.
+  use Ada.Strings.Unbounded;
 
-  type Dir_node;
-  type p_Dir_node is access Dir_node;
-
-  type Dir_node(name_len: Natural) is record
-    left, right      : p_Dir_node;
-    dico_name        : String(1..name_len); -- UPPER if case-insensitive search
-    file_name        : String(1..name_len);
+  type Dir_node is record
+    dico_name        : Unbounded_String; -- UPPER if case-insensitive search
+    file_name        : Unbounded_String;
     file_index       : Zip_Streams.ZS_Index_Type;
     comp_size        : File_size_type;
     uncomp_size      : File_size_type;
@@ -428,17 +433,23 @@ private
 
   type Zip_archive_format_type is (Zip_32, Zip_64);  --  Supported so far: Zip_32.
 
-  type p_String is access String;
+  package Dir_node_vectors is new Ada.Containers.Vectors (Positive, Dir_node);
+  package Dir_node_mapping is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Ada.Strings.Unbounded.Unbounded_String,
+      Element_Type    => Positive,  --  Index in the directory vector
+      Hash            => Ada.Strings.Unbounded.Hash,
+      Equivalent_Keys => Ada.Strings.Unbounded."=");
 
   type Zip_info is record
     loaded             : Boolean:= False;
     case_sensitive     : Boolean;
-    zip_file_name      : p_String;                           -- a file name...
+    zip_file_name      : Unbounded_String;                   -- a file name...
     zip_input_stream   : Zip_Streams.Zipstream_Class_Access; -- ...or an input stream
     -- ^ when not null, we use this, and not zip_file_name
-    dir_binary_tree    : p_Dir_node;
+    directory          : Dir_node_vectors.Vector;
+    directory_map      : Dir_node_mapping.Map;
     total_entries      : Natural;
-    zip_file_comment   : p_String;
+    zip_file_comment   : Unbounded_String;
     zip_archive_format : Zip_archive_format_type := Zip_32;
   end record;
 

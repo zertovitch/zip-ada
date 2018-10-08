@@ -10,7 +10,6 @@ with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
-with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Interfaces;                        use Interfaces;
 
 with Ada.Directories;  --  Ada 2005
@@ -48,7 +47,6 @@ procedure UnZipAda is
 
   z_options        : UnZip.Option_set := UnZip.no_option;
   quiet            : Boolean := False;
-  verbose          : Boolean := False;
   lower_case_match : Boolean := False;
   comment          : Boolean := False;
 
@@ -128,28 +126,7 @@ procedure UnZipAda is
     Put_Line("          -z     : display .zip archive comment only");
     Put_Line("          -s pwd : define a password (e.g. ""pwd"")");
     Put_Line("          -q     : quiet mode");
-    Put_Line("          -v     : verbose, technical mode");
   end Help;
-
-  procedure Show_tree_stats(name: String) is
-    zi: Zip.Zip_info;
-    total    : Natural;
-    max_depth: Natural;
-    avg_depth: Float;
-  begin
-    Zip.Load( zi, name );
-    Zip.Tree_stat(zi, total, max_depth, avg_depth);
-    Zip.Delete( zi );
-    New_Line(2);
-    Put("Dictionary tree: entries=");
-    IIO.Put(total,0);
-    Put(" as log_2:");
-    Put(Log(Float(total)) / Log(2.0), 0, 1, 0);
-    Put("; max depth=");
-    IIO.Put(max_depth,0);
-    Put("; avg depth=");
-    Put(avg_depth, 0, 2, 0);
-  end Show_tree_stats;
 
   zi: Zip.Zip_info;
 
@@ -205,8 +182,6 @@ begin
             last_option:= i+1;
           when 'q' =>
             quiet:= True;
-          when 'v' =>
-            verbose:= True;
           when 'z' =>
             comment:= True;
           when others  =>
@@ -299,9 +274,6 @@ begin
         );
       end loop;
       Zip.Delete( zi );
-    end if;
-    if verbose then
-      Show_tree_stats(Archive);
     end if;
     T1:= Clock;
   end;

@@ -52,7 +52,6 @@
 --   4-Feb-2009: GdM: Added procedure Add_File
 --
 
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Zip.Headers; use Zip.Headers;
 with Zip.Compress; use Zip.Compress;
 with Zip_Streams; use Zip_Streams;
@@ -121,6 +120,8 @@ package Zip.Create is
                          Creation_time     : Zip.Time:= default_time
    );
 
+   use Ada.Strings.Unbounded;
+
    procedure Add_String (Info              : in out Zip_Create_info;
                          Contents          : Unbounded_String;
                          Name_in_archive   : String;
@@ -150,6 +151,8 @@ package Zip.Create is
    Zip_Capacity_Exceeded : exception;
 
 private
+
+   type p_String is access String;
 
    type Dir_entry is record
       head : Zip.Headers.Central_File_Header;

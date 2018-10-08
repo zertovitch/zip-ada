@@ -8,6 +8,7 @@
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Interfaces;                        use Interfaces;
 
 with Zip;
 with UnZip.Streams;                     use UnZip.Streams;
@@ -23,13 +24,13 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
   just_a_directory,
   missing_2_in_1,
   total_errors: Natural:= 0;
-  total_bytes: Long_Long_Integer:= 0;
+  total_bytes: Integer_64:= 0;
 
   procedure Compare_1_file( name: String ) is
     f: array(1..2) of Zipped_File_Type;
     s: array(1..2) of Stream_Access;
     c: array(1..2) of Character;
-    p: Long_Long_Integer:= 1;
+    p: Integer_64:= 1;
 
     function CutName(n:String; l:Natural) return String is
       dots: constant String:= "...";
@@ -85,7 +86,7 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
       if End_Of_File(f(2)) then
         if quiet = 0 then
           Put_Line("   # Shorter in [" & Zip.Zip_name(z(2)) & "] at position" &
-                   Long_Long_Integer'Image(p) );
+                   Integer_64'Image(p) );
         end if;
         Close(f(1));
         Close(f(2));
@@ -98,7 +99,7 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
       end loop;
       if c(1)/=c(2) then
         if quiet = 0 then
-          Put_Line("   # Difference at position" & Long_Long_Integer'Image(p) );
+          Put_Line("   # Difference at position" & Integer_64'Image(p) );
         end if;
         Close(f(1));
         Close(f(2));
@@ -119,7 +120,7 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
     Close(f(1));
     Close(f(2));
     if quiet = 0 then
-      Put_Line("OK -" & Long_Long_Integer'Image(p-1) & " bytes compared");
+      Put_Line("OK -" & Integer_64'Image(p-1) & " bytes compared");
     end if;
     total_bytes:= total_bytes + (p-1);
   end Compare_1_file;
@@ -140,7 +141,7 @@ begin
     Put_Line("  1st archive: [" & Zip.Zip_name(z(1)) & "], total files:" & Natural'Image(total_1));
     Put_Line("  2nd archive: [" & Zip.Zip_name(z(2)) & "], total files:" & Natural'Image(total_2));
     Put_Line("  Total files compared: " & Natural'Image(common));
-    Put_Line("  Total of correct bytes: " & Long_Long_Integer'Image(total_bytes));
+    Put_Line("  Total of correct bytes: " & Integer_64'Image(total_bytes));
   end if;
   Put_Line("* === Comparison summary ===");
   Put(err_str,size_failures);

@@ -36,7 +36,7 @@ procedure Zip_with_many_files is
       return str (3 .. str'Last);
     end Leading_zeros;
 
-    n_img : constant String := n'Image;
+    n_img : constant String := Integer'Image (n);
 
   begin
     Create(

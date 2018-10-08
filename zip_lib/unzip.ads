@@ -10,7 +10,7 @@
 -- This library allows to uncompress deflated, enhanced deflated, bzip2-ed, lzma-ed,
 -- imploded, reduced, shrunk and stored streams from a Zip archive stream.
 --
--- Pure Ada 95 code, 100% portable: OS-, CPU- and compiler- independent.
+-- Pure Ada 2005+ code, 100% portable: OS-, CPU- and compiler- independent.
 
 --  Ada translation and substantial rewriting by Gautier de Montmollin
 --    On the web: see the Zip.web constant.
