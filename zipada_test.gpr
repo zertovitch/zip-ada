@@ -1,6 +1,6 @@
-with "ZipAda";  --  Check zipada.gpr for details
+project ZipAda_Test extends "ZipAda" is  --  Check zipada.gpr for details
 
-project ZipAda_Test is
+   for Source_Dirs use ("test");
 
    for Main use (
      "fuzzip.adb",
@@ -21,9 +21,9 @@ project ZipAda_Test is
      "zip_with_big_files.adb"
    );
 
-   package Builder  renames ZipAda.Builder;
-   package Compiler renames ZipAda.Compiler;
-   package Binder   renames ZipAda.Binder;
-   package Linker   renames ZipAda.Linker;
+   --  package Builder  renames ZipAda.Builder;
+   --  package Compiler renames ZipAda.Compiler;
+   --  package Binder   renames ZipAda.Binder;
+   --  package Linker   renames ZipAda.Linker;
    
 end ZipAda_Test;

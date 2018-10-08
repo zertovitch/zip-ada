@@ -8,6 +8,8 @@
 --  Build me with "gprbuild -p -P zipada", or "gnatmake -p -P zipada",
 --  or open me with GPS.
 --
+--  Important: for building tests, see the zipada_test.gpr project file.
+--
 project ZipAda is
 
    type Build_Mode_Type is
@@ -28,7 +30,7 @@ project ZipAda is
          for Source_Dirs use ("zip_lib");
          for Main use ();
       when others =>
-         for Source_Dirs use ("zip_lib", "test", "extras", "tools", "demo");
+         for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
          for Main use (
            "zipada.adb", 
            "unzipada.adb",
