@@ -21,6 +21,13 @@ project ZipAda_Test extends "ZipAda" is  --  Check zipada.gpr for details
      "zip_with_big_files.adb"
    );
 
+   case Build_Mode is
+      when "Debug" | "Check_95" =>  for Object_Dir use "obj_dbg/test";
+      when "Fast" =>                for Object_Dir use "obj_opt/test";
+      when "Small" =>               for Object_Dir use "obj_small/test";
+      when "Profiling" =>           for Object_Dir use "obj_pro/test";
+   end case;
+   
    --  package Builder  renames ZipAda.Builder;
    --  package Compiler renames ZipAda.Compiler;
    --  package Binder   renames ZipAda.Binder;

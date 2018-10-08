@@ -49,18 +49,10 @@ project ZipAda is
    end case;
 
    case Build_Mode is
-
-      when "Debug" | "Check_95" =>
-         for Object_Dir use "obj_dbg";
-
-      when "Fast" =>
-         for Object_Dir use "obj_opt";
-
-      when "Small" =>
-         for Object_Dir use "obj_small";
-
-      when "Profiling" =>
-         for Object_Dir use "obj_pro";
+      when "Debug" | "Check_95" =>  for Object_Dir use "obj_dbg";
+      when "Fast" =>                for Object_Dir use "obj_opt";
+      when "Small" =>               for Object_Dir use "obj_small";
+      when "Profiling" =>           for Object_Dir use "obj_pro";
    end case;
 
    package Binder is
