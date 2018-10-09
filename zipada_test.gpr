@@ -14,6 +14,7 @@ project ZipAda_Test extends "ZipAda" is  --  Check zipada.gpr for details
      "test_lz77.adb",                --  Test the LZ77 package
      "test_non_zip.adb",             --  Test compression raw schemes without Zip archive format
      "test_zip_info_timing.adb",
+     "test_zip_info_traverse.adb",
      "test_stream_performance.adb",
      "test_unz_streams.adb",
      "ziptest.adb", 
@@ -27,6 +28,8 @@ project ZipAda_Test extends "ZipAda" is  --  Check zipada.gpr for details
       when "Small" =>               for Object_Dir use "obj_small/test";
       when "Profiling" =>           for Object_Dir use "obj_pro/test";
    end case;
+   
+   for Exec_Dir use ".";
    
    --  package Builder  renames ZipAda.Builder;
    --  package Compiler renames ZipAda.Compiler;
