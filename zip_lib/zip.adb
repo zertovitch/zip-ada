@@ -276,6 +276,8 @@ package body Zip is
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
+    info.directory.Clear;
+    info.directory_map.Clear;
     info.loaded:= False; -- <-- added 14-Jan-2002
   end Delete;
 

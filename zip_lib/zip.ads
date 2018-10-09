@@ -109,6 +109,9 @@ package Zip is
 
   function Entries( info: in Zip_info ) return Natural;
 
+  --  Delete is needed only for reusing a Zip_info for another archive.
+  --  Memory deallocation is automatic.
+  --
   procedure Delete( info : in out Zip_info );
 
   Forgot_to_load_zip_info: exception;
