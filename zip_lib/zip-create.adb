@@ -126,39 +126,15 @@ package body Zip.Create is
    end Add_catalogue_entry;
 
    --  This is just for detecting duplicates
-   procedure Insert_to_name_dictionary(file_name: String; node: in out p_Dir_node) is
+   procedure Insert_to_name_dictionary(file_name: String; m: in out Name_mapping.Map) is
+     cm : Name_mapping.Cursor;
+     OK : Boolean;
    begin
-     if node = null then
-       node:= new Dir_node'
-         ( (name_len          => file_name'Length,
-            left              => null,
-            right             => null,
-            file_name         => file_name)
-         );
-     elsif file_name > node.file_name then
-       Insert_to_name_dictionary( file_name, node.right );
-     elsif file_name < node.file_name then
-       Insert_to_name_dictionary( file_name, node.left );
-     else
-       --  Name already registered
+     m.Insert (To_Unbounded_String (file_name), cm, OK);
+     if not OK then  --  Name already registered
        raise Duplicate_name;
      end if;
    end Insert_to_name_dictionary;
-
-   procedure Clear_name_dictionary(Info : in out Zip_Create_info) is
-     procedure Clear( p: in out p_Dir_node ) is
-        procedure Dispose is new Ada.Unchecked_Deallocation (Dir_node, p_Dir_node);
-     begin
-       if p /= null then
-         Clear(p.left);
-         Clear(p.right);
-         Dispose(p);
-         p:= null;
-       end if;
-     end Clear;
-   begin
-     Clear(Info.dir);
-   end Clear_name_dictionary;
 
    procedure Add_Stream (Info     : in out Zip_Create_info;
                          Stream   : in out Root_Zipstream_Type'Class;
@@ -442,7 +418,6 @@ package body Zip.Create is
         Dispose (Info.Contains);
       end if;
       Info.Last_entry:= 0;
-      Clear_name_dictionary (Info);
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;

@@ -516,13 +516,13 @@ package body Zip is
   is
     up_name: constant String:= Normalize(name, info.case_sensitive);
     use Dir_node_mapping;
-    c : Cursor;
+    cm : Cursor;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    c := info.directory_map.Find (To_Unbounded_String (up_name));
-    if c = Dir_node_mapping.No_Element then
+    cm := info.directory_map.Find (To_Unbounded_String (up_name));
+    if cm = Dir_node_mapping.No_Element then
       Ada.Exceptions.Raise_Exception(
         File_name_not_found'Identity,
         "Archive: [" & To_String (info.zip_file_name) & "], entry: [" & name & ']'
@@ -530,7 +530,7 @@ package body Zip is
     end if;
     --  Entry found !
     declare
-      index : constant Positive := Element (c);
+      index : constant Positive := Element (cm);
       dn : Dir_node renames info.directory.Element (index);
     begin
       name_encoding := dn.name_encoding;
@@ -613,13 +613,13 @@ package body Zip is
   is
     up_name: constant String:= Normalize(name, info.case_sensitive);
     use Dir_node_mapping;
-    c : Cursor;
+    cm : Cursor;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    c := info.directory_map.Find (To_Unbounded_String (up_name));
-    return c /= Dir_node_mapping.No_Element;
+    cm := info.directory_map.Find (To_Unbounded_String (up_name));
+    return cm /= Dir_node_mapping.No_Element;
   end Exists;
 
   procedure Set_user_code(

@@ -56,6 +56,9 @@ with Zip.Headers; use Zip.Headers;
 with Zip.Compress; use Zip.Compress;
 with Zip_Streams; use Zip_Streams;
 
+with Ada.Containers.Hashed_Maps;
+with Ada.Strings.Unbounded.Hash;
+
 package Zip.Create is
 
    type Zip_Create_info is private;
@@ -162,12 +165,8 @@ private
    type Dir_entries is array (Positive range <>) of Dir_entry;
    type Pdir_entries is access Dir_entries;
 
-   type Dir_node;
-   type p_Dir_node is access Dir_node;
-   type Dir_node(name_len: Natural) is record
-     left, right      : p_Dir_node;
-     file_name        : String(1..name_len);
-   end record;
+  package Name_mapping is
+    new Ada.Containers.Hashed_Maps (Unbounded_String, Positive, Hash, "=");
 
    type Zip_Create_info is record
      Stream             : Zipstream_Class_Access;
@@ -177,7 +176,7 @@ private
      Last_entry         : Natural := 0;
      Duplicates         : Duplicate_name_policy;
      --  We set up a name dictionary just for avoiding duplicate entries:
-     dir                : p_Dir_node := null;
+     dir                : Name_mapping.Map;
      zip_archive_format : Zip_archive_format_type := Zip_32;
    end record;
 

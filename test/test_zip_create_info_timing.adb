@@ -37,7 +37,8 @@ procedure Test_Zip_Create_Info_Timing is
       archive,
       stream'Unchecked_Access,
       "test_create.zip",
-      Zip.Compress.Store
+      Zip.Compress.Store,
+      Zip.error_on_duplicate
     );
     for i in 1 .. n loop
       Add_one_entry(
@@ -48,7 +49,7 @@ procedure Test_Zip_Create_Info_Timing is
   end Create_with_many;
 begin
   t1:= Ada.Calendar.Clock;
-  Create_with_many (2 ** 13);
+  Create_with_many (2 ** 16 - 1);
   t2:= Ada.Calendar.Clock;
   Ada.Text_IO.Put_Line(
     "Time elapsed for creating Zip file:" &
