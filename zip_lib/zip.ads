@@ -437,10 +437,13 @@ private
   --  Zip file to have several entries with the same name (only one Map Key
   --  but several Vector indices.
   --
+  subtype Dir_index is Positive;  --  Index in the directory vector.
+
   package Dir_node_vectors is
-    new Ada.Containers.Vectors (Positive, Dir_node);
+    new Ada.Containers.Vectors (Dir_index, Dir_node);
+
   package Dir_node_mapping is
-    new Ada.Containers.Hashed_Maps (Unbounded_String, Dir_node, Hash, "=");
+    new Ada.Containers.Hashed_Maps (Unbounded_String, Dir_index, Hash, "=");
 
   type Zip_info is record
     loaded             : Boolean:= False;
