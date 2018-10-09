@@ -1,3 +1,5 @@
+--  Check duplicate-tolerant traversal
+
 with Zip, Ada.Command_Line, Ada.Text_IO;
 
 procedure Test_Zip_Info_Traverse is

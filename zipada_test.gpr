@@ -9,12 +9,13 @@ project ZipAda_Test extends "ZipAda" is  --  Check zipada.gpr for details
      "several_sizes.adb",  --  Truncates a file into partial copies of several sizes
      "test_chunk.adb", 
      "test_extract.adb", 
-     "test_lz_scramble",             --  Test LZ_Scramble
-     "test_llhc",                    --  Test for Length_limited_Huffman_code_lengths
-     "test_lz77.adb",                --  Test the LZ77 package
-     "test_non_zip.adb",             --  Test compression raw schemes without Zip archive format
-     "test_zip_info_timing.adb",
-     "test_zip_info_traverse.adb",
+     "test_lz_scramble",                 --  Test LZ_Scramble
+     "test_llhc",                        --  Test for Length_limited_Huffman_code_lengths
+     "test_lz77.adb",                    --  Test the LZ77 package
+     "test_non_zip.adb",                 --  Test compression raw schemes without Zip archive format
+     "test_zip_create_info_timing.adb",  --  Timing for entries management during Zip creation
+     "test_zip_info_timing.adb",         --  Timing of loading of Zip archive's directory
+     "test_zip_info_traverse.adb",       --  Check duplicate-tolerant traversal
      "test_stream_performance.adb",
      "test_unz_streams.adb",
      "ziptest.adb", 
