@@ -43,7 +43,6 @@
 with Zip_Streams;
 with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO;
 with Ada.Containers.Hashed_Maps;
-with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded.Hash;
 
 with Interfaces;
@@ -404,7 +403,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String:= "55 preview 2";
-  reference : constant String:= ">= 08-Oct-2018";
+  reference : constant String:= ">= 09-Oct-2018";
   web       : constant String:= "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -433,12 +432,8 @@ private
 
   type Zip_archive_format_type is (Zip_32, Zip_64);  --  Supported so far: Zip_32.
 
-  package Dir_node_vectors is new Ada.Containers.Vectors (Positive, Dir_node);
-  package Dir_node_mapping is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Ada.Strings.Unbounded.Unbounded_String,
-      Element_Type    => Positive,  --  Index in the directory vector
-      Hash            => Ada.Strings.Unbounded.Hash,
-      Equivalent_Keys => Ada.Strings.Unbounded."=");
+  package Dir_node_mapping is
+    new Ada.Containers.Hashed_Maps (Unbounded_String, Dir_node, Hash, "=");
 
   type Zip_info is record
     loaded             : Boolean:= False;
@@ -446,8 +441,7 @@ private
     zip_file_name      : Unbounded_String;                   -- a file name...
     zip_input_stream   : Zip_Streams.Zipstream_Class_Access; -- ...or an input stream
     -- ^ when not null, we use this, and not zip_file_name
-    directory          : Dir_node_vectors.Vector;
-    directory_map      : Dir_node_mapping.Map;
+    directory          : Dir_node_mapping.Map;
     total_entries      : Natural;
     zip_file_comment   : Unbounded_String;
     zip_archive_format : Zip_archive_format_type := Zip_32;
