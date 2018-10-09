@@ -43,6 +43,7 @@
 with Zip_Streams;
 with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO;
 with Ada.Containers.Hashed_Maps;
+with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded.Hash;
 
 with Interfaces;
@@ -432,6 +433,12 @@ private
 
   type Zip_archive_format_type is (Zip_32, Zip_64);  --  Supported so far: Zip_32.
 
+  --  We cannot directly use a map of Dir_node because it is possible for a
+  --  Zip file to have several entries with the same name (only one Map Key
+  --  but several Vector indices.
+  --
+  package Dir_node_vectors is
+    new Ada.Containers.Vectors (Positive, Dir_node);
   package Dir_node_mapping is
     new Ada.Containers.Hashed_Maps (Unbounded_String, Dir_node, Hash, "=");
 
@@ -441,7 +448,8 @@ private
     zip_file_name      : Unbounded_String;                   -- a file name...
     zip_input_stream   : Zip_Streams.Zipstream_Class_Access; -- ...or an input stream
     -- ^ when not null, we use this, and not zip_file_name
-    directory          : Dir_node_mapping.Map;
+    directory          : Dir_node_vectors.Vector;
+    directory_map      : Dir_node_mapping.Map;
     total_entries      : Natural;
     zip_file_comment   : Unbounded_String;
     zip_archive_format : Zip_archive_format_type := Zip_32;

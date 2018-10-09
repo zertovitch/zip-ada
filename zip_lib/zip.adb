@@ -102,7 +102,8 @@ package body Zip is
       pos : Dir_node_mapping.Cursor;
       success : Boolean;
     begin
-      info.directory.Insert (node.dico_name, node, pos, success);
+      info.directory.Append (node);
+      info.directory_map.Insert (node.dico_name, Integer (info.directory.Length), pos, success);
       if not success then -- A.18.4. 45/2
         --  Here we have a case where the entry name already exists in the dictionary.
         case duplicate_names is
@@ -287,9 +288,8 @@ package body Zip is
   procedure Traverse_private_read_write( z: in out Zip_info );
 
   procedure Traverse_private_read_write( z: in out Zip_info ) is
-    use Dir_node_mapping;
-    procedure Process_E (Key : Unbounded_String; Element : in out Dir_node) is
-    pragma Unreferenced (Key);
+    use Dir_node_vectors;
+    procedure Process_E (Element : in out Dir_node) is
     begin
       Action_private (Element);
     end Process_E;
@@ -307,7 +307,7 @@ package body Zip is
   procedure Traverse_private_read_only( z: Zip_info );
 
   procedure Traverse_private_read_only( z: Zip_info ) is
-    use Dir_node_mapping;
+    use Dir_node_vectors;
     procedure Process_C (Position : Cursor) is
     begin
       Action_private (Element (Position));
@@ -514,13 +514,13 @@ package body Zip is
   is
     up_name: constant String:= Normalize(name, info.case_sensitive);
     use Dir_node_mapping;
-    cm : Cursor;
+    c : Cursor;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory.Find (To_Unbounded_String (up_name));
-    if cm = Dir_node_mapping.No_Element then
+    c := info.directory_map.Find (To_Unbounded_String (up_name));
+    if c = Dir_node_mapping.No_Element then
       Ada.Exceptions.Raise_Exception(
         File_name_not_found'Identity,
         "Archive: [" & To_String (info.zip_file_name) & "], entry: [" & name & ']'
@@ -528,7 +528,8 @@ package body Zip is
     end if;
     --  Entry found !
     declare
-      dn : constant Dir_node := Element (cm);
+      index : constant Positive := Element (c);
+      dn : Dir_node renames info.directory.Element (index);
     begin
       name_encoding := dn.name_encoding;
       file_index    := dn.file_index;
@@ -610,13 +611,13 @@ package body Zip is
   is
     up_name: constant String:= Normalize(name, info.case_sensitive);
     use Dir_node_mapping;
-    cm : Cursor;
+    c : Cursor;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory.Find (To_Unbounded_String (up_name));
-    return cm /= Dir_node_mapping.No_Element;
+    c := info.directory_map.Find (To_Unbounded_String (up_name));
+    return c /= Dir_node_mapping.No_Element;
   end Exists;
 
   procedure Set_user_code(
@@ -628,8 +629,8 @@ package body Zip is
     up_name: constant String:= Normalize(name, info.case_sensitive);
     use Dir_node_mapping;
     cm : Cursor;
-    procedure Process (Key : Unbounded_String; Element : in out Dir_node) is
-    pragma Unreferenced (Key);
+    index : Positive;
+    procedure Process (Element : in out Dir_node) is
     begin
       Element.user_code := code;
     end Process;
@@ -637,14 +638,15 @@ package body Zip is
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory.Find (To_Unbounded_String (up_name));
+    cm := info.directory_map.Find (To_Unbounded_String (up_name));
     if cm = Dir_node_mapping.No_Element then
       Ada.Exceptions.Raise_Exception(
         File_name_not_found'Identity,
         "Archive: [" & To_String (info.zip_file_name) & "], entry: [" & name & ']'
       );
     end if;
-    info.directory.Update_Element (cm, Process'Access);
+    index := Element (cm);
+    info.directory.Update_Element (index,  Process'Access);
   end Set_user_code;
 
   function User_code(
@@ -656,18 +658,20 @@ package body Zip is
     up_name: constant String:= Normalize(name, info.case_sensitive);
     use Dir_node_mapping;
     cm : Cursor;
+    index : Positive;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory.Find (To_Unbounded_String (up_name));
+    cm := info.directory_map.Find (To_Unbounded_String (up_name));
     if cm = Dir_node_mapping.No_Element then
       Ada.Exceptions.Raise_Exception(
         File_name_not_found'Identity,
         "Archive: [" & To_String (info.zip_file_name) & "], entry: [" & name & ']'
       );
     end if;
-    return Element (cm).user_code;
+    index := Element (cm);
+    return info.directory.Element (index).user_code;
   end User_code;
 
   procedure Get_sizes(

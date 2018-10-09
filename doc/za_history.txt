@@ -6,8 +6,8 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
       to capture archive size overflows.
   - Zip.Create raises Zip_Capacity_Exceeded when archive creation exceeds
       the Zip_32 format's capacity: 4GB total size, 65,535 entries.
-  - Directories of Zip archives are now using Ada 2005+'s Containers's
-      Hashed Maps; loading is much faster on Zip archives with many entries.
+  - Directories of Zip archives are now using Ada 2005+'s Containers's Vectors
+      and Hashed Maps; loading is much faster on Zip archives with many entries.
 
 * Changes in '54', 28-Jun-2018:
   - Zip.Compress.Deflate: use of L1_tweaked measure; adjusted
