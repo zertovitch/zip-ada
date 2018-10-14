@@ -24,7 +24,7 @@ file format. It supplies:
  - task safety: this library can be used ad libitum in parallel processing
  - endian-neutral I/O
 
-The full source is in Ada: pure Ada 95, not even a single dependency
+The full source is in Ada: pure Ada 2005, not even a single dependency
 to a compiler, a CPU architecture, an OS or an external package or library.
 The price for the *unconditional* portability of Zip-Ada hold in these details:
   - archive creation: attributes (read-only, system etc.) are not stored
@@ -32,13 +32,12 @@ The price for the *unconditional* portability of Zip-Ada hold in these details:
       are not restored as original
 That's it!
 
-Note however that some compilers may not have the necessary integer types
-for compiling Zip-Ada; other (like the old 7.2.2 version of ObjectAda of 2002)
-won't compile correctly some parts or crash during the build. Still, a list of
-more than 25 successfully tested OS-CPU-Compiler combinations can be found below
+Note however that some compilers may not provide the necessary 64 bit
+integer types for compiling Zip-Ada. Still, a list of more than 25
+successfully tested OS-CPU-Compiler combinations can be found below
 under "note on portability".
 
-For details about the code's history, read the files zip.ads and unzip.ads.
+For details about the code's history, read the doc/za_history.txt file.
 
 License / Warning / Legal stuff
 ===============================
@@ -52,8 +51,8 @@ Contents
 
 * The subdirectory Zip_Lib contains the full source of the Zip-Ada library.
   All you need is there.
-  These library sources are in Ada 95, so any Ada 95 and above compiler
-  will like them.
+  These library sources are in Ada 2005, so any Ada 2005 and above compiler
+  will like them, provided it supports integer types up to 64 bit.
   I suggest to simply copy this Zip_Lib folder as a sub-folder of your
   project's sources.
   The library's "front-end" packages are:
@@ -194,7 +193,7 @@ Open bugs (as of v.53)
 To do
 =====
 
-Topics are in file za_todo.txt
+Topics are in file doc/za_todo.txt
 
 Note on portability
 ===================
@@ -210,7 +209,7 @@ OS                          CPU                 Compiler
 OpenVMS                     Itanium (64 bit)    GNU - GNAT
 AIX                         Power7 (64 bit)
 MS Windows 95,98;
-           NT,2K,XP,7       Intel x86 (32 bit)
+           NT,2K,XP,7,8,10  Intel x86 (32 bit)
 MS Windows x64              Intel x64 (64 bit)
 Linux                       Intel x86 (32 bit)
 Linux on Sony PS3           Cell (64 bit)
@@ -225,8 +224,7 @@ FreeBSD                     Intel x86 (32 bit)
 FreeBSD                     Intel x64 (64 bit)
 Android 2.3+                ARM
 
-MS Windows 95,98;
-           NT,2K,XP,7       Intel x86 (32 bit)  PTC - ObjectAda
+MS Windows NT+              Intel x64 (64 bit)  PTC - ObjectAda64
 
 MS Windows NT+              Intel x86 (32 bit)  SofCheck - AdaMagic
 MS Windows NT+              Intel x64 (64 bit)

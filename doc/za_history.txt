@@ -2,6 +2,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '55':
+  - Minimum required Ada version is now Ada 2005.
   - Zip_Streams: ZS_Size_Type is now 64-bit signed, enabling Zip.Create
       to capture archive size overflows.
   - Zip.Create raises Zip_Capacity_Exceeded when archive creation exceeds
