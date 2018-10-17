@@ -1,10 +1,3 @@
-------------------------------------------------------------------------------
---  File:            lz.adb
---  Description:     A minimal file compression/decompression tool
---  Date/version:    29-Jan-2009 ; 7-May-2002 ; 23-Jan-2000
---  Author:          Gautier de Montmollin
-------------------------------------------------------------------------------
-
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -14,7 +7,8 @@ with Interfaces;                        use Interfaces;
 
 with LZH;
 
-procedure  LZ  is
+procedure LZHuf is
+
   package Byte_IO is new Ada.Direct_IO( Unsigned_8 );
   use Byte_IO;
   package CIO is new Integer_IO( Byte_IO.Count );
@@ -83,7 +77,7 @@ procedure  LZ  is
 begin
   if Argument_Count/=3 then
     Put_Line(
-      "Usage: LZ e(ncode-compress)|d(ecode-decompress) infile outfile");
+      "Usage: lzhuf e(ncode-compress)|d(ecode-decompress) infile outfile");
     return;
   end if;
   declare
@@ -128,4 +122,4 @@ begin
   seconds_elapsed:= T1-T0;
   FIO.Put( Float( seconds_elapsed ), 4, 2, 0 );
   Put_Line( " seconds.");
-end LZ;
+end LZHuf;

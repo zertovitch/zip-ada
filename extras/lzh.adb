@@ -18,6 +18,10 @@
 
 -- 29-Jan-2009: No more need to know the input length; no more feedback
 
+-- 17-Oct-2018: BUG found and not yet fixed: in rare cases (e.g.
+--              data = ziptest.exe compiled by GNAT for Windows x64),
+--              the last decoded byte is missing. See test_non_zip for mass test.
+
 package body LZH is
 
   ----- LZSS Parameters -----
