@@ -1,7 +1,6 @@
 ------------------------------------------------------------------------------
---  File:            ReZip.adb
+--  File:            rezip.adb
 --  Description:     Recompression tool to make archives smaller.
---                   Core moved to Rezip_lib
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -26,19 +25,21 @@ procedure ReZip is
   begin
     Ada.Text_IO.Put_Line("Usage: rezip [options] archive(s)[.zip]");
     Ada.Text_IO.New_Line;
-    Ada.Text_IO.Put_Line("options:  -defl:     repack archive only with Deflate subformat (most compatible)");
-    Ada.Text_IO.Put_Line("          -fast_dec: repack archive only with fast decompressing subformats");
-    Ada.Text_IO.Put_Line("          -touch:    set time stamps to now");
-    Ada.Text_IO.Put_Line("          -lower:    set full file names to lower case");
-    Ada.Text_IO.Put_Line("          -del_comm: delete comment");
-    Ada.Text_IO.Put_Line("          -comp:     compare original and repacked archives (paranoid mode)");
+    Ada.Text_IO.Put_Line("Options:  -defl     : repack archive only with the Deflate");
+    Ada.Text_IO.Put_Line("                        subformat (most compatible)");
+    Ada.Text_IO.Put_Line("          -fast_dec : repack archive only with fast decompressing subformats");
+    Ada.Text_IO.Put_Line("          -int      : use internal Zip-Ada algorithms only, no external call");
+    Ada.Text_IO.Put_Line("          -touch    : set time stamps to now");
+    Ada.Text_IO.Put_Line("          -lower    : set full file names to lower case");
+    Ada.Text_IO.Put_Line("          -del_comm : delete comment");
+    Ada.Text_IO.Put_Line("          -comp     : compare original and repacked archives (paranoid mode)");
+    Ada.Text_IO.Put_Line("          -rs=n     : loop many times over a single compression approach");
+    Ada.Text_IO.Put_Line("                        having randomization, and keep optimum when size is");
+    Ada.Text_IO.Put_Line("                        stable after n attempts in a row");
     Ada.Text_IO.New_Line;
-    Ada.Text_IO.Put_Line("          -rand_stable=n: loop many times over a single compression approach");
-    Ada.Text_IO.Put_Line("                          having randomization, and stop when size is stable");
-    Ada.Text_IO.Put_Line("                          after n attempts");
-    Ada.Text_IO.New_Line;
-    Ada.Text_IO.Put_Line("external packers (available for Windows and Linux) used;");
-    Ada.Text_IO.Put_Line("must be callable through the ""path"" :");
+    Ada.Text_IO.Put_Line("External programs (available for Windows and Linux) are used, except");
+    Ada.Text_IO.Put_Line("with the ""-int"" option. They must be callable through the ""path"".");
+    Ada.Text_IO.Put_Line("List of external programs:");
     Ada.Text_IO.New_Line;
     Rezip_lib.Show_external_packer_list;
     Ada.Text_IO.New_Line;
@@ -88,7 +89,7 @@ procedure ReZip is
 
   use Rezip_lib;
 
-  touch, lower, del_comment, compare: Boolean:= False;
+  touch, lower, del_comment, compare, internal: Boolean:= False;
   rand_stable: Positive:= 1;
   format_choice: Zip_format_set := all_formats;
 
@@ -119,6 +120,8 @@ begin
             format_choice:= deflate_or_store;
           elsif opt = "fast_dec" then
             format_choice:= fast_decompression;
+          elsif opt = "int" then
+            internal:= True;
           elsif opt = "comp" then
             compare:= True;
           elsif opt = "touch" then
@@ -128,9 +131,13 @@ begin
           elsif opt = "del_comm" then
             del_comment:= True;
           elsif opt'Length > 12 and then
-             opt(opt'First..opt'First+11) = "rand_stable="
+             opt(opt'First..opt'First+11) = "rand_stable="  --  old / long version of this option
           then
             rand_stable:= Integer'Value(opt(opt'First+12..opt'Last));
+          elsif opt'Length > 3 and then
+             opt(opt'First..opt'First+2) = "rs="
+          then
+            rand_stable:= Integer'Value(opt(opt'First+3..opt'Last));
           end if;
         end;
       elsif Zip.Exists(arg_zip) then
@@ -143,7 +150,8 @@ begin
           delete_comment    => del_comment,
           randomized_stable => rand_stable,
           log_file          => arg_log,
-          html_report       => arg_rpt
+          html_report       => arg_rpt,
+          internal_only     => internal
         );
         if compare then
           Zip.Load( info_original_zip, arg_zip );

@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------------
---  File:            Rezip_Prc.adb
+--  File:            rezip_lib.adb
 --  Description:     Recompression tool to make archives smaller.
 --                   Core moved from Rezip (main)
 --  Author:          Gautier de Montmollin
@@ -128,16 +128,18 @@ package body Rezip_lib is
     (U("deflopt"), U("DeflOpt"), U("http://www.walbeehm.com/download/"),
      NN, NN, 0, Zip.deflate, 0, False);
 
-  procedure Rezip(
+  procedure Rezip (
     from_zip_file      : String;
     to_zip_file        : String;
-    format_choice      : Zip_format_set := all_formats;
-    touch              : Boolean        := False;      --  set time stamps to now
-    lower              : Boolean        := False;      --  set full file names to lower case
-    delete_comment     : Boolean        := False;      --  delete zip comment
+    format_choice      : Zip_format_set := all_formats;  --  force output into selected format set
+    touch              : Boolean        := False;        --  set time stamps to now
+    lower              : Boolean        := False;        --  set full file names to lower case
+    delete_comment     : Boolean        := False;        --  delete zip comment
     randomized_stable  : Positive       := 1;
     log_file           : String         := "";
-    html_report        : String         := "")
+    html_report        : String         := "";
+    internal_only      : Boolean        := False         --  Zip-Ada algorithms only, no ext. call
+  )
   is
 
     package DFIO is new Dual_IO.Float_IO(Float);
@@ -621,17 +623,18 @@ package body Rezip_lib is
         begin
           if e.info(choice).size < e.info(original).size then
             Put(summary,"<td bgcolor=lightgreen><b>");
-            -- We were able to reduce the size
+            --  We were able to reduce the size. :-)
           elsif e.info(choice).size = e.info(original).size then
             Put(summary,"<td><b>");
-            -- Original was the best, alas...
+            --  Original was already the best.
           else
             Put(summary,"<td bgcolor=" & lightred & "><b>");
-            -- Forced method with less efficient compression
+            --  Forced to a format with a less efficient compression. :-(
           end if;
         end Winner_color;
         --
       begin
+        --  Start with the set of approaches that has been decided for all entries.
         consider:= consider_a_priori;
         if unique_name = "" or else
           (   unique_name(unique_name'Last)='\'
@@ -697,8 +700,8 @@ package body Rezip_lib is
         --
         --  Apply limitations: skip some methods if certain conditions are met.
         --  For instance:
-        --    Shrink may in rare cases be better for tiny files;
-        --    KZip and Zopfli are excellent but really too slow on large files
+        --    Shrink may in rare cases be better, but only for tiny files.
+        --    KZip and Zopfli are excellent but really too slow on large files.
         --
         for a in Approach loop
           case a is
@@ -734,8 +737,10 @@ package body Rezip_lib is
                 mth:= Zip.Method_from_code(e.info(a).zfm);
                 --
               when Internal =>
-                if Approach_to_Method(a) in Zip.Compress.Deflation_Method then
-                  --  We post-process with DeflOpt.
+                if Approach_to_Method(a) in Zip.Compress.Deflation_Method
+                  and not internal_only
+                then
+                  --  We will post-process our internal Deflate with DeflOpt.
                   Process_Internal_as_Zip(a, e.all);
                 else
                   Process_Internal_Raw(a, e.all);
@@ -755,7 +760,7 @@ package body Rezip_lib is
             end case;
             total(a).size:= total(a).size + e.info(a).size;
             if e.info(a).size < e.info(choice).size then
-              -- Hurra, we found a smaller size!
+              --  Hurra, we found a smaller size than previous choice!
               choice:= a;
             end if;
             if choice = original and not format_choice(mth) then
@@ -915,12 +920,12 @@ package body Rezip_lib is
               when Zip.Compress.Single_Method =>
                 consider_a_priori(a):= format_choice(Zip.Compress.Method_to_Format(meth));
               when Zip.Compress.Multi_Method =>
-                --  This doesn't actually happen: the strong methods are
-                --  already applied and compared as single methods.
+                --  For the sake of simplicity, we consider the Multi_Method's
+                --  only when all formats are admitted.
                 consider_a_priori(a):= format_choice = all_formats;
             end case;
           when External =>
-            consider_a_priori(a):= format_choice(ext(a).pkzm);
+            consider_a_priori(a):= format_choice(ext(a).pkzm) and not internal_only;
         end case;
       end loop;
       Set_Name (MyStream, orig_name);
@@ -930,6 +935,9 @@ package body Rezip_lib is
       Set_Name (repacked_zip_file, repacked_name);
       Create(repacked_zip_file, Out_File);
       Create(summary, Out_File, html_report_name);
+      --
+      --  HTML Report begins here.
+      --
       Put_Line(summary,
         "<html><head><title>ReZip summary for file "
          & orig_name & "</title></head>"
@@ -971,15 +979,23 @@ package body Rezip_lib is
         "<tr bgcolor=lightyellow><td></td>"&
         "<td bgcolor=lightgrey valign=bottom><b>File name, uncompressed size:</b></td>"
       );
+      --  Additionally, we show a row with the Approach's Compression_Method's output format (the
+      --  Zip.PKZip_method). If it is not unique, we mention it.
       for a in Approach loop
         if consider_a_priori(a) then
           case a is
             when original =>
               Put(summary, "<td align=right bgcolor=#dddd00 class=""td_approach"">Approach's<br>format &rarr;</td>");
             when Internal =>
-              Put(summary, "<td bgcolor=#fafa64>" &
-                Zip.Image(Zip.Compress.Method_to_Format(Approach_to_Method(a))) & "</td>");
-              -- better: the Zip.PKZip_method, in case 2 Compression_Method's produce the same sub-format
+              Put(summary, "<td bgcolor=#fafa64>");
+              meth:= Approach_to_Method(a);
+              case meth is
+                when Zip.Compress.Single_Method =>
+                  Put(summary, Zip.Image(Zip.Compress.Method_to_Format(meth)));
+                when Zip.Compress.Multi_Method =>
+                  Put(summary, "(Various formats)");
+              end case;
+              Put(summary, "</td>");
             when External =>
               Put(summary, "<td bgcolor=#fafa64>" & Zip.Image(ext(a).pkzm) & "</td>");
           end case;

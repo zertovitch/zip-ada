@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------------
---  File:            Rezip_lib.ads
+--  File:            rezip_lib.ads
 --  Description:     Recompression tool to make archives smaller.
 --                   Core moved from Rezip (main)
 --                     Uses brute force and pick-and-choose among compression
@@ -21,16 +21,18 @@ package Rezip_lib is
   deflate_or_store   : constant Zip_format_set;
   fast_decompression : constant Zip_format_set;
 
-  procedure Rezip(
+  procedure Rezip (
     from_zip_file      : String;
     to_zip_file        : String;
-    format_choice      : Zip_format_set := all_formats;
-    touch              : Boolean        := False;      --  set time stamps to now
-    lower              : Boolean        := False;      --  set full file names to lower case
-    delete_comment     : Boolean        := False;      --  delete zip comment
+    format_choice      : Zip_format_set := all_formats;  --  force output into selected format set
+    touch              : Boolean        := False;        --  set time stamps to now
+    lower              : Boolean        := False;        --  set full file names to lower case
+    delete_comment     : Boolean        := False;        --  delete zip comment
     randomized_stable  : Positive       := 1;
     log_file           : String         := "";
-    html_report        : String         := "");
+    html_report        : String         := "";
+    internal_only      : Boolean        := False         --  Zip-Ada algorithms only, no ext. call
+  );
     --  On randomized approaches, stop when minimized size is stable
     --  after randomized_stable attempts.
 
