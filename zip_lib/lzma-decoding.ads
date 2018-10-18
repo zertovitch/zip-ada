@@ -58,22 +58,22 @@ package LZMA.Decoding is
     given_size             : Data_Bytes_Count;  -- If has_size = False, we use given_size.
     marker_expected        : Boolean;           -- Is an End-Of-Stream marker expected ?
     fail_on_bad_range_code : Boolean;           -- Raise exception if range decoder corrupted ?
-    -- The LZMA specification is a bit ambiguous on this point: a decoder has to ignore
-    -- corruption cases, but an encoder is required to avoid them...
+    --  The LZMA specification is a bit ambiguous on this point: a decoder has to ignore
+    --  corruption cases, but an encoder is required to avoid them...
   end record;
 
-  -------------------------------------------------------------------------------
-  -- Usage 1 : Object-less procedure, if you care only about the decompression --
-  -------------------------------------------------------------------------------
+  ----------------------------------------------------------------------------------
+  --  Usage #1 : Object-less procedure, if you care only about the decompression  --
+  ----------------------------------------------------------------------------------
 
   procedure Decompress(hints: LZMA_Hints);
   --  The parameter uncompressed_size_info in LZMA.Encoding.Encode
   --  must have the same value as hints.has_size (two incompatible LZMA
   --  header variants). uncompressed_size_info = True for .lzma files.
 
-  ------------------------------------------------------------------------
-  -- Usage 2 : Object-oriented, with stored technical details as output --
-  ------------------------------------------------------------------------
+  ---------------------------------------------------------------------------
+  --  Usage #2 : Object-oriented, with stored technical details as output  --
+  ---------------------------------------------------------------------------
 
   type LZMA_Decoder_Info is limited private;
   procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result);
@@ -97,16 +97,16 @@ package LZMA.Decoding is
 private
 
   type LZMA_Decoder_Info is record
-    unpackSize           : Data_Bytes_Count;
-    unpackSize_as_defined: Data_Bytes_Count;
-    unpackSizeDefined    : Boolean;
-    markerIsMandatory    : Boolean;
-    dictionary_size             : UInt32;
-    dictSizeInProperties : UInt32;
-    lc                   : Literal_context_bits_range;   -- number of "literal context" bits
-    lp                   : Literal_position_bits_range;  -- number of "literal pos" bits
-    pb                   : Position_bits_range;          -- number of "pos" bits
-    range_dec_corrupted  : Boolean;
+    unpackSize            : Data_Bytes_Count;
+    unpackSize_as_defined : Data_Bytes_Count;
+    unpackSizeDefined     : Boolean;
+    markerIsMandatory     : Boolean;
+    dictionary_size       : UInt32;
+    dictSizeInProperties  : UInt32;
+    lc                    : Literal_context_bits_range;   -- number of "literal context" bits
+    lp                    : Literal_position_bits_range;  -- number of "literal pos" bits
+    pb                    : Position_bits_range;          -- number of "pos" bits
+    range_dec_corrupted   : Boolean;
   end record;
 
 end LZMA.Decoding;
