@@ -221,17 +221,17 @@ package body LZMA.Decoding is
           match_byte     : UInt32 := UInt32(Get_Byte(dist => rep0 + 1));
           match_bit      : UInt32;    -- either 0 or 16#100#
           prob_idx_match : Integer;   -- either 0 (normal case without match), 16#100# or 16#200#
-          bit, bit_b     : Unsigned;
+          bit_a, bit_b   : Unsigned;
         begin
           loop
             match_byte := match_byte + match_byte;
             match_bit  := match_byte and 16#100#;
             prob_idx_match:= Integer(16#100# + match_bit);
-            Decode_Bit(probs.lit(probs_idx + prob_idx_match + Integer(symbol)), bit);
-            symbol := (symbol + symbol) or bit;
+            Decode_Bit(probs.lit(probs_idx + prob_idx_match + Integer(symbol)), bit_a);
+            symbol := (symbol + symbol) or bit_a;
             exit when symbol >= 16#100#;
-            if match_bit /= Shift_Left(UInt32(bit), 8) then
-              -- No bit match, then give up byte match
+            if match_bit /= Shift_Left(UInt32(bit_a), 8) then
+              --  No bit match, then give up byte match
               loop
                 Decode_Bit(probs.lit(probs_idx + Integer(symbol)), bit_b);
                 symbol := (symbol + symbol) or bit_b;
@@ -267,12 +267,12 @@ package body LZMA.Decoding is
         m        :    out Unsigned)
       is
       pragma Inline(Bit_Tree_Decode);
-        bit: Unsigned;
+        a_bit: Unsigned;
       begin
         m:= 1;
-        for count in reverse 1..num_bits loop
-          Decode_Bit(prob(Integer(m) + prob'First), bit);
-          m:= m + m + bit;
+        for count in reverse 1 .. num_bits loop
+          Decode_Bit(prob(Integer(m) + prob'First), a_bit);
+          m:= m + m + a_bit;
         end loop;
         m:= m - 2**num_bits;
       end Bit_Tree_Decode;
@@ -368,12 +368,12 @@ package body LZMA.Decoding is
         procedure Bit_Tree_Reverse_Decode(prob: in out CProb_array; num_bits: in Natural) is
         pragma Inline(Bit_Tree_Reverse_Decode);
           m: Unsigned := 1;
-          bit: Unsigned;
+          a_bit: Unsigned;
         begin
-          for i in 0..num_bits-1 loop
-            Decode_Bit(prob(Integer(m) + prob'First), bit);
-            m := m + m + bit;
-            dist := dist or Shift_Left(UInt32(bit), i);
+          for i in 0 .. num_bits-1 loop
+            Decode_Bit(prob(Integer(m) + prob'First), a_bit);
+            m := m + m + a_bit;
+            dist := dist or Shift_Left(UInt32(a_bit), i);
           end loop;
         end Bit_Tree_Reverse_Decode;
         --
@@ -597,9 +597,9 @@ package body LZMA.Decoding is
         for i in UInt32'(0)..7 loop
           b:= header(5 + i);
           if b /= 0 then
-            for bit in 0..7 loop
-              if (b and Shift_Left(Byte'(1),bit)) /= 0 then
-                last_bit:= bit;
+            for bit_pos in 0 .. 7 loop
+              if (b and Shift_Left(Byte'(1), bit_pos)) /= 0 then
+                last_bit:= bit_pos;
               end if;
             end loop;
             last_bit:= last_bit + Natural(8 * i);
