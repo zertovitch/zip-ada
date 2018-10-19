@@ -27,6 +27,7 @@
 with Zip.Headers;
 
 with Ada.Characters.Handling;
+with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
@@ -35,6 +36,114 @@ with Ada.Strings.Unbounded;
 package body Zip is
 
   use Interfaces;
+
+  procedure Dispose is new Ada.Unchecked_Deallocation( Dir_node, p_Dir_node );
+  procedure Dispose is new Ada.Unchecked_Deallocation( String, p_String );
+
+  package Binary_tree_rebalancing is
+    procedure Rebalance( root: in out p_Dir_node );
+  end Binary_tree_rebalancing;
+
+  package body Binary_tree_rebalancing is
+
+    -------------------------------------------------------------------
+    -- Tree Rebalancing in Optimal Time and Space                    --
+    -- QUENTIN F. STOUT and BETTE L. WARREN                          --
+    -- Communications of the ACM September 1986 Volume 29 Number 9   --
+    -------------------------------------------------------------------
+    -- http://www.eecs.umich.edu/~qstout/pap/CACM86.pdf
+    --
+    -- Translated by (New) P2Ada v. 15-Nov-2006
+
+    procedure Tree_to_vine( root: p_Dir_node; size: out Integer )
+      --  transform the tree with pseudo-root
+      --   "root^" into a vine with pseudo-root
+      --   node "root^", and store the number of
+      --   nodes in "size"
+    is
+      vine_tail, remainder, temp: p_Dir_node;
+    begin
+      vine_tail := root;
+      remainder := vine_tail.right;
+      size := 0;
+      while remainder /= null loop
+        if remainder.left = null then
+          --  move vine-tail down one:
+          vine_tail := remainder;
+          remainder := remainder.right;
+          size := size + 1;
+        else
+          --  rotate:
+          temp := remainder.left;
+          remainder.left := temp.right;
+          temp.right := remainder;
+          remainder := temp;
+          vine_tail.right := temp;
+        end if;
+      end loop;
+    end Tree_to_vine;
+
+    procedure Vine_to_tree( root: p_Dir_node; size_given: Integer ) is
+      --  convert the vine with "size" nodes and pseudo-root
+      --  node "root^" into a balanced tree
+      leaf_count: Integer;
+      size : Integer:= size_given;
+
+      procedure Compression( root_compress: p_Dir_node; count: Integer ) is
+        --  Compress "count" spine nodes in the tree with pseudo-root "root_compress^"
+        scanner, child: p_Dir_node;
+      begin
+        scanner := root_compress;
+        for counter in reverse 1 .. count loop
+          child         := scanner.right;
+          scanner.right := child.right;
+          scanner       := scanner.right;
+          child.right   := scanner.left;
+          scanner.left  := child;
+        end loop;
+      end Compression;
+
+      -- Returns n - 2 ** Integer( Float'Floor( log( Float(n) ) / log(2.0) ) )
+      -- without Float-Point calculation and rounding errors with too short floats
+      function Remove_leading_binary_1( n: Integer ) return Integer is
+        x: Integer:= 2**16; -- supposed maximum
+      begin
+        if n < 1 then
+          return n;
+        end if;
+        while n mod x = n loop
+          x:= x / 2;
+        end loop;
+        return n mod x;
+      end Remove_leading_binary_1;
+
+    begin --  Vine_to_tree
+      leaf_count := Remove_leading_binary_1(size + 1);
+      Compression(root, leaf_count); -- create deepest leaves
+      -- use Perfect_leaves instead for a perfectly balanced tree
+      size := size - leaf_count;
+      while size > 1 loop
+        Compression(root, size / 2);
+        size := size / 2;
+      end loop;
+    end Vine_to_tree;
+
+    procedure Rebalance( root: in out p_Dir_node ) is
+      --  Rebalance the binary search tree with root "root.all",
+      --  with the result also rooted at "root.all".
+      --  Uses the Tree_to_vine and Vine_to_tree procedures.
+      pseudo_root: p_Dir_node;
+      size: Integer;
+    begin
+      pseudo_root:= new Dir_node(name_len => 0);
+      pseudo_root.right := root;
+      Tree_to_vine(pseudo_root, size);
+      Vine_to_tree(pseudo_root, size);
+      root := pseudo_root.right;
+      Dispose(pseudo_root);
+    end Rebalance;
+
+  end Binary_tree_rebalancing;
 
   -- 19-Jun-2001: Enhanced file name identification
   --              a) when case insensitive  -> all UPPER (current)
@@ -81,12 +190,19 @@ package body Zip is
       method           : PKZip_method;
       name_encoding    : Zip_name_encoding;
       read_only        : Boolean;
-      encrypted_2_x    : Boolean
+      encrypted_2_x    : Boolean;
+      root_node        : in out p_Dir_node
       )
     is
-      node : constant Dir_node :=
-            ( (dico_name         => To_Unbounded_String (dico_name),
-               file_name         => To_Unbounded_String (file_name),
+      procedure Insert_into_tree(node: in out p_Dir_node) is
+      begin
+        if node = null then
+          node:= new Dir_node'
+            ( (name_len          => file_name'Length,
+               left              => null,
+               right             => null,
+               dico_name         => dico_name,
+               file_name         => file_name,
                file_index        => file_index,
                comp_size         => comp_size,
                uncomp_size       => uncomp_size,
@@ -99,31 +215,45 @@ package body Zip is
                user_code         => 0
                )
             );
-      pos : Dir_node_mapping.Cursor;
-      success : Boolean;
+        elsif dico_name > node.dico_name then
+          Insert_into_tree(node.right);
+        elsif dico_name < node.dico_name then
+          Insert_into_tree(node.left);
+        else
+          --  Here we have a case where the entry name already exists in the dictionary.
+          case duplicate_names is
+            when error_on_duplicate =>
+              Ada.Exceptions.Raise_Exception
+                (Duplicate_name'Identity,
+                 "Same full entry name (in dictionary: " & dico_name &
+                 ") appears twice in archive directory; " &
+                 "procedure Load was called with strict name policy."
+                );
+            when admit_duplicates =>
+              if file_index > node.file_index then
+                Insert_into_tree(node.right);
+              elsif file_index < node.file_index then
+                Insert_into_tree(node.left);
+              else
+                Ada.Exceptions.Raise_Exception
+                  (Duplicate_name'Identity,
+                   "Archive directory corrupt: same full entry name (in dictionary: " &
+                   dico_name & "), with same data position, appear twice."
+                  );
+              end if;
+          end case;
+        end if;
+      end Insert_into_tree;
+      --
     begin
-      info.directory.Append (node);
-      info.directory_map.Insert (node.dico_name, Integer (info.directory.Length), pos, success);
-      if not success then -- A.18.4. 45/2
-        --  Here we have a case where the entry name already exists in the dictionary.
-        case duplicate_names is
-          when error_on_duplicate =>
-            Ada.Exceptions.Raise_Exception
-              (Duplicate_name'Identity,
-               "Same full entry name (in dictionary: " & dico_name &
-               ") appears twice in archive directory; " &
-               "procedure Load was called with strict name policy, without duplicates."
-              );
-          when admit_duplicates =>
-            null;
-        end case;
-      end if;
+      Insert_into_tree(root_node);
     end Insert;
 
     the_end: Zip.Headers.End_of_Central_Dir;
     header : Zip.Headers.Central_File_Header;
+    p      : p_Dir_node:= null;
     zip_info_already_loaded: exception;
-    main_comment: Unbounded_String;
+    main_comment: p_String;
   begin -- Load Zip_info
     if info.loaded then
       raise zip_info_already_loaded;
@@ -131,12 +261,8 @@ package body Zip is
     Zip.Headers.Load(from, the_end);
     -- We take the opportunity to read the main comment, which is right
     -- after the end-of-central-directory block.
-    declare
-      main_comment_fixed : String (1 .. Integer (the_end.main_comment_length));
-    begin
-      String'Read(from'Access, main_comment_fixed);
-      main_comment := To_Unbounded_String (main_comment_fixed);
-    end;
+    main_comment:= new String(1..Integer(the_end.main_comment_length));
+    String'Read(from'Access, main_comment.all);
     -- Process central directory:
     Zip_Streams.Set_Index(
       from,
@@ -175,16 +301,28 @@ package body Zip is
                     Zip.Headers.Language_Encoding_Flag_Bit) /= 0),
                 read_only   => header.made_by_version / 256 = 0 and -- DOS-like
                                (header.external_attributes and 1) = 1,
-                encrypted_2_x => (header.short_info.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0);
+                encrypted_2_x => (header.short_info.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0,
+                root_node     => p );
+        -- Since the files are usually well ordered, the tree as inserted
+        -- is very unbalanced; we need to rebalance it from time to time
+        -- during loading, otherwise the insertion slows down dramatically
+        -- for zip files with plenty of files - converges to
+        -- O(total_entries ** 2)...
+        if i mod 256 = 0 then
+          Binary_tree_rebalancing.Rebalance(p);
+        end if;
       end;
     end loop;
-    info.loaded             := True;
-    info.case_sensitive     := case_sensitive;
-    info.zip_file_name      := To_Unbounded_String ("This is a stream, no direct file!");
-    info.zip_input_stream   := from'Unchecked_Access;
-    info.total_entries      := Integer(the_end.total_entries);
-    info.zip_file_comment   := main_comment;
-    info.zip_archive_format := Zip_32;
+    Binary_tree_rebalancing.Rebalance(p);
+    info:= ( loaded             => True,
+             case_sensitive     => case_sensitive,
+             zip_file_name      => new String'("This is a stream, no direct file!"),
+             zip_input_stream   => from'Unchecked_Access,
+             dir_binary_tree    => p,
+             total_entries      => Integer(the_end.total_entries),
+             zip_file_comment   => main_comment,
+             zip_archive_format => Zip_32
+           );
   exception
     when Zip.Headers.bad_end =>
       Raise_Exception (Zip.Archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
@@ -221,8 +359,9 @@ package body Zip is
       duplicate_names
     );
     Close (MyStream);
-    info.zip_file_name := To_Unbounded_String (from);
-    info.zip_input_stream := null; -- forget about the stream!
+    Dispose(info.zip_file_name);
+    info.zip_file_name:= new String'(from);
+    info.zip_input_stream:= null; -- forget about the stream!
   exception
     when others =>
       if Is_Open(MyStream) then
@@ -241,7 +380,7 @@ package body Zip is
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    return To_String (info.zip_file_name);
+    return info.zip_file_name.all;
   end Zip_name;
 
   function Zip_comment( info: in Zip_info ) return String is
@@ -249,7 +388,7 @@ package body Zip is
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    return To_String (info.zip_file_comment);
+    return info.zip_file_comment.all;
   end Zip_comment;
 
   function Zip_stream( info: in Zip_info ) return Zip_Streams.Zipstream_Class_Access
@@ -272,107 +411,81 @@ package body Zip is
 
   procedure Delete (info : in out Zip_info) is
 
+    procedure Delete( p: in out p_Dir_node ) is
+    begin
+      if p/=null then
+         Delete(p.left);
+         Delete(p.right);
+         Dispose(p);
+         p:= null;
+      end if;
+    end Delete;
+
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    info.directory.Clear;
-    info.directory_map.Clear;
+    Delete( info.dir_binary_tree );
+    Dispose( info.zip_file_name );
+    Dispose( info.zip_file_comment );
     info.loaded:= False; -- <-- added 14-Jan-2002
   end Delete;
 
-  -- Traverse a whole Zip_info directory, giving the
+  -- Traverse a whole Zip_info directory in sorted order, giving the
   -- name for each entry to an user-defined "Action" procedure.
 
   generic
-    with procedure Action_private( dn: in out Dir_node );  --  in out : user_code can be changed
+    with procedure Action_private( dn: in out Dir_node );
     -- Dir_node is private: only known to us, contents subject to change
-  procedure Traverse_private_read_write( z: in out Zip_info );
+  procedure Traverse_private( z: Zip_info );
 
-  procedure Traverse_private_read_write( z: in out Zip_info ) is
-    use Dir_node_vectors;
-    procedure Process_E (Element : in out Dir_node) is
+  procedure Traverse_private( z: Zip_info ) is
+
+    procedure Traverse_tree( p: p_Dir_node ) is
     begin
-      Action_private (Element);
-    end Process_E;
-    procedure Process_C (Position : Cursor) is
-    begin
-      z.directory.Update_Element (Position, Process_E'Access);
-    end Process_C;
+      if p /= null then
+        Traverse_tree (p.left);
+        Action_private (p.all);
+        Traverse_tree (p.right);
+      end if;
+    end Traverse_tree;
+
   begin
-    z.directory.Iterate (Process_C'Access);
-  end Traverse_private_read_write;
-
-  generic
-    with procedure Action_private( dn: Dir_node );  --  in out : user_code can be changed
-    -- Dir_node is private: only known to us, contents subject to change
-  procedure Traverse_private_read_only( z: Zip_info );
-
-  procedure Traverse_private_read_only( z: Zip_info ) is
-    use Dir_node_vectors;
-    procedure Process_C (Position : Cursor) is
-    begin
-      Action_private (Element (Position));
-    end Process_C;
-  begin
-    z.directory.Iterate (Process_C'Access);
-  end Traverse_private_read_only;
+    Traverse_tree (z.dir_binary_tree);
+  end Traverse_private;
 
   -----------------------
   --  Public versions  --
   -----------------------
 
   procedure Traverse( z: Zip_info ) is
-    procedure My_Action_private( dn: Dir_node ) is
+    procedure My_Action_private( dn: in out Dir_node ) is
     pragma Inline(My_Action_private);
     begin
-      Action ( To_String (dn.file_name));
+      Action(dn.file_name);
     end My_Action_private;
-    procedure My_Traverse_private is new Traverse_private_read_only (My_Action_private);
+    procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
     My_Traverse_private(z);
   end Traverse;
 
   procedure Traverse_Unicode( z: Zip_info ) is
-    procedure My_Action_private( dn: Dir_node ) is
+    procedure My_Action_private( dn: in out Dir_node ) is
     pragma Inline(My_Action_private);
     begin
-      Action (To_String (dn.file_name), dn.name_encoding);
+      Action(dn.file_name, dn.name_encoding);
     end My_Action_private;
-    procedure My_Traverse_private is new Traverse_private_read_only (My_Action_private);
+    procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
     My_Traverse_private(z);
   end Traverse_Unicode;
 
   procedure Traverse_verbose( z: Zip_info ) is
-    procedure My_Action_private( dn: Dir_node ) is
-    pragma Inline(My_Action_private);
-    begin
-      Action(
-        To_String (dn.file_name),
-        dn.file_index,
-        dn.comp_size,
-        dn.uncomp_size,
-        dn.crc_32,
-        dn.date_time,
-        dn.method,
-        dn.name_encoding,
-        dn.read_only,
-        dn.encrypted_2_x,
-        dn.user_code
-      );
-    end My_Action_private;
-    procedure My_Traverse_private is new Traverse_private_read_only (My_Action_private);
-  begin
-    My_Traverse_private(z);
-  end Traverse_verbose;
-
-  procedure Traverse_verbose_altering( z: in out Zip_info ) is
     procedure My_Action_private( dn: in out Dir_node ) is
     pragma Inline(My_Action_private);
     begin
       Action(
-        To_String (dn.file_name),
+        dn.file_name,
         dn.file_index,
         dn.comp_size,
         dn.uncomp_size,
@@ -385,10 +498,43 @@ package body Zip is
         dn.user_code
       );
     end My_Action_private;
-    procedure My_Traverse_private is new Traverse_private_read_write (My_Action_private);
+    procedure My_Traverse_private is new Traverse_private(My_Action_private);
   begin
     My_Traverse_private(z);
-  end Traverse_verbose_altering;
+  end Traverse_verbose;
+
+  procedure Tree_stat(
+    z        : in     Zip_info;
+    total    :    out Natural;
+    max_depth:    out Natural;
+    avg_depth:    out Float
+  )
+  is
+    sum_depth: Natural:= 0;
+
+    procedure Traverse_tree( p: p_Dir_node; depth: Natural ) is
+    begin
+      if p /= null then
+        total:= total + 1;
+        if depth > max_depth then
+          max_depth:= depth;
+        end if;
+        sum_depth:= sum_depth + depth;
+        Traverse_tree (p.left, depth + 1);
+        Traverse_tree (p.right, depth + 1);
+      end if;
+    end Traverse_tree;
+
+  begin
+    total:= 0;
+    max_depth:= 0;
+    Traverse_tree(z.dir_binary_tree, 0);
+    if total = 0 then
+      avg_depth:= 0.0;
+    else
+      avg_depth:= Float(sum_depth) / Float(total);
+    end if;
+  end Tree_stat;
 
   -- 13-May-2001: Find_first_offset
 
@@ -514,31 +660,30 @@ package body Zip is
     crc_32         :    out Interfaces.Unsigned_32
   )
   is
+    aux: p_Dir_node:= info.dir_binary_tree;
     up_name: constant String:= Normalize(name, info.case_sensitive);
-    use Dir_node_mapping;
-    cm : Cursor;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory_map.Find (To_Unbounded_String (up_name));
-    if cm = Dir_node_mapping.No_Element then
-      Ada.Exceptions.Raise_Exception(
-        File_name_not_found'Identity,
-        "Archive: [" & To_String (info.zip_file_name) & "], entry: [" & name & ']'
-      );
-    end if;
-    --  Entry found !
-    declare
-      index : constant Positive := Element (cm);
-      dn : Dir_node renames info.directory.Element (index);
-    begin
-      name_encoding := dn.name_encoding;
-      file_index    := dn.file_index;
-      comp_size     := dn.comp_size;
-      uncomp_size   := dn.uncomp_size;
-      crc_32        := dn.crc_32;
-    end;
+    while aux /= null loop
+      if up_name > aux.dico_name then
+        aux:= aux.right;
+      elsif up_name < aux.dico_name then
+        aux:= aux.left;
+      else  -- entry found !
+        name_encoding := aux.name_encoding;
+        file_index    := aux.file_index;
+        comp_size     := aux.comp_size;
+        uncomp_size   := aux.uncomp_size;
+        crc_32        := aux.crc_32;
+        return;
+      end if;
+    end loop;
+    Ada.Exceptions.Raise_Exception(
+      File_name_not_found'Identity,
+      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
+    );
   end Find_offset;
 
   procedure Find_offset_without_directory(
@@ -578,7 +723,7 @@ package body Zip is
       entry_name_encoding : Zip_name_encoding;
       read_only           : Boolean;
       encrypted_2_x       : Boolean; -- PKZip 2.x encryption
-      user_code           : Integer
+      user_code           : in out Integer
     )
     is
     pragma Unreferenced (date_time, method, read_only, encrypted_2_x, user_code);
@@ -611,44 +756,50 @@ package body Zip is
   )
   return Boolean
   is
+    aux: p_Dir_node:= info.dir_binary_tree;
     up_name: constant String:= Normalize(name, info.case_sensitive);
-    use Dir_node_mapping;
-    cm : Cursor;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory_map.Find (To_Unbounded_String (up_name));
-    return cm /= Dir_node_mapping.No_Element;
+    while aux /= null loop
+      if up_name > aux.dico_name then
+        aux:= aux.right;
+      elsif up_name < aux.dico_name then
+        aux:= aux.left;
+      else  -- entry found !
+        return True;
+      end if;
+    end loop;
+    return False;
   end Exists;
 
   procedure Set_user_code(
-    info           : in out Zip_info;
-    name           : in     String;
-    code           : in     Integer
+    info           : in Zip_info;
+    name           : in String;
+    code           : in Integer
   )
   is
+    aux: p_Dir_node:= info.dir_binary_tree;
     up_name: constant String:= Normalize(name, info.case_sensitive);
-    use Dir_node_mapping;
-    cm : Cursor;
-    index : Positive;
-    procedure Process (Element : in out Dir_node) is
-    begin
-      Element.user_code := code;
-    end Process;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory_map.Find (To_Unbounded_String (up_name));
-    if cm = Dir_node_mapping.No_Element then
-      Ada.Exceptions.Raise_Exception(
-        File_name_not_found'Identity,
-        "Archive: [" & To_String (info.zip_file_name) & "], entry: [" & name & ']'
-      );
-    end if;
-    index := Element (cm);
-    info.directory.Update_Element (index,  Process'Access);
+    while aux /= null loop
+      if up_name > aux.dico_name then
+        aux:= aux.right;
+      elsif up_name < aux.dico_name then
+        aux:= aux.left;
+      else  -- entry found !
+        aux.user_code:= code;
+        return;
+      end if;
+    end loop;
+    Ada.Exceptions.Raise_Exception(
+      File_name_not_found'Identity,
+      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
+    );
   end Set_user_code;
 
   function User_code(
@@ -657,23 +808,26 @@ package body Zip is
   )
   return Integer
   is
+    aux: p_Dir_node:= info.dir_binary_tree;
     up_name: constant String:= Normalize(name, info.case_sensitive);
-    use Dir_node_mapping;
-    cm : Cursor;
-    index : Positive;
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
     end if;
-    cm := info.directory_map.Find (To_Unbounded_String (up_name));
-    if cm = Dir_node_mapping.No_Element then
-      Ada.Exceptions.Raise_Exception(
-        File_name_not_found'Identity,
-        "Archive: [" & To_String (info.zip_file_name) & "], entry: [" & name & ']'
-      );
-    end if;
-    index := Element (cm);
-    return info.directory.Element (index).user_code;
+    while aux /= null loop
+      if up_name > aux.dico_name then
+        aux:= aux.right;
+      elsif up_name < aux.dico_name then
+        aux:= aux.left;
+      else  -- entry found !
+        return aux.user_code;
+      end if;
+    end loop;
+    Ada.Exceptions.Raise_Exception(
+      File_name_not_found'Identity,
+      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
+    );
+    return 0;  --  Fake, since exception has been raised just before. Removes an OA warning.
   end User_code;
 
   procedure Get_sizes(
