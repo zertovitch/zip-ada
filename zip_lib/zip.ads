@@ -129,7 +129,7 @@ package Zip is
      implode,   --   D
      tokenize,
      deflate,   -- C,D
-     deflate_e, --   D - Enhanced deflate
+     deflate_e, --   D - "Enhanced deflate" or "Deflate64"
      bzip2,     --   D
      lzma_meth, -- C,D
      ppmd,
@@ -400,18 +400,19 @@ package Zip is
   ---------------------
 
 private
-  --  Zip_info, 23.VI.1999.
 
+  --  Zip_info, 23.VI.1999.
+  --
   --  The PKZIP central directory is coded here as a binary tree
   --  to allow a fast retrieval of the searched offset in zip file.
   --  E.g. for a 1000-file archive, the offset will be found in less
   --  than 11 moves: 2**10=1024 (balanced case), without any read
   --  in the archive.
   --
-  --  Note 19-Oct-2018: rev. 670 to 683 used a Hashed Map and a
+  --  *Note* 19-Oct-2018: rev. 670 to 683 used a Hashed Map and a
   --  Vector (Ada.Containers). The loading of the dictionary was
-  --  much faster, but there were performance bottlenecks elsewhere,
-  --  not solved by profiling. On an archive with 18000 entries of
+  --  much faster (2x), but there were performance bottlenecks elsewhere,
+  --  not solved by profiling. On an archive with 18000 small entries of
   --  around 1 KB each, comp_zip ran 100x slower!
   --  Neither the restricted use of Unbounded_String, nor the replacement
   --  of the Vector by an array helped solving the performance issue.
