@@ -403,15 +403,16 @@ package body Rezip_lib is
     end Call_external_expanded;
 
     procedure Process_External(
-      packer  : String;
-      options : String;
-      out_name: String;
-      is_rand : Boolean;
-      info    : out Packer_info
+      packer     : String;
+      options    : String;
+      out_name   : String;
+      is_rand    : Boolean;
+      is_deflate : Boolean;
+      info       : out Packer_info
     )
     is
-      temp_zip: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$temp$.zip";
-      rand_win: constant String:= Simple_Name(Flexible_temp_files.Radix) & "_$rand$.tmp";
+      temp_zip    : constant String := Simple_Name (Flexible_temp_files.Radix) & "_$temp$.zip";
+      rand_winner : constant String := Simple_Name (Flexible_temp_files.Radix) & "_$rand$.tmp";
       options_winner: Unbounded_String;
       data_name: constant String:= Simple_Name(Temp_name(False,original));
       zi_ext: Zip.Zip_info;
@@ -438,12 +439,14 @@ package body Rezip_lib is
           info.expanded_options
         );
         if (not Exists(temp_zip)) and then Ada.Directories.Size(data_name) = 0 then
-          -- ADVZip 1.19 doesn't create a zip file for an empty entry...
+          --  ADVZip 1.19 doesn't create a zip file for a 0-size entry; we call Zip instead...
           Call_external_expanded("zip", "", temp_zip & ' ' & data_name, dummy_exp_opt);
         end if;
-        -- Post processing of "deflated" entries with DeflOpt:
-        Call_external(S(defl_opt.name), temp_zip);
-        -- Now, rip
+        if is_deflate then
+          --  Post processing of "deflated" entry with DeflOpt:
+          Call_external(S(defl_opt.name), temp_zip);
+        end if;
+        --  Now, rip
         Set_Name (MyStream, temp_zip);
         Open (MyStream, In_File);
         Zip.Load( zi_ext, MyStream, True );
@@ -475,10 +478,10 @@ package body Rezip_lib is
         then
           size:= header.dd.compressed_size;
           zfm := header.zip_type;
-          if Exists(rand_win) then
-            Delete_File(rand_win);
+          if Exists(rand_winner) then
+            Delete_File(rand_winner);
           end if;
-          Rename(out_name, rand_win);
+          Rename(out_name, rand_winner);
           options_winner:= info.expanded_options;
         end if;
         --
@@ -500,7 +503,7 @@ package body Rezip_lib is
             if Exists(out_name) then
               Delete_File(out_name);
             end if;
-            Rename(rand_win, out_name);
+            Rename(rand_winner, out_name);
             info.expanded_options:= options_winner;
             info.iter:= attempt;
             exit;
@@ -563,9 +566,9 @@ package body Rezip_lib is
       Set(archive, Approach_to_Method(a));
       Add_File(archive, data_name);
       Finish (archive);
-      -- Post processing of "deflated" entries with DeflOpt:
+      --  Post processing of "deflated" entry with DeflOpt:
       Call_external(S(defl_opt.name), temp_zip);
-      -- Now, rip
+      --  Now, rip
       Set_Name (MyStream, temp_zip);
       Open (MyStream, In_File);
       Zip.Load( zi_ext, MyStream, True );
@@ -587,7 +590,7 @@ package body Rezip_lib is
       Set_Directory(cur_dir);
     end Process_Internal_as_Zip;
 
-    time_0      : constant Ada.Calendar.Time:= Clock;
+    time_0 : constant Ada.Calendar.Time:= Clock;
 
     procedure Repack_contents(orig_name, repacked_name, html_report_name: String)
     is
@@ -633,6 +636,7 @@ package body Rezip_lib is
           end if;
         end Winner_color;
         --
+        use Zip;
       begin
         --  Start with the set of approaches that has been decided for all entries.
         consider:= consider_a_priori;
@@ -752,6 +756,7 @@ package body Rezip_lib is
                   S(ext(a).options),
                   Temp_name(True,a),
                   ext(a).randomized,
+                  ext(a).pkzm = Zip.deflate,
                   e.info(a)
                 );
                 e.head.made_by_version:= ext(a).made_by_version;

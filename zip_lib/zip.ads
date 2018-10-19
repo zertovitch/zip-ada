@@ -136,7 +136,7 @@ package Zip is
      implode,   --   D
      tokenize,
      deflate,   -- C,D
-     deflate_e, --   D - Enhanced deflate
+     deflate_e, --   D - "Enhanced deflate" or "Deflate64"
      bzip2,     --   D
      lzma_meth, -- C,D
      ppmd,
