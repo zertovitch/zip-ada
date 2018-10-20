@@ -11,7 +11,8 @@ with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 procedure Test_Zip_Create_Info_Timing is
   t1, t2: Ada.Calendar.Time;
   use Ada.Calendar;
-  procedure Create_with_many (n: Positive) is
+
+  procedure Create_with_many (n: Positive; duplicates: Zip.Duplicate_name_policy) is
     stream  : aliased File_Zipstream;
     archive : Zip_Create_info;
 
@@ -38,7 +39,8 @@ procedure Test_Zip_Create_Info_Timing is
       stream'Unchecked_Access,
       "test_create.zip",
       Zip.Compress.Store,
-      Zip.error_on_duplicate
+      --  NB: for creation, the value of parameter "duplicates" may impact performance.
+      duplicates
     );
     for i in 1 .. n loop
       Add_one_entry(
@@ -48,12 +50,18 @@ procedure Test_Zip_Create_Info_Timing is
     Finish(archive);
   end Create_with_many;
 begin
-  t1:= Ada.Calendar.Clock;
-  Create_with_many (2 ** 16 - 1);
-  t2:= Ada.Calendar.Clock;
-  Ada.Text_IO.Put_Line(
-    "Time elapsed for creating Zip file:" &
-    Duration'Image(t2-t1) &
-    " seconds"
-  );
+  for d in Zip.Duplicate_name_policy loop
+    Ada.Text_IO.Put_Line (
+      "Creating Zip archive with many entries; check for duplicate names = " &
+      Zip.Duplicate_name_policy'Image (d)
+    );
+    t1:= Ada.Calendar.Clock;
+    Create_with_many (2 ** 16 - 1, d);
+    t2:= Ada.Calendar.Clock;
+    Ada.Text_IO.Put_Line (
+      "Time elapsed for creating Zip file:" &
+      Duration'Image(t2-t1) &
+      " seconds"
+    );
+  end loop;
 end Test_Zip_Create_Info_Timing;

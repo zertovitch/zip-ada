@@ -11,14 +11,16 @@ procedure Test_Zip_Info_timing is
   begin
     if Zip.Exists (name) then
       t1:= Ada.Calendar.Clock;
-      Zip.Load(zi, name);
+      --  NB: for loading, the value of parameter "duplicate_names" won't impact performance.
+      Zip.Load (zi, name);
       t2:= Ada.Calendar.Clock;
-      Ada.Text_IO.Put_Line("Zip Archive: " & Zip.Zip_name (zi));
-      Ada.Text_IO.Put_Line("Entries:" & Integer'Image(Zip.Entries(zi)));
-      Ada.Text_IO.Put_Line("Time elapsed for loading the Zip catalogue:" & Duration'Image(t2-t1));
+      Ada.Text_IO.Put_Line ("Zip Archive: " & Zip.Zip_name (zi));
+      Ada.Text_IO.Put_Line ("Entries:" & Integer'Image(Zip.Entries(zi)));
+      Ada.Text_IO.Put_Line ("Time elapsed for loading the Zip catalogue:" & Duration'Image (t2-t1));
       Ada.Text_IO.New_Line;
     end if;
-  end;
+  end Test_1_Archive;
+
 begin
   --  Zip files created by the test Zip_with_many_files.
   Test_1_Archive ("65535.zip");

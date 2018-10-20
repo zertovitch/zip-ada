@@ -165,8 +165,11 @@ private
    type Dir_entries is array (Positive range <>) of Dir_entry;
    type Pdir_entries is access Dir_entries;
 
-  package Name_mapping is
-    new Ada.Containers.Hashed_Maps (Unbounded_String, Positive, Hash, "=");
+   --  The use of Hashed_Maps makes Test_Zip_Create_Info_Timing run ~10x faster than
+   --  with the unbalanced binary tree of previous versions.
+   --
+   package Name_mapping is
+     new Ada.Containers.Hashed_Maps (Unbounded_String, Positive, Hash, "=");
 
    type Zip_Create_info is record
      Stream             : Zipstream_Class_Access;

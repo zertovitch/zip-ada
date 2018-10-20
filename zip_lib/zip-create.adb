@@ -132,7 +132,7 @@ package body Zip.Create is
    begin
      m.Insert (To_Unbounded_String (file_name), cm, OK);
      if not OK then  --  Name already registered
-       raise Duplicate_name;
+       raise Duplicate_name with "Entry name = " & file_name;
      end if;
    end Insert_to_name_dictionary;
 
