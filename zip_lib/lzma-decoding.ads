@@ -76,21 +76,21 @@ package LZMA.Decoding is
   ---------------------------------------------------------------------------
 
   type LZMA_Decoder_Info is limited private;
-  procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result);
+  procedure Decode(info: out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result);
 
   --  The technical details:
-  function Literal_context_bits(o: LZMA_Decoder_Info) return Natural;
-  function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural;
-  function Pos_bits(o: LZMA_Decoder_Info) return Natural;
+  function Literal_context_bits(info: LZMA_Decoder_Info) return Natural;
+  function Literal_pos_bits(info: LZMA_Decoder_Info) return Natural;
+  function Pos_bits(info: LZMA_Decoder_Info) return Natural;
 
-  function Unpack_size_defined(o: LZMA_Decoder_Info) return Boolean;
-  function Unpack_size_as_defined(o: LZMA_Decoder_Info) return Data_Bytes_Count;
+  function Unpack_size_defined(info: LZMA_Decoder_Info) return Boolean;
+  function Unpack_size_as_defined(info: LZMA_Decoder_Info) return Data_Bytes_Count;
   --  Sizes in bytes:
-  function Probability_model_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
-  function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
-  function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Probability_model_size(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Dictionary_size(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Dictionary_size_in_properties(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
   --
-  function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean;
+  function Range_decoder_corrupted(info: LZMA_Decoder_Info) return Boolean;
 
   LZMA_Error: exception;
 

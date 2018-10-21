@@ -570,7 +570,7 @@ package body LZMA.Decoding is
     end loop;
   end Decode_Contents;
 
-  procedure Decode_Header(o: in out LZMA_Decoder_Info; hints: LZMA_Hints) is
+  procedure Decode_Header(o: out LZMA_Decoder_Info; hints: LZMA_Hints) is
     header: Byte_buffer(0..12);
     b: Byte;
     use type Data_Bytes_Count;
@@ -627,66 +627,67 @@ package body LZMA.Decoding is
     o.markerIsMandatory := hints.marker_expected or not o.unpackSizeDefined;
   end Decode_Header;
 
-  procedure Decode(o: in out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result) is
+  procedure Decode(info: out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result) is
   begin
-    Decode_Header(o, hints);
-    Decode_Contents(o, res);
-    if hints.fail_on_bad_range_code and o.range_dec_corrupted then
-      Raise_Exception(LZMA_Error'Identity, "Range decoder had a corrupted value (code = range)");
+    Decode_Header (info, hints);
+    Decode_Contents (info, res);
+    if hints.fail_on_bad_range_code and info.range_dec_corrupted then
+      Raise_Exception (LZMA_Error'Identity, "Range decoder had a corrupted value (code = range)");
     end if;
   end Decode;
 
   procedure Decompress(hints: LZMA_Hints) is
-    o: LZMA_Decoder_Info;
-    res: LZMA_Result;
+    --  Technical informations are discarded in this version of Decompress.
+    info : LZMA_Decoder_Info;
+    res  : LZMA_Result;
   begin
-    Decode(o, hints, res);
+    Decode (info, hints, res);
   end Decompress;
 
-  function Literal_context_bits(o: LZMA_Decoder_Info) return Natural is
+  function Literal_context_bits(info: LZMA_Decoder_Info) return Natural is
   begin
-    return o.lc;
+    return info.lc;
   end Literal_context_bits;
 
-  function Literal_pos_bits(o: LZMA_Decoder_Info) return Natural is
+  function Literal_pos_bits(info: LZMA_Decoder_Info) return Natural is
   begin
-    return o.lp;
+    return info.lp;
   end Literal_pos_bits;
 
-  function Pos_bits(o: LZMA_Decoder_Info) return Natural is
+  function Pos_bits(info: LZMA_Decoder_Info) return Natural is
   begin
-    return o.pb;
+    return info.pb;
   end Pos_bits;
 
-  function Unpack_size_defined(o: LZMA_Decoder_Info) return Boolean is
+  function Unpack_size_defined(info: LZMA_Decoder_Info) return Boolean is
   begin
-    return o.unpackSizeDefined;
+    return info.unpackSizeDefined;
   end Unpack_size_defined;
 
-  function Unpack_size_as_defined(o: LZMA_Decoder_Info) return Data_Bytes_Count is
+  function Unpack_size_as_defined(info: LZMA_Decoder_Info) return Data_Bytes_Count is
   begin
-    return o.unpackSize_as_defined;
+    return info.unpackSize_as_defined;
   end Unpack_size_as_defined;
 
-  function Probability_model_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
-    probs: All_probabilities(last_lit_prob_index => 16#300# * 2 ** (o.lc + o.lp) - 1);
+  function Probability_model_size(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
+    probs: All_probabilities(last_lit_prob_index => 16#300# * 2 ** (info.lc + info.lp) - 1);
   begin
     return probs'Size / 8;
   end Probability_model_size;
 
-  function Dictionary_size(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
+  function Dictionary_size(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
-    return o.dictionary_size;
+    return info.dictionary_size;
   end Dictionary_size;
 
-  function Dictionary_size_in_properties(o: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
+  function Dictionary_size_in_properties(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32 is
   begin
-    return o.dictSizeInProperties;
+    return info.dictSizeInProperties;
   end Dictionary_size_in_properties;
 
-  function Range_decoder_corrupted(o: LZMA_Decoder_Info) return Boolean is
+  function Range_decoder_corrupted(info: LZMA_Decoder_Info) return Boolean is
   begin
-    return o.range_dec_corrupted;
+    return info.range_dec_corrupted;
   end Range_decoder_corrupted;
 
 end LZMA.Decoding;
