@@ -4,11 +4,11 @@
 --                     using the Zip-Ada library.
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
--- Important changes:
+--  Important changes:
 --
--- ZA v. 49: password can be set
--- ZA v. 28: uses Zip.Create
--- ZA v. 26: modified for new Zip_Stream
+--  ZA v. 49: password can be set
+--  ZA v. 28: uses the Zip.Create package
+--  ZA v. 26: modified for the new Zip_Stream package
 
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
@@ -201,7 +201,9 @@ procedure ZipAda is
         opt : constant String:= arg(arg'First+1..arg'Last) & "    ";
         eX  : constant String:= opt(opt'First..opt'First+1);
       begin
-        if eX = "er" then
+        if eX = "e0" then
+          method:= Store;
+        elsif eX = "er" then
           case opt(opt'First+2) is
             when '1'    => method:= Reduce_1;
             when '2'    => method:= Reduce_2;
@@ -302,7 +304,8 @@ begin
   else
     Put_Line("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
-    Put_Line("Options:  -erN   : use the 2-pass ""Reduce"" method, factor N = 1..4");
+    Put_Line("Options:  -e0    : ""Store"": zero compression, archiving only (like tar)");
+    Put_Line("          -erN   : ""Reduce"" 2-pass method, factor N = 1..4");
     Put_Line("          -es    : ""Shrink"" method (LZW algorithm)");
     Put_Line("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
     Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 1..3");
