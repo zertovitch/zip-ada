@@ -61,9 +61,12 @@ Contents
     - UnZip for extracting files from archives
     - UnZip.Streams for extracting archive entries to streams
   The best to understand how it works is to look at the demos and tools below,
-  to begin with Demo_Zip and Demo_UnZip.
-  The back-end packages are set as private. You don't need to (and cannot)
-  refer to them, even to care of them...
+  to begin with, Demo_Zip and Demo_UnZip.
+  The back-end child packages of Zip and UnZip are set as private.
+  You don't need to (and cannot) refer to them, even to care of them...
+  At the very back-end, some components can be used outside of the Zip context:
+    - LZ77: a standalone generic streaming LZ77 encoder
+    - LZMA[.*]: standalone generic streaming ZMA encoder and decoder
 
 * In the demo subdirectory, you have the following command-line demo
   procedures for testing Zip-Ada:
