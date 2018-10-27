@@ -24,8 +24,6 @@ package Trained_Compression is
     with function More_Uncompressed_Data_Bytes return Boolean;
     --  Output of compressed data:
     with procedure Write_Compressed_Byte (B : Byte);
-    --  Untrained encoder:
-    with procedure Encode_Untrained;
     --
   procedure Encode (Train_Uncompressed, Skip_Transmitted : Data_Bytes_Count);
 
@@ -38,11 +36,8 @@ package Trained_Compression is
     --  Input of training or data bytes:
     with function Read_Compressed_Training return Byte;
     with function Read_Compressed_Data return Byte;
-    with function More_Compressed_Data_Bytes return Boolean;
     --  Output of compressed data:
     with procedure Write_Decompressed_Byte (B : Byte);
-    --  Untrained decoder:
-    with procedure Decode_Untrained;
     --
   procedure Decode (Train_Compressed, Skip_Decompressed : Data_Bytes_Count);
 
