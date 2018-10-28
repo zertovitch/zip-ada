@@ -134,8 +134,8 @@ packages.
 
 Latest changes
 ==============
-The list of changes is available in doc/changes.txt .
-     
+The list of changes is available in doc/za_history.txt .
+
 Thanks to...
 ============
 

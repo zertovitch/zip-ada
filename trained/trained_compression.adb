@@ -13,7 +13,7 @@ package body Trained_Compression is
     total_uncompressed : Data_Bytes_Count := 0;
     total_compressed   : Data_Bytes_Count := 0;
 
-    --  Call-back functions for the untrained encoder.
+    --  Call-back subprograms for the untrained encoder.
     function Read_Byte return Byte is
     begin
       if total_uncompressed <= Train_Uncompressed then
@@ -58,7 +58,7 @@ package body Trained_Compression is
     total_compressed   : Data_Bytes_Count := 0;
     total_decompressed : Data_Bytes_Count := 0;
 
-    --  Call-back functions for the untrained encoder.
+    --  Call-back subprograms for the untrained encoder.
     function Read_Byte return Byte is
     begin
       if total_compressed <= Train_Compressed then
