@@ -25,7 +25,7 @@ package Trained_Compression is
     --  Output of compressed data:
     with procedure Write_Compressed_Byte (B : Byte);
     --
-  procedure Encode (Train_Uncompressed, Skip_Transmitted : Data_Bytes_Count);
+  procedure Encode (Train_Uncompressed, Skip_Compressed : Data_Bytes_Count);
 
   --------------------------------
   --  Decoding - decompression  --

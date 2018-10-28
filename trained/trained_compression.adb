@@ -9,14 +9,14 @@ package body Trained_Compression is
   -- Encode --
   ------------
 
-  procedure Encode (Train_Uncompressed, Skip_Transmitted : Data_Bytes_Count) is
+  procedure Encode (Train_Uncompressed, Skip_Compressed : Data_Bytes_Count) is
     total_uncompressed : Data_Bytes_Count := 0;
     total_compressed   : Data_Bytes_Count := 0;
 
     --  Call-back subprograms for the untrained encoder.
     function Read_Byte return Byte is
     begin
-      if total_uncompressed <= Train_Uncompressed then
+      if total_uncompressed < Train_Uncompressed then
         total_uncompressed := total_uncompressed + 1;
         return Read_Uncompressed_Training;
       else
@@ -26,7 +26,7 @@ package body Trained_Compression is
 
     function More_Bytes return Boolean is
     begin
-      if total_uncompressed <= Train_Uncompressed then
+      if total_uncompressed < Train_Uncompressed then
         return True;
       else
         return More_Uncompressed_Data_Bytes;
@@ -35,7 +35,7 @@ package body Trained_Compression is
 
     procedure Write_Byte (B: Byte) is
     begin
-      if total_compressed <= Skip_Transmitted then
+      if total_compressed < Skip_Compressed then
         total_compressed := total_compressed + 1;
         --  Discard B.
       else
@@ -43,10 +43,14 @@ package body Trained_Compression is
       end if;
     end Write_Byte;
 
-    procedure Specific_Encode is new LZMA.Encoding.Encode (Read_Byte, More_Bytes, Write_Byte);
+    procedure Specific_Encode is
+      new LZMA.Encoding.Encode (Read_Byte, More_Bytes, Write_Byte);
 
   begin
-    Specific_Encode;
+    Specific_Encode (
+      level           => LZMA.Encoding.Level_3,
+      dictionary_size => 2 ** 16
+    );
   end Encode;
 
   ------------
@@ -61,7 +65,7 @@ package body Trained_Compression is
     --  Call-back subprograms for the untrained encoder.
     function Read_Byte return Byte is
     begin
-      if total_compressed <= Train_Compressed then
+      if total_compressed < Train_Compressed then
         total_compressed := total_compressed + 1;
         return Read_Compressed_Training;
       else
@@ -71,7 +75,7 @@ package body Trained_Compression is
 
     procedure Write_Byte (B: Byte) is
     begin
-      if total_decompressed <= Skip_Decompressed then
+      if total_decompressed < Skip_Decompressed then
         total_decompressed := total_decompressed + 1;
         --  Discard B.
       else
@@ -79,7 +83,8 @@ package body Trained_Compression is
       end if;
     end Write_Byte;
 
-    package Specific_Decoding is new LZMA.Decoding (Read_Byte, Write_Byte);
+    package Specific_Decoding is
+      new LZMA.Decoding (Read_Byte, Write_Byte);
 
   begin
     Specific_Decoding.Decompress (
