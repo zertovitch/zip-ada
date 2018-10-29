@@ -25,6 +25,15 @@ package Trained_Compression is
     --  Output of compressed data:
     with procedure Write_Compressed_Byte (B : Byte);
     --
+    --  Important: Skip_Compressed needs to be slightly less
+    --  than the full compressed trainer's actual size.
+    --  Reason: the trainer alone has an end-of-stream symbol;
+    --  furthermore, the trainer, with data after it, may have a
+    --  longer LZ77 match that the trainer alone would not have
+    --  near its end. You can append a bit of noise to
+    --  the uncompressed trainer data to avoid having to reduce
+    --  Skip_Compressed too much.
+    --
   procedure Encode (Train_Uncompressed, Skip_Compressed : Data_Bytes_Count);
 
   --------------------------------
@@ -38,6 +47,9 @@ package Trained_Compression is
     with function Read_Compressed_Data return Byte;
     --  Output of compressed data:
     with procedure Write_Decompressed_Byte (B : Byte);
+    --
+    --  Important: Train_Compressed needs to be equal to
+    --             the encoder's Skip_Compressed value.
     --
   procedure Decode (Train_Compressed, Skip_Decompressed : Data_Bytes_Count);
 

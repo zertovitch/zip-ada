@@ -3,7 +3,8 @@ project Trained_Compression extends "../ZipAda" is  --  Check zipada.gpr for det
    for Source_Dirs use (".");
 
    for Main use (
-     "trained_encoder.adb"
+     "trained_encoder.adb",
+     "trained_decoder.adb"
    );
 
    case Build_Mode is
