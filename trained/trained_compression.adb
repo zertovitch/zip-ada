@@ -1,5 +1,33 @@
+--  Universal Trained Compression - body - an implementation with LZMA
+----------------------------------------------------------------------
 --  This implementation uses the LZMA encoder-decoder
 --  that is found in the Zip-Ada project's zip_lib directory.
+--
+--  Legal licensing note:
+--
+--  Copyright (c) 2018 Gautier de Montmollin
+--  SWITZERLAND
+--
+--  Permission is hereby granted, free of charge, to any person obtaining a copy
+--  of this software and associated documentation files (the "Software"), to deal
+--  in the Software without restriction, including without limitation the rights
+--  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+--  copies of the Software, and to permit persons to whom the Software is
+--  furnished to do so, subject to the following conditions:
+--
+--  The above copyright notice and this permission notice shall be included in
+--  all copies or substantial portions of the Software.
+--
+--  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+--  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+--  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+--  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+--  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+--  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+--  THE SOFTWARE.
+--
+--  NB: this is the MIT License, as found 21-Aug-2016 on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 with LZMA.Encoding, LZMA.Decoding;
 
@@ -37,7 +65,7 @@ package body Trained_Compression is
     begin
       if total_compressed < Skip_Compressed then
         total_compressed := total_compressed + 1;
-        --  Discard B.
+        --  Discard B. We could also output the bytes to the stub file.
       else
         Write_Compressed_Byte (B);
       end if;
@@ -49,7 +77,7 @@ package body Trained_Compression is
   begin
     Specific_Encode (
       level           => LZMA.Encoding.Level_3,
-      dictionary_size => 2 ** 19
+      dictionary_size => 2 ** 19  --  512 KB
     );
   end Encode;
 

@@ -2,6 +2,8 @@
 
 gprbuild -p
 
+rem  .xls and .csv data: public data series from https://fred.stlouisfed.org/series/[series name]
+
 call trtest_single gs1.xls 50196 7300 gs2 xls
 call trtest_single gs1.xls 50196 7300 gs3 xls
 

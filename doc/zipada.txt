@@ -49,7 +49,7 @@ You find the full license and copyright notice in zip.ads.
 Contents
 ========
 
-* The subdirectory Zip_Lib contains the full source of the Zip-Ada library.
+* The subdirectory "zip_lib" contains the full source of the Zip-Ada library.
   All you need is there.
   These library sources are in Ada 2005, so any Ada 2005 and above compiler
   will like them, provided it supports integer types up to 64 bit.
@@ -68,7 +68,7 @@ Contents
     - LZ77: a standalone generic streaming LZ77 encoder
     - LZMA[.*]: standalone generic streaming ZMA encoder and decoder
 
-* In the demo subdirectory, you have the following command-line demo
+* In the "demo" subdirectory, you have the following command-line demo
   procedures for testing Zip-Ada:
 
   - Demo_Zip.adb         : tiny demo for Zip.Create
@@ -76,7 +76,7 @@ Contents
   - Demo_csv_into_zip.adb: demo showing how to produce many files directly
                              into a Zip file, with only 1 temp file
 
-* In the tools subdirectory, you have the following command-line tools
+* In the "tools" subdirectory, you have the following command-line tools
   using the Zip-Ada library:
   - ZipAda.adb           : minimal standalone zipping tool
   - UnZipAda.adb         : minimal standalone unzipping tool
@@ -84,12 +84,19 @@ Contents
   - Find_Zip.adb         : tool for searching a string across an archive (contents + names)
   - ReZip.adb            : tool for recompressing Zip archives and make them smaller
   
-*  In the test subdirectory, there is, among others:
+*  In the "test" subdirectory, there is, among others:
   - ZipTest.adb              : test for Zip archive creation with various stream types
   - Zip_with_many_files.adb  : test archive with a large number of entries - and test limits
   - Zip_with_big_files.adb   : test archive with large entries - and test limits
 
-*  In the extras subdirectory, there is
+*  In the "trained" subdirectory, there is trained compression package with examples.
+     Trained compression consists in training both sides (encoder, decoder) with
+     a data, known in advance to both, which is similar to the data to be compressed,
+     transmitted and decompressed. Sometimes the compression ratio is improved significantly
+
+*  In the "doc" subdirectory you'll find documentation, and research data in za_work.xls .
+
+*  In the "extras" subdirectory, there is
   - bunzip               : a standalone decompressor for BZip2 files (.bz2)
   - lzma_dec             : a standalone decompressor for LZMA files (.lzma)
   - lzma_enc             : a standalone compressor for LZMA files (.lzma)
