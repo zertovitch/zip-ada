@@ -49,7 +49,7 @@ package body Trained_Compression is
   begin
     Specific_Encode (
       level           => LZMA.Encoding.Level_3,
-      dictionary_size => 2 ** 16
+      dictionary_size => 2 ** 19
     );
   end Encode;
 
