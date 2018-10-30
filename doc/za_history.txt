@@ -11,6 +11,9 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
   - (Tools) ReZip has a new option for working with internal compression
         algorithms only, provided by Zip.Compress. It is useful if
         external tools are not available.
+  - New Trained_Compression package: generic streaming encoder-decoder
+        engine with the capability of training the engine with data known
+        in advance, in order to achieve better compression. Not Zip-related.
   -!- Minimum required Ada version is now Ada 2005 (was Ada 95 before).
 
 * Changes in '54', 28-Jun-2018:

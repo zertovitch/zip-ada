@@ -1,12 +1,30 @@
 --  Universal Trained Compression
 ---------------------------------
 --  This package provides a generic streaming encoder-decoder
---  with the capability of training the decoder with data known
+--  engine with the capability of training the engine with data known
 --  in advance, in order to achieve better compression of the
 --  actual data to be transmitted if the known data is similar
 --  to the training data.
---  See trtest.cmd for a test and za_work.xls (sheet: Trained) for results.
+--  See trtest.cmd for a test and ../doc/za_work.xls (sheet: Trained)
+--  for some results.
 --
+--  Conceptually it works like that (in the streams 1. is followed by 2.):
+--
+--   Encoding workflow:
+--   ------------------
+--   
+--      1. training --\    compression    /--> 1. training' (discarded)
+--                     >-->----aka----->--
+--      2. DATA ------/     encoding      \--> 2. DATA'  --> ...
+--   
+--   Decoding workflow:
+--   ------------------
+--   
+--              1. training' --\   decompression  /--> 1. training (discarded)
+--                              >-->---aka---->---
+--      ... --> 2. DATA' ------/     decoding     \--> 2. DATA
+--
+-------------------------
 --  Legal licensing note:
 --
 --  Copyright (c) 2018 Gautier de Montmollin
