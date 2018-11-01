@@ -27,14 +27,20 @@ trained_encoder zero.txt full_trainer.dat trainer_%tc_train%.dat   0
 rem  See how the test data is compressed with zero training.
 trained_encoder zero.txt %tc_in% %tc_prefix%.%tc_ext%.utc 0
 
+rem
 rem  The real test: compress %tc_in% to %tc_prefix%.%tc_ext%.tc, using %tc_train% as training data.
-trained_encoder full_trainer.dat %tc_in% %tc_prefix%.%tc_ext%.tc        %tc_train_stub_size%
-trained_decoder trainer_%tc_train%.dat %tc_prefix%.%tc_ext%.tc %tc_out% %tc_train_stub_size% %tc_full_train_size%
+rem
 
-del full_trainer.dat
+echo ***  Encoding...
+trained_encoder full_trainer.dat %tc_in% %tc_prefix%.%tc_ext%.tc        %tc_train_stub_size%
+
+echo ***  Decoding...
+trained_decoder trainer_%tc_train%.dat %tc_prefix%.%tc_ext%.tc %tc_out% %tc_train_stub_size% %tc_full_train_size%
 
 echo ***  Encoding-decoding done.
 echo ***  Check that the decompressed (out) is identical to the uncompressed (in):
 fc /B %tc_in% %tc_out%
+
+del full_trainer.dat
 
 :fin

@@ -1,7 +1,8 @@
 - Support the Zip_64 format - see ZIP64 in appnote.txt and
      Zip_archive_format_type in zip.ads .
 
-- LZ77: add a 3rd procedure that sends a list of possible DL codes (BT4),
+- LZ77: add a 3rd procedure that sends a list of possible DL codes instead
+     of a single DL code (BT4 can do that),
      letting LZMA.Encoding choose the most predicted-probable one.
      Alternatively (to avoid complicating the LZ77 interface), hash
      the distance-length pairs, use the hash for a frequency index
@@ -9,9 +10,6 @@
 
 - LZMA.Encoding & Zip.Compress.LZMA_E: tune performance with well
      placed Inline pragmata
-     
-- Length_limited_Huffman_code_lengths and LZ77:
-     at some point, turn the "paranoid" modes to False.
 
 - Zip.Compress.Deflate, LZMA.Encoding and LZ77:
      see also specific "to do"'s in packages' bodies.

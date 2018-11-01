@@ -119,8 +119,8 @@ Contents
   with various systems:
   - ZipAda.gpr for GNAT's gprbuild or the GNAT Programming Studio (tools and demos only)
   - ZipAda_Test.gpr for GNAT's gprbuild or the GNAT Programming Studio (tests only)
-  - ZipAda_ObjectAda.prj for ObjectAda 9.2 and later (this is the
-      project file for the ObjectAda's IDE)
+  - ZipAda_ObjectAda.prj for ObjectAda 10.0 and later (tools and demos only)
+  - ZipAda_Test_ObjectAda.prj for ObjectAda 10.0 and later (tests only)
 
 * The file extensions of source files are GNAT-ish:
   .ads is specification; .adb is body.
