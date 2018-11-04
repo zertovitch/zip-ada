@@ -4,14 +4,16 @@ gprbuild -p
 
 rem  .xls and .csv data: public data series from https://fred.stlouisfed.org/series/[series name]
 
-call trtest_single gs1.xls 50196 7300 gs2 xls
-call trtest_single gs1.xls 50196 7300 gs3 xls
+call trtest_single gs1.xls gs2.xls
+call trtest_single gs1.xls gs3.xls
 
-call trtest_single wsbase.csv 35048 8500 wm1ns csv
-call trtest_single wsbase.csv 35048 8500 wm2ns csv
+call trtest_single wsbase.csv wm1ns.csv
+call trtest_single wsbase.csv wm2ns.csv
 
-rem  Need to ajust the sizes to what your compiler has given...
-REM call trtest_single trained_decoder.exe 336916 134100 trained_encoder exe
+REM call trtest_single u1.json u2.json
+REM call trtest_single u1.json u3.json
+
+REM call trtest_single trained_decoder.exe trained_encoder.exe
 
 echo.
 echo ****************************************************
