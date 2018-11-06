@@ -281,14 +281,15 @@ package body LZMA.Decoding is
       --
       procedure Copy_Match(dist: UInt32) is
       pragma Inline(Copy_Match);
-        b2, b3: Byte;
         len32: constant UInt32:= UInt32(len);
-        will_fill: constant Boolean:= out_win.pos + len32 >= out_win.size;
+        --  Conversion to UInt64 needed for dictionary size > 2**32 - 273:
+        will_fill: constant Boolean:=
+          UInt64 (out_win.pos) + UInt64 (len32) >= UInt64 (out_win.size);
         --
         procedure Easy_case is
         pragma Inline(Easy_case);
           src_from, src_to: UInt32;
-          b: Byte;
+          b1: Byte;
         begin
           -- src and dest within circular buffer bounds. May overlap (len32 > dist).
           src_from := out_win.pos - dist;
@@ -300,9 +301,9 @@ package body LZMA.Decoding is
             end loop;
           else -- Overlap: to >= out_win.pos . Need to copy in forward order.
             for i in src_from .. src_to loop
-              b:= out_win.buf(i);
-              out_win.buf(i + dist):= b;
-              Write_Byte(b);
+              b1:= out_win.buf(i);
+              out_win.buf(i + dist):= b1;
+              Write_Byte(b1);
             end loop;
           end if;
           out_win.pos := out_win.pos + len32;
@@ -310,6 +311,7 @@ package body LZMA.Decoding is
         --
         procedure Modulo_case is
         pragma Inline(Modulo_case);
+          b2, b3: Byte;
         begin
           -- src starts below 0 or dest goes beyond size-1
           for count in reverse 1..len loop

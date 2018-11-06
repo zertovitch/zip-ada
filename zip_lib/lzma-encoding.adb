@@ -71,8 +71,6 @@ package body LZMA.Encoding is
     --  Range encoding of single bits. --
     -------------------------------------
 
-    subtype UInt64 is Unsigned_64;
-
     type Range_Encoder is record
       width     : UInt32  := 16#FFFF_FFFF#;  --  (*)
       low       : UInt64  := 0;  --  The current range is [low, low+width[

@@ -69,9 +69,10 @@ private
   --  These integer types are defined in the LZMA specification
   --  (DRAFT version, 2015-06-14, by Igor Pavlov)
 
-  subtype UInt16 is Unsigned_16;
-  subtype UInt32 is Unsigned_32;
   type Unsigned is mod 2 ** System.Word_Size;
+  subtype UInt64 is Unsigned_64;
+  subtype UInt32 is Unsigned_32;
+  subtype UInt16 is Unsigned_16;
 
   ----------------------------
   --  Finite state machine  --
