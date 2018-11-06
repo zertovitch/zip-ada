@@ -295,7 +295,7 @@ package body LZMA.Decoding is
           --  May overlap (len32 > dist), even several times.
           src_from := out_win.pos - dist;
           src_to   := out_win.pos - dist + len32 - 1;
-          -- Overlap: to >= out_win.pos . Need to copy in forward order.
+          --  We copy in forward order, with eventual overlapping(s)..
           for i in src_from .. src_to loop
             b1:= out_win.buf(i);
             out_win.buf(i + dist):= b1;
