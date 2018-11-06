@@ -291,21 +291,16 @@ package body LZMA.Decoding is
           src_from, src_to: UInt32;
           b1: Byte;
         begin
-          -- src and dest within circular buffer bounds. May overlap (len32 > dist).
+          --  The src and dest slices are within circular buffer bounds.
+          --  May overlap (len32 > dist), even several times.
           src_from := out_win.pos - dist;
           src_to   := out_win.pos - dist + len32 - 1;
-          if len32 <= dist then -- No overlap: src_to < out_win.pos
-            out_win.buf(out_win.pos .. out_win.pos + len32 - 1):= out_win.buf(src_from .. src_to);
-            for i in src_from .. src_to loop
-              Write_Byte(out_win.buf(i));
-            end loop;
-          else -- Overlap: to >= out_win.pos . Need to copy in forward order.
-            for i in src_from .. src_to loop
-              b1:= out_win.buf(i);
-              out_win.buf(i + dist):= b1;
-              Write_Byte(b1);
-            end loop;
-          end if;
+          -- Overlap: to >= out_win.pos . Need to copy in forward order.
+          for i in src_from .. src_to loop
+            b1:= out_win.buf(i);
+            out_win.buf(i + dist):= b1;
+            Write_Byte(b1);
+          end loop;
           out_win.pos := out_win.pos + len32;
         end Easy_case;
         --
