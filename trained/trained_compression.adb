@@ -33,6 +33,26 @@ with LZMA.Encoding, LZMA.Decoding;
 
 package body Trained_Compression is
 
+  TC_dictionary_size : constant := 2 ** 19;  --  512 KB
+  TC_LZMA_level : constant LZMA.Encoding.Compression_level := LZMA.Encoding.Level_3;
+
+  --------------------
+  -- Encode_Trainer --
+  --------------------
+
+  procedure Encode_Trainer is
+
+    procedure Specific_Encode is
+      new LZMA.Encoding.Encode (Read_Uncompressed, More_Uncompressed_Bytes, Write_Compressed_Byte);
+
+  begin
+    Specific_Encode (
+      level           => TC_LZMA_level,
+      dictionary_size => TC_dictionary_size,
+      end_marker      => False
+    );
+  end Encode_Trainer;
+
   ------------
   -- Encode --
   ------------
@@ -76,8 +96,8 @@ package body Trained_Compression is
 
   begin
     Specific_Encode (
-      level           => LZMA.Encoding.Level_3,
-      dictionary_size => 2 ** 19  --  512 KB
+      level           => TC_LZMA_level,
+      dictionary_size => TC_dictionary_size
     );
   end Encode;
 

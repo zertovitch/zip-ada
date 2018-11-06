@@ -22,7 +22,12 @@ copy /B %tc_train%+rnd_10.bin full_trainer.dat
 rem  Get the compressed trainer, itself with zero training (untrained compression).
 echo.
 echo ***  Encoding the trainer...
-trained_encoder zero.txt full_trainer.dat trainer_%tc_train%.dat   0
+rem Old technique (just to see how long the EOS marker is in the compressed sream...)
+trained_encoder zero.txt full_trainer.dat trainer_%tc_train%_old.dat   0
+rem New technique
+trainer full_trainer.dat trainer_%tc_train%.dat
+rem New technique, with pure trainer file without noise (don't use it!)
+trainer %tc_train% trainer_%tc_train%_no_noise.dat
 
 call :calibrate trainer_%tc_train%.dat 
 
@@ -54,4 +59,5 @@ goto :EOF
 
 :calibrate
 rem  The constant is empirically set.
+rem  To do: find n = the maximum #bytes on encoder flushing and use n in the Ada code. 
 set /a tc_train_stub_size=%~z1 - 140

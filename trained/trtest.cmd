@@ -35,5 +35,3 @@ echo *** Trainer files (themselves compressed without training): ***
 echo ***************************************************************
 echo.
 dir *.dat
-
-pause

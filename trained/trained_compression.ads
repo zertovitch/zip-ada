@@ -12,14 +12,14 @@
 --
 --   Encoding workflow:
 --   ------------------
---   
+--
 --      1. training --\    compression    /--> 1. training' (discarded)
 --                     >-->----aka----->--
 --      2. DATA ------/     encoding      \--> 2. DATA'  --> ...
---   
+--
 --   Decoding workflow:
 --   ------------------
---   
+--
 --              1. training' --\   decompression  /--> 1. training (discarded)
 --                              >-->---aka---->---
 --      ... --> 2. DATA' ------/     decoding     \--> 2. DATA
@@ -57,9 +57,22 @@ package Trained_Compression is
 
   subtype Byte is Interfaces.Unsigned_8;
 
-  ------------------------------
-  --  Encoding - compression  --
-  ------------------------------
+  ---------------------------------------------
+  --  Encoding - compression of the trainer  --
+  ---------------------------------------------
+
+  generic
+    --  Input of trainer bytes:
+    with function Read_Uncompressed return Byte;
+    with function More_Uncompressed_Bytes return Boolean;
+    --  Output of compressed trainer bytes:
+    with procedure Write_Compressed_Byte (B : Byte);
+    --
+  procedure Encode_Trainer;
+
+  -------------------------------------
+  --  Encoding - compression of data --
+  -------------------------------------
 
   generic
     type Data_Bytes_Count is range <>;
@@ -72,8 +85,7 @@ package Trained_Compression is
     --
     --  Important: Skip_Compressed needs to be slightly less
     --  than the full compressed trainer's actual size.
-    --  Reason: the trainer alone has an end-of-stream symbol;
-    --  furthermore, the trainer, with data after it, may have a
+    --  Reason: the trainer, with data after it, may have a
     --  longer LZ77 match that the trainer alone would not have
     --  near its end. You can append a bit of noise to
     --  the uncompressed trainer data to avoid having to reduce

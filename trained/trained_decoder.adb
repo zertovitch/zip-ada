@@ -75,7 +75,7 @@ procedure Trained_Decoder is
 begin
   if Argument_Count < 5 then
     Put_Line ("Syntax:");
-    Put_Line ("trained_decoder train_file data_file decompressed_file");
+    Put_Line ("trained_decoder train_file (in) data_file (in) decompressed_file (out)");
     Put_Line ("                train_compressed_size skip_decompressed_size");
     New_Line;
     Put_Line ("Important: train_compressed_size needs to be equal to");

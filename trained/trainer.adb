@@ -1,6 +1,14 @@
---  Trained_Encoder
+--  Trainer
 -------------------
---  This is a demo showing Trained_Compression used on the encoding side.
+--  This is a demo showing the creation of the compressed trainer
+--  data for Trained_Compression, to be used on the decoding side.
+--
+--  This is almost the same as using the trained encoder with a zero
+--  trainer file, but the compressed trainer stub is encoded without
+--  end-of-stream marker, which makes more predictable the length
+--  of the compressed stream which is common between trainer only
+--  and trainer+data.
+--
 --  See the trtest_single.cmd script for an example
 --
 --  Legal licensing note:
@@ -36,7 +44,7 @@ with Ada.Direct_IO;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Interfaces;
 
-procedure Trained_Encoder is
+procedure Trainer is
 
   --  NB: The Byte I/O below is not buffered, so it is very slow.
   --  You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
@@ -45,56 +53,39 @@ procedure Trained_Encoder is
   subtype Byte is Interfaces.Unsigned_8;
   package Byte_IO is new Ada.Direct_IO (Byte);
 
-  Infile_Train, Infile_Data, Outfile: Byte_IO.File_Type;
+  Infile, Outfile: Byte_IO.File_Type;
 
-  function Read_Train_Byte return Byte is
+  function Read_Byte return Byte is
     B: Byte;
   begin
-    Byte_IO.Read (Infile_Train, B);
+    Byte_IO.Read (Infile, B);
     return B;
-  end Read_Train_Byte;
+  end Read_Byte;
 
-  function Read_Data_Byte return Byte is
-    B: Byte;
+  function More_Bytes return Boolean is
   begin
-    Byte_IO.Read (Infile_Data, B);
-    return B;
-  end Read_Data_Byte;
-
-  function More_Data_Bytes return Boolean is
-  begin
-    return not Byte_IO.End_Of_File (Infile_Data);
-  end More_Data_Bytes;
+    return not Byte_IO.End_Of_File (Infile);
+  end More_Bytes;
 
   procedure Write_Byte (B: Byte) is
   begin
     Byte_IO.Write (Outfile, B);
   end Write_Byte;
 
-  procedure TCE is new Trained_Compression.Encode (
-    Data_Bytes_Count             => Byte_IO.Count,
-    Read_Uncompressed_Training   => Read_Train_Byte,
-    Read_Uncompressed_Data       => Read_Data_Byte,
-    More_Uncompressed_Data_Bytes => More_Data_Bytes,
-    Write_Compressed_Byte        => Write_Byte);
+  procedure TCT is new Trained_Compression.Encode_Trainer (
+    Read_Uncompressed       => Read_Byte,
+    More_Uncompressed_Bytes => More_Bytes,
+    Write_Compressed_Byte   => Write_Byte);
 
 begin
-  if Argument_Count < 4 then
+  if Argument_Count < 2 then
     Put_Line ("Syntax:");
-    Put_Line ("trained_encoder train_file (in) data_file (in) compressed_file (out) skip_compressed_size");
-    New_Line;
-    Put_Line ("Important: skip_compressed_size needs to be slightly less");
-    Put_Line ("           than the full compressed trainer size");
+    Put_Line ("trainer train_file (in) compressed_train_file (out)");
   else
-    Byte_IO.Open (Infile_Train,  Byte_IO.In_File,  Name => Argument (1));
-    Byte_IO.Open (Infile_Data,   Byte_IO.In_File,  Name => Argument (2));
-    Byte_IO.Create (Outfile,     Byte_IO.Out_File, Name => Argument (3));
-    TCE (
-      Train_Uncompressed => Byte_IO.Size (Infile_Train),  --  We use the training data fully.
-      Skip_Compressed    => Byte_IO.Count'Value (Argument (4))
-    );
-    Byte_IO.Close (Infile_Train);
-    Byte_IO.Close (Infile_Data);
+    Byte_IO.Open (Infile,    Byte_IO.In_File,  Name => Argument (1));
+    Byte_IO.Create (Outfile, Byte_IO.Out_File, Name => Argument (2));
+    TCT;
+    Byte_IO.Close (Infile);
     Byte_IO.Close (Outfile);
   end if;
-end Trained_Encoder;
+end Trainer;
