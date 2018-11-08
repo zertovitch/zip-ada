@@ -40,11 +40,14 @@ project ZipAda is
            "demo_csv_into_zip.adb", 
            "demo_zip.adb",
            "demo_unzip.adb",
-           --  Misc.
+           --  Miscellaneous, non-Zip or experimental stuff
            "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
            "lzhuf",    --  A simple LZ-Huffman coder/decoder
            "lzma_dec", --  LZMA decoder
-           "lzma_enc"  --  LZMA encoder
+           "lzma_enc", --  LZMA encoder
+           "bwt_demo", --  Burrows-Wheeler precompression demo
+           "bwt_enc",  --  Burrows-Wheeler file encoder
+           "bwt_dec"   --  Burrows-Wheeler file decoder
          );
    end case;
 
@@ -57,15 +60,7 @@ project ZipAda is
 
    package Binder is
       --  -Es: Store tracebacks in exception occurrences, and enable symbolic tracebacks
-
-      case Build_Mode is
-
-         when "Debug" | "Check_95" =>
-            for Default_Switches ("ada") use ("-Es");
-
-         when "Fast" | "Small" | "Profiling" =>
-
-      end case;
+      for Default_Switches ("ada") use ("-Es");
    end Binder;
 
    package Linker is
