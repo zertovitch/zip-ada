@@ -1695,16 +1695,23 @@ package body UnZip.Decompress is
           UnZ_IO.Bit_buffer.Dump( CT(CT_idx).bits );
 
           case CT(CT_idx).n is
-            when 0..15 =>       -- length of code for symbol of index defined, in bits (0..15)
+            when 0 .. 15 =>     --  Length of code for symbol of index 'defined', in bits (0..15)
               current_length:= CT(CT_idx).n;
               Ll (defined) := current_length;
               defined:= defined + 1;
-            when 16 =>          -- 16 means: repeat last bit length 3 to 6 times
+            when 16 =>          --  16 means: repeat last bit length 3 to 6 times
+              if defined = 0 then
+                --  Nothing in the Ll array has been defined so far. Then, current_length is
+                --  (theoretically) undefined and cannot be repeated.
+                --  This unspecified case is caught by zlib's inflate.c.
+                Raise_Exception (Zip.Archive_corrupted'Identity,
+                  "Illegal data for compression structure (repeat an undefined code length)");
+              end if;
               Repeat_length_code(3 + UnZ_IO.Bit_buffer.Read_and_dump(2));
-            when 17 =>          -- 17 means: the next 3 to 10 symbols' codes have zero bit lengths
+            when 17 =>          --  17 means: the next 3 to 10 symbols' codes have zero bit lengths
               current_length:= 0;
               Repeat_length_code(3 + UnZ_IO.Bit_buffer.Read_and_dump(3));
-            when 18 =>          -- 18 means: the next 11 to 138 symbols' codes have zero bit lengths
+            when 18 =>          --  18 means: the next 11 to 138 symbols' codes have zero bit lengths
               current_length:= 0;
               Repeat_length_code(11 + UnZ_IO.Bit_buffer.Read_and_dump(7));
             when others =>      --  Shouldn't occur if this tree is correct
@@ -1713,7 +1720,14 @@ package body UnZip.Decompress is
                 & Integer'Image(CT(CT_idx).n));
           end case;
         end loop;
+        --  Free the Huffman tree that was used for decoding the compression
+        --  structure, which is contained now in Ll.
         HufT_free ( Tl );
+        if Ll (256) = 0 then
+          --  "No End-Of-Block" code length: infinite stream assumed!
+          --  This unspecified case is caught by zlib's inflate.c.
+          Raise_Exception(Zip.Archive_corrupted'Identity, "No code for End-Of-Block symbol #256");
+        end if;
         --  Build the decoding tables for literal/length codes
         Bl := Lbits;
         begin
