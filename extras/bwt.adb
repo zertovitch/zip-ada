@@ -68,9 +68,7 @@ package body BWT is
       --  iteration 1). This gives the full list of pairs.
       --  After sorting, t(i) is also the correct predecessor
       --  each sorted pair (end of iteration 2). We have then the
-      --  list of all triplets. And so on. After iteration n
-      --  we have a sorted list of all rotated versions of the
-      --  original string. The original string is at row 'index'.
+      --  list of all triplets. And so on.
       --
       for i in Rng loop
         m(i)(1) := message (i);
