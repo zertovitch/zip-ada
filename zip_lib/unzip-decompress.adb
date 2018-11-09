@@ -1703,7 +1703,7 @@ package body UnZip.Decompress is
               if defined = 0 then
                 --  Nothing in the Ll array has been defined so far. Then, current_length is
                 --  (theoretically) undefined and cannot be repeated.
-                --  This unspecified case is caught by zlib's inflate.c.
+                --  This unspecified case is treated as an error by zlib's inflate.c.
                 Raise_Exception (Zip.Archive_corrupted'Identity,
                   "Illegal data for compression structure (repeat an undefined code length)");
               end if;
@@ -1724,8 +1724,8 @@ package body UnZip.Decompress is
         --  structure, which is contained now in Ll.
         HufT_free ( Tl );
         if Ll (256) = 0 then
-          --  "No End-Of-Block" code length: infinite stream assumed!
-          --  This unspecified case is caught by zlib's inflate.c.
+          --  No code length for the End-Of-Block symbol, implies infinite stream!
+          --  This case is unspecified but obviously we must stop here.
           Raise_Exception(Zip.Archive_corrupted'Identity, "No code for End-Of-Block symbol #256");
         end if;
         --  Build the decoding tables for literal/length codes
