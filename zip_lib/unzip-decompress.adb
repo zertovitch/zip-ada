@@ -24,7 +24,7 @@
 -- NB: this is the MIT License, as found on the site
 -- http://www.opensource.org/licenses/mit-license.php
 
-with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2_Decoding, LZMA.Decoding;
+with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2.Decoding, LZMA.Decoding;
 
 with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
@@ -1845,9 +1845,9 @@ package body UnZip.Decompress is
             UnZ_IO.Flush_if_full(UnZ_Glob.slide_index);
           end loop;
         end Write;
-        package My_BZip2 is new BZip2_Decoding
+        package My_BZip2 is new BZip2.Decoding
           ( Buffer    => BZ_Buffer,
-            check_CRC => False, -- Already done by UnZ_IO
+            check_CRC => False,  --  CRC check is already done by UnZ_IO
             Read      => Read,
             Write     => Write
           );

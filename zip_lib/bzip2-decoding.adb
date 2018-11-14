@@ -21,23 +21,15 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found 21-Aug-2016 on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found 21-Aug-2016 on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
--- Documentation pointers:
---
---   Burrows-Wheeler transform
---     http://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform
---   MTF Move-To-Front
---     http://fr.wikipedia.org/wiki/Move-To-Front
---
--- Translated on 20-Oct-2009 by (New) P2Ada v. 15-Nov-2006
---
---with Ada.Text_IO;                       use Ada.Text_IO;
+--  Translated on 20-Oct-2009 by (New) P2Ada v. 15-Nov-2006
+--  Rework by G. de Montmollin (see spec. for details)
 
 with Ada.Unchecked_Deallocation;
 
-package body BZip2_Decoding is
+package body BZip2.Decoding is
 
   procedure Decompress is
 
@@ -665,8 +657,9 @@ package body BZip2_Decoding is
           end loop;
         end rle_write;
         --
-        -- handle extreme cases of data of length 1, 2
-        input_dried: exception;
+        --  Handle extreme cases of data of length 1, 2.
+        --  This exception is always handled (see end of rle_read).
+        input_dried : exception;
         --
         -- Make next_rle_idx index to the next decoded byte.
         -- If next_rle_idx did index to the last
@@ -784,4 +777,4 @@ package body BZip2_Decoding is
     Dispose(tt);
   end Decompress;
 
-end BZip2_Decoding;
+end BZip2.Decoding;
