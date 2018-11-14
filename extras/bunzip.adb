@@ -1,6 +1,6 @@
 -- Standalone BZip2 decoder (for .bz2 files)
 
-with BZip2_Decoding;
+with BZip2.Decoding;
 
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
@@ -52,7 +52,7 @@ procedure bunzip is
     Write(Stream(f_out).all, SE_Buffer);
   end Write;
 
-  package My_BZip2 is new BZip2_Decoding
+  package My_BZip2 is new BZip2.Decoding
   (
     input_buffer_size  => 1024,
     output_buffer_size => 4096,
@@ -67,6 +67,8 @@ begin
     Put_Line("Usage: bunzip <file>");
     New_Line;
     Put_Line("Decompresses a bzip2 compressed file (.bz2)");
+    New_Line;
+    Put_Line("Output is written in the file: bunzip.out");
   else
     Open(f_in, In_File, Argument(1));
     Create(f_out,Out_File, "bunzip.out");
