@@ -42,8 +42,23 @@
 --  NB: this is the MIT License, as found 21-Aug-2016 on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
+with Interfaces;
+
 package BZip2 is
 
-  --  For the time being, the top package is empty.
+  subtype Byte is Interfaces.Unsigned_8;
+
+private
+
+  --  Cyclic redundancy check to verify uncompressed block data integrity
+
+  package CRC is
+    use Interfaces;
+    --
+    procedure Init (CRC : out Unsigned_32);
+    function  Final (CRC : Unsigned_32) return Unsigned_32;
+    procedure Update (CRC : in out Unsigned_32; val : Byte);
+      pragma Inline (Update);
+  end CRC;
 
 end BZip2;

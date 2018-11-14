@@ -45,8 +45,6 @@
 --  with the -O2 -gnatpn -fpeel-loops -funroll-loops -fweb -frename-registers
 --  options, average on several runs (see bz_test.cmd).
 
-with Interfaces;
-
 generic
 
   input_buffer_size : Integer:= 1024;
