@@ -207,20 +207,19 @@ package body BZip2.Decoding is
       inuse16: array(0 .. 15) of Boolean;
       --* inuse: array(0 .. 255) of Boolean; -- for dump purposes
     begin
-      inuse16:= (others => False);
       --  Receive the first 16 bits which tell which pieces are stored.
-      for i in 0 .. 15 loop
-        inuse16(i):= get_boolean;
+      for i in inuse16'Range loop
+        inuse16(i) := get_boolean;
       end loop;
       --  Receive the used pieces.
       --* inuse:= (others => False);
-      inuse_count:= 0;
-      for i in 0 .. 15 loop
+      inuse_count := 0;
+      for i in inuse16'Range loop
         if inuse16(i) then
           for j in 0 .. 15 loop
             if get_boolean then
               --* inuse(16*i+j):= True;
-              seq_to_unseq(inuse_count):=16*i+j;
+              seq_to_unseq(inuse_count) := 16*i + j;
               inuse_count:= inuse_count + 1;
             end if;
           end loop;
@@ -230,7 +229,7 @@ package body BZip2.Decoding is
 
     --  Receives the selectors.
     procedure receive_selectors is
-      j:Unsigned_8;
+      j: Unsigned_8;
     begin
       group_count:= Natural(get_bits(3));
       selector_count:= Natural(Shift_Left(get_bits_32(8), 7) or get_bits_32(7));
@@ -461,22 +460,18 @@ package body BZip2.Decoding is
       end loop;
     end receive_mtf_values;
 
-    procedure detransform is
-      a: Unsigned_32;
-      p,q,r,i255: Natural;
+    procedure BWT_Detransform is
+      a : Unsigned_32 := 0;
+      r, i255: Natural;
     begin
-      a:= 0;
-      p:= tt'First;
-      q:= p + tt_count;
-      while p /= q loop
-        i255:= Natural(tt(p) and 16#ff#);
-        r:= cftab(i255);
-        cftab(i255):= cftab(i255) + 1;
-        tt(r):= tt(r) or a;
-        a:= a + 256;
-        p:= p + 1;
+      for p in 0 .. tt_count - 1 loop
+        i255 := Natural(tt(p) and 16#ff#);
+        r := cftab(i255);
+        cftab(i255) := cftab(i255) + 1;
+        tt(r) := tt(r) or a;
+        a := a + 16#100#;
       end loop;
-    end detransform;
+    end BWT_Detransform;
 
     compare_final_CRC: Boolean:= False;
     stored_blockcrc, mem_stored_blockcrc, computed_crc: Unsigned_32;
@@ -513,8 +508,8 @@ package body BZip2.Decoding is
         --  Receive the MTF values.
         receive_mtf_values;
         --  Undo the Burrows Wheeler transformation.
-        detransform;
-        decode_available:= tt_count;
+        BWT_Detransform;
+        decode_available := tt_count;
         return True;
       elsif magic = Character'Val(16#17#) & "rE8P" & Character'Val(16#90#) then
         return False;
