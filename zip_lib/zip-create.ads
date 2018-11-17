@@ -135,16 +135,18 @@ package Zip.Create is
                          Creation_time     : Zip.Time:= default_time
    );
 
-   -- Add a new entry to a Zip archive, copied from another Zip archive.
-   -- The stream's index is set at the beginning of a local header in the archive.
-
+   --  Add a new entry to a Zip archive, copied from another Zip archive.
+   --  This is useful for duplicating archives with some differences, like adding, replacing,
+   --  removing or recompressing entries - see the AZip file manager for an application example.
+   --  The streams' indices are set at the beginning of local headers in both archives.
+   --
    procedure Add_Compressed_Stream (
-     Info           : in out Zip_Create_info;
-     Stream         : in out Root_Zipstream_Type'Class;
+     Info           : in out Zip_Create_info;            --  Destination
+     Stream         : in out Root_Zipstream_Type'Class;  --  Source
      Feedback       : in     Feedback_proc
    );
 
-   -- Complete the Zip archive; close the file if the stream is a file
+   --  Complete the Zip archive; close the file if the stream is a file
 
    procedure Finish (Info       : in out Zip_Create_info);
 

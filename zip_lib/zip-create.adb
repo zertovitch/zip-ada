@@ -335,21 +335,23 @@ package body Zip.Create is
    end Add_String;
 
    procedure Add_Compressed_Stream (
-     Info           : in out Zip_Create_info;
-     Stream         : in out Root_Zipstream_Type'Class;
+     Info           : in out Zip_Create_info;            --  Destination
+     Stream         : in out Root_Zipstream_Type'Class;  --  Source
      Feedback       : in     Feedback_proc
    )
    is
-      lh: Zip.Headers.Local_File_Header;
+      lh : Zip.Headers.Local_File_Header;
+      data_descriptor_after_data : Boolean;
    begin
       Zip.Headers.Read_and_check(Stream, lh);
-      -- Copy name and ignore extra field
+      data_descriptor_after_data := (lh.bit_flag and 8) /= 0;
+      --  Copy name and ignore extra field
       declare
-        name: String(1..Positive(lh.filename_length));
-        extra: String(1..Natural(lh.extra_field_length));
+        name  : String (1..Positive(lh.filename_length));
+        extra : String (1..Natural(lh.extra_field_length));
       begin
-        String'Read(Stream'Access, name);
-        String'Read(Stream'Access, extra);
+        String'Read (Stream'Access, name);
+        String'Read (Stream'Access, extra);
         if Info.Duplicates = error_on_duplicate then
           --  Check for duplicates; raises Duplicate_name in this case:
           Insert_to_name_dictionary (name, Info.dir);
@@ -358,7 +360,7 @@ package body Zip.Create is
         Info.Contains (Info.Last_entry).head.local_header_offset :=
           Unsigned_32 (Index (Info.Stream.all)) - 1;
         Info.Contains (Info.Last_entry).name := new String'(name);
-        lh.extra_field_length:= 0; -- extra field is zeroed (causes problems if not)
+        lh.extra_field_length := 0;  --  extra field is zeroed (causes problems if not)
         Zip.Headers.Write(Info.Stream.all, lh);  --  Copy local header to new stream
         String'Write(Info.Stream, name);         --  Copy entry name to new stream
       end;
@@ -368,7 +370,18 @@ package body Zip.Create is
         Integer(lh.dd.compressed_size),
         Feedback => Feedback
       );
-      Info.Contains (Info.Last_entry).head.short_info:= lh;
+      --  Postfixed data descriptor contain the correct values for
+      --  CRC and sizes. Example of Zip files using that descriptor: those
+      --  created by Microsoft's OneDrive cloud storage (for downloading
+      --  more than one file), in 2018.
+      if data_descriptor_after_data then
+        --  NB: some faulty JAR files may fail with Read_and_check.
+        --  See UnZip.Decompress, Process_descriptor.
+        Zip.Headers.Read_and_check (Stream, lh.dd);
+        --  lh's value have been corrected on the way.
+        Zip.Headers.Write (Info.Stream.all, lh.dd);  --  Copy descriptor to new stream.
+      end if;
+      Info.Contains (Info.Last_entry).head.short_info := lh;
    end Add_Compressed_Stream;
 
    procedure Finish (Info : in out Zip_Create_info) is
