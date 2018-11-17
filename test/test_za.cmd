@@ -10,7 +10,7 @@ echo  ==================================================
 echo.
 
 if exist test_za??.zip del test_za??.zip
-if exist test_ifz?.zip del test_ifz?.zip
+if exist test_iz??.zip del test_iz??.zip
 if exist test_kzip.zip del test_kzip.zip
 if exist test_7z_?.zip del test_7z_?.zip
 if exist test_zopf.zip del test_zopf.zip
@@ -37,9 +37,10 @@ zipada     -el2              test_zal2     %files%
 zipada     -el3              test_zal3     %files%
 zipada     -ep1              test_zap1     %files%
 zipada     -ep2              test_zap2     %files%
-zip        -1                test_ifz1     %files%
-zip        -6                test_ifz6     %files%
-zip        -9                test_ifz9     %files%
+zip        -1                test_izd1     %files%
+zip        -6                test_izd6     %files%
+zip        -9                test_izd9     %files%
+zip        -9 -Z bzip2       test_izb9     %files%
 7z a -tzip -mx=9 -mm=deflate test_7z_d     %files%
 7z a -tzip -mx=9 -mm=LZMA    test_7z_l     %files%
 
@@ -69,7 +70,7 @@ set min=%time:~3,2%
 set nice_date=%year%-%month%-%day%_%hour%.%min%
 rem --------------------------
 
-dir /OS test_za??.zip test_ifz?.zip test_kzip.zip test_7z_?.zip test_zopf.zip |find ".zip" >test_za_%nice_date%.log
+dir /OS test_za??.zip test_iz??.zip test_kzip.zip test_7z_?.zip test_zopf.zip |find ".zip" >test_za_%nice_date%.log
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.
@@ -86,7 +87,8 @@ comp_zip test_zash test_zal2 -q2
 comp_zip test_zash test_zal3 -q2
 comp_zip test_zash test_zap1 -q2
 comp_zip test_zash test_zap2 -q2
-comp_zip test_zash test_ifz9 -q2
+comp_zip test_zash test_izd9 -q2
+comp_zip test_zash test_izb9 -q2
 comp_zip test_zash test_7z_d -q2
 comp_zip test_zash test_7z_l -q2
 if exist test_kzip.zip comp_zip test_zash test_kzip -q2
