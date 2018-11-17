@@ -265,30 +265,29 @@ package body BZip2.Decoding is
       end loop;
     end undo_mtf_values;
 
-    procedure receive_coding_tables is
-      curr: Natural;
+    procedure Receive_Huffman_Bit_Lengths is
+      current_bit_length: Natural;
     begin
       for t in 0 .. group_count-1 loop
-        curr:= Natural(get_bits(5));
-        for i in 0 .. alpha_size-1 loop
+        current_bit_length:= Natural(get_bits(5));
+        for symbol in 0 .. alpha_size-1 loop
           loop
-            if curr not in 1..20 then
+            if current_bit_length not in 1..20 then
               raise data_error;
             end if;
             exit when not get_boolean;
             if get_boolean then
-              curr:= curr - 1;
+              current_bit_length:= current_bit_length - 1;
             else
-              curr:= curr + 1;
+              current_bit_length:= current_bit_length + 1;
             end if;
           end loop;
-          len(t)(i):=curr;
+          len(t)(symbol) := current_bit_length;
         end loop;
       end loop;
-    end receive_coding_tables;
+    end Receive_Huffman_Bit_Lengths;
 
-    --  Builds the Huffman tables.
-    procedure make_hufftab is
+    procedure Make_Huffman_Tables is
       minlen, maxlen: Natural;
     begin
       for t in 0 .. group_count-1 loop
@@ -308,13 +307,13 @@ package body BZip2.Decoding is
         );
         minlens(t):= minlen;
       end loop;
-    end make_hufftab;
+    end Make_Huffman_Tables;
 
     -------------------------
     -- MTF - Move To Front --
     -------------------------
 
-    procedure receive_mtf_values is
+    procedure Receive_MTF_Values is
       --
       mtfa_size: constant:= 4096;
       mtfl_size: constant:= 16;
@@ -376,7 +375,7 @@ package body BZip2.Decoding is
       p,q: Natural; -- indexes mtfa
       u,v: Natural; -- indexes mtfbase
       lno, off: Natural;
-    begin -- receive_mtf_values
+    begin -- Receive_MTF_Values
       group_no:= -1;
       group_pos:= 0;
       t:= 0;
@@ -458,7 +457,7 @@ package body BZip2.Decoding is
         cftab(i):= t;
         t:= t + nn;
       end loop;
-    end receive_mtf_values;
+    end Receive_MTF_Values;
 
     procedure BWT_Detransform is
       a : Unsigned_32 := 0;
@@ -501,12 +500,9 @@ package body BZip2.Decoding is
         receive_selectors;
         --  Undo the MTF values for the selectors.
         undo_mtf_values;
-        --  Receive the coding tables.
-        receive_coding_tables;
-        --  Build the Huffman tables.
-        make_hufftab;
-        --  Receive the MTF values.
-        receive_mtf_values;
+        Receive_Huffman_Bit_Lengths;
+        Make_Huffman_Tables;
+        Receive_MTF_Values;
         --  Undo the Burrows Wheeler transformation.
         BWT_Detransform;
         decode_available := tt_count;
