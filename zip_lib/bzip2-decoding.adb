@@ -55,10 +55,10 @@ package body BZip2.Decoding is
     tt_count: Natural;
 
     rle_run_left: Natural:= 0;
-    rle_run_data: Unsigned_8:= 0;
+    rle_run_data: Byte:= 0;
     decode_available: Natural:= Natural'Last;
     block_origin: Natural:= 0;
-    read_data: Unsigned_8:= 0;
+    read_data: Byte:= 0;
     bits_available: Natural:= 0;
     inuse_count: Natural;
     seq_to_unseq: array (0 .. 255 ) of Natural;
@@ -66,7 +66,7 @@ package body BZip2.Decoding is
     group_count: Natural;
     --
     selector_count: Natural;
-    selector, selector_mtf: array (0 .. max_selectors) of Unsigned_8;
+    selector, selector_mtf: array (0 .. max_selectors) of Byte;
     --
     type Alpha_U32_array is array (0 .. max_alpha_size) of Unsigned_32;
     type Alpha_Nat_array is array (0 .. max_alpha_size) of Natural;
@@ -84,8 +84,8 @@ package body BZip2.Decoding is
     in_buf: Buffer(1 .. input_buffer_size);
     in_idx: Natural:= in_buf'Last + 1;
 
-    function Read_byte return Unsigned_8 is
-      res: Unsigned_8;
+    function Read_byte return Byte is
+      res: Byte;
     begin
       if in_idx > in_buf'Last then
         Read(in_buf);
@@ -96,7 +96,7 @@ package body BZip2.Decoding is
       return res;
     end Read_byte;
 
-    procedure hb_create_decode_tables(
+    procedure Create_Huffman_Decoding_Tables(
        limit, base, perm: in out Alpha_U32_array;
        length           : in     Alpha_Nat_array;
        min_len, max_len : Natural;
@@ -106,40 +106,40 @@ package body BZip2.Decoding is
       pp, idx: Integer;
       vec: Unsigned_32;
     begin
-      pp:=0;
+      pp:= 0;
       for i in min_len .. max_len loop
         for j in 0 .. alpha_size-1 loop
-          if length(j)=i then
-            perm(pp):= Unsigned_32(j);
-            pp:= pp + 1;
+          if length(j) = i then
+            perm(pp) := Unsigned_32(j);
+            pp := pp + 1;
           end if;
         end loop;
       end loop;
       for i in 0 .. max_code_len-1 loop
-        base(i):=0;
-        limit(i):=0;
+        base(i) := 0;
+        limit(i) := 0;
       end loop;
       for i in 0 .. alpha_size-1 loop
-        idx:= length(i)+1;
-        base(idx):= base(idx) + 1;
+        idx := length(i)+1;
+        base(idx) := base(idx) + 1;
       end loop;
       for i in 1 .. max_code_len-1 loop
-        base(i):= base(i) + base(i-1);
+        base(i) := base(i) + base(i-1);
       end loop;
-      vec:=0;
+      vec := 0;
       for i in min_len .. max_len loop
-          vec:= vec + base(i+1)-base(i);
-          limit(i):= vec-1;
-          vec:= vec * 2;
+        vec:= vec + base(i+1) - base(i);
+        limit(i) := vec - 1;
+        vec := vec * 2;
       end loop;
       for i in min_len+1 .. max_len loop
-        base(i):=(limit(i-1)+1) * 2 - base(i);
+        base(i) := (limit(i-1)+1) * 2 - base(i);
       end loop;
-    end hb_create_decode_tables;
+    end Create_Huffman_Decoding_Tables;
 
     procedure Init is
       magic: String(1..3);
-      b: Unsigned_8;
+      b: Byte;
     begin
       --  Read the magic.
       for i in magic'Range loop
@@ -155,9 +155,9 @@ package body BZip2.Decoding is
       tt:= new Tcardinal_array(0 .. block_size * sub_block_size);
     end Init;
 
-    function Get_Bits(n: Natural) return Unsigned_8 is
-      Result_get_bits : Unsigned_8;
-      data: Unsigned_8;
+    function Get_Bits(n: Natural) return Byte is
+      Result_get_bits : Byte;
+      data: Byte;
     begin
       if n > bits_available then
         data:= Read_byte;
@@ -182,7 +182,7 @@ package body BZip2.Decoding is
       return Boolean'Val(Get_Bits(1));
     end Get_Boolean;
 
-    function Get_Byte return Unsigned_8 is
+    function Get_Byte return Byte is
     begin
       return Get_Bits(8);
     end Get_Byte;
@@ -228,7 +228,7 @@ package body BZip2.Decoding is
     end Receive_Mapping_Table;
 
     procedure Receive_Selectors is
-      j: Unsigned_8;
+      j: Byte;
     begin
       group_count:= Natural(Get_Bits(3));
       selector_count:= Natural(Shift_Left(Get_Bits_32(8), 7) or Get_Bits_32(7));
@@ -259,7 +259,7 @@ package body BZip2.Decoding is
           v:= v - 1;
         end loop;
         pos(0) := tmp;
-        selector(i) := Unsigned_8(tmp);
+        selector(i) := Byte(tmp);
       end loop;
     end Undo_MTF_Values_For_Selectors;
 
@@ -289,17 +289,17 @@ package body BZip2.Decoding is
       minlen, maxlen: Natural;
     begin
       for t in 0 .. group_count-1 loop
-        minlen:= 32;
-        maxlen:= 0;
+        minlen := 32;
+        maxlen := 0;
         for i in 0 .. alpha_size-1 loop
           if len(t)(i) > maxlen then
-            maxlen:= len(t)(i);
+            maxlen := len(t)(i);
           end if;
           if len(t)(i) < minlen then
-            minlen:= len(t)(i);
+            minlen := len(t)(i);
           end if;
         end loop;
-        hb_create_decode_tables(
+        Create_Huffman_Decoding_Tables(
           limit(t), base(t), perm(t), len(t),
           minlen, maxlen, alpha_size
         );
@@ -315,10 +315,10 @@ package body BZip2.Decoding is
       --
       mtfa_size: constant:= 4096;
       mtfl_size: constant:= 16;
-      mtfbase: array (0 .. 256 / mtfl_size-1) of Natural;
-      mtfa: array (0 .. mtfa_size-1) of Natural;
+      mtfbase: array (0 .. 256 / mtfl_size - 1) of Natural;
+      mtfa: array (0 .. mtfa_size - 1) of Natural;
       --
-      procedure init_mtf is
+      procedure Init_MTF is
         k: Natural:= mtfa_size-1;
       begin
         for i in reverse 0 .. 256  /  mtfl_size-1 loop
@@ -328,12 +328,12 @@ package body BZip2.Decoding is
           end loop;
           mtfbase(i):= k+1;
         end loop;
-      end init_mtf;
+      end Init_MTF;
       --
       group_pos, group_no: Integer;
       gminlen, gsel: Natural;
       --
-      function get_mtf_value return Unsigned_32 is
+      function Get_MTF_Value return Unsigned_32 is
         zn: Natural;
         zvec: Unsigned_32;
       begin
@@ -351,19 +351,19 @@ package body BZip2.Decoding is
           zvec:= Shift_Left(zvec, 1) or Get_Bits_32(1);
         end loop;
         return perm(gsel)(Natural(zvec-base(gsel)(zn)));
-      end get_mtf_value;
+      end Get_MTF_Value;
       --
-      procedure move_mtf_block is
+      procedure Move_MTF_Block is
         j, k: Natural;
       begin
         k:= mtfa_size;
-        for i in reverse 0 .. 256  /  mtfl_size-1 loop
+        for i in reverse 0 .. 256  /  mtfl_size - 1 loop
           j:= mtfbase(i);
           mtfa(k-16..k-1):= mtfa(j..j+15);
           k:= k - 16;
           mtfbase(i):= k;
         end loop;
-      end move_mtf_block;
+      end Move_MTF_Block;
       --
       run_b: constant:= 1;
       t: Natural;
@@ -378,8 +378,8 @@ package body BZip2.Decoding is
       group_pos:= 0;
       t:= 0;
       cftab:= (others => 0);
-      init_mtf;
-      next_sym:= get_mtf_value;
+      Init_MTF;
+      next_sym:= Get_MTF_Value;
       --
       while Natural(next_sym) /= inuse_count+1 loop
         if next_sym <= run_b then
@@ -388,7 +388,7 @@ package body BZip2.Decoding is
           loop
             es:= es + Natural(Shift_Left(next_sym+1, n));
             n:= n + 1;
-            next_sym:= get_mtf_value;
+            next_sym:= Get_MTF_Value;
             exit when next_sym > run_b;
           end loop;
           n:= seq_to_unseq( mtfa(mtfbase(0)) );
@@ -435,7 +435,7 @@ package body BZip2.Decoding is
             end loop;
             mtfa( mtfbase(v) ):= n;
             if mtfbase(v) = 0 then
-              move_mtf_block;
+              Move_MTF_Block;
             end if;
           end if;
           cftab(seq_to_unseq(n)):= cftab(seq_to_unseq(n)) + 1;
@@ -444,7 +444,7 @@ package body BZip2.Decoding is
           if t > sub_block_size * block_size then
             raise data_error;
           end if;
-          next_sym:= get_mtf_value;
+          next_sym:= Get_MTF_Value;
         end if;
       end loop;
       tt_count:= t;
@@ -474,7 +474,7 @@ package body BZip2.Decoding is
     stored_blockcrc, mem_stored_blockcrc, computed_crc: Unsigned_32;
 
     -- Decode a new compressed block.
-    function decode_block return Boolean is
+    function Decode_Block return Boolean is
       magic: String(1 .. 6);
     begin
       for i in 1 .. 6 loop
@@ -507,7 +507,7 @@ package body BZip2.Decoding is
       else
         raise bad_block_magic;
       end if;
-    end decode_block;
+    end Decode_Block;
 
     next_rle_idx: Integer:= -2;
     buf: Buffer(1 .. output_buffer_size);
@@ -516,14 +516,14 @@ package body BZip2.Decoding is
     procedure Read is
       shorten: Natural:= 0;
 
-      procedure rle_read is
+      procedure RLE_Read is
         rle_len: Natural;
-        data: Unsigned_8;
+        data: Byte;
         idx: Integer:= buf'First;
         count: Integer:= buf'Length;
         --
-        procedure rle_write is
-          pragma Inline(rle_write);
+        procedure RLE_Write is
+          pragma Inline(RLE_Write);
         begin
           loop
             buf(idx):= data;
@@ -542,18 +542,18 @@ package body BZip2.Decoding is
             end if;
             exit when rle_len = 0 or count = 0;
           end loop;
-        end rle_write;
+        end RLE_Write;
         --
         --  Handle extreme cases of data of length 1, 2.
-        --  This exception is always handled (see end of rle_read).
+        --  This exception is always handled (see end of RLE_Read).
         input_dried : exception;
         --
         -- Make next_rle_idx index to the next decoded byte.
         -- If next_rle_idx did index to the last
         -- byte in the current block, decode the next block.
         --
-        procedure consume_rle is
-          pragma Inline(consume_rle);
+        procedure Consume_RLE is
+          pragma Inline(Consume_RLE);
         begin
           next_rle_idx:= Integer(Shift_Right(tt(next_rle_idx),8));
           decode_available:= decode_available - 1;
@@ -564,7 +564,7 @@ package body BZip2.Decoding is
             --   rle is finally emptied.
             --
             -- ** New block
-            if decode_block then
+            if Decode_Block then
               next_rle_idx:= Natural(Shift_Right(tt(block_origin),8));
             else
               next_rle_idx:= -1;
@@ -575,28 +575,28 @@ package body BZip2.Decoding is
               raise input_dried;
             end if;
           end if;
-        end consume_rle;
+        end Consume_RLE;
         --
-        function rle_byte return Unsigned_8 is
-          pragma Inline(rle_byte);
+        function RLE_Byte return Byte is
+          pragma Inline(RLE_Byte);
         begin
-          return Unsigned_8(tt(next_rle_idx) and 16#FF#);
-        end rle_byte;
+          return Byte(tt(next_rle_idx) and 16#FF#);
+        end RLE_Byte;
         --
-        function rle_possible return Boolean is
-          pragma Inline(rle_possible);
+        function RLE_Possible return Boolean is
+          pragma Inline(RLE_Possible);
         begin
-          return decode_available > 0 and then data = rle_byte;
-        end rle_possible;
+          return decode_available > 0 and then data = RLE_Byte;
+        end RLE_Possible;
         --
-      begin -- rle_read
+      begin -- RLE_Read
         rle_len:= rle_run_left;
         data:= rle_run_data;
         if block_randomized then
           raise randomized_not_yet_implemented;
         end if;
         if rle_len /= 0 then
-          rle_write;
+          RLE_Write;
           if count = 0 then
             shorten:= 0;
             rle_run_data:= data;
@@ -611,46 +611,46 @@ package body BZip2.Decoding is
               exit;
             end if;
             rle_len:= 1;
-            data:= rle_byte;
-            consume_rle;
-            if rle_possible then
+            data:= RLE_Byte;
+            Consume_RLE;
+            if RLE_Possible then
               rle_len:= rle_len + 1;
-              consume_rle;
-              if rle_possible then
+              Consume_RLE;
+              if RLE_Possible then
                 rle_len:= rle_len + 1;
-                consume_rle;
-                if rle_possible then
-                  consume_rle;
-                  rle_len:= rle_len + Natural(rle_byte)+1;
-                  consume_rle;
+                Consume_RLE;
+                if RLE_Possible then
+                  Consume_RLE;
+                  rle_len:= rle_len + Natural(RLE_Byte)+1;
+                  Consume_RLE;
                 end if;
               end if;
             end if;
-            rle_write;
+            RLE_Write;
             exit when count = 0;
           end loop;
         exception
-          when input_dried => rle_write;
+          when input_dried => RLE_Write;
         end;
-        shorten:= count;
-        rle_run_data:= data;
-        rle_run_left:= rle_len;
-      end rle_read;
+        shorten := count;
+        rle_run_data := data;
+        rle_run_left := rle_len;
+      end RLE_Read;
 
-    begin -- read
+    begin -- Read
       last:= buf'Last;
       if decode_available = Natural'Last then
         --  Initialize the rle process:
         --       - Decode a block
         --       - Initialize pointer.
-        if decode_block then
+        if Decode_Block then
           next_rle_idx:= Natural(Shift_Right(tt(block_origin), 8));
         else
           next_rle_idx:= -1;
           end_reached:= True;
         end if;
       end if;
-      rle_read;
+      RLE_Read;
       last:= last - shorten;
     end Read;
 
