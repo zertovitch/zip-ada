@@ -370,7 +370,7 @@ package body Zip.Create is
         Integer(lh.dd.compressed_size),
         Feedback => Feedback
       );
-      --  Postfixed data descriptor contain the correct values for
+      --  Postfixed data descriptor contains the correct values for
       --  CRC and sizes. Example of Zip files using that descriptor: those
       --  created by Microsoft's OneDrive cloud storage (for downloading
       --  more than one file), in 2018.
@@ -378,7 +378,7 @@ package body Zip.Create is
         --  NB: some faulty JAR files may fail with Read_and_check.
         --  See UnZip.Decompress, Process_descriptor.
         Zip.Headers.Read_and_check (Stream, lh.dd);
-        --  lh's value have been corrected on the way.
+        --  lh's values have been corrected on the way.
         Zip.Headers.Write (Info.Stream.all, lh.dd);  --  Copy descriptor to new stream.
       end if;
       Info.Contains (Info.Last_entry).head.short_info := lh;

@@ -283,9 +283,10 @@ package body UnZip is
         --  For Stored (Method 0) data we need a correct "compressed" size.
         --  If the hint is the bogus fallback value, it is better to trust
         --  the local header, since this size is known in advance. Case found
-        --  in Microsoft's OneDrive cloud storage (in 2018). Zip files
-        --  created when downloading more than one file are using "Store"
-        --  and a postfixed Data Descriptor for writing the CRC value.
+        --  in Microsoft's OneDrive cloud storage (in 2018). Zip files,
+        --  created by the server for downloading more than one file, are
+        --  using the "Store" format and a postfixed Data Descriptor for
+        --  writing the CRC value.
         --
         null;  --  Do not overwrite the compressed size in that case.
       else
