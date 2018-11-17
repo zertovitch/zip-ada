@@ -39,6 +39,8 @@ package body UnZip is
   boolean_to_encoding: constant array(Boolean) of Zip.Zip_name_encoding:=
     (False => Zip.IBM_437, True => Zip.UTF_8);
 
+  fallback_compressed_size : constant File_size_type := File_size_type'Last;
+
   --------------------------------------------------
   -- *The* internal 1-file unzipping procedure.   --
   -- Input must be _open_ and won't be _closed_ ! --
@@ -275,8 +277,21 @@ package body UnZip is
     if data_descriptor_after_data then
       -- Sizes and CRC are stored after the data
       -- We set size to avoid getting a sudden Zip_EOF !
+      if local_header.zip_type = 0
+        and then hint_comp_size = fallback_compressed_size
+      then
+        --  For Stored (Method 0) data we need a correct "compressed" size.
+        --  If the hint is the bogus fallback value, it is better to trust
+        --  the local header, since this size is known in advance. Case found
+        --  in Microsoft's OneDrive cloud storage. Zip files created when
+        --  downloading more than one file are using "Store" and use a
+        --  Data Descriptor for writing the CRC value.
+        --
+        null;  --  Do not overwrite the compressed size in that case.
+      else
+        local_header.dd.compressed_size := hint_comp_size;
+      end if;
       local_header.dd.crc_32            := hint_crc_32;
-      local_header.dd.compressed_size   := hint_comp_size;
       local_header.dd.uncompressed_size := File_size_type'Last;
       actual_feedback := null; -- no feedback possible: unknown sizes
     else
@@ -657,7 +672,7 @@ package body UnZip is
         out_name_encoding    => IBM_437, -- ignored
         name_from_header     => True,
         header_index         => header_index,
-        hint_comp_size       => File_size_type'Last,
+        hint_comp_size       => fallback_compressed_size,
         --                      ^ no better hint available if comp_size is 0 in local header
         hint_crc_32          => 0, -- 2.0 decryption can fail if data descriptor after data
         feedback             => feedback,
