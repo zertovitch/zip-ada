@@ -155,7 +155,7 @@ package body BZip2.Decoding is
       tt:= new Tcardinal_array(0 .. block_size * sub_block_size);
     end Init;
 
-    function get_bits(n: Natural) return Unsigned_8 is
+    function Get_Bits(n: Natural) return Unsigned_8 is
       Result_get_bits : Unsigned_8;
       data: Unsigned_8;
     begin
@@ -170,46 +170,46 @@ package body BZip2.Decoding is
       end if;
       bits_available:= bits_available - n;
       return Result_get_bits;
-    end get_bits;
+    end Get_Bits;
 
-    function get_bits_32(n: Natural) return Unsigned_32 is
+    function Get_Bits_32(n: Natural) return Unsigned_32 is
     begin
-      return Unsigned_32(get_bits(n));
-    end get_bits_32;
+      return Unsigned_32(Get_Bits(n));
+    end Get_Bits_32;
 
-    function get_boolean return Boolean is
+    function Get_Boolean return Boolean is
     begin
-      return Boolean'Val(get_bits(1));
-    end get_boolean;
+      return Boolean'Val(Get_Bits(1));
+    end Get_Boolean;
 
-    function get_byte return Unsigned_8 is
+    function Get_Byte return Unsigned_8 is
     begin
-      return get_bits(8);
-    end get_byte;
+      return Get_Bits(8);
+    end Get_Byte;
 
-    function get_cardinal24 return Unsigned_32 is
+    function Get_Cardinal_24 return Unsigned_32 is
     begin
-      return Shift_Left(get_bits_32(8),16) or Shift_Left(get_bits_32(8),8) or get_bits_32(8);
-    end get_cardinal24;
+      return Shift_Left(Get_Bits_32(8),16) or Shift_Left(Get_Bits_32(8),8) or Get_Bits_32(8);
+    end Get_Cardinal_24;
 
-    function get_cardinal return Unsigned_32 is
+    function Get_Cardinal_32 return Unsigned_32 is
     begin
-      return Shift_Left(get_bits_32(8),24)  or
-             Shift_Left(get_bits_32(8),16)  or
-             Shift_Left(get_bits_32(8), 8)  or
-             get_bits_32(8);
-    end get_cardinal;
+      return Shift_Left(Get_Bits_32(8),24)  or
+             Shift_Left(Get_Bits_32(8),16)  or
+             Shift_Left(Get_Bits_32(8), 8)  or
+             Get_Bits_32(8);
+    end Get_Cardinal_32;
 
     --  Receive the mapping table. To save space, the inuse set is stored in pieces
     --  of 16 bits. First 16 bits are stored which pieces of 16 bits are used, then
     --  the pieces follow.
-    procedure receive_mapping_table is
+    procedure Receive_Mapping_Table is
       inuse16: array(0 .. 15) of Boolean;
       --* inuse: array(0 .. 255) of Boolean; -- for dump purposes
     begin
       --  Receive the first 16 bits which tell which pieces are stored.
       for i in inuse16'Range loop
-        inuse16(i) := get_boolean;
+        inuse16(i) := Get_Boolean;
       end loop;
       --  Receive the used pieces.
       --* inuse:= (others => False);
@@ -217,7 +217,7 @@ package body BZip2.Decoding is
       for i in inuse16'Range loop
         if inuse16(i) then
           for j in 0 .. 15 loop
-            if get_boolean then
+            if Get_Boolean then
               --* inuse(16*i+j):= True;
               seq_to_unseq(inuse_count) := 16*i + j;
               inuse_count:= inuse_count + 1;
@@ -225,17 +225,16 @@ package body BZip2.Decoding is
           end loop;
         end if;
       end loop;
-    end receive_mapping_table;
+    end Receive_Mapping_Table;
 
-    --  Receives the selectors.
-    procedure receive_selectors is
+    procedure Receive_Selectors is
       j: Unsigned_8;
     begin
-      group_count:= Natural(get_bits(3));
-      selector_count:= Natural(Shift_Left(get_bits_32(8), 7) or get_bits_32(7));
+      group_count:= Natural(Get_Bits(3));
+      selector_count:= Natural(Shift_Left(Get_Bits_32(8), 7) or Get_Bits_32(7));
       for i in 0 .. selector_count-1 loop
         j:=0;
-        while get_boolean loop
+        while Get_Boolean loop
           j:= j + 1;
           if j > 5 then
             raise data_error;
@@ -243,40 +242,39 @@ package body BZip2.Decoding is
         end loop;
         selector_mtf(i):=j;
       end loop;
-    end receive_selectors;
+    end Receive_Selectors;
 
-    --  Undo the MTF values for the selectors.
-    procedure undo_mtf_values is
+    procedure Undo_MTF_Values_For_Selectors is
       pos: array (0 .. max_groups) of Natural;
       v, tmp: Natural;
     begin
       for w in 0 .. group_count-1 loop
-        pos(w):=w;
+        pos(w) := w;
       end loop;
       for i in 0 .. selector_count-1 loop
-        v:= Natural(selector_mtf(i));
-        tmp:=pos(v);
+        v := Natural(selector_mtf(i));
+        tmp:= pos(v);
         while v/=0 loop
-          pos(v):= pos(v-1);
+          pos(v) := pos(v-1);
           v:= v - 1;
         end loop;
-        pos(0):= tmp;
-        selector(i):= Unsigned_8(tmp);
+        pos(0) := tmp;
+        selector(i) := Unsigned_8(tmp);
       end loop;
-    end undo_mtf_values;
+    end Undo_MTF_Values_For_Selectors;
 
     procedure Receive_Huffman_Bit_Lengths is
       current_bit_length: Natural;
     begin
       for t in 0 .. group_count-1 loop
-        current_bit_length:= Natural(get_bits(5));
+        current_bit_length:= Natural(Get_Bits(5));
         for symbol in 0 .. alpha_size-1 loop
           loop
             if current_bit_length not in 1..20 then
               raise data_error;
             end if;
-            exit when not get_boolean;
-            if get_boolean then
+            exit when not Get_Boolean;
+            if Get_Boolean then
               current_bit_length:= current_bit_length - 1;
             else
               current_bit_length:= current_bit_length + 1;
@@ -347,10 +345,10 @@ package body BZip2.Decoding is
         end if;
         group_pos:= group_pos - 1;
         zn:= gminlen;
-        zvec:= get_bits_32(zn);
+        zvec:= Get_Bits_32(zn);
         while zvec > limit(gsel)(zn) loop
           zn:= zn + 1;
-          zvec:= Shift_Left(zvec, 1) or get_bits_32(1);
+          zvec:= Shift_Left(zvec, 1) or Get_Bits_32(1);
         end loop;
         return perm(gsel)(Natural(zvec-base(gsel)(zn)));
       end get_mtf_value;
@@ -480,7 +478,7 @@ package body BZip2.Decoding is
       magic: String(1 .. 6);
     begin
       for i in 1 .. 6 loop
-        magic(i):= Character'Val(get_byte);
+        magic(i):= Character'Val(Get_Byte);
       end loop;
       if magic = "1AY&SY" then
         if check_CRC then
@@ -490,16 +488,13 @@ package body BZip2.Decoding is
             CRC.Init(computed_crc); -- Initialize for next block.
           end if;
         end if;
-        stored_blockcrc:= get_cardinal;
-        block_randomized:= get_boolean;
-        block_origin:= Natural(get_cardinal24);
-        --  Receive the mapping table.
-        receive_mapping_table;
-        alpha_size:= inuse_count + 2;
-        --  Receive the selectors.
-        receive_selectors;
-        --  Undo the MTF values for the selectors.
-        undo_mtf_values;
+        stored_blockcrc := Get_Cardinal_32;
+        block_randomized := Get_Boolean;
+        block_origin := Natural(Get_Cardinal_24);
+        Receive_Mapping_Table;
+        alpha_size := inuse_count + 2;
+        Receive_Selectors;
+        Undo_MTF_Values_For_Selectors;
         Receive_Huffman_Bit_Lengths;
         Make_Huffman_Tables;
         Receive_MTF_Values;
