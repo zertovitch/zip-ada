@@ -350,7 +350,7 @@ package body Zip.Compress is
     if ext_3 = ".GIF" then
       return GIF;
     end if;
-    if ext_3 = ".WAV" then
+    if ext_3 = ".WAV" or else ext_3 = ".UAX" then
       return WAV;
     end if;
     return Neutral;

@@ -3,14 +3,14 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 
 * Changes in '55':
   - Zip_Streams: ZS_Size_Type is now 64-bit signed, enabling Zip.Create
-        to capture archive size overflows.
+        to capture archive size overflows in Zip_32 mode.
   - Zip.Create raises Zip_Capacity_Exceeded when archive creation exceeds
         the Zip_32 format's capacity: 4GB total size, 65,535 entries.
   - Zip.Create is now using an Ada 2005+'s Containers's Hashed Maps;
         creation is much faster on Zip archives with many entries.
-  - (Tools) ReZip has a new option for working with internal compression
-        algorithms only, provided by Zip.Compress. It is useful if
-        external tools are not available.
+  - (Tools) ReZip has a new option for working only with its own internal
+        compression algorithms - those provided by Zip.Compress.
+        This option is useful if external tools are not available.
   - New Trained_Compression package: generic streaming encoder-decoder
         engine with the capability of training the engine with data known
         in advance, in order to achieve better compression. Not Zip-related.
