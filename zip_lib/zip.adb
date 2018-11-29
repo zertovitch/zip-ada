@@ -1123,23 +1123,21 @@ package body Zip is
 
   procedure Adjust (info : in out Zip_info) is
 
-    --  Deep clone of the binary tree
-    procedure Clone (p: in p_Dir_node; q: out p_Dir_node) is
+    function Tree_Clone (p: in p_Dir_node) return p_Dir_node is
+      q: p_Dir_node;
     begin
       if p = null then
-        q := null;
+        return null;
       else
         q := new Dir_node'(p.all);
-        Clone (p.left,  q.left);
-        Clone (p.right, q.right);
+        q.left  := Tree_Clone (p.left);
+        q.right := Tree_Clone (p.right);
+        return q;
       end if;
-    end Clone;
-
-    new_tree: p_Dir_node;
+    end Tree_Clone;
 
   begin
-    Clone (info.dir_binary_tree, new_tree);
-    info.dir_binary_tree := new_tree;
+    info.dir_binary_tree  := Tree_Clone (info.dir_binary_tree);
     info.zip_file_name    := new String'(info.zip_file_name.all);
     info.zip_file_comment := new String'(info.zip_file_comment.all);
   end Adjust;
