@@ -28,9 +28,13 @@ begin
     Character'Read(s,c);
     Put(c);
   end loop;
-  Close(f);
   New_Line;
-  Put("*** Dump done, press Enter!");
+  Put("*** Dump done. Size of entry named [" &
+    Name (f) & "] is" &
+    UnZip.Streams.Count'Image (Size (f)) &
+    ". Press Enter!"
+  );
+  Close(f);
   Skip_Line;
   --
 end Demo_UnZip;

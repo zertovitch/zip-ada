@@ -223,6 +223,11 @@ package body UnZip.Streams is
     File:= null;
   end Close;
 
+  function Name (File : in Zipped_File_Type) return String is
+  begin
+    return File.file_name.all;
+  end Name;
+
   function Is_Open (File : in Zipped_File_Type) return Boolean is
   begin
     return File /= null and then File.state /= uninitialized;
@@ -262,7 +267,7 @@ package body UnZip.Streams is
       input_stream:= Zip.Zip_stream(Archive_Info);
     end if;
     --
-    File.archive_info:= Archive_Info;
+    File.archive_info:= Archive_Info;  --  Full clone. Now a copy is safely with File.
     File.file_name:= new String' (Name);
     begin
       S_Extract(
@@ -379,6 +384,14 @@ package body UnZip.Streams is
   begin
     return Stream_Access(File);
   end Stream;
+
+  function Size (File : in Zipped_File_Type) return Count is
+    comp_size   : File_size_type;
+    uncomp_size : File_size_type;
+  begin
+    Zip.Get_sizes (File.archive_info, File.file_name.all, comp_size, uncomp_size);
+    return Count (uncomp_size);
+  end Size;
 
   procedure Write
     (Stream : in out UnZip_Stream_Type;

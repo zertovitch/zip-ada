@@ -60,6 +60,8 @@ package UnZip.Streams is
 
    type Zipped_File_Type is private;
 
+   type Count is new Zip_Streams.ZS_Size_Type;
+
    -- Opens an input stream for the compressed file named Name stored
    -- in the archive file named Archive_Name. The function Stream(..)
    -- then gives access to the opened stream.
@@ -100,6 +102,8 @@ package UnZip.Streams is
 
    procedure Close (File : in out Zipped_File_Type);
 
+   function Name (File : in Zipped_File_Type) return String;
+
    function Is_Open     (File : in Zipped_File_Type) return Boolean;
    function End_Of_File (File : in Zipped_File_Type) return Boolean;
 
@@ -109,6 +113,8 @@ package UnZip.Streams is
    -- The function Stream gives access to the uncompressed data as input --
    ------------------------------------------------------------------------
    function Stream (File : Zipped_File_Type) return Stream_Access;
+
+   function Size (File : in Zipped_File_Type) return Count;
 
    Use_Error    : exception renames Ada.IO_Exceptions.Use_Error;
    End_Error    : exception renames Ada.IO_Exceptions.End_Error;
