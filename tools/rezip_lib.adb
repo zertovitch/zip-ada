@@ -460,7 +460,6 @@ package body Rezip_lib is
         );
         Close(MyStream);
         Delete_File(temp_zip);
-        Zip.Delete(zi_ext);
         --
         if randomized_stable = 1 or not is_rand then -- normal behaviour (1 attempts)
           size:= header.dd.compressed_size;
@@ -586,7 +585,6 @@ package body Rezip_lib is
         (header.zip_type = 14) and (header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
       Close(MyStream);
       Delete_File(temp_zip);
-      Zip.Delete(zi_ext);
       Set_Directory(cur_dir);
     end Process_Internal_as_Zip;
 

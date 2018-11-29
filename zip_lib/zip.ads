@@ -41,24 +41,26 @@
 -- http://www.opensource.org/licenses/mit-license.php
 
 with Zip_Streams;
-with Ada.Calendar, Ada.Streams.Stream_IO, Ada.Text_IO;
+with Ada.Calendar, Ada.Finalization, Ada.Streams.Stream_IO, Ada.Text_IO;
 with Interfaces;
 with System;
 
 package Zip is
 
-  --------------
-  -- Zip_info --
-  --------------
+  -----------------------------------------------------------------
+  --  Zip_info                                                   --
+  -----------------------------------------------------------------
+  --  Zip_info contains the Zip file name (if it is a file)      --
+  --  or its input stream access, and the archive's directory.   --
+  -----------------------------------------------------------------
 
-  -- Zip_info contains the Zip file name or input stream,
-  -- and the archive's sorted directory
-  type Zip_info is private;
+  type Zip_info is
+    new Ada.Finalization.Controlled with private;
 
-  -----------------------------------------------------------------------
-  -- Load the whole .zip directory in archive (from) into a tree, for  --
-  -- fast searching                                                    --
-  -----------------------------------------------------------------------
+  -----------------------------------------------
+  --  Load the whole .zip directory contained  --
+  --  in archive (from) for quick searching.   --
+  -----------------------------------------------
 
    type Duplicate_name_policy is
      ( admit_duplicates,    --  two entries in the Zip archive may have the same full name
@@ -106,6 +108,7 @@ package Zip is
   function Entries( info: in Zip_info ) return Natural;
 
   procedure Delete( info : in out Zip_info );
+  pragma Obsolescent(Delete);  --  Delete happens automatically since v.56.
 
   Forgot_to_load_zip_info: exception;
 
@@ -390,8 +393,8 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String:= "55";
-  reference : constant String:= "22-Nov-2018";
+  version   : constant String:= "56 preview 1";
+  reference : constant String:= ">= 29-Nov-2018";
   web       : constant String:= "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -440,7 +443,7 @@ private
 
   type p_String is access String;
 
-  type Zip_info is record
+  type Zip_info is new Ada.Finalization.Controlled with record
     loaded             : Boolean:= False;
     case_sensitive     : Boolean;
     zip_file_name      : p_String;                           -- a file name...
@@ -451,6 +454,11 @@ private
     zip_file_comment   : p_String;
     zip_archive_format : Zip_archive_format_type := Zip_32;
   end record;
+
+  --  After a copy, need to clone a few things.
+  overriding procedure Adjust   (info : in out Zip_info);
+  --  Free heap-allocated memory.
+  overriding procedure Finalize (info : in out Zip_info);
 
   --  System.Word_Size: 13.3(8): A word is the largest amount of storage
   --  that can be conveniently and efficiently manipulated by the hardware,

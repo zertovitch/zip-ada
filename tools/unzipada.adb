@@ -273,7 +273,6 @@ begin
           My_FS_routines
         );
       end loop;
-      Zip.Delete( zi );
     end if;
     T1:= Clock;
   end;

@@ -314,15 +314,14 @@ package body Zip is
       end;
     end loop;
     Binary_tree_rebalancing.Rebalance(p);
-    info:= ( loaded             => True,
-             case_sensitive     => case_sensitive,
-             zip_file_name      => new String'("This is a stream, no direct file!"),
-             zip_input_stream   => from'Unchecked_Access,
-             dir_binary_tree    => p,
-             total_entries      => Integer(the_end.total_entries),
-             zip_file_comment   => main_comment,
-             zip_archive_format => Zip_32
-           );
+    info.loaded             := True;
+    info.case_sensitive     := case_sensitive;
+    info.zip_file_name      := new String'("This is a stream, no direct file!");
+    info.zip_input_stream   := from'Unchecked_Access;
+    info.dir_binary_tree    := p;
+    info.total_entries      := Integer(the_end.total_entries);
+    info.zip_file_comment   := main_comment;
+    info.zip_archive_format := Zip_32;
   exception
     when Zip.Headers.bad_end =>
       Raise_Exception (Zip.Archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
@@ -422,9 +421,6 @@ package body Zip is
     end Delete;
 
   begin
-    if not info.loaded then
-      raise Forgot_to_load_zip_info;
-    end if;
     Delete( info.dir_binary_tree );
     Dispose( info.zip_file_name );
     Dispose( info.zip_file_comment );
@@ -1124,5 +1120,33 @@ package body Zip is
     MIO.Put(str, x, 16);
     return str(Index(str,"#")+1..11);
   end Hexadecimal;
+
+  procedure Adjust (info : in out Zip_info) is
+
+    --  Deep clone of the binary tree
+    procedure Clone (p: in p_Dir_node; q: out p_Dir_node) is
+    begin
+      if p = null then
+        q := null;
+      else
+        q := new Dir_node'(p.all);
+        Clone (p.left,  q.left);
+        Clone (p.right, q.right);
+      end if;
+    end Clone;
+
+    new_tree: p_Dir_node;
+
+  begin
+    Clone (info.dir_binary_tree, new_tree);
+    info.dir_binary_tree := new_tree;
+    info.zip_file_name    := new String'(info.zip_file_name.all);
+    info.zip_file_comment := new String'(info.zip_file_comment.all);
+  end Adjust;
+
+  procedure Finalize (info : in out Zip_info) is
+  begin
+    Delete (info);
+  end Finalize;
 
 end Zip;

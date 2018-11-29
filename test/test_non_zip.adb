@@ -23,11 +23,11 @@ procedure Test_non_zip is
   zi: array (Raw_scheme) of Zip.Zip_info;
 
   subtype Byte is Interfaces.Unsigned_8;
-  
+
   --  NB: The Byte I/O below is not buffered, so it is very slow.
   --  You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
   --  For instance, see the BlockRead in the Zip package for how to do it.
-  
+
   package Byte_IO is new Ada.Sequential_IO (Byte);
 
   Infile, Outfile: Byte_IO.File_Type;

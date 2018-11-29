@@ -148,7 +148,6 @@ private
    type UnZip_Stream_Type is new Ada.Streams.Root_Stream_Type with record
       state        : UZS_state:= uninitialized;
       archive_info : Zip.Zip_info; -- archive info (.zip file, directory)
-      delete_info_on_closing : Boolean;
       file_name    : p_String; -- name of zipped file to unzip from archive
       uncompressed : p_Stream_Element_Array; -- whole uncompressed data
       index        : Ada.Streams.Stream_Element_Offset;

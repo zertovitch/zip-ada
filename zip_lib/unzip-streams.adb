@@ -66,7 +66,7 @@ package body UnZip.Streams is
     data_descriptor_after_data: Boolean;
     encrypted: Boolean;
     method: PKZip_method;
-    use Zip, Zip_Streams;
+    use Zip;
     mode: Write_mode;
   begin
     begin
@@ -217,9 +217,6 @@ package body UnZip.Streams is
     if File = null or else File.state = uninitialized then
        raise Use_Error;
     end if;
-    if File.delete_info_on_closing then
-      Zip.Delete( File.archive_info );
-    end if;
     Dispose(File.file_name);
     Dispose(File.uncompressed);
     Dispose(File);
@@ -293,8 +290,6 @@ package body UnZip.Streams is
     if File.uncompressed'Last < File.index then -- (1..0) array
       File.state:= end_of_zip;
     end if;
-    File.delete_info_on_closing:= False; -- Close won't delete dir tree
-    -- Bug fix 1-Mar-2007: False was set only at initialization
   end Open;
 
   procedure Open
@@ -311,7 +306,6 @@ package body UnZip.Streams is
   begin
     Zip.Load( temp_info, Archive_Name, Case_sensitive);
     Open( File, temp_info, Name, Password );
-    File.delete_info_on_closing:= True; -- Close will delete temp. dir tree
   end Open;
 
   procedure Open
@@ -328,7 +322,6 @@ package body UnZip.Streams is
   begin
     Zip.Load( temp_info, Archive_Stream, Case_sensitive);
     Open( File, temp_info, Name, Password );
-    File.delete_info_on_closing:= True; -- Close will delete temp. dir tree
   end Open;
 
   ------------------------------------------
