@@ -92,7 +92,7 @@ Contents
 *  In the "trained" subdirectory, there is trained compression package with examples.
      Trained compression consists in training both sides (encoder, decoder) with
      a data, known in advance to both, which is similar to the data to be compressed,
-     transmitted and decompressed. Sometimes the compression ratio is improved significantly
+     transmitted and decompressed. Sometimes the compression ratio is improved significantly.
 
 *  In the "doc" subdirectory you'll find documentation, and research data in za_work.xls .
 

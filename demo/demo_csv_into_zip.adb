@@ -1,8 +1,10 @@
 ------------------------------------------------------------------------------
 --  File:            Demo_csv_into_zip.adb
 --  Description:     Demo / test / prototype derived from ZipTest.
---  Purpose:         Stuff many files directly into a zip file.
---                     Can be helpful when using network drives, for instance.
+--  Purpose:         Stuff many files directly into a Zip archive file.
+--                     Can be helpful when using network drives, for instance:
+--                     the numerous files can stay local, a single Zip file
+--                     is stored on the network drive.
 --  Date/version:    9-Jan-2013; 4-Feb-2009
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
@@ -137,7 +139,7 @@ procedure Demo_csv_into_zip is
   end Pack_results;
 
   procedure Output_all_results is
-    MyStream_file : aliased File_Zipstream; -- Zip archive as a file
+    MyStream_file : aliased File_Zipstream;  --  Zip archive as a file
     archive : Zip_Create_info;
   begin
     Create (archive,
@@ -146,7 +148,7 @@ procedure Demo_csv_into_zip is
     );
     for p in Peril loop
       for g in GroupCountries loop
-        Pack_results(g,p,archive);
+        Pack_results (g,p,archive);
       end loop;
     end loop;
     Finish (archive);
