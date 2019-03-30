@@ -656,24 +656,31 @@ is
     truc: Huff_descriptor(Alphabet);
     max_used_lln_code: Alphabet_lit_len:= 0;
     max_used_dis_code: Alphabet_dis:= 0;
+    extra_bits_needed : constant array (Alphabet) of Natural :=
+       ( 16 => 2, 17 => 3, 18 => 7, others => 0);
     --
     type Emission_mode is (simulate, effective);
     --
     procedure Emit_data_compression_structures(mode: Emission_mode) is
-      procedure Emit_data_compression_atom(x: Natural; extra_code: U32:= 0; extra_bits: Natural:= 0) is
-      --  x is a bit length (value in 0..15), or a RLE instruction
+      procedure Emit_data_compression_atom(x: Alphabet; extra_code: U32:= 0) is
+        --  x is a bit length (value in 0..15), or a RLE instruction
       begin
         case mode is
           when simulate =>
             truc_freq(x):= truc_freq(x) + 1;  --  +1 for x's histogram bar
           when effective =>
             Put_Huffman_code(truc(x));
-            if extra_bits > 0 then
-              Put_code(extra_code, extra_bits);
-            end if;
+            declare
+              extra_bits: constant Natural:= extra_bits_needed (x);
+            begin
+              if extra_bits > 0 then
+                Put_code(extra_code, extra_bits);
+              end if;
+            end;
         end case;
       end Emit_data_compression_atom;
-      --
+      --  Compression structure: the "big" array with all bit lengths for compressing data.
+      --  cs_bl will be compressed too...
       cs_bl: array(1 .. dhd.lit_len'Length + dhd.dis'Length) of Natural;
       last_cs_bl: Natural;
       idx: Natural:= 0;
@@ -693,7 +700,7 @@ is
           end if;
         end loop;
       end if;
-      --  Copy bit lengths for both trees into one array
+      --  Copy bit lengths for both trees into one array, cs_bl.
       for a in 0..max_used_lln_code loop
         idx:= idx + 1;
         cs_bl(idx):= dhd.lit_len(a).bit_length;
@@ -718,15 +725,15 @@ is
           and then not (cs_bl(idx) = 0 and then rep > 6)
         then
           rep:= Integer'Min(rep, 6);
-          Emit_data_compression_atom(16, U32(rep-3), 2);    -- 16: "Repeat previous 3 to 6 times"
+          Emit_data_compression_atom(16, U32(rep-3));    -- 16: "Repeat previous 3 to 6 times"
           idx:= idx + rep;
         elsif cs_bl(idx) = 0 and then rep >= 3 then
           --  The 0 bit length may occur on long ranges of an alphabet (unused symbols)
           if rep <= 10 then
-            Emit_data_compression_atom(17, U32(rep-3), 3);  -- 17: "Repeat zero 3 to 10 times"
+            Emit_data_compression_atom(17, U32(rep-3));  -- 17: "Repeat zero 3 to 10 times"
           else
             rep:= Integer'Min(rep, 138);
-            Emit_data_compression_atom(18, U32(rep-11), 7); -- 18: "Repeat zero 11 to 138 times"
+            Emit_data_compression_atom(18, U32(rep-11)); -- 18: "Repeat zero 11 to 138 times"
           end if;
           idx:= idx + rep;
         else
@@ -747,8 +754,6 @@ is
     procedure LLHCL is new
       Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
     a_non_zero: Alphabet;
-    extra_bits_needed : constant array (Alphabet) of Natural :=
-       ( 16 => 2, 17 => 3, 18 => 7, others => 0);
   begin
     truc_freq:= (others => 0);
     Emit_data_compression_structures(simulate);
