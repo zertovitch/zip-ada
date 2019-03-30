@@ -654,8 +654,40 @@ is
     type Alpha_Array is new Bit_length_array(Alphabet);
     truc_freq, truc_bl: Alpha_Array;
     truc: Huff_descriptor(Alphabet);
-    max_used_lln_code: Alphabet_lit_len:= 0;
-    max_used_dis_code: Alphabet_dis:= 0;
+    --  Compression structure: cs_bl is the "big" array with all bit lengths
+    --  for compressing data. cs_bl will be sent compressed, too.
+    cs_bl : array (1 .. dhd.lit_len'Length + dhd.dis'Length) of Natural;
+    last_cs_bl : Natural;
+    max_used_lln_code : Alphabet_lit_len := 0;
+    max_used_dis_code : Alphabet_dis     := 0;
+    --
+    procedure Concatenate_all_bit_lengths is
+      idx: Natural:= 0;
+    begin
+      for a in reverse Alphabet_lit_len loop
+        if dhd.lit_len(a).bit_length > 0 then
+          max_used_lln_code:= a;
+          exit;
+        end if;
+      end loop;
+      for a in reverse Alphabet_dis loop
+        if dhd.dis(a).bit_length > 0 then
+          max_used_dis_code:= a;
+          exit;
+        end if;
+      end loop;
+      --  Copy bit lengths for both trees into one array, cs_bl.
+      for a in 0 .. max_used_lln_code loop
+        idx := idx + 1;
+        cs_bl(idx) := dhd.lit_len(a).bit_length;
+      end loop;
+      for a in 0 .. max_used_dis_code loop
+        idx := idx + 1;
+        cs_bl(idx) := dhd.dis(a).bit_length;
+      end loop;
+      last_cs_bl := idx;
+    end Concatenate_all_bit_lengths;
+    --
     extra_bits_needed : constant array (Alphabet) of Natural :=
        ( 16 => 2, 17 => 3, 18 => 7, others => 0);
     --
@@ -679,37 +711,9 @@ is
             end;
         end case;
       end Emit_data_compression_atom;
-      --  Compression structure: the "big" array with all bit lengths for compressing data.
-      --  cs_bl will be compressed too...
-      cs_bl: array(1 .. dhd.lit_len'Length + dhd.dis'Length) of Natural;
-      last_cs_bl: Natural;
       idx: Natural:= 0;
       rep: Positive;  --  Number of times current atom is repeated, >= 1
     begin
-      if mode = simulate then
-        for a in reverse Alphabet_lit_len loop
-          if dhd.lit_len(a).bit_length > 0 then
-            max_used_lln_code:= a;
-            exit;
-          end if;
-        end loop;
-        for a in reverse Alphabet_dis loop
-          if dhd.dis(a).bit_length > 0 then
-            max_used_dis_code:= a;
-            exit;
-          end if;
-        end loop;
-      end if;
-      --  Copy bit lengths for both trees into one array, cs_bl.
-      for a in 0..max_used_lln_code loop
-        idx:= idx + 1;
-        cs_bl(idx):= dhd.lit_len(a).bit_length;
-      end loop;
-      for a in 0..max_used_dis_code loop
-        idx:= idx + 1;
-        cs_bl(idx):= dhd.dis(a).bit_length;
-      end loop;
-      last_cs_bl:= idx;
       --  Emit the bit lengths, with some RLE encoding (Appnote: 5.5.3; RFC 1951: 3.2.7)
       idx:= 1;
       loop
@@ -755,6 +759,7 @@ is
       Length_limited_Huffman_code_lengths(Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
     a_non_zero: Alphabet;
   begin
+    Concatenate_all_bit_lengths;
     truc_freq:= (others => 0);
     Emit_data_compression_structures(simulate);
     --  We have now statistics of all bit lengths occurrences of both Huffman
