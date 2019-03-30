@@ -16,7 +16,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 1999 .. 2018 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -393,8 +393,8 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String:= "56 preview 1";
-  reference : constant String:= ">= 29-Nov-2018";
+  version   : constant String:= "56 preview 2";
+  reference : constant String:= ">= 30-Mar-2019";
   web       : constant String:= "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 

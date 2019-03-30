@@ -3,7 +3,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 2009 .. 2018 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -646,8 +646,8 @@ is
   --
   procedure Put_compression_structure(
     dhd           :        Deflate_Huff_descriptors;
-    cost_analysis :        Boolean;  --  True: just simulate the whole and count needed bits
-    bits          : in out Count_type
+    cost_analysis :        Boolean;    --  If True: just simulate the whole, and count needed bits
+    bits          : in out Count_type  --  This is incremented when cost_analysis = True
   )
   is
     subtype Alphabet is Integer range 0..18;
@@ -766,27 +766,30 @@ is
       end if;
     end loop;
     if cost_analysis then
+      --  In this mode, no data output: we sum up the exact
+      --  number of bits needed by the compression header.
       bits:= bits + 14 + Count_type(1 + a_non_zero) * 3;
       for a in Alphabet loop
         bits:= bits + Count_type(truc_freq(a) * (truc_bl(a)+extra_bits_needed(a)));
       end loop;
-      return;
+    else
+      --  We output the compression header to the output stream.
+      for a in Alphabet loop
+        truc(a).bit_length:= truc_bl(a);
+      end loop;
+      Prepare_Huffman_codes(truc);
+      --  Output of the compression structure
+      Put_code(U32(max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
+      Put_code(U32(max_used_dis_code), 5);
+      Put_code(U32(a_non_zero - 3), 4);
+      --  Save the local alphabet's Huffman lengths. It's the compression structure
+      --  for compressing the data compression structure. Easy, isn't it ?
+      for a in 0..a_non_zero loop
+        Put_code(U32(truc(alphabet_permutation(a)).bit_length), 3);
+      end loop;
+      --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
+      Emit_data_compression_structures(effective);
     end if;
-    for a in Alphabet loop
-      truc(a).bit_length:= truc_bl(a);
-    end loop;
-    Prepare_Huffman_codes(truc);
-    --  Output of the compression structure
-    Put_code(U32(max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
-    Put_code(U32(max_used_dis_code), 5);
-    Put_code(U32(a_non_zero - 3), 4);
-    --  Save the local alphabet's Huffman lengths. It's the compression structure
-    --  for compressing the data compression structure. Easy, isn't it ?
-    for a in 0..a_non_zero loop
-      Put_code(U32(truc(alphabet_permutation(a)).bit_length), 3);
-    end loop;
-    --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
-    Emit_data_compression_structures(effective);
   end Put_compression_structure;
 
   End_Of_Block: constant:= 256;
