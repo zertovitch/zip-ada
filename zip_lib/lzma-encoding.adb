@@ -17,7 +17,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 2016 .. 2018 Gautier de Montmollin
+--  Copyright (c) 2016 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -63,6 +63,7 @@ package body LZMA.Encoding is
     position_bits          : Position_bits_range         := 2;   --  Position mod 2**bits is used.
     end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker ?
     uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
+                                                --  In LZMA.Decoding, type LZMA_Hints: has_size.
     dictionary_size        : Natural := Default_dictionary_size  --  Not used by Level_1, Level_2.
   )
   is

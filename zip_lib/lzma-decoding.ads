@@ -10,7 +10,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 2014 .. 2018 Gautier de Montmollin (Maintainer of the Ada version)
+--  Copyright (c) 2014 .. 2019 Gautier de Montmollin (Maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,6 +47,14 @@ package LZMA.Decoding is
     LZMA_finished_without_marker
   );
 
+  --  The passing of the uncompressed data size follows very
+  --  confusing rules in the LZMA format. If you have a noiseless
+  --  data transmission it is better to bypass any size check,
+  --  by using a End-Of-Stream marker (marker_expected = True on the decoder
+  --  side below: type LZMA_Hints) and *not* giving any hardcoded
+  --  size (has_size = False), and keeping given_size = dummy_size (default).
+  --  
+
   dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
 
   --  The hints represent knowledge prior to decompressing a LZMA
@@ -54,10 +62,12 @@ package LZMA.Decoding is
   --  compatible with the LZMA header with has_size = False.
   --
   type LZMA_Hints is record
-    has_size               : Boolean;           -- Is size is part of header data ?
-    given_size             : Data_Bytes_Count;  -- If has_size = False, we use given_size.
-    marker_expected        : Boolean;           -- Is an End-Of-Stream marker expected ?
-    fail_on_bad_range_code : Boolean;           -- Raise exception if range decoder corrupted ?
+    has_size               : Boolean;         --  Is size is part of header data ?
+                                              --  In LZMA.Encoding.Encode: uncompressed_size_info.
+    given_size             : Data_Bytes_Count --  If has_size = False, we use given_size.
+                              := dummy_size; 
+    marker_expected        : Boolean;         --  Is an End-Of-Stream marker expected ?
+    fail_on_bad_range_code : Boolean;         --  Raise exception if range decoder corrupted ?
     --  The LZMA specification is a bit ambiguous on this point: a decoder has to ignore
     --  corruption cases, but an encoder is required to avoid them...
   end record;

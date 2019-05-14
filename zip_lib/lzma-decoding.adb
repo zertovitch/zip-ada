@@ -11,7 +11,7 @@
 
 -- Legal licensing note:
 
---  Copyright (c) 2014 .. 2018 Gautier de Montmollin (Maintainer of the Ada version)
+--  Copyright (c) 2014 .. 2019 Gautier de Montmollin (Maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -106,7 +106,7 @@ package body LZMA.Decoding is
     rep0, rep1, rep2, rep3 : UInt32 := 0;
     pos_state: Pos_state_range;
     --  Local copies of invariant properties.
-    unpack_size_def: constant Boolean:= o.unpackSizeDefined;
+    unpack_size_defined: constant Boolean:= o.unpackSizeDefined;
     literal_pos_mask: constant UInt32:= 2 ** o.lp - 1;
     lc: constant Literal_context_bits_range:= o.lc;
     --
@@ -189,7 +189,7 @@ package body LZMA.Decoding is
       probs_idx    : Integer;
       bit_nomatch  : Unsigned;
     begin
-      if o.unpackSize = 0 and then unpack_size_def then
+      if unpack_size_defined and then o.unpackSize = 0 then
         Raise_Exception(
           LZMA_Error'Identity,
           "Decoded data will exceed expected data size (Process_Literal)"
@@ -421,13 +421,24 @@ package body LZMA.Decoding is
         --  final length is in 2 + [16..271]
       end Decode_Length;
       --
-      function Check_Distance return Boolean is
-      pragma Inline(Check_Distance);
+      function Is_Distance_Valid return Boolean is
+      pragma Inline(Is_Distance_Valid);
       begin
-        return rep0 <= out_win.pos or out_win.is_full;
-      end Check_Distance;
+        return
+            rep0 < dict_size
+          and
+            (
+                --  When the window / dictionary is not yet full, the distance
+                --  needs to be between 0 and the position.
+                rep0 <= out_win.pos
+              or
+                --  When the dictionary is full the distance can exceed the
+                --  position (it's a circular buffer).
+                out_win.is_full
+            );
+      end Is_Distance_Valid;
       --
-      isError: Boolean;
+      data_length_error: Boolean;
       dist: UInt32;
       bit_a, bit_b, bit_c, bit_d, bit_e: Unsigned;
       --
@@ -451,21 +462,25 @@ package body LZMA.Decoding is
             );
           end if;
         end if;
-        if (o.unpackSize = 0 and then unpack_size_def) or
-            rep0 >= dict_size or not Check_Distance
-        then
+        if unpack_size_defined and then o.unpackSize = 0 then
           Raise_Exception(
             LZMA_Error'Identity,
-            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2)." &
-            "; Distance =" & UInt32'Image(rep0) &
+            "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2)."
+          );
+        end if;
+        if not Is_Distance_Valid then
+          Raise_Exception(
+            LZMA_Error'Identity,
+            "Invalid distance (in Process_Distance_and_Length):" &
             "; Dictionary size =" & UInt32'Image(dict_size) &
-            "; Position =" & UInt32'Image(out_win.pos) &
+            "; Position        =" & UInt32'Image(out_win.pos) &
+            "; Distance        =" & UInt32'Image(rep0) &
             "; Is window full ? " & Boolean'Image(out_win.is_full)
           );
         end if;
       else
         --  "Rep Match"
-        if o.unpackSize = 0 and then unpack_size_def then
+        if unpack_size_defined and then o.unpackSize = 0 then
           Raise_Exception(
             LZMA_Error'Identity,
             "Decoded data will exceed expected data size (in Process_Distance_and_Length, #1)"
@@ -507,27 +522,27 @@ package body LZMA.Decoding is
         state := Update_State_Rep(state);
       end if;
       len := len + Min_match_length;
-      isError := False;
-      if o.unpackSize < Data_Bytes_Count(len) and then unpack_size_def then
+      data_length_error := False;
+      if unpack_size_defined and then o.unpackSize < Data_Bytes_Count(len) then
         len := Unsigned(o.unpackSize);
-        isError := True;
+        data_length_error := True;
       end if;
       -- The LZ distance/length copy happens here.
       Copy_Match(dist => rep0 + 1);
-      o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
-      if isError then
+      if data_length_error then
         Raise_Exception(
           LZMA_Error'Identity,
           "Decoded data will exceed expected data size (in Process_Distance_and_Length, #3)"
         );
       end if;
+      o.unpackSize:= o.unpackSize - Data_Bytes_Count(len);
       return Normal;
     end Process_Distance_and_Length;
 
     bit_choice: Unsigned;
     pos_bits_mask : constant UInt32 := 2 ** o.pb - 1;
     size_defined_and_marker_not_mandatory: constant Boolean:=
-      unpack_size_def and not o.markerIsMandatory;
+      unpack_size_defined and not o.markerIsMandatory;
 
     procedure Finalize is
       procedure Dispose is new Ada.Unchecked_Deallocation(Byte_buffer, p_Byte_buffer);
