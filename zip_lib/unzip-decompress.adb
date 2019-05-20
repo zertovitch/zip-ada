@@ -1886,9 +1886,9 @@ package body UnZip.Decompress is
           Raise_Exception(Zip.Archive_corrupted'Identity, "Unexpected LZMA properties block size");
         end if;
         My_LZMA_Decoding.Decompress(
-          (has_size               => False,
+          (has_size               => False,  --  Data size is not part of the LZMA header.
            given_size             => LZMA.Data_Bytes_Count (UnZ_Glob.uncompsize),
-           marker_expected        => explode_slide_8KB_LZMA_EOS,
+           marker_expected        => explode_slide_8KB_LZMA_EOS,  --  End-Of-Stream marker?
            fail_on_bad_range_code => True)
         );
         UnZ_IO.Flush( UnZ_Glob.slide_index );

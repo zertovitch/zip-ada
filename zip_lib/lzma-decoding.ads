@@ -53,7 +53,6 @@ package LZMA.Decoding is
   --  by using a End-Of-Stream marker (marker_expected = True on the decoder
   --  side below: type LZMA_Hints) and *not* giving any hardcoded
   --  size (has_size = False), and keeping given_size = dummy_size (default).
-  --  
 
   dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
 
@@ -65,7 +64,7 @@ package LZMA.Decoding is
     has_size               : Boolean;         --  Is size is part of header data ?
                                               --  In LZMA.Encoding.Encode: uncompressed_size_info.
     given_size             : Data_Bytes_Count --  If has_size = False, we use given_size.
-                              := dummy_size; 
+                              := dummy_size;
     marker_expected        : Boolean;         --  Is an End-Of-Stream marker expected ?
     fail_on_bad_range_code : Boolean;         --  Raise exception if range decoder corrupted ?
     --  The LZMA specification is a bit ambiguous on this point: a decoder has to ignore
@@ -77,9 +76,11 @@ package LZMA.Decoding is
   ----------------------------------------------------------------------------------
 
   procedure Decompress(hints: LZMA_Hints);
-  --  The parameter uncompressed_size_info in LZMA.Encoding.Encode
-  --  must have the same value as hints.has_size (two incompatible LZMA
-  --  header variants). uncompressed_size_info = True for .lzma files.
+  --  The parameter hints.has_size must have the same value as
+  --  uncompressed_size_info in LZMA.Encoding.Encode: there are unfortunately
+  --  two incompatible LZMA header variants: one including uncompressed
+  --  data size, and one without that size.
+  --  Note that hints.has_size = uncompressed_size_info = True for .lzma files.
 
   ---------------------------------------------------------------------------
   --  Usage #2 : Object-oriented, with stored technical details as output  --
