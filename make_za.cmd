@@ -17,19 +17,16 @@ goto fin
 
 rem The Tools...
 
-call make_one zipada %1
+call make_one zipada
 call make_one unzipada
 call make_one rezip
 call make_one comp_zip
 call make_one find_zip
-call make_one demo_zip
-call make_one demo_unzip
-call make_one bunzip
-call make_one lzma_dec
-call make_one lzma_enc
-call make_one ziptest
-call make_one demo_csv_into_zip
-call make_one zip_with_many_files
+
+rem The Demos and Tests...
+
+gnatmake -Pzipada.gpr      -XBuild_Mode=%gnatoptions_87312863%
+gnatmake -Pzipada_test.gpr -XBuild_Mode=%gnatoptions_87312863%
 
 set gnatoptions_87312863=
 
