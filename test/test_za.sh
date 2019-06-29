@@ -1,3 +1,5 @@
+#!/bin/bash
+
 echo ""
 echo " =================================================="
 echo "      Testing the ZipAda tool with Comp_Zip"
