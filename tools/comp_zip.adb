@@ -43,7 +43,7 @@ begin
     New_Line;
     Put_Line("Options: -q1   : (quiet level 1): summary only");
     Put_Line("         -q2   : (quiet level 2): shorter summary only");
-    Put_Line("         -spwd : define a password (e.g. ""pwd"")");
+    Put_Line("         -pPwd : define a password for decryption (e.g. ""Pwd"")");
     return;
   end if;
   for i in 1..2 loop
@@ -64,7 +64,7 @@ begin
     begin
       if arg'Length > 2 and then arg(arg'First..arg'First+1) = "-q" then
         quiet:= Natural'Value(arg(arg'First+2..arg'Last));
-      elsif arg'Length > 2 and then arg(arg'First..arg'First+1) = "-s" then
+      elsif arg'Length > 2 and then arg(arg'First..arg'First+1) = "-p" then
         password := To_Unbounded_String (arg(arg'First+2..arg'Last));
       end if;
     end;

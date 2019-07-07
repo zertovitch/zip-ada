@@ -35,6 +35,7 @@ procedure UnZipAda is
     when others =>
       null; -- !! utf-8 or ascii names with characters > pos 127 fail
   end Set_Modification_Time_B;
+  pragma Unreferenced (Set_Modification_Time_B);
 
   Set_Time_Stamp: constant UnZip.Set_Time_Stamp_proc:=
     --    If you want the time stamps, uncomment the following
@@ -124,7 +125,7 @@ procedure UnZipAda is
     Put_Line("          -l     : force lower case on stored names");
     Put_Line("          -a     : output as text file, with native line endings");
     Put_Line("          -z     : display .zip archive comment only");
-    Put_Line("          -s pwd : define a password (e.g. ""pwd"")");
+    Put_Line("          -p Pwd : define a password for decryption (e.g. ""Pwd"")");
     Put_Line("          -q     : quiet mode");
   end Help;
 
@@ -168,7 +169,7 @@ begin
             lower_case_match:= True;
           when 'a' =>
             z_options( extract_as_text ):= True;
-          when 's' =>
+          when 'p' | 's' =>  --  The "-s" variant is kept for compatibility.
             if i = Argument_Count then
               Help;
               return; -- "-s" without the password or anything ?!

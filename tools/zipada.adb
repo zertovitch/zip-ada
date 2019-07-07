@@ -236,7 +236,8 @@ procedure ZipAda is
           scan:= files_and_dirs_recursive;
         elsif eX = "r2" then
           scan:= patterns_recursive;
-        elsif opt(opt'First) = 's' then
+        elsif opt(opt'First) = 'p' or opt(opt'First) = 's' then
+          --  The "-s" variant is kept for compatibility.
           if arg'Length > 2 then  --  Password is appended to the option
             password:= To_Unbounded_String(arg(arg'First+2..arg'Last));
           else
@@ -321,6 +322,7 @@ begin
     Put_Line("          -r2    : search name(s) in current and all subdirectories as well;");
     Put_Line("                      please enclose name(s) that have wildcards with");
     Put_Line("                      single quotes, for example: '*.adb'");
-    Put_Line("          -s[X]  : set password X");
+    Put_Line("          -p     : define a password for encryption (user is prompted)");
+    Put_Line("          -pPwd  : define a password for encryption (e.g. ""Pwd"")");
   end if;
 end ZipAda;

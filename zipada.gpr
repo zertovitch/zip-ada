@@ -85,11 +85,11 @@ project ZipAda is
    );
 
    Debug_Options  := (
-	   "-gnatVa",  --  Turn on all validity checking options
+     "-gnatVa",  --  Turn on all validity checking options
      "-gnato",   --  Enable overflow checking in STRICT (-gnato1) mode
      "-g", 
-		 "-fno-inline", "-fstack-check",
-		 "-gnatec=" & project'Project_Dir & "debug.pra"
+     "-fno-inline", "-fstack-check",
+     "-gnatec=" & project'Project_Dir & "debug.pra"
      );
 
    package Compiler is
