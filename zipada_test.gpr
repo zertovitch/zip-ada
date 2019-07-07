@@ -24,10 +24,10 @@ project ZipAda_Test extends "ZipAda" is  --  Check zipada.gpr for details
    );
 
    case Build_Mode is
-      when "Debug" | "Check_95" =>  for Object_Dir use "obj_dbg/test";
-      when "Fast" =>                for Object_Dir use "obj_opt/test";
-      when "Small" =>               for Object_Dir use "obj_small/test";
-      when "Profiling" =>           for Object_Dir use "obj_pro/test";
+      when "Fast"      =>  for Object_Dir use "obj_opt/test";
+      when "Small"     =>  for Object_Dir use "obj_small/test";
+      when "Profiling" =>  for Object_Dir use "obj_pro/test";
+      when others      =>  for Object_Dir use "obj_dbg/test";
    end case;
    
    for Exec_Dir use ".";
