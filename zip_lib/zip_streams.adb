@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2018 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2019 Gautier de Montmollin (maintainer)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -110,7 +110,7 @@ package body Zip_Streams is
       Str.Loc := 1;
    end Set;
 
-   procedure Read
+   overriding procedure Read
      (Stream : in out Memory_Zipstream;
       Item   : out Stream_Element_Array;
       Last   : out Stream_Element_Offset) is
@@ -137,7 +137,7 @@ package body Zip_Streams is
 
    max_chunk_size: constant:= 16 * 1024;
 
-   procedure Write
+   overriding procedure Write
      (Stream : in out Memory_Zipstream;
       Item   : Stream_Element_Array)
    is
@@ -173,7 +173,7 @@ package body Zip_Streams is
      end loop;
    end Write;
 
-   procedure Set_Index (S : in out Memory_Zipstream; To : ZS_Index_Type) is
+   overriding procedure Set_Index (S : in out Memory_Zipstream; To : ZS_Index_Type) is
      I, chunk_size: ZS_Size_Type;
    begin
      if To > ZS_Size_Type(Length(S.Unb)) then
@@ -188,17 +188,17 @@ package body Zip_Streams is
      S.Loc := Integer(To);
    end Set_Index;
 
-   function Size (S : in Memory_Zipstream) return ZS_Size_Type is
+   overriding function Size (S : in Memory_Zipstream) return ZS_Size_Type is
    begin
       return ZS_Size_Type(Length(S.Unb));
    end Size;
 
-   function Index (S : in Memory_Zipstream) return ZS_Index_Type is
+   overriding function Index (S : in Memory_Zipstream) return ZS_Index_Type is
    begin
       return ZS_Index_Type(S.Loc);
    end Index;
 
-   function End_Of_Stream (S : in Memory_Zipstream) return Boolean is
+   overriding function End_Of_Stream (S : in Memory_Zipstream) return Boolean is
    begin
       if Size(S) < Index(S) then
          return True;
@@ -240,7 +240,7 @@ package body Zip_Streams is
       return Ada.Streams.Stream_IO.Is_Open(Str.File);
    end Is_Open;
 
-   procedure Read
+   overriding procedure Read
      (Stream : in out File_Zipstream;
       Item   : out Stream_Element_Array;
       Last   : out Stream_Element_Offset)
@@ -249,14 +249,14 @@ package body Zip_Streams is
       Ada.Streams.Stream_IO.Read (Stream.File, Item, Last);
    end Read;
 
-   procedure Write
+   overriding procedure Write
      (Stream : in out File_Zipstream;
       Item   : Stream_Element_Array) is
    begin
       Ada.Streams.Stream_IO.Write( Stream.File, Item);
    end Write;
 
-   procedure Set_Index (S : in out File_Zipstream; To : ZS_Index_Type) is
+   overriding procedure Set_Index (S : in out File_Zipstream; To : ZS_Index_Type) is
    begin
       Ada.Streams.Stream_IO.Set_Index (
         S.File,
@@ -264,17 +264,17 @@ package body Zip_Streams is
       );
    end Set_Index;
 
-   function Size (S : in File_Zipstream) return ZS_Size_Type is
+   overriding function Size (S : in File_Zipstream) return ZS_Size_Type is
    begin
       return ZS_Size_Type (Ada.Streams.Stream_IO.Size(S.File));
    end Size;
 
-   function Index (S : in File_Zipstream) return ZS_Index_Type is
+   overriding function Index (S : in File_Zipstream) return ZS_Index_Type is
    begin
       return ZS_Index_Type (Ada.Streams.Stream_IO.Index(S.File));
    end Index;
 
-   function End_Of_Stream (S : in File_Zipstream) return Boolean is
+   overriding function End_Of_Stream (S : in File_Zipstream) return Boolean is
    begin
       return Ada.Streams.Stream_IO.End_Of_File(S.File);
    end End_Of_Stream;

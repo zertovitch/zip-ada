@@ -1,6 +1,6 @@
 -- Legal licensing note:
 
---  Copyright (c) 1999 .. 2018 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1121,7 +1121,7 @@ package body Zip is
     return str(Index(str,"#")+1..11);
   end Hexadecimal;
 
-  procedure Adjust (info : in out Zip_info) is
+  overriding procedure Adjust (info : in out Zip_info) is
 
     function Tree_Clone (p: in p_Dir_node) return p_Dir_node is
       q: p_Dir_node;
@@ -1142,7 +1142,7 @@ package body Zip is
     info.zip_file_comment := new String'(info.zip_file_comment.all);
   end Adjust;
 
-  procedure Finalize (info : in out Zip_info) is
+  overriding procedure Finalize (info : in out Zip_info) is
   begin
     Delete (info);
   end Finalize;

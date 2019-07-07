@@ -1,6 +1,6 @@
 -- Legal licensing note:
 
---  Copyright (c) 1999 .. 2018 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -333,7 +333,7 @@ package body UnZip.Streams is
   -- Read procedure for Unzip_Stream_Type --
   ------------------------------------------
 
-  procedure Read
+  overriding procedure Read
     (Stream : in out UnZip_Stream_Type;
      Item   :    out Ada.Streams.Stream_Element_Array;
      Last   :    out Ada.Streams.Stream_Element_Offset)
@@ -393,7 +393,7 @@ package body UnZip.Streams is
     return Count (uncomp_size);
   end Size;
 
-  procedure Write
+  overriding procedure Write
     (Stream : in out UnZip_Stream_Type;
      Item   : in     Ada.Streams.Stream_Element_Array)
   is

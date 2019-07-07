@@ -17,16 +17,17 @@ project ZipAda is
        "Fast", 
        "Small",
        "Profiling",
-       --  Check_95 mode is for checking that the *library* is strictly
-       --  Ada-95-compliant for being compiled by the broadest set of compilers.
-       --  The demos, tools and tests are using some Ada 2005 & 2012 features.
-       "Check_95"  
+       "Style_Checks",
+       --  Check_2005 mode is for checking that the *library* is strictly
+       --  Ada-2005-compliant, for being compiled by a broader set of compilers.
+       --  The demos, tools and tests may use some Ada 2012+ features.
+       "Check_2005"
       );
    Build_Mode : Build_Mode_Type := external ("Build_Mode", "Fast");
    for Exec_Dir use ".";
    
    case Build_Mode is
-      when "Check_95" =>
+      when "Check_2005" =>
          for Source_Dirs use ("zip_lib");
          for Main use ();
       when others =>
@@ -52,10 +53,10 @@ project ZipAda is
    end case;
 
    case Build_Mode is
-      when "Debug" | "Check_95" =>  for Object_Dir use "obj_dbg";
-      when "Fast" =>                for Object_Dir use "obj_opt";
-      when "Small" =>               for Object_Dir use "obj_small";
-      when "Profiling" =>           for Object_Dir use "obj_pro";
+      when "Fast"      =>  for Object_Dir use "obj_opt";
+      when "Small"     =>  for Object_Dir use "obj_small";
+      when "Profiling" =>  for Object_Dir use "obj_pro";
+      when others      =>  for Object_Dir use "obj_dbg";
    end case;
 
    package Binder is
@@ -66,46 +67,56 @@ project ZipAda is
    package Linker is
 
       case Build_Mode is
-
-         when "Debug" | "Check_95" =>
-            for Default_Switches ("ada") use ("-g");
-
          when "Fast" | "Small" =>
             for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections");
-
          when "Profiling" =>
             for Default_Switches ("ada") use ("-pg");
+         when others =>
+            for Default_Switches ("ada") use ("-g");
       end case;
    end Linker;
+
+   Common_Options := (
+     "-gnatwa",                        --  Warnings switches
+     "-gnatwcijkmopruvz.c.n.p.t.w.x",  --  Warnings switches
+     "-gnatf",  --  Full errors. Verbose details, all undefined references
+     "-gnatq",  --  Don't quit, try semantics, even if parse errors
+     "-gnatQ"   --  Don't quit, write ali/tree file even if compile errors
+   );
+
+   Debug_Options  := (
+	   "-gnatVa",  --  Turn on all validity checking options
+     "-gnato",   --  Enable overflow checking in STRICT (-gnato1) mode
+     "-g", 
+		 "-fno-inline", "-fstack-check",
+		 "-gnatec=" & project'Project_Dir & "debug.pra"
+     );
 
    package Compiler is
 
       case Build_Mode is
 
-         when "Check_95" => for Default_Switches ("ada") use (
-              "-gnat95", "-gnatwa",
-              "-gnatec=" & project'Project_Dir & "restrictions.pra"
+         when "Check_2005" =>
+            for Default_Switches ("ada") use Common_Options & 
+              (
+                "-gnat05",
+                "-gnatec=" & project'Project_Dir & "restrictions.pra"
               );
-      
          when "Debug" =>
-            for Default_Switches ("ada") use (
-              "-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
-              "-gnatybfhiu",  --  Style: check b:no blanks at end of lines, f:no ff/vtabs, h: no htabs, i:if-then layout, u:no unnecessary blank lines
-              "-gnatyx",      --  Style: check x:no extra parens
-              "-gnatye",      --  Style: check e:end/exit labels present
-              "-gnat12", 
-              "-gnatf", 
-              "-gnato", 
-              "-fstack-check", "-g", 
-              "-gnatVa",                        --  Validity checks switches
-              "-gnatwa",                        --  Warnings switches
-              "-gnatwcijkmopruvz.c.n.p.t.w.x",  --  Warnings switches
-              "-gnatec=" & project'Project_Dir & "debug.pra"
+            for Default_Switches ("ada") use Common_Options & Debug_Options ;
+         when "Style_Checks" =>
+            for Default_Switches ("ada") use Common_Options & Debug_Options & 
+              (
+                "-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
+                "-gnatybfhiu",  --  Style: check b:no blanks at end of lines, f:no ff/vtabs, h: no htabs, i:if-then layout, u:no unnecessary blank lines
+                "-gnatyO",      --  Style: check that overriding subprograms are explicitly marked as such.
+                "-gnatyx",      --  Style: check x:no extra parens
+                "-gnatye"       --  Style: check e:end/exit labels present
               );
 
          when "Fast" =>
-            for Default_Switches ("ada") use (
-              "-gnat12", "-O2", "-gnatp", "-gnatn", 
+            for Default_Switches ("ada") use Common_Options & (
+              "-O2", "-gnatp", "-gnatn", 
               "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers", 
               "-fpredictive-commoning", "-fgcse-after-reload", "-ftree-vectorize", "-fipa-cp-clone",
               "-ffunction-sections", 
@@ -113,15 +124,15 @@ project ZipAda is
               );
 
          when "Small" =>
-            for Default_Switches ("ada") use (
-              "-gnat12", "-Os", "-gnatp",
+            for Default_Switches ("ada") use Common_Options & (
+              "-Os", "-gnatp",
               "-ffunction-sections", 
               "-gnatec=" & project'Project_Dir & "za_elim.pra"
               );
 
          when "Profiling" =>
-            for Default_Switches ("ada") use (
-              "-gnat12", "-O2", "-gnatp",  
+            for Default_Switches ("ada") use Common_Options & (
+              "-O2", "-gnatp",  
               "-fno-inline", 
               "-funroll-loops", "-fpeel-loops", "-funswitch-loops", "-ftracer", "-fweb", "-frename-registers",
               "-fpredictive-commoning", "-fgcse-after-reload", "-ftree-vectorize", "-fipa-cp-clone",
