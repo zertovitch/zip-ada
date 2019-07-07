@@ -13,7 +13,7 @@ with Interfaces;                        use Interfaces;
 with Zip;
 with UnZip.Streams;                     use UnZip.Streams;
 
-procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
+procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural; password : String := "") is
   z: array(1..2) of Zip.Zip_info;
   total_1,
   total_2,
@@ -52,7 +52,7 @@ procedure Comp_Zip_Prc(z1, z2: Zip.Zip_info; quiet: Natural) is
     end if;
     for i in 1..2 loop
       begin
-        Open( f(i), z(i), name );
+        Open( f(i), z(i), name, password );
         if i = 1 then
           total_1:= total_1 + 1;
         end if;

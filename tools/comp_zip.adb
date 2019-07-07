@@ -9,6 +9,7 @@ with Zip, UnZip, Comp_Zip_Prc;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 
 procedure Comp_Zip is
   z: array(1..2) of Zip.Zip_info;
@@ -23,11 +24,12 @@ procedure Comp_Zip is
     end if;
   end Try_with_zip;
 
-  quiet: Natural:= 0;
+  quiet    : Natural := 0;
+  password : Unbounded_String;
 
   procedure Blurb is
   begin
-    Put_Line("Comp_Zip * compare two zip archive files, incl. contents");
+    Put_Line("Comp_Zip * compare two zip archive files, including their contents");
     Put_Line("Demo for the Zip-Ada library, by G. de Montmollin");
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
     Put_Line("URL: " & Zip.web);
@@ -39,8 +41,9 @@ begin
     Blurb;
     Put_Line("Usage: comp_zip archive1[.zip] archive2[.zip] [options]");
     New_Line;
-    Put_Line("Options: -q1: (quiet level 1): summary only");
-    Put_Line("         -q2: (quiet level 2): shorter summary only");
+    Put_Line("Options: -q1   : (quiet level 1): summary only");
+    Put_Line("         -q2   : (quiet level 2): shorter summary only");
+    Put_Line("         -spwd : define a password (e.g. ""pwd"")");
     return;
   end if;
   for i in 1..2 loop
@@ -61,6 +64,8 @@ begin
     begin
       if arg'Length > 2 and then arg(arg'First..arg'First+1) = "-q" then
         quiet:= Natural'Value(arg(arg'First+2..arg'Last));
+      elsif arg'Length > 2 and then arg(arg'First..arg'First+1) = "-s" then
+        password := To_Unbounded_String (arg(arg'First+2..arg'Last));
       end if;
     end;
   end loop;
@@ -68,6 +73,6 @@ begin
   if quiet = 0 then
     Blurb;
   end if;
-  Comp_Zip_Prc(z(1), z(2), quiet);
+  Comp_Zip_Prc(z(1), z(2), quiet, To_String (password));
   --
 end Comp_Zip;
