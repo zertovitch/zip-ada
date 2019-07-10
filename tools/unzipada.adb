@@ -23,6 +23,7 @@ with Zip, UnZip;
 
 with My_feedback, My_resolve_conflict, My_tell_data, My_get_password;
 with Summary;
+with Show_License;
 
 procedure UnZipAda is
 
@@ -110,7 +111,7 @@ procedure UnZipAda is
     Put_Line("Demo for the Zip-Ada library, by G. de Montmollin");
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
     Put_Line("URL: " & Zip.web);
-    New_Line;
+    Show_License (Current_Output, "zip.ads");
   end Blurb;
 
   procedure Help is

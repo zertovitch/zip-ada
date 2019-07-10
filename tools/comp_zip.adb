@@ -6,6 +6,7 @@
 ------------------------------------------------------------------------------
 
 with Zip, UnZip, Comp_Zip_Prc;
+with Show_License;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
@@ -33,7 +34,7 @@ procedure Comp_Zip is
     Put_Line("Demo for the Zip-Ada library, by G. de Montmollin");
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
     Put_Line("URL: " & Zip.web);
-    New_Line;
+    Show_License (Current_Output, "zip.ads");
   end Blurb;
 
 begin

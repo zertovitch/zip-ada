@@ -5,6 +5,7 @@
 ------------------------------------------------------------------------------
 
 with Rezip_lib, Comp_Zip_Prc, Zip;
+with Show_License;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;
@@ -13,12 +14,13 @@ with Ada.Characters.Handling;           use Ada.Characters.Handling;
 procedure ReZip is
 
   procedure Blurb is
+    use Ada.Text_IO;
   begin
-    Ada.Text_IO.Put_Line("ReZip * Zip file recompression tool.");
-    Ada.Text_IO.Put_Line("Author: Gautier de Montmollin");
-    Ada.Text_IO.Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
-    Ada.Text_IO.Put_Line("URL: " & Zip.web);
-    Ada.Text_IO.New_Line;
+    Put_Line("ReZip * Zip file recompression tool.");
+    Put_Line("Author: Gautier de Montmollin");
+    Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
+    Put_Line("URL: " & Zip.web);
+    Show_License (Current_Output, "zip.ads");
   end Blurb;
 
   procedure Usage is

@@ -24,7 +24,7 @@ with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress, Zip.Create;          use Zip.Create;
 
 with My_feedback;
-with Zip;
+with Show_License;
 
 procedure ZipAda is
 
@@ -37,7 +37,7 @@ procedure ZipAda is
     Put_Line("Demo for Zip-Ada library, by G. de Montmollin");
     Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
     Put_Line("URL: " & Zip.web);
-    New_Line;
+    Show_License (Current_Output, "zip.ads");
   end Blurb;
 
   function CutName(n:String; l:Natural) return String is
