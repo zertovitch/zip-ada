@@ -13,8 +13,8 @@ echo "\=====================================================/"
 echo ""
 
 if [[ ( $1 == "") ]]; then
-gprbuild -Pzipada.gpr
+gprbuild -p -Pzipada.gpr
 else
-gprbuild -Pzipada.gpr -XBuild_Mode=$1
+gprbuild -p -Pzipada.gpr -XBuild_Mode=$1
 fi
 
