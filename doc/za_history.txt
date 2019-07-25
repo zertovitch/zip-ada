@@ -1,7 +1,12 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '55', 22-Nov-2018:
+* Changes in '56':
+  - Zip: Zip_info type is now controlled (no need to call Delete;
+        clones are done correctly)
+  - UnZip.Streams: added Size and Name functions for Zipped_File_Type
+
+* Changes in '55', 22-Nov-2018 [rev. 725]:
   - Zip_Streams: ZS_Size_Type is now 64-bit signed, enabling Zip.Create
         to capture archive size overflows in Zip_32 mode.
   - Zip.Create raises Zip_Capacity_Exceeded when archive creation exceeds
@@ -16,13 +21,13 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
         in advance, in order to achieve better compression. Not Zip-related.
   -!- Minimum required Ada version is now Ada 2005 (was Ada 95 before).
 
-* Changes in '54', 28-Jun-2018:
+* Changes in '54', 28-Jun-2018 [rev. 637]:
   - Zip.Compress.Deflate: use of L1_tweaked measure; adjusted
       threshold for activating new compression block
   - Source gardening: removal of needless "use" clauses, these cases
       are detected by GNAT Community 2018
 
-* Changes in '53', 14-Nov-2017:
+* Changes in '53', 14-Nov-2017 [rev. 611]:
   - Decompression and loading of archive directory are more
       resistant to fuzzing attacks. From that version, a random data
       passed as a Zip archive will be either valid (with an extremely tiny
@@ -36,7 +41,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
       directory search (-r2 option).
   - (Tests) Added Fuzzip, a fuzzing tool for the compression side.
 
-* Changes in '52', 08-Oct-2016:
+* Changes in '52', 08-Oct-2016 [rev. 557]:
   - UnZip.Streams: all procedures have an additional (optional)
       Ignore_Directory parameter.
   - Zip.Compress has the following new methods with improved compression:
@@ -44,7 +49,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
       Preselection methods use now entry name extension and size for
       improving compression, while remaining 1-pass methods. 
   
-* Changes in '51', 27-Aug-2016:
+* Changes in '51', 27-Aug-2016 [rev. 475]:
   - LZMA.Encoding has been added; it is a standalone compressor,
       see lzma_enc.adb for an example of use.
   - Zip.Compress provides now LZMA_1, LZMA_2 methods. In other words, you
@@ -54,7 +59,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
   - Zip.Compress.Deflate: Deflate_1 .. Deflate_3 compression is
       slightly better.
 
-* Changes in '50', 31-Mar-2016:
+* Changes in '50', 31-Mar-2016 [rev. 383]:
   - Zip.Compress.Shrink is slightly faster
   - Zip.Compress.Deflate has new compression features:
     - Deflate_Fixed is much faster, with slightly better compression
