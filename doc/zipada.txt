@@ -178,16 +178,14 @@ Lionel Matias, for performing extensive fuzzing attacks with "american fuzzy lop
    on the archive reading / decoding / decompression side, in order to find
    vulnerabilities - and correct them (v.53)
 
-Open bugs (as of v.53)
+Open bugs (as of v.56)
 ======================
 
   - PKWARE's pkunzip and ZIP Reader rejects some Zip-Ada's Reduce_* archives,
-      but unzip <=5.12 and WinZip accept them all
-  - Info-Zip's Zip: since data are stored without prior knowledge of size,
-      data is stored with a data descriptor after each entry.
-      For the "Store" method (no compression), this is problematic
-      (no End-of-Stream marker) the size would be needed from the central
-      directory for instance. Other tools like PKZIP and 7-Zip are OK.
+      but unzip <=5.12 and WinZip accept them all. Workaround: don't use Reduce
+      (unless you build a software with special limited memory requirements):
+      this is a very unefficient compression format.
+
   - UnZip.Decompress rejects many "enhanced deflate" (=deflate64)
         files made by WinZip (sometimes CRC errors, or:
     unzip-decompress.adb:1711 Huffman tree errors: huft_incomplete
@@ -198,7 +196,8 @@ Open bugs (as of v.53)
     but accepts all archives with the same contents and compression
     method from 7-Zip (7z -mm=deflate64)! Since 7-Zip compresses a lot
     better also with that "enhanced deflate" format, a workaround is
-    just to use 7-Zip and not WinZip...
+    just to use 7-Zip and not WinZip for deflate64. If you recompress
+    archives with ReZip, you'll see that deflate64 is rarely optimal.
     
 To do
 =====
