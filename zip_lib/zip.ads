@@ -89,11 +89,6 @@ package Zip is
   Zip_file_open_error,
   Duplicate_name: exception;
 
-  --  Old name for Archive_corrupted. Change: 22-Oct-2017
-  --  Issues: archive stream is not necessarily a *file*; the naming
-  --  ("Error") didn't clarify that it covered cases where the data
-  --  is corrupted, which is different than an usual I/O error.
-
   --  Zip_file_Error: exception renames Archive_corrupted;   --   Now really obsolete.
   --  pragma Obsolescent(Zip_file_Error);                    --   Now really obsolete.
 
@@ -108,7 +103,7 @@ package Zip is
   function Entries( info: in Zip_info ) return Natural;
 
   procedure Delete( info : in out Zip_info );
-  pragma Obsolescent(Delete);  --  Delete happens automatically since v.56.
+  pragma Obsolescent (Delete, "Delete happens automatically since v.56.");
 
   Forgot_to_load_zip_info: exception;
 
