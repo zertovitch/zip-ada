@@ -102,23 +102,23 @@ Contents
   - lzma_enc             : a standalone compressor for LZMA files (.lzma)
 
   These demos can be built as main programs. 
-  Some are using Ada 2005's Ada.Directories for directory creation (UnZipAda)
-  or reading time stamps (ZipAda).
 
-  UnZipAda uses a procedure from an extension to Ada.Directories for setting
-  time stamps of extracted files.
-  This extension in its turn uses a system-specific call.
-  You can replace the call to Set_Modification_Time by null
-  and remove the line with Ada_Directories_Extensions to get a totally portable
-  tool using only Zip-Ada and Ada standard libraries.
+  The UnZipAda tool may use a procedure from an extension to Ada.Directories
+  for setting time stamps of extracted files. For that you need to uncomment
+  the lines containing "Ada_Directories_Extensions". This extension in its
+  turn uses a system-specific call. Without that change, UnZipAda is totally
+  portable like the other tools, only Zip-Ada and Ada standard libraries.
 
-* To build the tools, demos and tests, simply "gprbuild" or "adabuild" them.
-  You can also start "make_za.cmd" for minimal effort with GNAT on Windows.
+* To build the tools, demos and tests, simply "gprbuild" (for GNAT) them with
+  the command "gprbuild -p -P zipada.gpr".
+  You can also start "opti_za.cmd" or "opti_za.sh" for minimal effort
+  with GNAT on Windows or Linux respectively. "debg_za.*" is specifically
+  for the Debug mode.
 
   There are also the following project files for building the tools, demos and tests
   with various systems:
-  - ZipAda.gpr for GNAT's gprbuild or the GNAT Programming Studio (tools and demos only)
-  - ZipAda_Test.gpr for GNAT's gprbuild or the GNAT Programming Studio (tests only)
+  - zipada.gpr for GNAT's gprbuild or the GNAT Programming Studio (tools and demos only)
+  - zipada_test.gpr for GNAT's gprbuild or the GNAT Programming Studio (tests only)
   - ZipAda_ObjectAda.prj for ObjectAda 10.0 and later (tools and demos only)
   - ZipAda_Test_ObjectAda.prj for ObjectAda 10.0 and later (tests only)
 
@@ -202,7 +202,7 @@ Open bugs (as of v.56)
 To do
 =====
 
-Topics are in file doc/za_todo.txt
+The to-do list is in the file doc/za_todo.txt
 
 Note on portability
 ===================
@@ -212,10 +212,10 @@ conditional compilation, magic folders...
 If you still have doubts, here is a list of OS/CPU/Compiler
 combinations where Zip-Ada has been reported to be in use:
 
-OS                          CPU                 Compiler
+OS                          CPU                    Compiler
 ----------------------------------------------------------------------------
 
-OpenVMS                     Itanium (64 bit)    GNU - GNAT
+OpenVMS                     Itanium (64 bit)       GNU - GCC - GNAT
 AIX                         Power7 (64 bit)
 MS Windows 95,98;
            NT,2K,XP,7,8,10  Intel x86 (32 bit)
@@ -233,9 +233,9 @@ FreeBSD                     Intel x86 (32 bit)
 FreeBSD                     Intel x64 (64 bit)
 Android 2.3+                ARM
 
-MS Windows NT+              Intel x64 (64 bit)  PTC - ObjectAda64
+MS Windows NT+              Intel x64 (64 bit)     PTC - ObjectAda64
 
-MS Windows NT+              Intel x86 (32 bit)  SofCheck - AdaMagic
+MS Windows NT+              Intel x86 (32 bit)     SofCheck - AdaMagic
 MS Windows NT+              Intel x64 (64 bit)
 Linux                       Intel x86 (32 bit)
 Mac OS X                    PowerPC (64 bit)
@@ -257,8 +257,11 @@ Note on encryption
 5) The portable Zip 2.0 encryption scheme is vulnerable to attacks of type
    "known plaintext". See for instance the PKCrack software which relies on
    a pair of compressed data: one encrypted, one not.
+   See also the paper: http://math.ucr.edu/~mike/zipattacks.pdf
    Using randomized headers on data to be zipped should prevent the obtention
    of the "plaintext" compressed data (see extras/lz_scramble.ad*).
+   A customization of the compression side on Deflate (with randomization of
+   the compression structures) could also help.
    Even if password or keys are cracked, point 3) may prevent the decryption
    of other data.
 
