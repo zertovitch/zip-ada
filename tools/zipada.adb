@@ -217,6 +217,7 @@ procedure ZipAda is
             when 'f'    => method:= Deflate_Fixed;
             when '1'    => method:= Deflate_1;
             when '2'    => method:= Deflate_2;
+            when 'r'    => method:= Deflate_R;
             when others => method:= Deflate_3;
           end case;
         elsif eX = "el" then

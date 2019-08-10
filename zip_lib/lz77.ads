@@ -8,7 +8,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2018 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2016 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -48,16 +48,18 @@ package LZ77 is
     IZ_9,
     IZ_10,
     --  Use LZMA SDK's BT4 algorithm (see body for details and credits)
-    BT4
+    BT4,
+    --
+    Rich
   );
 
   subtype Byte is Interfaces.Unsigned_8;
 
   generic
     ----- LZSS Parameters -----
-    String_buffer_size : Integer := 2**12;
-    Look_Ahead         : Integer := 65;
-    Threshold          : Integer := 2;
+    String_buffer_size : Integer := 2**12;  --  Default values.
+    Look_Ahead         : Integer := 65;     --  Default values.
+    Threshold          : Integer := 2;      --  Default values.
     --
     Method: Method_Type;
     --

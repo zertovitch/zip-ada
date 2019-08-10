@@ -1,11 +1,13 @@
---  There are three LZ77 encoders at choice here:
+--  There are four LZ77 encoders at choice in this package:
 --
---    1/  LZ77_using_LZHuf, based on LZHuf
+--    1/  LZ77_using_LZHuf, based on LZHuf by Haruhiko Okumura and Haruyasu Yoshizaki
 --
---    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c which is
---          actually the LZ77 part of Zip's compression.
+--    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c by Jean-Loup Gailly.
+--          deflate.c is actually the LZ77 part of Info-Zip's compression.
 --
---    3/  LZ77_using_BT4, based on LZMA SDK's BT4 algorithm.
+--    3/  LZ77_using_BT4, based on LZMA SDK's BT4 algorithm by Igor Pavlov.
+--
+--    4/  LZ77_by_Rich, based on PROG2.C by Rich Geldreich, Jr.
 --
 --  Variant 1/, LZ77_using_LZHuf, is working since 2009. Two problems: it is slow
 --     and not well adapted to the Deflate format (mediocre compression).
@@ -28,7 +30,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2018 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2016 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1679,6 +1681,336 @@ package body LZ77 is
       Dispose(Hash234.hash4Table);
     end LZ77_using_BT4;
 
+    procedure LZ77_by_Rich is
+      --  * PROG2.C                                                       *
+      --  * Simple Hashing LZ77 Sliding Dictionary Compression Program    *
+      --  * By Rich Geldreich, Jr. October, 1993                          *
+      --  * Originally compiled with QuickC v2.5 in the small model.      *
+      --  * This program uses more efficient code to delete strings from  *
+      --  * the sliding dictionary compared to PROG1.C, at the expense of *
+      --  * greater memory requirements. See the HashData and DeleteData  *
+      --  * subroutines.                                                  *
+      --
+      --  Comments by GdM, 2019+ appear as: [...]
+
+      --  Set this to True for a greedy encoder.
+      GREEDY : constant Boolean := False;  --  [original: False]
+
+      --  Ratio vs. speed constant [ Is it really a ratio? ].
+      --  The larger this constant, the better the compression.
+      MAXCOMPARES : constant := 2400;  --  [original: 75]
+
+      --  Unused entry code.
+      NIL : constant := 16#FFFF#;
+
+      --  /* bits per symbol- normally 8 for general purpose compression */
+      --  #define CHARBITS : constant := 8;  [ NB: dictionary uses char (byte) ]
+
+      --  Minimum match length & maximum match length.
+      THRESHOLD : constant := 2;
+      MATCHBITS : constant := 8;  --  [original: 4]
+      MAXMATCH  : constant := 2 ** MATCHBITS + THRESHOLD - 1;
+
+      --  Sliding dictionary size and hash table's size.
+      --  Some combinations of HASHBITS and THRESHOLD values will not work
+      --  correctly because of the way this program hashes strings.
+
+      DICTBITS : constant := 15;  --  [original: 13]
+      HASHBITS : constant := 13;  --  [original: 10]
+      --
+      DICTSIZE : constant := 2 ** DICTBITS;
+      HASHSIZE : constant := 2 ** HASHBITS;
+
+      --  # bits to shift after each XOR hash
+      --  This constant must be high enough so that only THRESHOLD + 1
+      --  characters are in the hash accumulator at one time.
+
+      SHIFTBITS : constant := ((HASHBITS + THRESHOLD) / (THRESHOLD + 1));
+
+      --  Sector size constants [the dictionary is partitoned in sectors].
+
+      SECTORBIT : constant := 13;  --  [original: 10; OK: 13]
+      SECTORLEN : constant := 2 ** SECTORBIT;
+
+      HASHFLAG1 : constant := 16#8000#;
+      HASHFLAG2 : constant := 16#7FFF#;
+
+      --  Dictionary plus MAXMATCH extra chars for string comparisions.
+      dict : array (Integer_M32'(0) .. DICTSIZE + MAXMATCH - 1) of Byte;
+
+      subtype Unsigned_int is Unsigned_16;
+
+      --  Hash table & link list tables.
+
+      hash       : array (0 .. HASHSIZE - 1) of Unsigned_int := (others => NIL);
+      --  [ nextlink: in .c: only through DICTSIZE - 1, although Init has: nextlink[DICTSIZE] = NIL ]
+      nextlink   : array (Integer_M32'(0) .. DICTSIZE)     of Unsigned_int;
+      lastlink   : array (Integer_M32'(0) .. DICTSIZE - 1) of Unsigned_int;
+
+      --  Misc. variables [global for this LZ77 procedure].
+
+      matchlength, matchpos : Integer_M32;
+
+      --  Initializes the search structures needed for compression.
+      --
+      procedure Init_Encode is
+      begin
+        --  [ hash is already initialized];
+        nextlink (DICTSIZE) := NIL;
+      end Init_Encode;
+
+      --  Loads dictionary with characters from the input stream.
+      --
+      procedure Load_Dict(dictpos : Integer_M32; actually_read : out Integer_M32) is
+        i : Integer_M32 := 0;
+      begin
+        while More_bytes loop
+          dict (dictpos + i) := Read_byte;
+          i := i + 1;
+          exit when i = SECTORLEN;
+        end loop;
+
+        --  Since the dictionary is a ring buffer, copy the characters at
+        --  the very start of the dictionary to the end.
+        if dictpos = 0 then
+          for j in Integer_M32'(0) .. MAXMATCH - 1 loop
+            dict (j + DICTSIZE) := dict (j);
+          end loop;
+        end if;
+
+        actually_read := i;
+      end Load_Dict;
+
+      --  Deletes data from the dictionary search structures
+      --  This is only done when the number of bytes to be
+      --  compressed exceeds the dictionary's size.
+      --
+      procedure Delete_Data (dictpos : Integer_M32) is
+        j, k : Integer_M32;
+      begin
+        --  Delete all references to the sector being deleted.
+        k := dictpos + SECTORLEN;
+        for i in dictpos .. k - 1 loop
+          j := Integer_M32 (lastlink (i));
+          if (Unsigned_int (j) and HASHFLAG1) /= 0 then
+            if j /= NIL then
+              hash (Integer (Unsigned_int (j) and HASHFLAG2)) := NIL;
+            end if;
+          else
+            nextlink (j) := NIL;
+          end if;
+        end loop;
+      end Delete_Data;
+
+      --  Hash data just entered into dictionary.
+      --  XOR hashing is used here, but practically any hash function will work.
+      --
+      procedure Hash_Data (dictpos, bytestodo : Integer_M32) is
+        j : Integer;
+        k : Integer_M32;
+      begin
+        if bytestodo <= THRESHOLD then  -- Not enough bytes in sector for match?
+          nextlink (dictpos .. dictpos + bytestodo - 1) := (others => NIL);
+          lastlink (dictpos .. dictpos + bytestodo - 1) := (others => NIL);
+        else
+          --  Matches can't cross sector boundaries.
+          nextlink (dictpos + bytestodo - THRESHOLD .. dictpos + bytestodo - 1) := (others => NIL);
+          lastlink (dictpos + bytestodo - THRESHOLD .. dictpos + bytestodo - 1) := (others => NIL);
+
+          j :=  Integer (
+                  Shift_Left (Unsigned_int (dict (dictpos)), SHIFTBITS)
+                  xor
+                  Unsigned_int (dict (dictpos + 1))
+                );
+
+          k := dictpos + bytestodo - THRESHOLD;  --  Calculate end of sector.
+
+          for i in dictpos ..  k - 1 loop
+            j := Integer (
+                  (Shift_Left (Unsigned_int (j), SHIFTBITS) and (HASHSIZE - 1))
+                   xor
+                   Unsigned_int (dict (i + THRESHOLD))
+                 );
+            lastlink (i) := Unsigned_int (j) or HASHFLAG1;
+            nextlink (i) := hash (j);
+            if nextlink (i) /= NIL then
+              lastlink (Integer_M32 (nextlink (i))) := Unsigned_int (i);
+            end if;
+            hash (j) := Unsigned_int (i);
+          end loop;
+        end if;
+      end Hash_Data;
+
+      --  Finds match for string at position dictpos.
+      --  This search code finds the longest AND closest
+      --  match for the string at dictpos.
+      --
+      procedure Find_Match(dictpos, startlen: Integer_M32) is
+        i, j, k : Integer_M32;
+        l : Byte;
+      begin
+        i := dictpos;
+        matchlength := startlen;
+        k := MAXCOMPARES;
+        l := dict (dictpos + matchlength);
+
+        loop
+          i := Integer_M32 (nextlink (i));  --  Get next string in list.
+          if i = NIL then
+            return;
+          end if;
+
+          if dict (i + matchlength) = l then  --  Possible larger match?
+            j := 0;
+            --  Compare strings.
+            loop
+              exit when dict (dictpos + j) /= dict (i + j);
+              exit when j = MAXMATCH - 1;
+              j := j + 1;
+            end loop;
+
+            if j > matchlength then  --  Found larger match?
+              matchlength := j;
+              matchpos := i;
+              if matchlength = MAXMATCH then
+                return;  --  Exit if largest possible match.
+              end if;
+              l := dict (dictpos + matchlength);
+            end if;
+          end if;
+          k := k - 1;
+          exit when k = 0;  --  Keep on trying until we run out of chances.
+        end loop;
+      end Find_Match;
+
+      --  Finds dictionary matches for characters in current sector.
+      --
+      procedure Dict_Search (dictpos, bytestodo : Integer_M32) is
+        i, j : Integer_M32;
+        matchlen1, matchpos1 : Integer_M32;
+        --
+        procedure Write_literal_pos_i is
+        pragma Inline (Write_literal_pos_i);
+        begin
+          Write_literal (dict (i));
+          i := i + 1;
+          j := j - 1;
+        end Write_literal_pos_i;
+      begin
+        i := dictpos;
+        j := bytestodo;
+
+        if not GREEDY then  --  Non-greedy search loop (slow).
+
+          while j /= 0 loop  --  Loop while there are still characters left to be compressed.
+
+            Find_Match (i, THRESHOLD);
+
+            if matchlength > THRESHOLD then
+
+              matchlen1 := matchlength;
+              matchpos1 := matchpos;
+
+              loop
+
+                Find_Match (i + 1, matchlen1);
+
+                if matchlength > matchlen1 then
+                  matchlen1 := matchlength;
+                  matchpos1 := matchpos;
+                  Write_literal_pos_i;
+                else
+                  if matchlen1 > j then
+                    matchlen1 := j;
+                    if matchlen1 <= THRESHOLD then
+                      Write_literal_pos_i;
+                      exit;
+                    end if;
+                  end if;
+
+                  Write_DL_code (
+                    length   => Integer (matchlen1),
+                    --  [The subtraction happens modulo 2**n, needs to be cleaned modulo 2**DICTSIZE]
+                    distance => Integer ((Unsigned_32 (i) - Unsigned_32 (matchpos1)) and (DICTSIZE - 1))
+                  );
+                  i := i + matchlen1;
+                  j := j - matchlen1;
+                  exit;
+                end if;
+              end loop;
+
+            else
+              Write_literal_pos_i;
+            end if;
+
+          end loop;  --  while j /= 0
+
+        else  --  Greedy search loop (fast).
+
+          while j /= 0 loop  --  Loop while there are still characters left to be compressed.
+
+            Find_Match (i, THRESHOLD);
+
+            if matchlength > j then
+              matchlength := j;     --  Clamp matchlength.
+            end if;
+
+            if matchlength > THRESHOLD then  --  Valid match?
+              Write_DL_code (
+                length   => Integer (matchlength),
+                --  [The subtraction happens modulo 2**n, needs to be cleaned modulo 2**DICTSIZE]
+                distance => Integer ((Unsigned_32 (i) - Unsigned_32 (matchpos)) and (DICTSIZE - 1))
+              );
+              i := i + matchlength;
+              j := j - matchlength;
+            else
+              Write_literal_pos_i;
+            end if;
+          end loop;
+
+        end if;  --  Greedy or not.
+
+      end Dict_Search;
+
+      procedure Encode is
+        dictpos, actual_read : Integer_M32;
+        deleteflag : Boolean;
+      begin
+        Init_Encode;
+        dictpos :=  0;
+        deleteflag := False;
+        loop
+
+          --  Delete old data from dictionary.
+          if deleteflag then
+            Delete_Data (dictpos);
+          end if;
+
+          --  Grab more data to compress.
+          Load_Dict (dictpos, actual_read);
+          exit when actual_read = 0;
+
+          --  Hash the data.
+          Hash_Data(dictpos, actual_read);
+
+          --  Find dictionary matches.
+          Dict_Search(dictpos, actual_read);
+
+          dictpos := dictpos + SECTORLEN;
+
+          --  Wrap back to beginning of dictionary when its full.
+          if dictpos = DICTSIZE then
+            dictpos := 0;
+            deleteflag := True;   --  Ok to delete now.
+          end if;
+        end loop;
+
+      end Encode;
+
+    begin
+      Encode;
+    end LZ77_by_Rich;
+
   begin
     case Method is
       when LZHuf =>
@@ -1687,6 +2019,8 @@ package body LZ77 is
         LZ77_using_IZ( 4 + Method_Type'Pos(Method) -  Method_Type'Pos(IZ_4) );
       when BT4 =>
         LZ77_using_BT4;
+      when Rich =>
+        LZ77_by_Rich;
     end case;
   end Encode;
 

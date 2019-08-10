@@ -71,6 +71,7 @@ package Zip.Compress is
      Deflate_1,
      Deflate_2,
      Deflate_3,
+     Deflate_R,
      --  LZMA:
      LZMA_1,
      LZMA_2,
@@ -104,11 +105,11 @@ package Zip.Compress is
   --  Deflate_Fixed compresses the data into a single block and with predefined
   --  ("fixed") compression structures. The data are basically LZ-compressed
   --  only, since the Huffman code sets are flat and not tailored for the data.
-  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_3;
+  subtype Deflation_Method is Compression_Method range Deflate_Fixed .. Deflate_R;
 
   --  The multi-block Deflate methods use refined techniques to decide when to
   --  start a new block and what sort of block to put next.
-  subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflate_3;
+  subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflation_Method'Last;
 
   subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_for_WAV;
 

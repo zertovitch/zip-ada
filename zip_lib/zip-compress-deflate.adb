@@ -1403,7 +1403,7 @@ is
     );
 
   max_choice: constant array(Taillaule_Deflation_Method) of Positive:=
-    (Deflate_1 => 1, Deflate_2 => 2, Deflate_3 => step_choice'Last);
+    (Deflate_1 => 1, Deflate_2 => 2, others => step_choice'Last);
 
   slider_size: constant:= 4096;
   half_slider_size: constant:= slider_size / 2;
@@ -1658,7 +1658,8 @@ is
       (Deflate_Fixed  => LZ77.IZ_4,
        Deflate_1      => LZ77.IZ_6,  --  level 6 is the default in Info-Zip's zip.exe
        Deflate_2      => LZ77.IZ_8,
-       Deflate_3      => LZ77.IZ_10);
+       Deflate_3      => LZ77.IZ_10,
+       Deflate_R      => LZ77.Rich);
 
     procedure My_LZ77 is
       new LZ77.Encode
