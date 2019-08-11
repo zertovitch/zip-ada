@@ -1,3 +1,10 @@
+--  Test_LZ77 runs a choice of LZ77 encoders for comparing them.
+--
+--  - Output of the encoder is dumped as readable text with DLE codes
+--      or Literals (.lz77)
+--  - LZ77 stream is decoded and written as .out for checking integrity:
+--      should be identical to input file.
+
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Sequential_IO;
@@ -52,20 +59,24 @@ procedure Test_LZ77 is
     New_Line(f_dump);
   end Emit_literal;
 
-  max_dis, max_len: Natural:= 0;
-  min_dis, min_len: Natural:= Natural'Last;
-
-  has_DL: Boolean:= False;
+  min_dis, min_len, max_dis, max_len : Natural;
+  sum_dist, dl_count, len_258 : Natural;
+  has_DL : Boolean;
 
   procedure Emit_DL_code( distance, length: Natural ) is
     b: Byte;
     I: Natural;
   begin
-    has_DL:= True;
-    max_dis:= Natural'Max(max_dis,distance);
-    max_len:= Natural'Max(max_len,length);
-    min_dis:= Natural'Min(min_dis,distance);
-    min_len:= Natural'Min(min_len,length);
+    has_DL := True;
+    dl_count := dl_count + 1;
+    sum_dist := sum_dist + distance;
+    max_dis := Natural'Max(max_dis, distance);
+    max_len := Natural'Max(max_len, length);
+    min_dis := Natural'Min(min_dis, distance);
+    min_len := Natural'Min(min_len, length);
+    if length = 258 then
+      len_258 := len_258 + 1;
+    end if;
     --
     Put_Line(f_dump, "DLE" & Integer'Image(distance) & Integer'Image(length));
     --
@@ -79,13 +90,28 @@ procedure Test_LZ77 is
 
   type Method_Set is array(Method_Type) of Boolean;
 
-  --  meth: constant Method_Set:= (others => True);
-  --  meth: constant Method_Set:= (IZ_5 | IZ_7 | IZ_8 => False, others => True);
-  meth: constant Method_Set:= (LZHuf | BT4 => True, others => False);
+  --  consider: constant Method_Set:= (others => True);
+  --  consider: constant Method_Set:= (IZ_5 | IZ_7 | IZ_8 => False, others => True);
+  consider: constant Method_Set:= (LZHuf | IZ_10 | Rich | BT4 => True, others => False);
 
 begin
+  Put_Line ("Test_LZ77");
+  New_Line;
+  Put_Line ("test_lz77 [input file]");
+  New_Line;
+  Put_Line ("Outputs:");
+  Put_Line ("         *.lz77 are dump of the LZ77 stream");
+  Put_Line ("         *.out are decoded streams, should match input file");
   for m in Method_Type loop
-    if meth(m) then
+    if consider(m) then
+      max_dis  := 0;
+      max_len  := 0;
+      min_dis  := Natural'Last;
+      min_len  := Natural'Last;
+      has_DL   := False;
+      dl_count := 0;
+      sum_dist := 0;
+      len_258  := 0;
       declare
         procedure My_LZ77 is
           new LZ77.Encode(
@@ -101,7 +127,7 @@ begin
           Open(f_in, In_File, Argument(1));
         end if;
         R:= String_buffer_size-Look_Ahead;
-        Create(f_out, Out_File, "lz77_" & To_Lower(Method_Type'Image(m)) & ".out");
+        Create(f_out, Out_File, "lz77_" & To_Lower(Method_Type'Image(m)) & "_decode.out");
 
         --  The dump.lz77 file is used in various places:
         --
@@ -114,14 +140,19 @@ begin
         --       UnZip.Decompress
         --
         Create(f_dump, Out_File, "dump_" & To_Lower(Method_Type'Image(m)) & ".lz77");
-        Put_Line("Method: " & Method_Type'Image(m));
+        New_Line;
+        Put_Line("Method: " & Method_Type'Image(m) & "  -  Encoding file " & Name (f_in));
         My_LZ77;
         Close(f_in);
         Close(f_out);
         Close(f_dump);
         if has_DL then
+          Put_Line("  DL codes:" & Integer'Image(dl_count));
           Put_Line("  Min distance:" & Integer'Image(min_dis));
           Put_Line("  Max distance:" & Integer'Image(max_dis));
+          Put_Line("  Average distance:" & Integer'Image(sum_dist / dl_count));
+          Put_Line("  Cases where length is exactly 258 (Deflate-friendly):" &
+                   Integer'Image(len_258));
           Put_Line("  Min length:" & Integer'Image(min_len));
           Put_Line("  Max length:" & Integer'Image(max_len));
         end if;

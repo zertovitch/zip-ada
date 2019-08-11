@@ -1709,7 +1709,8 @@ package body LZ77 is
       --  Minimum match length & maximum match length.
       THRESHOLD : constant := 2;
       MATCHBITS : constant := 8;  --  [original: 4]
-      MAXMATCH  : constant := 2 ** MATCHBITS + THRESHOLD - 1;
+      --  [original: 2 ** MATCHBITS + THRESHOLD - 1]
+      MAXMATCH  : constant := 2 ** MATCHBITS + THRESHOLD + 1;  -- 258 is Deflate-friendly.
 
       --  Sliding dictionary size and hash table's size.
       --  Some combinations of HASHBITS and THRESHOLD values will not work
@@ -1742,6 +1743,7 @@ package body LZ77 is
 
       --  Hash table & link list tables.
 
+      --  [ So far we index the hash table with Integer (minimum 16 bit signed) ]
       hash       : array (0 .. HASHSIZE - 1) of Unsigned_int := (others => NIL);
       --  [ nextlink: in .c: only through DICTSIZE - 1, although Init has: nextlink[DICTSIZE] = NIL ]
       nextlink   : array (Integer_M32'(0) .. DICTSIZE)     of Unsigned_int;
