@@ -1733,8 +1733,8 @@ package body LZ77 is
       SECTORBIT : constant := 13;  --  [original: 10; OK: 13]
       SECTORLEN : constant := 2 ** SECTORBIT;
 
-      HASHFLAG1 : constant := 16#8000#;
-      HASHFLAG2 : constant := 16#7FFF#;
+      HASH_MASK_1 : constant := 16#8000#;  --  [ was called HASHFLAG1 ]
+      HASH_MASK_2 : constant := 16#7FFF#;  --  [ was called HASHFLAG2 ]
 
       --  Dictionary plus MAXMATCH extra chars for string comparisions.
       dict : array (Integer_M32'(0) .. DICTSIZE + MAXMATCH - 1) of Byte;
@@ -1784,9 +1784,9 @@ package body LZ77 is
         k := dictpos + SECTORLEN;
         for i in dictpos .. k - 1 loop
           j := Integer_M32 (lastlink (i));
-          if (Unsigned_int (j) and HASHFLAG1) /= 0 then
+          if (Unsigned_int (j) and HASH_MASK_1) /= 0 then
             if j /= NIL then
-              hash (Integer (Unsigned_int (j) and HASHFLAG2)) := NIL;
+              hash (Integer (Unsigned_int (j) and HASH_MASK_2)) := NIL;
             end if;
           else
             nextlink (j) := NIL;
@@ -1823,7 +1823,7 @@ package body LZ77 is
                    xor
                    Unsigned_int (dict (i + THRESHOLD))
                  );
-            lastlink (i) := Unsigned_int (j) or HASHFLAG1;
+            lastlink (i) := Unsigned_int (j) or HASH_MASK_1;
             nextlink (i) := hash (j);
             if nextlink (i) /= NIL then
               lastlink (Integer_M32 (nextlink (i))) := Unsigned_int (i);
