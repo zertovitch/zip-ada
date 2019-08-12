@@ -1745,21 +1745,15 @@ package body LZ77 is
 
       --  [ So far we index the hash table with Integer (minimum 16 bit signed) ]
       hash       : array (0 .. HASHSIZE - 1) of Unsigned_int := (others => NIL);
-      --  [ nextlink: in .c: only through DICTSIZE - 1, although Init has: nextlink[DICTSIZE] = NIL ]
-      nextlink   : array (Integer_M32'(0) .. DICTSIZE)     of Unsigned_int;
-      lastlink   : array (Integer_M32'(0) .. DICTSIZE - 1) of Unsigned_int;
+      --  [ nextlink: in .c: only through DICTSIZE - 1,
+      --    although Init has: nextlink[DICTSIZE] = NIL. In doubt we set the
+      --    'Last to DICTSIZE and fill everything with NIL... ]
+      nextlink   : array (Integer_M32'(0) .. DICTSIZE)     of Unsigned_int := (others => NIL);
+      lastlink   : array (Integer_M32'(0) .. DICTSIZE - 1) of Unsigned_int := (others => NIL);
 
       --  Misc. variables [global for this LZ77 procedure].
 
       matchlength, matchpos : Integer_M32;
-
-      --  Initializes the search structures needed for compression.
-      --
-      procedure Init_Encode is
-      begin
-        --  [ hash is already initialized];
-        nextlink (DICTSIZE) := NIL;
-      end Init_Encode;
 
       --  Loads dictionary with characters from the input stream.
       --
@@ -1975,14 +1969,10 @@ package body LZ77 is
       end Dict_Search;
 
       procedure Encode is
-        dictpos, actual_read : Integer_M32;
-        deleteflag : Boolean;
+        dictpos, actual_read : Integer_M32 :=  0;
+        deleteflag : Boolean := False;
       begin
-        Init_Encode;
-        dictpos :=  0;
-        deleteflag := False;
         loop
-
           --  Delete old data from dictionary.
           if deleteflag then
             Delete_Data (dictpos);
@@ -2000,7 +1990,7 @@ package body LZ77 is
 
           dictpos := dictpos + SECTORLEN;
 
-          --  Wrap back to beginning of dictionary when its full.
+          --  Wrap back to beginning of dictionary when it's full.
           if dictpos = DICTSIZE then
             dictpos := 0;
             deleteflag := True;   --  Ok to delete now.

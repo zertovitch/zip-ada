@@ -241,7 +241,7 @@ package body Zip.Compress is
         case content_hint is
           when Neutral =>  --  No clue about what kind of data
             if input_size_known and input_size < 9_000 then
-              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+              Compress_data_single_method(Deflate_3);  --  Deflate
             elsif fast_presel then
               --  See: Optimum, LZ77 sheet in za_work.xls
               --       or l2_vs_l3.xls with a larger data set.
@@ -251,7 +251,7 @@ package body Zip.Compress is
             end if;
           when ARW_RW2 | ORF_CR2 | MP3 | MP4 | JPEG | PGM | PPM | PNG | WAV =>
             if input_size_known and input_size < 2_250 then
-              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+              Compress_data_single_method(Deflate_3);  --  Deflate
             else
               Compress_data_single_method(data_type_to_LZMA_method(content_hint));
             end if;
@@ -263,7 +263,7 @@ package body Zip.Compress is
             end if;
           when Zip_in_Zip =>
             if input_size_known and input_size < 1_000 then
-              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+              Compress_data_single_method(Deflate_3);  --  Deflate
             elsif fast_presel then
               Compress_data_single_method(LZMA_2_for_Zip_in_Zip);
             else
@@ -271,7 +271,7 @@ package body Zip.Compress is
             end if;
           when Source_code =>
             if input_size_known and input_size < 8_000 then
-              Compress_data_single_method(Deflation_Method'Last);  --  Deflate
+              Compress_data_single_method(Deflate_3);  --  Deflate
             elsif fast_presel then
               Compress_data_single_method(LZMA_2_for_Source);
             else
