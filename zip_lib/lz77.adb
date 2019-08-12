@@ -1682,7 +1682,7 @@ package body LZ77 is
     end LZ77_using_BT4;
 
     procedure LZ77_by_Rich is
-      --  * PROG2.C                                                       *
+      --  * PROG2.C [lz77a.c]                                             *
       --  * Simple Hashing LZ77 Sliding Dictionary Compression Program    *
       --  * By Rich Geldreich, Jr. October, 1993                          *
       --  * Originally compiled with QuickC v2.5 in the small model.      *
@@ -1710,7 +1710,7 @@ package body LZ77 is
       THRESHOLD : constant := 2;
       MATCHBITS : constant := 8;  --  [original: 4]
       --  [original: 2 ** MATCHBITS + THRESHOLD - 1]
-      MAXMATCH  : constant := 2 ** MATCHBITS + THRESHOLD + 1;  -- 258 is Deflate-friendly.
+      MAXMATCH  : constant := 2 ** MATCHBITS + THRESHOLD;  -- 258 is Deflate-friendly.
 
       --  Sliding dictionary size and hash table's size.
       --  Some combinations of HASHBITS and THRESHOLD values will not work
@@ -1745,15 +1745,11 @@ package body LZ77 is
 
       --  [ So far we index the hash table with Integer (minimum 16 bit signed) ]
       hash       : array (0 .. HASHSIZE - 1) of Unsigned_int := (others => NIL);
-      --  [ nextlink: in .c: only through DICTSIZE - 1,
+      --  [ nextlink: in lz77a.c: only through DICTSIZE - 1,
       --    although Init has: nextlink[DICTSIZE] = NIL. In doubt we set the
       --    'Last to DICTSIZE and fill everything with NIL... ]
       nextlink   : array (Integer_M32'(0) .. DICTSIZE)     of Unsigned_int := (others => NIL);
       lastlink   : array (Integer_M32'(0) .. DICTSIZE - 1) of Unsigned_int := (others => NIL);
-
-      --  Misc. variables [global for this LZ77 procedure].
-
-      matchlength, matchpos : Integer_M32;
 
       --  Loads dictionary with characters from the input stream.
       --
@@ -1837,11 +1833,13 @@ package body LZ77 is
         end if;
       end Hash_Data;
 
+      matchlength, matchpos : Integer_M32;
+
       --  Finds match for string at position dictpos.
       --  This search code finds the longest AND closest
       --  match for the string at dictpos.
       --
-      procedure Find_Match(dictpos, startlen: Integer_M32) is
+      procedure Find_Match (dictpos, startlen: Integer_M32) is
         i, j, k : Integer_M32;
         l : Byte;
       begin
@@ -1861,8 +1859,8 @@ package body LZ77 is
             --  Compare strings.
             loop
               exit when dict (dictpos + j) /= dict (i + j);
-              exit when j = MAXMATCH - 1;
               j := j + 1;
+              exit when j = MAXMATCH;
             end loop;
 
             if j > matchlength then  --  Found larger match?
