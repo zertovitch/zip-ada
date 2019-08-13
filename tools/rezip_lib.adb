@@ -258,7 +258,7 @@ package body Rezip_lib is
         t: String:= s;
       begin
         for i in t'Range loop
-          if html and t(i) = ':' then t(i):= ' '; end if; -- break too long lines
+          if html and t(i) = ':' then t(i):= ' '; end if;  --  Break too long texts within a cell.
         end loop;
         return t;
       end Repl;
@@ -855,6 +855,8 @@ package body Rezip_lib is
           Put(summary,"%");
         end if;
         Put(summary,"</td><td>");
+        Put(summary, Image_1000 (uncomp_size));
+        Put(summary,"</td><td>");
         Put(summary,Integer'Image(e.info(choice).iter));
         Put_Line(summary,"</td></tr>");
         --
@@ -1011,7 +1013,10 @@ package body Rezip_lib is
         "<td bgcolor=#dddd00>Choice's<br>method/<br>format</td>"&
         "<td>Original<br>method/<br>format</td>"&
         "<td>Smallest<br>size</td>" &
-        "<td>% of<br>original</td><td>% of<br>uncompressed</td><td>Iterations</td></tr>"
+        "<td>% of<br>original</td>" & 
+        "<td>% of<br>uncompressed</td>" &
+        "<td>Uncompressed<br>size</td>" &
+        "<td>Iterations</td></tr>"
       );
       --
       -- 1/ Recompress each file into the new archive:
@@ -1094,7 +1099,7 @@ package body Rezip_lib is
         );
         Put(summary,"%");
       end if;
-      Put_Line(summary, "</td></tr>");
+      Put_Line(summary, "</td><td></td><td></td></tr>");
       -- Report total files per approach
       Put(summary,"<tr><td></td><td><b>T<small>OTAL FILES (when optimal)</small></b></td>");
       for a in Approach loop
@@ -1110,7 +1115,7 @@ package body Rezip_lib is
         "</b></td>" &
         "<td>"
       );
-      Put_Line(summary, "</td></tr>");
+      Put_Line(summary, "</td><td></td><td></td><td></td></tr>");
       -- Report total saved bytes per approach
       Put(summary,"<tr><td></td><td><b>T<small>OTAL SAVED BYTES (when optimal)</small></b></td>");
       for a in Approach loop
@@ -1138,7 +1143,7 @@ package body Rezip_lib is
         );
         Put(summary,"%");
       end if;
-      Put_Line(summary, "</td></tr></table></div><br><br>");
+      Put_Line(summary, "</td><td></td><td></td></tr></table></div><br><br>");
       Put_Line(summary, "<dt>Options used for ReZip</dt>");
       Put_Line(summary, "<dd>Randomized_stable =" & Integer'Image(randomized_stable) & "<br>");
       Put_Line(summary, "    Formats allowed:<br><table border=1 cellpadding=1 cellspacing=1>");

@@ -1698,7 +1698,7 @@ package body LZ77 is
 
       --  Ratio vs. speed constant [ Is it really a ratio? ].
       --  The larger this constant, the better the compression.
-      MAXCOMPARES : constant := 2400;  --  [original: 75]
+      MAXCOMPARES : constant := 4096;  --  [original: 75; good: 2400; from Info-Zip: 4096]
 
       --  Unused entry code.
       NIL : constant := 16#FFFF#;
