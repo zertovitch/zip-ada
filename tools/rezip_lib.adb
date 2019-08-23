@@ -215,9 +215,11 @@ package body Rezip_lib is
       size            : Zip.File_size_type;
       zfm             : Unsigned_16;
       count           : Natural;
-      saved           : Integer_64;
-      -- can be negative if -defl chosen: suboptimal recompression,
-      -- but compatible method
+      saved           : Integer_64;  --  Number of bytes saved by chosen method
+      --  NB: can be negative if -defl chosen: suboptimal recompression,
+      --      but compatible method.
+      saved_ex_aequo  : Integer_64;  --  Number of bytes saved if method is as good as
+                                     --  the winning method.
       uncomp_size     : Unsigned_64;
       -- summed uncompressed sizes might be more than 2**32
       expanded_options: Unbounded_String;
@@ -599,7 +601,7 @@ package body Rezip_lib is
 
       list, e, curr: p_Dir_entry:= null;
       repacked_zip_file   : aliased File_Zipstream;
-      null_packer_info: constant Packer_info := (0,0,0,0,0,NN,1,False);
+      null_packer_info: constant Packer_info := (0,0,0,0,0,0,NN,1,False);
       total: Packer_info_array:= (others => null_packer_info);
       -- total(a).count counts the files where approach 'a' was optimal
       -- total(a).saved counts the saved bytes when approach 'a' was optimal
@@ -620,7 +622,7 @@ package body Rezip_lib is
         deco: constant String:= "-->-->-->" & (20+unique_name'Length) * '-';
         mth: Zip.PKZip_method;
         consider: Approach_Filtering;
-        gain: Integer_64;
+        gain, gain_a: Integer_64;
         --
         procedure Winner_color is
         begin
@@ -785,6 +787,16 @@ package body Rezip_lib is
           total_choice.uncomp_size + Unsigned_64(uncomp_size);
         gain:= Integer_64(e.info(original).size) - Integer_64(e.info(choice).size);
         total(choice).saved:= total(choice).saved + gain;
+        --  We award now the ex-aequo's. Caution: multiple counting if you take the sum of totals
+        --  over all approachs, but it is good for knowing the strength of an individual approach.
+        for a in Approach loop
+          if consider(a) then
+            gain_a := Integer_64(e.info(original).size) - Integer_64(e.info(a).size);
+            if gain_a = gain then
+              total(a).saved_ex_aequo := total(a).saved_ex_aequo + gain;
+            end if;
+          end if;
+        end loop;
         total_choice.saved:= total_choice.saved + gain;
         --
         Dual_IO.New_Line;
@@ -1013,7 +1025,7 @@ package body Rezip_lib is
         "<td bgcolor=#dddd00>Choice's<br>method/<br>format</td>"&
         "<td>Original<br>method/<br>format</td>"&
         "<td>Smallest<br>size</td>" &
-        "<td>% of<br>original</td>" & 
+        "<td>% of<br>original</td>" &
         "<td>% of<br>uncompressed</td>" &
         "<td>Uncompressed<br>size</td>" &
         "<td>Iterations</td></tr>"
@@ -1058,7 +1070,7 @@ package body Rezip_lib is
       Close(repacked_zip_file);
       Close(MyStream);
       --
-      -- Cleanup
+      --  Cleanup.
       --
       for a in Approach loop
         if consider_a_priori(a) then
@@ -1070,8 +1082,28 @@ package body Rezip_lib is
           end if;
         end if;
       end loop;
-      -- Report total bytes
-      Put(summary,"<tr><td></td><td><b>T<small>OTAL BYTES</small></b></td>");
+      --
+      --  Report total files per approach.
+      --
+      Put(summary,"<tr><td></td><td><b>T<small>OTAL FILES (of chosen optimal approach)</small></b></td>");
+      for a in Approach loop
+        if consider_a_priori(a) then
+          Put(summary,
+            "<td bgcolor=#" & Webcolor(a) & ">" &
+            Integer'Image(total(a).count) & "</td>"
+          );
+        end if;
+      end loop;
+      Put(summary,
+        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Integer'Image(total_choice.count) &
+        "</b></td>" &
+        "<td>"
+      );
+      Put_Line(summary, "</td><td></td><td></td><td></td></tr>");
+      --
+      --  Report total compressed bytes.
+      --
+      Put(summary,"<tr><td></td><td><b>T<small>OTAL COMPRESSED BYTES</small></b></td>");
       for a in Approach loop
         if consider_a_priori(a) then
           Put(summary,
@@ -1100,24 +1132,10 @@ package body Rezip_lib is
         Put(summary,"%");
       end if;
       Put_Line(summary, "</td><td></td><td></td></tr>");
-      -- Report total files per approach
-      Put(summary,"<tr><td></td><td><b>T<small>OTAL FILES (when optimal)</small></b></td>");
-      for a in Approach loop
-        if consider_a_priori(a) then
-          Put(summary,
-            "<td bgcolor=#" & Webcolor(a) & ">" &
-            Integer'Image(total(a).count) & "</td>"
-          );
-        end if;
-      end loop;
-      Put(summary,
-        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Integer'Image(total_choice.count) &
-        "</b></td>" &
-        "<td>"
-      );
-      Put_Line(summary, "</td><td></td><td></td><td></td></tr>");
-      -- Report total saved bytes per approach
-      Put(summary,"<tr><td></td><td><b>T<small>OTAL SAVED BYTES (when optimal)</small></b></td>");
+      --
+      --  Report total saved bytes per approach.
+      --
+      Put(summary,"<tr><td></td><td><b>T<small>OTAL BYTES SAVED (by chosen optimal approach)</small></b></td>");
       for a in Approach loop
         if consider_a_priori(a) then
           Put(summary, "<td bgcolor=#" & Webcolor(a) & ">" & Image_1000(total(a).saved) & "</td>");
@@ -1143,7 +1161,19 @@ package body Rezip_lib is
         );
         Put(summary,"%");
       end if;
-      Put_Line(summary, "</td><td></td><td></td></tr></table></div><br><br>");
+      Put_Line(summary, "</td><td></td><td></td></tr>");
+      --
+      --  Report total saved bytes per approach, *including ex-aequos*.
+      --
+      Put(summary,"<tr><td></td><td><b>T<small>OTAL BYTES SAVED (by chosen or ex-aequo optimal approach)</small></b></td>");
+      for a in Approach loop
+        if consider_a_priori(a) then
+          Put(summary, "<td bgcolor=#" & Webcolor(a) & ">" & Image_1000(total(a).saved_ex_aequo) & "</td>");
+        end if;
+      end loop;
+      Put(summary, "<td></td><td></td><td></td><td></td><td></td><td>");
+      Put_Line(summary, "</td><td></td><td></td></tr>");
+      Put_Line(summary, "</table></div><br><br>");
       Put_Line(summary, "<dt>Options used for ReZip</dt>");
       Put_Line(summary, "<dd>Randomized_stable =" & Integer'Image(randomized_stable) & "<br>");
       Put_Line(summary, "    Formats allowed:<br><table border=1 cellpadding=1 cellspacing=1>");
