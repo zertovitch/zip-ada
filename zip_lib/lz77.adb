@@ -1,6 +1,6 @@
 --  There are four LZ77 encoders at choice in this package:
 --
---    1/  LZ77_using_LZHuf, based on LZHuf by Haruhiko Okumura and Haruyasu Yoshizaki
+--    1/  LZ77_using_LZHuf, based on LZHuf by Haruhiko Okumura and Haruyasu Yoshizaki.
 --
 --    2/  LZ77_using_IZ, based on Info-Zip's Zip's deflate.c by Jean-Loup Gailly.
 --          deflate.c is actually the LZ77 part of Info-Zip's compression.
@@ -1691,7 +1691,7 @@ package body LZ77 is
       --  * greater memory requirements. See the HashData and DeleteData  *
       --  * subroutines.                                                  *
       --
-      --  Comments by GdM, 2019+ appear as: [...]
+      --  Comments by GdM, 2019+ appear in square brackets: [...]
 
       --  Set this to True for a greedy encoder.
       GREEDY : constant Boolean := False;  --  [original: False]
@@ -1763,7 +1763,9 @@ package body LZ77 is
         end loop;
 
         --  Since the dictionary is a ring buffer, copy the characters at
-        --  the very start of the dictionary to the end.
+        --  the very start of the dictionary to the end
+        --  [this avoids having to use an "and" or a "mod" operator when searching].
+        --
         if dictpos = 0 then
           for j in Integer_M32'(0) .. MAXMATCH - 1 loop
             dict (j + DICTSIZE) := dict (j);
@@ -1840,21 +1842,21 @@ package body LZ77 is
       --  match for the string at dictpos.
       --
       procedure Find_Match (dictpos, startlen: Integer_M32) is
-        i, j, k : Integer_M32;
-        l : Byte;
+        i, j : Integer_M32;
+        match_byte : Byte;
       begin
         i := dictpos;
         matchlength := startlen;
-        k := MAXCOMPARES;
-        l := dict (dictpos + matchlength);
-
-        loop
+        match_byte := dict (dictpos + matchlength);
+        --
+        Chances:
+        for compare_count in 1 .. MAXCOMPARES loop
           i := Integer_M32 (nextlink (i));  --  Get next string in list.
           if i = NIL then
             return;
           end if;
-
-          if dict (i + matchlength) = l then  --  Possible larger match?
+          --
+          if dict (i + matchlength) = match_byte then  --  Possible larger match?
             j := 0;
             --  Compare strings.
             loop
@@ -1862,19 +1864,17 @@ package body LZ77 is
               j := j + 1;
               exit when j = MAXMATCH;
             end loop;
-
+            --
             if j > matchlength then  --  Found larger match?
               matchlength := j;
-              matchpos := i;
+              matchpos    := i;
               if matchlength = MAXMATCH then
                 return;  --  Exit if largest possible match.
               end if;
-              l := dict (dictpos + matchlength);
+              match_byte := dict (dictpos + matchlength);
             end if;
           end if;
-          k := k - 1;
-          exit when k = 0;  --  Keep on trying until we run out of chances.
-        end loop;
+        end loop Chances;  --  Keep on trying until we run out of chances.
       end Find_Match;
 
       --  Finds dictionary matches for characters in current sector.
