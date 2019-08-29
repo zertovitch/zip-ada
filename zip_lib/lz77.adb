@@ -2011,6 +2011,10 @@ package body LZ77 is
         LZ77_using_BT4;
       when Rich =>
         LZ77_by_Rich;
+      when No_LZ77 =>
+        while More_Bytes loop
+          Write_literal (Read_Byte);
+        end loop;
     end case;
   end Encode;
 

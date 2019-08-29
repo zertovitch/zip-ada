@@ -50,7 +50,10 @@ package LZ77 is
     --  Use LZMA SDK's BT4 algorithm (see body for details and credits)
     BT4,
     --
-    Rich
+    Rich,
+    --  Just send literals (plain bytes), no LZ77 compression at all.
+    --  It is better with LZMA on some rare image formats for instance.
+    No_LZ77
   );
 
   subtype Byte is Interfaces.Unsigned_8;

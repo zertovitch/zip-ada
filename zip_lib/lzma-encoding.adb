@@ -209,7 +209,7 @@ package body LZMA.Encoding is
     -----------------------------------
 
     LZ77_choice: constant array(Compression_level) of LZ77.Method_Type:=
-      (Level_0   => LZ77.IZ_4,  --  Fake: actually we don't do any LZ77 for level 0
+      (Level_0   => LZ77.No_LZ77,  --  We don't do any LZ77 for level 0
        Level_1   => LZ77.IZ_6,
        Level_2   => LZ77.IZ_10,
        Level_3   => LZ77.BT4);
@@ -1083,14 +1083,7 @@ package body LZMA.Encoding is
 
   begin
     Write_LZMA_header;
-    if level = Level_0 then
-      --  No LZ77 compression at all, we just send literals (plain bytes).
-      while More_Bytes loop
-        LZ77_emits_literal_byte(Read_Byte);
-      end loop;
-    else
-      My_LZ77;
-    end if;
+    My_LZ77;
     if params.has_end_mark then
       --  The end-of-stream marker is a fake "Simple Match" with a special distance.
       Encode_Bit (probs.switch.match(state, pos_state), DL_code_choice);
