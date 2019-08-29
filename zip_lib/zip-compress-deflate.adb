@@ -1656,7 +1656,8 @@ is
 
     LZ77_choice: constant array(Deflation_Method) of LZ77.Method_Type:=
       (Deflate_Fixed  => LZ77.IZ_4,
-       Deflate_1      => LZ77.IZ_6,  --  level 6 is the default in Info-Zip's zip.exe
+       Deflate_0      => LZ77.No_LZ77,
+       Deflate_1      => LZ77.IZ_6,     --  level 6 is the default in Info-Zip's zip.exe
        Deflate_2      => LZ77.IZ_8,
        Deflate_3      => LZ77.IZ_10,
        Deflate_R      => LZ77.Rich);

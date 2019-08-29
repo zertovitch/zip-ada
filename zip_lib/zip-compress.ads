@@ -66,13 +66,15 @@ package Zip.Compress is
      Reduce_2,
      Reduce_3,
      Reduce_4,
-     --  Deflate combines LZ and Huffman encoding; 4 strengths available:
+     --  Deflate combines LZ and Huffman encoding:
      Deflate_Fixed,
+     Deflate_0,        --  0: No LZ77, only Huffman.
      Deflate_1,
      Deflate_2,
      Deflate_3,
      Deflate_R,
      --  LZMA:
+     LZMA_0,           --  0: No LZ77, only "MA" part.
      LZMA_1,
      LZMA_2,
      LZMA_3,           --  NB: LZMA_3 can be very slow on large data
@@ -109,9 +111,9 @@ package Zip.Compress is
 
   --  The multi-block Deflate methods use refined techniques to decide when to
   --  start a new block and what sort of block to put next.
-  subtype Taillaule_Deflation_Method is Compression_Method range Deflate_1 .. Deflation_Method'Last;
+  subtype Taillaule_Deflation_Method is Compression_Method range Deflate_0 .. Deflation_Method'Last;
 
-  subtype LZMA_Method is Compression_Method range LZMA_1 .. LZMA_for_WAV;
+  subtype LZMA_Method is Compression_Method range LZMA_0 .. LZMA_for_WAV;
 
   subtype Multi_Method is Compression_Method range Preselection_1 .. Preselection_2;
 

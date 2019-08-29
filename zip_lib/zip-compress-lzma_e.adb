@@ -167,10 +167,12 @@ is
 
   LZMA_param: constant array(LZMA_Method) of LZMA_param_bundle:=
     (
+      --  LZMA with default parameters (3, 0, 2) but various LZ77 levels:
+      LZMA_0                => (3, 0, 2, Level_0),
       LZMA_1                => (3, 0, 2, Level_1),
       LZMA_2                => (3, 0, 2, Level_2),
       LZMA_3                => (3, 0, 2, Level_3),
-      --
+      --  Parameter sets for specific data types:
       LZMA_for_ARW          => (8, 4, 4, Level_2),
       LZMA_for_GIF          => (0, 0, 0, Level_1),
       LZMA_for_JPEG         => (8, 0, 0, Level_2),

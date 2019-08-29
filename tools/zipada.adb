@@ -215,6 +215,7 @@ procedure ZipAda is
         elsif eX = "ed" then
           case opt(opt'First+2) is
             when 'f'    => method:= Deflate_Fixed;
+            when '0'    => method:= Deflate_0;
             when '1'    => method:= Deflate_1;
             when '2'    => method:= Deflate_2;
             when 'r'    => method:= Deflate_R;
@@ -222,6 +223,7 @@ procedure ZipAda is
           end case;
         elsif eX = "el" then
           case opt(opt'First+2) is
+            when '0'    => method:= LZMA_0;
             when '1'    => method:= LZMA_1;
             when '2'    => method:= LZMA_2;
             when others => method:= LZMA_3;
@@ -310,8 +312,8 @@ begin
     Put_Line("          -erN   : ""Reduce"" 2-pass method, factor N = 1..4");
     Put_Line("          -es    : ""Shrink"" method (LZW algorithm)");
     Put_Line("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
-    Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 1..3");
-    Put_Line("          -elN   : ""LZMA"" method, strength N = 1..3");
+    Put_Line("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 0..3");
+    Put_Line("          -elN   : ""LZMA"" method, strength N = 0..3");
     Put_Line("          -epN   : preselection of an appropriate method, strength N = 1..2");
     New_Line;
     Put_Line("      NB: default method is ""Deflate"", strength 1 (-ed1)");
