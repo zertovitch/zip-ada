@@ -89,9 +89,9 @@ private
 
   type CPpmd_State_access is access CPpmd_State;
 
-  subtype CPpmd_State_Ref is Big_mem_index;  --  Defined in ppmd.h . A 32-bit pointer.
-  subtype CPpmd_Void_Ref  is Big_mem_index;  --  Defined in ppmd.h . A 32-bit pointer.
-  subtype CPpmd_Byte_Ref  is Big_mem_index;  --  Defined in ppmd.h . A 32-bit pointer.
+  subtype CPpmd_State_Ref is Big_mem_index;   --  Defined in ppmd.h . A 32-bit pointer.
+  subtype CPpmd_Void_Ref  is Big_mem_index;   --  Defined in ppmd.h . A 32-bit pointer.
+  subtype CPpmd_Byte_Ref  is CPpmd_Void_Ref;  --  Defined in ppmd.h . A 32-bit pointer.
 
   type CPpmd7_Context;
 
@@ -124,7 +124,7 @@ private
   type Big_mem_array_access is access Big_mem_array;
 
   type CPpmd7 is record
-    MinContext, MaxContext : CPpmd7_Context_access;
+    MinContext, MaxContext : CPpmd7_Context_access;  --  Pointers into the Base array
     FoundState             : CPpmd_State_Ref;
     OrderFall, InitEsc,
     PrevSuccess,

@@ -339,9 +339,10 @@ package body PPMd.Model is
     p.SuccessorHigh := UInt16 (Shift_Right (UInt32 (v), 16) and 16#FFFF#);
   end SetSuccessor;
 
+  function Convert is new Ada.Unchecked_Conversion (Byte_access, CTX_PTR);
+  function Convert is new Ada.Unchecked_Conversion (Byte_access, CPpmd_State_access);
+
   procedure RestartModel (p : in out CPpmd7) is
-    function Convert is new Ada.Unchecked_Conversion (Byte_access, CTX_PTR);
-    function Convert is new Ada.Unchecked_Conversion (Byte_access, CPpmd_State_access);
     val : UInt16;
   begin
     p.FreeList := (others => 0);
@@ -406,5 +407,96 @@ package body PPMd.Model is
     p.DummySee.Summ  := 0;    --  unused
     p.DummySee.Count := 64;   --  unused
   end Ppmd7_Init;
+
+  function CTX (p : CPpmd7; ref: CPpmd7_Context_Ref) return CTX_PTR is
+  begin
+    return Convert (p.Base (ref)'Access);
+  end CTX;
+
+  function SUFFIX (p : CPpmd7; c: CPpmd7_Context) return CTX_PTR is
+  begin
+    return Convert (p.Base (c.Suffix)'Access);
+  end SUFFIX;
+
+  procedure CreateSuccessors(p : in out CPpmd7; skip : Boolean; c : out CPpmd7_Context_access) is
+    upState      : CPpmd_State;
+    found_state  : CPpmd_State_access := Convert (p.Base (p.FoundState)'Access);
+    upBranch     : CPpmd_Byte_Ref := SUCCESSOR(found_state.all);
+    PPMD7_MAX_ORDER : constant := 64;
+    ps           : array (0 .. PPMD7_MAX_ORDER - 1) of CPpmd_State_access;
+    numPs        : Natural := 0;
+    successor_lc : CPpmd_Void_Ref;  --  !!  _lc = lower case
+    s            : CPpmd_State_access;
+    cf, s0       : UInt32;
+    c1           : CPpmd7_Context_access;
+  begin    
+    c := p.MinContext;
+    if not skip then
+      numPs := numPs + 1;
+      ps (numPs) := found_state;
+    end if;
+    --
+    while c.Suffix /= 0 loop
+      c := SUFFIX(p, c.all);
+      if c.NumStats /= 1 then
+        s := STATS(c);
+        while s.Symbol = found_state.Symbol loop
+          null;  --  !!! s++ pointer increment  !!!
+        end loop;
+      else
+        s := ONE_STATE(c);
+      end if;
+      successor_lc := SUCCESSOR(s.all);
+      if successor_lc /= upBranch then
+        c := CTX(p, successor_lc);
+        if numPs = 0 then
+          return;
+        end if;
+        exit;
+      end if;
+      numPs := numPs + 1;
+      ps (numPs) := s;
+    end loop;
+    
+    --  !!!  upState.Symbol := *(const Byte *)Ppmd7_GetPtr(p, upBranch);
+    SetSuccessor(upState, upBranch + 1);
+    
+    if c.NumStats = 1 then
+      upState.Freq := ONE_STATE(c).Freq;
+    else
+          --  !!! not translated !!!
+      null;  --  !!
+      --    for (s = STATS(c); s->Symbol != upState.Symbol; s++);
+      --    cf = s->Freq - 1;
+      --    s0 = c->SummFreq - c->NumStats - cf;
+      --    upState.Freq = (Byte)(1 + ((2 * cf <= s0) ? (5 * cf > s0) : ((2 * cf + 3 * s0 - 1) / (2 * s0))));
+    end if;
+   
+    loop
+      --  Create Child
+      --  AllocContext(p);
+      
+      --  !!! not translated !!!
+      --
+      --  if (p->HiUnit != p->LoUnit)
+      --    c1 = (CTX_PTR)(p->HiUnit -= UNIT_SIZE);
+      --  else if (p->FreeList[0] != 0)
+      --    c1 = (CTX_PTR)RemoveNode(p, 0);
+      --  else
+      --  {
+      --    c1 = (CTX_PTR)AllocUnitsRare(p, 0);
+      --    if (!c1)
+      --      c := null;
+      --  }
+      --  c1->NumStats = 1;
+      --  *ONE_STATE(c1) = upState;
+      --  c1->Suffix = REF(c);
+      --  numPs := numPs - 1;
+      --  SetSuccessor(ps[numPs], REF(c1));
+      c := c1;
+      exit when numPs = 0;
+    end loop;
+    
+  end CreateSuccessors;
 
 end PPMd.Model;

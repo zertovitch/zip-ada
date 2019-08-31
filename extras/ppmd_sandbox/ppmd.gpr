@@ -1,6 +1,6 @@
 project ppmd is
    for Object_Dir use "../../obj_dbg";
    package Compiler is
-      for Default_Switches ("ada") use ("-gnatyc", "-gnaty2", "-gnatyM100", "-gnaty-s");
+      for Default_Switches ("ada") use ("-gnatyec", "-gnaty2", "-gnatyM200", "-gnaty-s");
    end Compiler;
 end ppmd;
