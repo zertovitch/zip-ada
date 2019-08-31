@@ -142,9 +142,14 @@ private
     NS2Indx,
     NS2BSIndx,                                  --  NumberStatistics To BinarySummary
     HB2Flag                : NS_BS_HB_array;
-    DummySee, See          : See_array;
+    DummySee               : CPpmd_See;
+    See                    : See_array;
     BinSumm                : Bin_summ_array;    --  Binary SEE-contexts
   end record;
+
+  PPMD_INT_BITS    : constant := 7;
+  PPMD_PERIOD_BITS : constant := 7;
+  PPMD_BIN_SCALE   : constant := 2 ** (PPMD_INT_BITS + PPMD_PERIOD_BITS);
 
   ----------------------
   --  Range encoding  --
