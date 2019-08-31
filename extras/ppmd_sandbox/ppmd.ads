@@ -77,6 +77,11 @@ private
     SuccessorLow  : UInt16;
     SuccessorHigh : UInt16;
   end record;
+  CPpmd_State_Byte_Size : constant := 6;
+  for CPpmd_State'Size use CPpmd_State_Byte_Size * 8;  --  6 bytes (record must be packed!)
+
+  --  PPMd uses a large memory chunk with 32-bit addressing and
+  --  defines its own memory management (allocate, free, ...) within it.
 
   --  Variables of type Big_mem_index are to be used as indexes
   --  for the big internally 32-bit managed memory, p.Base.all .
@@ -84,9 +89,9 @@ private
 
   type CPpmd_State_access is access CPpmd_State;
 
-  subtype CPpmd_State_Ref is Big_mem_index;
-  subtype CPpmd_Void_Ref  is Big_mem_index;
-  subtype CPpmd_Byte_Ref  is Big_mem_index;
+  subtype CPpmd_State_Ref is Big_mem_index;  --  Defined in ppmd.h . A 32-bit pointer.
+  subtype CPpmd_Void_Ref  is Big_mem_index;  --  Defined in ppmd.h . A 32-bit pointer.
+  subtype CPpmd_Byte_Ref  is Big_mem_index;  --  Defined in ppmd.h . A 32-bit pointer.
 
   type CPpmd7_Context;
 
@@ -115,9 +120,6 @@ private
   type See_array is array (0 .. 24, 0 .. 15) of CPpmd_See;
   type Bin_summ_array is array (0 .. 127, 0 .. 63) of UInt16;
 
-  --  PPMd uses a large memory chunk and defines its own memory
-  --  management (allocate, free, ...) within it.
-
   type Big_mem_array is array (Big_mem_index range <>) of aliased Byte;
   type Big_mem_array_access is access Big_mem_array;
 
@@ -141,7 +143,7 @@ private
     NS2BSIndx,                                  --  NumberStatistics To BinarySummary
     HB2Flag                : NS_BS_HB_array;
     DummySee, See          : See_array;
-    BinSumm                : Bin_summ_array;
+    BinSumm                : Bin_summ_array;    --  Binary SEE-contexts
   end record;
 
   ----------------------

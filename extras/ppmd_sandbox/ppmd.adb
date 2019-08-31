@@ -354,9 +354,9 @@ package body PPMd is
   end SetSuccessor;
 
   procedure RestartModel (p : in out CPpmd7) is
-    i, k, m : Unsigned;
     function Convert is new Ada.Unchecked_Conversion (Byte_access, CTX_PTR);
     function Convert is new Ada.Unchecked_Conversion (Byte_access, CPpmd_State_access);
+    val : UInt16;
   begin
     p.FreeList := (others => 0);
     p.Text := p.AlignOffset;
@@ -376,35 +376,33 @@ package body PPMd is
     p.MinContext.Suffix := 0;
     p.MinContext.NumStats := 256;
     p.MinContext.SummFreq := 256 + 1;
-    p.FoundState := p.LoUnit; --  /* AllocUnits(p, PPMD_NUM_INDEXES - 1); */
+    p.FoundState := p.LoUnit;  --  /* AllocUnits(p, PPMD_NUM_INDEXES - 1); */
     p.LoUnit := p.LoUnit + U2B (256 / 2);
     p.MinContext.Stats := p.FoundState;
     for i in 0 .. 255 loop
       declare
-        --  !!! C question: does i index an array of bytes or CPpmd_State ??
-        s : CPpmd_State renames Convert (p.FoundState (i)).all;
+        s : CPpmd_State_access renames
+              Convert (p.Base (p.FoundState + CPpmd_State_Byte_Size * CPpmd_State_Ref (i))'Access);
       begin
         s.Symbol := Byte (i);
-        s.Freq := 1;
-        SetSuccessor (s, 0);
+        s.Freq   := 1;
+        SetSuccessor (s.all, 0);
       end;
     end loop;
 
     for i in 0 .. 127 loop
       for k in 0 .. 7 loop
-        null; -- !!!
-        --
-        --  UInt16 *dest = p.BinSumm[i] + k;
-        --  UInt16 val = (UInt16)(PPMD_BIN_SCALE - kInitBinEsc[k] / (i + 2));
-        --  for (m = 0; m < 64; m += 8)
-          --  dest[m] = val;
+        val := PPMD_BIN_SCALE - kInitBinEsc (k) / UInt16 (i + 2);
+        for m in 0 .. 7 loop
+          p.BinSumm (i, k + 8 * m) := val;
+        end loop;
       end loop;
     end loop;
 
     for i in 0 .. 24 loop
       for k in 0 .. 15 loop
         declare
-          s : CPpmd_See renames p.See (i)(k);
+          s : CPpmd_See renames p.See (i, k);
         begin
           s.Shift := PPMD_PERIOD_BITS - 4;
           s.Summ  := Shift_Left (UInt16 (5 * i + 10), Natural (s.Shift));
