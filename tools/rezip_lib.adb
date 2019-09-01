@@ -21,17 +21,20 @@ with Zip_Streams;                       use Zip_Streams;
 with My_feedback, Flexible_temp_files;
 
 with Ada.Calendar;                      use Ada.Calendar;
+with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Directories;                   use Ada.Directories;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Dual_IO;
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
+with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
+with Ada.Numerics.Discrete_Random;
+with Ada.Numerics.Elementary_Functions;
+with Ada.Numerics.Float_Random;
 with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed, Ada.Strings;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
-with Ada.Numerics.Discrete_Random;
+
+with Dual_IO;
 
 with Interfaces;                        use Interfaces;
 
@@ -76,8 +79,7 @@ package body Rezip_lib is
     presel_1, presel_2,
     external_1, external_2, external_3, external_4,
     external_5, external_6, external_7, external_8,
-    external_9, external_10, external_11, external_12,
-    external_13
+    external_9, external_10, external_11, external_12
   );
 
   subtype Internal is Approach
@@ -102,24 +104,22 @@ package body Rezip_lib is
       (U("kzip"),U("KZIP"),U("http://www.advsys.net/ken/utils.htm"),
          U("/rn /b0"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       (U("kzip"),U("KZIP"),NN,
-         U("/rn /b#RAND#(0,128)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
-      (U("kzip"),U("KZIP"),NN,
-         U("/rn /b#RAND#(128,2048)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
+         U("/rn /b#RAND_EXP#(1,2048)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       -- Zip 3.0 or later; BZip2:
       (U("zip"), U("Zip"), U("http://info-zip.org/"),
          U("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
       -- 7-Zip 9.20 or later; LZMA:
       (U("7z"), U("7-Zip"), NN,
          U("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma_meth, 0, False),
-      (U("7z"), U("7-Zip"), NN, -- dictionary size 2**19 = 512 KB
-         U("a -tzip -mm=LZMA:a=2:d=19:mf=bt3:fb=128:lc=0:lp=2"), NN, 63, Zip.lzma_meth, 0, False),
-      (U("7z"), U("7-Zip"), NN,
-         U("a -tzip -mm=LZMA:a=2:d=#RAND#(3200,3700)k:mf=bt4:fb=#RAND#(255,273):lc=2:lp0:pb0"),
+      (U("7z"), U("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**19 = 512 KB
+         U("a -tzip -mm=LZMA:a=2:d=19:mf=bt#RAND#(3,4):fb=128:lc=0:lp=2"), NN, 63, Zip.lzma_meth, 0, False),
+      (U("7z"), U("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**25 = 32 MB
+         U("a -tzip -mm=LZMA:a=2:d=25:mf=bt#RAND#(3,4):fb=255:lc=7"), NN, 63, Zip.lzma_meth, 0, False),
+      (U("7z"), U("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**26 = 64 MB
+         U("a -tzip -mm=LZMA:a=2:d=26:mf=bt#RAND#(3,4):fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma_meth, 0, False),
+      (U("7z"), U("7-Zip"), NN, --  LZ77: BT4.
+         U("a -tzip -mm=LZMA:a=2:d=#RAND_EXP#(1,5000)k:mf=bt4:fb=#RAND#(255,273):lc=#RAND#(0,8):lp#RAND#(0,4):pb#RAND#(0,4)"),
          NN, 63, Zip.lzma_meth, 0, True),
-      (U("7z"), U("7-Zip"), NN, -- dictionary size 2**25 = 32 MB
-         U("a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7"), NN, 63, Zip.lzma_meth, 0, False),
-      (U("7z"), U("7-Zip"), NN, -- dictionary size 2**26 = 64 MB
-         U("a -tzip -mm=LZMA:a=2:d=26:mf=bt3:fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma_meth, 0, False),
       -- AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U("advzip"), U("AdvZip"), U("http://advancemame.sf.net/comp-readme.html"),
          U("-a -4"), NN, 20, Zip.deflate, kzip_zopfli_limit, False)
@@ -360,18 +360,21 @@ package body Rezip_lib is
       expand    : in out Unbounded_String -- expanded arguments
     )
     is
-      type Token is (rand);
+      type Token is (rand, rand_exp);
     begin
       expand:= U(options);
       for t in Token loop
+        --  Replace all tokens:  #<t>#(a,b)
         loop
           declare
             tok: constant String:= '#' & Token'Image(t) & '#';
             idx: constant Natural:= Index(expand, tok);
-            par: constant Natural:= Index(expand, ")");
-            replace: Unbounded_String;
+            par: Natural;
+            replace_by: Unbounded_String;
           begin
+            --  put_line("Token: " & Token'Image(t) & "   " & S(expand));
             exit when idx = 0;  --  No more of token t to replace
+            par := Index(expand, ")", idx);
             declare
               opt: constant String:= S(expand); -- partially processed option string
               curr: constant String:= opt(idx+1..opt'Last); -- current option
@@ -380,25 +383,47 @@ package body Rezip_lib is
               comma: constant Natural:= Index(curr, ",");
               n1, n2, n: Integer;
             begin
+              n1:= Integer'Value(curr(par_a+1..comma-1));
+              n2:= Integer'Value(curr(comma+1..par_z-1));
               case t is
                 when rand =>
-                  n1:= Integer'Value(curr(par_a+1..comma-1));
-                  n2:= Integer'Value(curr(comma+1..par_z-1));
+                  --  Replace #RAND#(n1,n2) by a number between n1 and n2.
+                  --  Uniform distribution: U(n1,n2).
                   declare
                     subtype rng is Integer range n1..n2;
                     package Rnd is new Ada.Numerics.Discrete_Random(rng);
                     gen: Rnd.Generator;
                   begin
-                    Rnd.Reset(gen, seed_iterator);
-                    -- On GNAT the clock-based Reset is too coarse
-                    -- (gives many times the same seed when called with small
-                    -- time intervals).
+                    Rnd.Reset(gen, seed_iterator);  --  seed_iterator is itself randomized.
                     seed_iterator:= seed_iterator + 1;
                     n:= Rnd.Random(gen);
                   end;
-                  replace:= U(Trim(Integer'Image(n),Left));
+                  replace_by:= U(Trim(Integer'Image(n),Left));
+                when rand_exp =>
+                  --  Replace #RAND_EXP#(n1,n2) by a number between n1 and n2.
+                  --  Strong bias towards small numbers (rather close to n1 than to n2).
+                  --
+                  --  Example (k=1, n1=1, n2=100): P(X in [1;10]) = 1/2; P(X in [10;100]) = 1/2.
+                  --
+                  --  The CDF is:  F(x) = ((log x - log n1) / (log n2 - log n1)) ^ (1/k).
+                  --
+                  declare
+                    use Ada.Numerics.Float_Random, Ada.Numerics.Elementary_Functions;
+                    gen: Generator;
+                    l1, l2, l, u: Float;
+                    k : constant := 2;
+                  begin
+                    Reset(gen, seed_iterator);  --  seed_iterator is itself randomized.
+                    seed_iterator:= seed_iterator + 1;
+                    u:= Random (gen);  --  u is Uniform in [0;1]
+                    l1 := Log (Float (n1));
+                    l2 := Log (Float (n2));
+                    l := l1 + (l2 - l1) * (u ** k);
+                    n := Integer (Exp (l));
+                  end;
+                  replace_by:= U(Trim(Integer'Image(n),Left));
               end case;
-              Replace_Slice(expand, idx, par, S(replace));
+              Replace_Slice(expand, idx, par, S(replace_by));
             end;
           end;
         end loop;
@@ -419,7 +444,6 @@ package body Rezip_lib is
       rand_winner : constant String := Simple_Name (Flexible_temp_files.Radix) & "_$rand$.tmp";
       options_winner: Unbounded_String;
       data_name: constant String:= Simple_Name(Temp_name(False,original));
-      zi_ext: Zip.Zip_info;
       header: Zip.Headers.Local_File_Header;
       MyStream   : aliased File_Zipstream;
       cur_dir: constant String:= Current_Directory;
@@ -453,17 +477,21 @@ package body Rezip_lib is
         --  Now, rip
         Set_Name (MyStream, temp_zip);
         Open (MyStream, In_File);
-        Zip.Load( zi_ext, MyStream, True );
-        Rip_data(
-          archive      => zi_ext,
-          input        => MyStream,
-          data_name    => data_name,
-          rip_rename   => out_name,
-          unzip_rename => "",
-          header       => header
-        );
-        Close(MyStream);
-        Delete_File(temp_zip);
+        declare
+          zi_ext: Zip.Zip_info;
+        begin
+          Zip.Load( zi_ext, MyStream, True );
+          Rip_data(
+            archive      => zi_ext,
+            input        => MyStream,
+            data_name    => data_name,
+            rip_rename   => out_name,
+            unzip_rename => "",
+            header       => header
+          );
+          Close(MyStream);
+          Delete_File(temp_zip);
+        end;
         --
         if randomized_stable = 1 or not is_rand then -- normal behaviour (1 attempts)
           size:= header.dd.compressed_size;
@@ -1201,6 +1229,9 @@ package body Rezip_lib is
     end Repack_contents;
 
     -- This is for randomizing the above seed_iterator.
+    -- On GNAT the clock-based Reset is too coarse: it gives many times
+    -- the same seed when called with small time intervals.
+    --
     subtype Seed_Range is Integer range 1..1_000_000;
     package Rnd_seed is new Ada.Numerics.Discrete_Random(Seed_Range);
     gen_seed: Rnd_seed.Generator;
