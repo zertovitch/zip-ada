@@ -315,7 +315,7 @@ package body PPMd.Model is
     end if;
     if p.FreeList (i1) /= 0 then
       RemoveNode (p, i1, ptr);
-      --  MyMem12Cpy(ptr, oldPtr, newNU);
+      --  MyMem12Cpy(ptr, oldPtr, newNU);  !!!
       p.Base (ptr .. ptr + Big_mem_index (newNU) - 1) :=
         p.Base (oldPtr .. oldPtr + Big_mem_index (newNU) - 1);
       InsertNode (p, oldPtr, i0);
@@ -419,18 +419,24 @@ package body PPMd.Model is
     return Convert (p.Base (c.Suffix)'Access);
   end SUFFIX;
 
+  --  Turns an Address into an index in the big memory array (p.Base.all).
+
+  function REF (p : CPpmd7; addr: System.Address) return Big_mem_index is
+    use System, System.Storage_Elements;
+    base_address : Address;
+    diff : Storage_Offset;
+  begin
+    base_address := p.Base (0)'Address;
+    diff := addr - base_address;
+    --  Absent a bug, diff fits in 32 bits *and* in the index range of p.Base.all ...
+    return Big_mem_index (diff);
+  end REF;
+
   --  Turns a pointer into an index in the big memory array (p.Base.all).
 
   function REF (p : CPpmd7; c: CTX_PTR) return Big_mem_index is
-    use System, System.Storage_Elements;
-    c_address, base_address : Address;
-    diff : Storage_Offset;
   begin
-    c_address    := c.all'Address;
-    base_address := p.Base (0)'Address;
-    diff := c_address - base_address;
-    --  Absent a bug, diff fits in 32 bits *and* in the index range of p.Base.all ...
-    return Big_mem_index (diff);
+    return REF (p, c.all'Address);
   end REF;
 
   procedure CreateSuccessors(p : in out CPpmd7; skip : Boolean; c : out CPpmd7_Context_access) is
@@ -523,4 +529,150 @@ package body PPMd.Model is
     t2  := tmp;
   end SwapStates;
 
+  procedure UpdateModel(p : in out CPpmd7) is
+    successor_lc : CPpmd_Void_Ref;  --  !!  _lc = lower case
+    found_state  : CPpmd_State_access := Convert (p.Base (p.FoundState)'Access);
+    fSuccessor   : CPpmd_Void_Ref := SUCCESSOR(found_state.all);
+    c            : CTX_PTR;
+    s0, ns, ns1  : unsigned;
+    s, s_old     : CPpmd_State_access;
+    cs           : CPpmd7_Context_access;
+    cf, sf       : UInt32;
+    i, oldNU     : unsigned;
+    s_node_ref   : Big_mem_index;
+  begin  
+    if found_state.Freq < MAX_FREQ / 4 and then p.MinContext.Suffix /= 0 then
+      c := SUFFIX(p, p.MinContext.all);
+      --
+      if c.NumStats = 1 then
+        s := ONE_STATE(c);
+        if s.Freq < 32 then
+          s.Freq := s.Freq + 1;
+        end if;
+      else
+        s := STATS(c);
+        if s.Symbol /= found_state.Symbol then
+          loop
+            s_old := s;
+            null;  --  !!! s++ pointer increment  !!!
+            exit when s.Symbol = found_state.Symbol;
+          end loop;
+          if s.Freq >= s_old.Freq then
+            SwapStates(s.all, s_old.all);
+            s := s_old;
+          end if;
+        end if;
+        if s.Freq < MAX_FREQ - 9 then
+          s.Freq := s.Freq + 2;          --  Increase frequency in state s
+          c.SummFreq := c.SummFreq + 2;  --  Increase frequency in context c
+        end if;
+      end if;
+    end if;
+
+    if p.OrderFall = 0 then
+      CreateSuccessors(p, True, p.MaxContext);
+      p.MinContext := p.MaxContext;
+      if p.MinContext = null then
+        RestartModel(p);
+        return;
+      end if;
+      SetSuccessor(found_state.all, REF(p, p.MinContext));
+      return;
+    end if;
+    
+    p.Text := p.Text + 1;
+    p.Base (p.Text) := found_state.Symbol;
+    successor_lc := p.Text;
+    if p.Text >= p.UnitsStart then  --  The text area will overlap the Units area
+      RestartModel(p);
+      return;
+    end if;
+    
+    if fSuccessor /= 0 then
+      if fSuccessor <= successor_lc then
+        CreateSuccessors(p, False, cs);
+        if cs = null then
+          RestartModel(p);
+          return;
+        end if;
+        fSuccessor := REF(p, cs);
+      end if;
+      p.OrderFall := p.OrderFall - 1;
+      if p.OrderFall = 0 then
+        successor_lc := fSuccessor;
+        if p.MaxContext /= p.MinContext then
+          p.Text := p.Text - 1;
+        end if;
+      end if;
+    else
+      SetSuccessor(found_state.all, successor_lc);
+      fSuccessor := REF(p, p.MinContext);
+    end if;
+    
+    ns := unsigned (p.MinContext.NumStats);
+    s0 := unsigned (p.MinContext.SummFreq) - ns - unsigned (found_state.Freq - 1);
+
+    c := p.MaxContext;
+    while c /= p.MinContext loop
+      ns1 := unsigned (c.NumStats);
+      if ns1 /= 1 then
+        if (ns1 and 1) = 0 then
+          --  /* Expand for one UNIT */
+          oldNU := ns1 / 2;
+          i := U2I(p, oldNU);
+          if i /= U2I(p, oldNU + 1) then
+            --  !!! not translated !!!
+            null;
+            --  void *ptr = AllocUnits(p, i + 1);
+            --  void *oldPtr;
+            --  if (!ptr)
+            --  {
+            --    RestartModel(p);
+            --    return;
+            --  }
+            --  oldPtr = STATS(c);
+            --  MyMem12Cpy(ptr, oldPtr, oldNU);
+            --  InsertNode(p, oldPtr, i);
+            --  c.Stats := STATS_REF(ptr);
+          end if;
+        end if;
+        c.SummFreq := UInt16(c.SummFreq + Boolean'Pos(2 * ns1 < ns) + 2 * (Boolean'Pos(4 * ns1 <= ns) and Boolean'Pos(Unsigned (c.SummFreq) <= 8 * ns1)));
+      else
+        AllocUnits(p, 0, s_node_ref);
+        if s_node_ref = 0 then
+          RestartModel(p);
+          return;
+        end if;
+        s := Convert (p.Base (s_node_ref)'Access);
+        s.all := ONE_STATE(c).all;
+        c.Stats := REF(p, s.all'Address);
+        if s.Freq < MAX_FREQ / 4 - 1 then
+          s.Freq := 2 * s.Freq;
+        else
+          s.Freq := MAX_FREQ - 4;
+        end if;
+        c.SummFreq := UInt16(Unsigned(s.Freq) + p.InitEsc + Boolean'Pos(ns > 3));
+      end if;
+      cf := 2 * UInt32(found_state.Freq) * UInt32(c.SummFreq + 6);
+      sf := UInt32 (s0) + UInt32(c.SummFreq);
+      if cf < 6 * sf then
+        cf := 1 + Boolean'Pos(cf > sf) + Boolean'Pos(cf >= 4 * sf);
+        c.SummFreq := c.SummFreq + 3;
+      else
+        cf := 4 + Boolean'Pos(cf >= 9 * sf) + Boolean'Pos(cf >= 12 * sf) + Boolean'Pos(cf >= 15 * sf);
+        c.SummFreq := UInt16(Uint32(c.SummFreq) + cf);
+      end if;
+      begin  --  NB: This block is also in the C code
+        s := STATS(c) + ns1;
+        SetSuccessor(s.all, successor_lc);
+        s.Symbol := found_state.Symbol;
+        s.Freq := Byte(cf);
+        c.NumStats := UInt16(ns1 + 1);
+      end;
+      c := SUFFIX(p, c.all);
+    end loop;
+    p.MinContext := CTX(p, fSuccessor);
+    p.MaxContext := p.MinContext;
+  end UpdateModel;
+  
 end PPMd.Model;

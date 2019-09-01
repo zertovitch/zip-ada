@@ -124,7 +124,7 @@ private
   type Big_mem_array_access is access Big_mem_array;
 
   type CPpmd7 is record
-    MinContext, MaxContext : CPpmd7_Context_access;  --  Pointers into the Base array
+    MinContext, MaxContext : CPpmd7_Context_access;  --  Pointers into the Base.all array
     FoundState             : CPpmd_State_Ref;
     OrderFall, InitEsc,
     PrevSuccess,
