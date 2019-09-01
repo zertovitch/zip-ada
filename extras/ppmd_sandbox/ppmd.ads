@@ -79,19 +79,19 @@ private
   end record;
   CPpmd_State_Byte_Size : constant := 6;
   for CPpmd_State'Size use CPpmd_State_Byte_Size * 8;  --  6 bytes (record must be packed!)
+  type CPpmd_State_access is access CPpmd_State;
 
   --  PPMd uses a large memory chunk with 32-bit addressing and
   --  defines its own memory management (allocate, free, ...) within it.
 
   --  Variables of type Big_mem_index are to be used as indexes
   --  for the big internally 32-bit managed memory, p.Base.all .
+  --
   subtype Big_mem_index is UInt32;
 
-  type CPpmd_State_access is access CPpmd_State;
-
-  subtype CPpmd_State_Ref is Big_mem_index;   --  Defined in ppmd.h . A 32-bit pointer.
-  subtype CPpmd_Void_Ref  is Big_mem_index;   --  Defined in ppmd.h . A 32-bit pointer.
-  subtype CPpmd_Byte_Ref  is CPpmd_Void_Ref;  --  Defined in ppmd.h . A 32-bit pointer.
+  subtype CPpmd_State_Ref is Big_mem_index;   --  Defined in ppmd.h .
+  subtype CPpmd_Void_Ref  is Big_mem_index;   --  Defined in ppmd.h .
+  subtype CPpmd_Byte_Ref  is CPpmd_Void_Ref;  --  Defined in ppmd.h .
 
   type CPpmd7_Context;
 

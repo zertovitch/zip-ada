@@ -2,6 +2,7 @@
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
+with System.Storage_Elements;
 
 package body PPMd.Model is
 
@@ -418,6 +419,20 @@ package body PPMd.Model is
     return Convert (p.Base (c.Suffix)'Access);
   end SUFFIX;
 
+  --  Turns a pointer into an index in the big memory array (p.Base.all).
+
+  function REF (p : CPpmd7; c: CTX_PTR) return Big_mem_index is
+    use System, System.Storage_Elements;
+    c_address, base_address : Address;
+    diff : Storage_Offset;
+  begin
+    c_address    := c.all'Address;
+    base_address := p.Base (0)'Address;
+    diff := c_address - base_address;
+    --  Absent a bug, diff fits in 32 bits *and* in the index range of p.Base.all ...
+    return Big_mem_index (diff);
+  end REF;
+
   procedure CreateSuccessors(p : in out CPpmd7; skip : Boolean; c : out CPpmd7_Context_access) is
     upState      : CPpmd_State;
     found_state  : CPpmd_State_access := Convert (p.Base (p.FoundState)'Access);
@@ -464,17 +479,18 @@ package body PPMd.Model is
     if c.NumStats = 1 then
       upState.Freq := ONE_STATE(c).Freq;
     else
-          --  !!! not translated !!!
-      null;  --  !!
-      --    for (s = STATS(c); s->Symbol != upState.Symbol; s++);
+      s := STATS(c);
+      while s.Symbol = upState.Symbol loop
+        null;  --  !!! s++ pointer increment  !!!
+      end loop;
+      --  !!! not translated !!!
       --    cf = s->Freq - 1;
       --    s0 = c->SummFreq - c->NumStats - cf;
       --    upState.Freq = (Byte)(1 + ((2 * cf <= s0) ? (5 * cf > s0) : ((2 * cf + 3 * s0 - 1) / (2 * s0))));
     end if;
    
     loop
-      --  Create Child
-      --  AllocContext(p);
+      --  /* Create Child: AllocContext(p); */
       
       --  !!! not translated !!!
       --
@@ -490,13 +506,21 @@ package body PPMd.Model is
       --  }
       --  c1->NumStats = 1;
       --  *ONE_STATE(c1) = upState;
-      --  c1->Suffix = REF(c);
-      --  numPs := numPs - 1;
-      --  SetSuccessor(ps[numPs], REF(c1));
+      c1.Suffix := REF(p, c);
+      numPs := numPs - 1;
+      SetSuccessor(ps(numPs).all, REF(p, c1));
       c := c1;
       exit when numPs = 0;
     end loop;
     
   end CreateSuccessors;
+
+  procedure SwapStates(t1, t2 : in out CPpmd_State) is
+    tmp : CPpmd_State;
+  begin
+    tmp := t1;
+    t1  := t2;
+    t2  := tmp;
+  end SwapStates;
 
 end PPMd.Model;
