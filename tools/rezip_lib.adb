@@ -452,6 +452,7 @@ package body Rezip_lib is
       zfm: Unsigned_16;
       attempt: Positive:= 1;
       dummy_exp_opt: Unbounded_String;
+      zi_ext: Zip.Zip_info;
     begin
       -- We jump into the TEMP directory, to avoid putting pathes into the
       -- temporary zip file.
@@ -477,21 +478,17 @@ package body Rezip_lib is
         --  Now, rip
         Set_Name (MyStream, temp_zip);
         Open (MyStream, In_File);
-        declare
-          zi_ext: Zip.Zip_info;
-        begin
-          Zip.Load( zi_ext, MyStream, True );
-          Rip_data(
-            archive      => zi_ext,
-            input        => MyStream,
-            data_name    => data_name,
-            rip_rename   => out_name,
-            unzip_rename => "",
-            header       => header
-          );
-          Close(MyStream);
-          Delete_File(temp_zip);
-        end;
+        Zip.Load( zi_ext, MyStream, True );
+        Rip_data(
+          archive      => zi_ext,
+          input        => MyStream,
+          data_name    => data_name,
+          rip_rename   => out_name,
+          unzip_rename => "",
+          header       => header
+        );
+        Close(MyStream);
+        Delete_File(temp_zip);
         --
         if randomized_stable = 1 or not is_rand then -- normal behaviour (1 attempts)
           size:= header.dd.compressed_size;

@@ -249,15 +249,14 @@ package body Zip is
       Insert_into_tree(root_node);
     end Insert;
 
-    the_end: Zip.Headers.End_of_Central_Dir;
-    header : Zip.Headers.Central_File_Header;
-    p      : p_Dir_node:= null;
-    zip_info_already_loaded: exception;
-    main_comment: p_String;
-  begin -- Load Zip_info
+    the_end : Zip.Headers.End_of_Central_Dir;
+    header  : Zip.Headers.Central_File_Header;
+    p       : p_Dir_node := null;
+    main_comment : p_String;
+  begin  --  Load Zip_info
     if info.loaded then
-      raise zip_info_already_loaded;
-    end if; -- 15-Apr-2002
+      Delete (info);
+    end if;
     Zip.Headers.Load(from, the_end);
     -- We take the opportunity to read the main comment, which is right
     -- after the end-of-central-directory block.

@@ -2012,8 +2012,8 @@ package body LZ77 is
       when Rich =>
         LZ77_by_Rich;
       when No_LZ77 =>
-        while More_Bytes loop
-          Write_literal (Read_Byte);
+        while More_bytes loop
+          Write_literal (Read_byte);
         end loop;
     end case;
   end Encode;
