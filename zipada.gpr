@@ -33,11 +33,14 @@ project ZipAda is
       when others =>
          for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
          for Main use (
+           --  Tools
            "zipada.adb", 
            "unzipada.adb",
            "comp_zip.adb", 
            "find_zip.adb",
-           "rezip.adb", 
+           "rezip.adb",
+           "zip_dir_list.adb",
+           --  Demos
            "demo_csv_into_zip.adb", 
            "demo_zip.adb",
            "demo_unzip.adb",
