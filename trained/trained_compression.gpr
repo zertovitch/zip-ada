@@ -9,10 +9,10 @@ project Trained_Compression extends "../ZipAda" is  --  Check zipada.gpr for det
    );
 
    case Build_Mode is
-      when "Debug" | "Check_95" =>  for Object_Dir use "../obj_dbg/trained";
-      when "Fast" =>                for Object_Dir use "../obj_opt/trained";
-      when "Small" =>               for Object_Dir use "../obj_small/trained";
-      when "Profiling" =>           for Object_Dir use "../obj_pro/trained";
+      when "Fast"      =>  for Object_Dir use "../obj_opt/trained";
+      when "Small"     =>  for Object_Dir use "../obj_small/trained";
+      when "Profiling" =>  for Object_Dir use "../obj_pro/trained";
+      when others      =>  for Object_Dir use "../obj_dbg/trained";
    end case;
    
    for Exec_Dir use ".";

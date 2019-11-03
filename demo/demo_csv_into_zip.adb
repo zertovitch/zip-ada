@@ -18,15 +18,15 @@ with Ada.Text_IO;
 procedure Demo_csv_into_zip is
 
   type Continent is
-  ( Overseas,
+   (Overseas,
     North_America,
     Latin_America,
     Europe,
     Other
-  );
+   );
 
   type GroupCountries is
-  ( France_Benelux,
+   (France_Benelux,
     Northern_Europe,
     Central_and_Eastern_Europe,
     Southern_Europe,
@@ -43,21 +43,19 @@ procedure Demo_csv_into_zip is
     Central_America,
     Caribbean,
     Other
-  );
+   );
 
   type Peril is
-  (
-    Drought,
+   (Drought,
     Earthquake,
     Flood,
     Frost,
     Hail,
     Windstorm
-  );
+   );
 
-  Peril_abbr: constant array(Peril) of String(1..2):=
-   (
-    Drought    => "DT",
+  Peril_abbr : constant array (Peril) of String (1 .. 2) :=
+   (Drought    => "DT",
     Earthquake => "EQ",
     Flood      => "FD",
     Frost      => "FT",
@@ -65,8 +63,8 @@ procedure Demo_csv_into_zip is
     Windstorm  => "WS"
    );
 
-  groupcountries_to_continent: constant array(GroupCountries) of Continent:=
-  ( France_Benelux => Europe,
+  groupcountries_to_continent : constant array (GroupCountries) of Continent :=
+   (France_Benelux => Europe,
     Northern_Europe => Europe,
     Central_and_Eastern_Europe => Europe,
     Southern_Europe => Europe,
@@ -83,54 +81,54 @@ procedure Demo_csv_into_zip is
     Central_America => Latin_America,
     Caribbean => Latin_America,
     Other => Other
-  );
+   );
 
-  procedure Output_results(
-    g      : GroupCountries;
-    p      : Peril;
-    to_file: String
+  procedure Output_results (
+    g       : GroupCountries;
+    p       : Peril;
+    to_file : String
   ) is
     use Ada.Text_IO;
-    f: File_Type;
-    separator: constant Character:= ';';
+    f : File_Type;
+    separator : constant Character := ';';
   begin
-    Create(f, Out_File, to_file);
-    Put_Line(f, "Region: " & To_Lower(GroupCountries'Image(g)));
-    Put_Line(f, "Continent: " & To_Lower(Continent'Image(groupcountries_to_continent(g))));
-    Put_Line(f, "Peril type: " & To_Lower(Peril'Image(p)));
-    New_Line(f);
-    for i in 1..100 loop
-      Put(f, Integer'Image(i) & ':' & separator);
-      for j in 1..50 loop
-        Put(f, Integer'Image(i*j) & separator);
+    Create (f, Out_File, to_file);
+    Put_Line (f, "Region: " & To_Lower (GroupCountries'Image (g)));
+    Put_Line (f, "Continent: " & To_Lower (Continent'Image (groupcountries_to_continent (g))));
+    Put_Line (f, "Peril type: " & To_Lower (Peril'Image (p)));
+    New_Line (f);
+    for i in 1 .. 100 loop
+      Put (f, Integer'Image (i) & ':' & separator);
+      for j in 1 .. 50 loop
+        Put (f, Integer'Image (i * j) & separator);
       end loop;
-      New_Line(f);
+      New_Line (f);
     end loop;
-    Close(f);
+    Close (f);
   end Output_results;
 
-  procedure Pack_results(
+  procedure Pack_results (
     g            : GroupCountries;
     p            : Peril;
     to_archive   : in out Zip_Create_info
   )
   is
-    temp_name: constant String:= "temp.csv";
-    final_name: constant String:=
-      To_Lower(
-        Peril'Image(p) & '/' &
-        Continent'Image(groupcountries_to_continent(g)) & '/' &
-        GroupCountries'Image(g) &
-        '_' & Peril_abbr(p) & ".csv"
+    temp_name : constant String := "temp.csv";
+    final_name : constant String :=
+      To_Lower (
+        Peril'Image (p) & '/' &
+        Continent'Image (groupcountries_to_continent (g)) & '/' &
+        GroupCountries'Image (g) &
+        '_' & Peril_abbr (p) & ".csv"
       );
   begin
-    Output_results(g, p, temp_name);
+    Output_results (g, p, temp_name);
     --  Alternatives:
     --    1) use a string instead of a temporary file
     --    2) use an input stream
     --    3) instead of a .csv, an Excel file from Excel Writer
     --         ( http://excel-writer.sf.net/ ) as a string or a stream.
-    Zip.Create.Add_File(
+    Zip.Create.Add_File (
       Info              => to_archive,
       Name              => temp_name,
       Name_in_archive   => final_name,
@@ -148,7 +146,7 @@ procedure Demo_csv_into_zip is
     );
     for p in Peril loop
       for g in GroupCountries loop
-        Pack_results (g,p,archive);
+        Pack_results (g, p, archive);
       end loop;
     end loop;
     Finish (archive);

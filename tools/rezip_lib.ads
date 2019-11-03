@@ -40,7 +40,7 @@ package Rezip_lib is
 
 private
 
-  type Zip_format_set is array(Zip.PKZip_method) of Boolean;
+  type Zip_format_set is array (Zip.PKZip_method) of Boolean;
 
   all_formats        : constant Zip_format_set := (others => True);
   deflate_or_store   : constant Zip_format_set :=

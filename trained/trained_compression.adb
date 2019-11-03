@@ -81,7 +81,7 @@ package body Trained_Compression is
       end if;
     end More_Bytes;
 
-    procedure Write_Byte (B: Byte) is
+    procedure Write_Byte (B : Byte) is
     begin
       if total_compressed < Skip_Compressed then
         total_compressed := total_compressed + 1;
@@ -121,7 +121,7 @@ package body Trained_Compression is
       end if;
     end Read_Byte;
 
-    procedure Write_Byte (B: Byte) is
+    procedure Write_Byte (B : Byte) is
     begin
       if total_decompressed < Skip_Decompressed then
         total_decompressed := total_decompressed + 1;
@@ -137,7 +137,7 @@ package body Trained_Compression is
   begin
     Specific_Decoding.Decompress (
       hints =>
-        ( has_size               => False,
+         (has_size               => False,
           given_size             => Specific_Decoding.dummy_size,
           marker_expected        => True,
           fail_on_bad_range_code => False

@@ -1,17 +1,17 @@
---  ________  ___   ______       ______      ___
--- /___..._/  |.|   |.___.\     /. __ .\   __|.|   ____
---    /../    |.|   |.____/     |.|__|.|  /....|  __\..\
---  _/../___  |.|   |.|    ===  |..__..| |. = .| | = ..|
--- /_______/  |_|  /__|        /__|  |_|  \__\_|  \__\_|
+--   ________  ___   ______       ______      ___
+--  /___..._/  |.|   |.___.\     /. __ .\   __|.|   ____
+--     /../    |.|   |.____/     |.|__|.|  /....|  __\..\
+--   _/../___  |.|   |.|    ===  |..__..| |. = .| | = ..|
+--  /_______/  |_|  /__|        /__|  |_|  \__\_|  \__\_|
 
--- UnZip.Streams
-----------------
+--  UnZip.Streams
+-----------------
 --
--- Extracts, as a stream, a file which is has been compressed into a Zip archive.
--- The Zip archive itself (the input) can be a file or a more general stream.
--- This package is resembling Ada.Streams.Stream_IO, to facilitate transition.
+--  Extracts, as a stream, a file which is has been compressed into a Zip archive.
+--  The Zip archive itself (the input) can be a file or a more general stream.
+--  This package is resembling Ada.Streams.Stream_IO, to facilitate transition.
 
--- Legal licensing note:
+--  Legal licensing note:
 
 --  Copyright (c) 1999 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
@@ -34,8 +34,8 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 with Zip, Zip_Streams;
 
@@ -62,11 +62,11 @@ package UnZip.Streams is
 
    type Count is new Zip_Streams.ZS_Size_Type;
 
-   -- Opens an input stream for the compressed file named Name stored
-   -- in the archive file named Archive_Name. The function Stream(..)
-   -- then gives access to the opened stream.
+   --  Opens an input stream for the compressed file named Name stored
+   --  in the archive file named Archive_Name. The function Stream(..)
+   --  then gives access to the opened stream.
 
-   -- Version: Zip as a file
+   --  Version: Zip as a file
    procedure Open
      (File             : in out Zipped_File_Type; -- File-in-archive handle
       Archive_Name     : in String;               -- Name of archive file
@@ -76,7 +76,7 @@ package UnZip.Streams is
       Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
      );
 
-   -- Version: Zip as a stream
+   --  Version: Zip as a stream
    procedure Open
      (File             : in out Zipped_File_Type; -- File-in-archive handle
       Archive_Stream   : in out Zip_Streams.Root_Zipstream_Type'Class; -- Archive's stream
@@ -86,11 +86,11 @@ package UnZip.Streams is
       Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
      );
 
-   -- Same as above, but uses a the pre-loaded contents of the archive's
-   -- Central Directory; hence Archive_Info is passed instead of
-   -- Archive_Name or Archive_Stream.
-   -- You need to call Zip.Load( Archive_Info... ) prior to opening the
-   -- compressed file.
+   --  Same as above, but uses a the pre-loaded contents of the archive's
+   --  Central Directory; hence Archive_Info is passed instead of
+   --  Archive_Name or Archive_Stream.
+   --  You need to call Zip.Load( Archive_Info... ) prior to opening the
+   --  compressed file.
 
    procedure Open
      (File             : in out Zipped_File_Type; -- File-in-archive handle
@@ -131,7 +131,7 @@ package UnZip.Streams is
    --                                                              --
    ------------------------------------------------------------------
 
-   procedure Extract(
+   procedure Extract (
      Destination      : in out Ada.Streams.Root_Stream_Type'Class;
      Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
      Name             : in String;               -- Name of zipped entry
@@ -152,7 +152,7 @@ private
    type p_String is access String;
 
    type UnZip_Stream_Type is new Ada.Streams.Root_Stream_Type with record
-      state        : UZS_state:= uninitialized;
+      state        : UZS_state := uninitialized;
       archive_info : Zip.Zip_info; -- archive info (.zip file, directory)
       file_name    : p_String; -- name of zipped file to unzip from archive
       uncompressed : p_Stream_Element_Array; -- whole uncompressed data

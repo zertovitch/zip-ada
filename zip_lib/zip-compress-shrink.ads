@@ -1,4 +1,4 @@
--- Legal licensing note:
+--  Legal licensing note:
 
 --  Copyright (c) 2006 .. 2018 Gautier de Montmollin
 --  SWITZERLAND
@@ -21,15 +21,15 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found on the site
+--  http://www.opensource.org/licenses/mit-license.php
 --
--- Translated by P2Ada (v. 15-Nov-2006)
--- from R. P. Byrne's Shrink.Pas (v. 1.2, 1989) in Turbo Pascal
--- and 16-bit assembler, then reworked by G. de Montmollin
+--  Translated by P2Ada (v. 15-Nov-2006)
+--  from R. P. Byrne's Shrink.Pas (v. 1.2, 1989) in Turbo Pascal
+--  and 16-bit assembler, then reworked by G. de Montmollin
 --
--- Note about the LZW patent: as on 10-Dec-2007, one could read on
--- http://www.unisys.com/about__unisys/lzw :
+--  Note about the LZW patent: as on 10-Dec-2007, one could read on
+--  http://www.unisys.com/about__unisys/lzw :
 --
 --  Unisys U.S. LZW Patent No. 4,558,302 expired on June 20, 2003,
 --  the counterpart patents in the United Kingdom, France, Germany
@@ -40,14 +40,14 @@
 
 with Zip.CRC_Crypto;                    use Zip.CRC_Crypto;
 
-private procedure Zip.Compress.Shrink(
+private procedure Zip.Compress.Shrink (
   input,
-  output          : in out Zip_Streams.Root_Zipstream_Type'Class;
-  input_size_known: Boolean;
-  input_size      : File_size_type; -- ignored if unknown
-  feedback        : Feedback_proc;
-  CRC             : in out Interfaces.Unsigned_32; -- only updated here
-  crypto          : in out Crypto_pack;
-  output_size     : out File_size_type;
-  compression_ok  : out Boolean -- indicates compressed <= uncompressed
+  output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+  input_size_known : Boolean;
+  input_size       : File_size_type; -- ignored if unknown
+  feedback         : Feedback_proc;
+  CRC              : in out Interfaces.Unsigned_32; -- only updated here
+  crypto           : in out Crypto_pack;
+  output_size      : out File_size_type;
+  compression_ok   : out Boolean -- indicates compressed <= uncompressed
 );

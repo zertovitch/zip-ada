@@ -47,19 +47,19 @@
 
 generic
 
-  input_buffer_size : Integer:= 1024;
-  output_buffer_size: Integer:= 4096;
+  input_buffer_size  : Integer := 1024;
+  output_buffer_size : Integer := 4096;
 
-  type Buffer is array(Natural range <>) of Interfaces.Unsigned_8;
+  type Buffer is array (Natural range <>) of Interfaces.Unsigned_8;
 
   --  CRC checking is useless if the whole bzip stream is enclosed
   --  in another CRC-checked stream, like a in Zip archive.
-  check_CRC: Boolean;
+  check_CRC : Boolean;
 
   --  Input:
-  with procedure Read(buf: out Buffer);
+  with procedure Read (buf : out Buffer);
   --  Output:
-  with procedure Write(buf: in Buffer);
+  with procedure Write (buf : in Buffer);
 
 package BZip2.Decoding is
 

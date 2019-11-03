@@ -1,3 +1,6 @@
+--  *CAUTION* : bug on the last decoded byte (see "BUG" below)
+---------------
+--
 --  Generic LZH compression and decompression Ada 95 package.
 --
 --    Based on the famous LZHUF by H. OKUMURA & H. YOSHIZAKI
@@ -5,7 +8,7 @@
 --
 --  Legal licensing note:
 --
---  Copyright (c) 1999 .. 2009 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2009 Gautier de Montmollin (Maintainer of the Ada version)
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal
@@ -32,14 +35,14 @@ with Interfaces; use Interfaces;
 
 generic
 
-  -- Input:
+  --  Input:
   with function  Read_byte return Unsigned_8;
   with function  More_bytes return Boolean;
-  -- Output:
-  with procedure Write_byte( b: Unsigned_8 );
+  --  Output:
+  with procedure Write_byte (b : Unsigned_8);
 
-  -- NB: when the encoding length can be determined, a feedback information
-  -- (percents compressed/decompressed) can be achieved in Read_byte.
+  --  NB: when the encoding length can be determined, a feedback information
+  --  (percents compressed/decompressed) can be achieved in Read_byte.
 
 package LZH is
   procedure Encode;

@@ -17,22 +17,22 @@ with Show_License;
 
 procedure Find_Zip is
 
-  max: constant:= 2**10; -- 1024
-  str: String(1..max);  -- str(1..stl) = string to search
-  stl: Natural; -- string length
-  l: Character; -- last character of the search string
+  max : constant := 2**10;   --  1024
+  str : String (1 .. max);   --  str(1..stl) = string to search
+  stl : Natural;  --  string length
+  l : Character;  --  last character of the search string
 
-  z: Zip.Zip_info;
+  z : Zip.Zip_info;
 
-  ignore_case: constant Boolean:= True;
+  ignore_case : constant Boolean := True;
 
-  procedure Search_1_file_using_output_stream( name: String ) is
-    occ: Natural:= 0;
-    -- Define a circular buffer
-    siz: constant:= max;
+  procedure Search_1_file_using_output_stream (name : String) is
+    occ : Natural := 0;
+    --  Define a circular buffer
+    siz : constant := max;
     type Buffer_range is mod siz;
-    buf: array(Buffer_range) of Character:= (others => ' ');
-    bup: Buffer_range:= 0;
+    buf : array (Buffer_range) of Character := (others => ' ');
+    bup : Buffer_range := 0;
     --  We define a local, ad-hoc stream type.
     --
     type Search_stream is new Ada.Streams.Root_Stream_Type with null record;
@@ -52,153 +52,153 @@ procedure Find_Zip is
       Item   : in     Ada.Streams.Stream_Element_Array)
     is
       pragma Unreferenced (Stream);
-      c: Character;
-      i: Buffer_range:= 0;
-      j: Natural;
+      c : Character;
+      i : Buffer_range := 0;
+      j : Natural;
     begin
       for sei in Item'Range loop
-        c:= Character'Val(Item(sei));
+        c := Character'Val (Item (sei));
         if ignore_case then
-          c:= To_Upper(c);
+          c := To_Upper (c);
         end if;
         if c = l then -- last character do match, search further...
-          i:= bup;
-          j:= stl;
-          match: loop
-            i:= i-1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
-            j:= j-1;
+          i := bup;
+          j := stl;
+          match : loop
+            i := i - 1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
+            j := j - 1;
             if j = 0 then -- we survived the whole search string
-              occ:= occ+1;
+              occ := occ + 1;
               exit match;
             end if;
-            exit match when str(j) /= buf(i);
+            exit match when str (j) /= buf (i);
           end loop match;
         end if;
-        buf(bup):= c;
-        bup:= bup+1;
+        buf (bup) := c;
+        bup := bup + 1;
       end loop;
     end Write;
 
-    sst: Search_stream;
+    sst : Search_stream;
 
   begin
-    Extract(
+    Extract (
       Destination      => sst,
       Archive_Info     => z,
       Name             => name,
       Ignore_Directory => False
     );
     if occ > 0 then
-      Put(occ, 5);
-      Put_Line(" in [" & To_Lower(name) & "]'s contents");
+      Put (occ, 5);
+      Put_Line (" in [" & To_Lower (name) & "]'s contents");
     end if;
   end Search_1_file_using_output_stream;
 
   --  Old variant using an input stream (memory footprint is uncompressed
   --  size plus fixed amounts: can be large!)
 
-  procedure Search_1_file_using_input_stream( name: String ) is
-    f: Zipped_File_Type;
-    s: Stream_Access;
-    c: Character;
-    occ: Natural:= 0;
-    -- Define a circular buffer
-    siz: constant:= max;
+  procedure Search_1_file_using_input_stream (name : String) is
+    f : Zipped_File_Type;
+    s : Stream_Access;
+    c : Character;
+    occ : Natural := 0;
+    --  Define a circular buffer
+    siz : constant := max;
     type Buffer_range is mod siz;
-    buf: array(Buffer_range) of Character:= (others => ' ');
-    i, bup: Buffer_range:= 0;
-    j: Natural;
+    buf : array (Buffer_range) of Character := (others => ' ');
+    i, bup : Buffer_range := 0;
+    j : Natural;
   begin
-    Open( f, z, name );
-    s:= Stream(f);
-    while not End_Of_File(f) loop
-      Character'Read(s,c);
+    Open (f, z, name);
+    s := Stream (f);
+    while not End_Of_File (f) loop
+      Character'Read (s, c);
       if ignore_case then
-        c:= To_Upper(c);
+        c := To_Upper (c);
       end if;
       if c = l then -- last character do match, search further...
-        i:= bup;
-        j:= stl;
-        match: loop
-          i:= i-1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
-          j:= j-1;
+        i := bup;
+        j := stl;
+        match : loop
+          i := i - 1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
+          j := j - 1;
           if j = 0 then -- we survived the whole search string
-            occ:= occ+1;
+            occ := occ + 1;
             exit match;
           end if;
-          exit match when str(j) /= buf(i);
+          exit match when str (j) /= buf (i);
         end loop match;
       end if;
-      buf(bup):= c;
-      bup:= bup+1;
+      buf (bup) := c;
+      bup := bup + 1;
     end loop;
-    Close(f);
+    Close (f);
     if occ > 0 then
-      Put(occ, 5);
-      Put_Line(" in [" & To_Lower(name) & "] (inward stream method)");
+      Put (occ, 5);
+      Put_Line (" in [" & To_Lower (name) & "] (inward stream method)");
     end if;
   end Search_1_file_using_input_stream;
   pragma Unreferenced (Search_1_file_using_input_stream);
 
-  procedure Search_all_files is new Zip.Traverse( Search_1_file_using_output_stream );
+  procedure Search_all_files is new Zip.Traverse (Search_1_file_using_output_stream);
 
-  procedure Search_in_entry_name( name: String ) is
+  procedure Search_in_entry_name (name : String) is
     un : String := name;
   begin
     if ignore_case then
-      un:= To_Upper(un);
+      un := To_Upper (un);
     end if;
-    if Index (un, str(1..stl)) > 0 then
-      Put_Line(" Found in [" & To_Lower(name) & "]'s entry name");
+    if Index (un, str (1 .. stl)) > 0 then
+      Put_Line (" Found in [" & To_Lower (name) & "]'s entry name");
     end if;
   end Search_in_entry_name;
 
-  procedure Search_all_file_names is new Zip.Traverse( Search_in_entry_name );
+  procedure Search_all_file_names is new Zip.Traverse (Search_in_entry_name);
 
-  function Try_with_zip(name: String) return String is
+  function Try_with_zip (name : String) return String is
   begin
-    if Zip.Exists(name) then
+    if Zip.Exists (name) then
       return name;
     else
       return name & ".zip";
-      -- Maybe the file doesn't exist, but we tried our best...
+      --  Maybe the file doesn't exist, but we tried our best...
     end if;
   end Try_with_zip;
 
 begin
   if Argument_Count < 2 then
-    Put_Line("Find_Zip * Search a text string in files packed in a zip archive.");
-    Put_Line("Demo for the Zip-Ada library, by G. de Montmollin");
-    Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
-    Put_Line("URL: " & Zip.web);
+    Put_Line ("Find_Zip * Search a text string in files packed in a zip archive.");
+    Put_Line ("Demo for the Zip-Ada library, by G. de Montmollin");
+    Put_Line ("Library version " & Zip.version & " dated " & Zip.reference);
+    Put_Line ("URL: " & Zip.web);
     Show_License (Current_Output, "zip.ads");
-    Put_Line("Usage: find_zip archive[.zip] [""]text[""]");
+    Put_Line ("Usage: find_zip archive[.zip] [""]text[""]");
     return;
   end if;
   declare
-    n: constant String:= Try_with_zip(Argument(1));
+    n : constant String := Try_with_zip (Argument (1));
   begin
-    Zip.Load( z, n );
+    Zip.Load (z, n);
   exception
     when Zip.Zip_file_open_error =>
-      Put( "Can't open archive [" & n & ']' ); raise;
+      Put ("Can't open archive [" & n & ']'); raise;
     when UnZip.Wrong_password      =>
-      Put( "Archive has a password" ); raise;
+      Put ("Archive has a password"); raise;
   end;
   declare
-    s: String:= Argument(2);
+    s : String := Argument (2);
   begin
-    Put_Line("Searching string [" & s & "]");
+    Put_Line ("Searching string [" & s & "]");
     if ignore_case then
-      s:= To_Upper(s);
+      s := To_Upper (s);
     end if;
-    stl:= s'Length;
+    stl := s'Length;
     if stl > str'Length then
       raise Constraint_Error;
     end if;
-    str(1..stl):= s;
-    l:= str(stl);
+    str (1 .. stl) := s;
+    l := str (stl);
   end;
-  Search_all_files(z);
-  Search_all_file_names(z);
+  Search_all_files (z);
+  Search_all_file_names (z);
 end Find_Zip;

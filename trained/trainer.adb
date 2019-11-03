@@ -53,10 +53,10 @@ procedure Trainer is
   subtype Byte is Interfaces.Unsigned_8;
   package Byte_IO is new Ada.Direct_IO (Byte);
 
-  Infile, Outfile: Byte_IO.File_Type;
+  Infile, Outfile : Byte_IO.File_Type;
 
   function Read_Byte return Byte is
-    B: Byte;
+    B : Byte;
   begin
     Byte_IO.Read (Infile, B);
     return B;
@@ -67,7 +67,7 @@ procedure Trainer is
     return not Byte_IO.End_Of_File (Infile);
   end More_Bytes;
 
-  procedure Write_Byte (B: Byte) is
+  procedure Write_Byte (B : Byte) is
   begin
     Byte_IO.Write (Outfile, B);
   end Write_Byte;

@@ -45,17 +45,17 @@ procedure Trained_Encoder is
   subtype Byte is Interfaces.Unsigned_8;
   package Byte_IO is new Ada.Direct_IO (Byte);
 
-  Infile_Train, Infile_Data, Outfile: Byte_IO.File_Type;
+  Infile_Train, Infile_Data, Outfile : Byte_IO.File_Type;
 
   function Read_Train_Byte return Byte is
-    B: Byte;
+    B : Byte;
   begin
     Byte_IO.Read (Infile_Train, B);
     return B;
   end Read_Train_Byte;
 
   function Read_Data_Byte return Byte is
-    B: Byte;
+    B : Byte;
   begin
     Byte_IO.Read (Infile_Data, B);
     return B;
@@ -66,7 +66,7 @@ procedure Trained_Encoder is
     return not Byte_IO.End_Of_File (Infile_Data);
   end More_Data_Bytes;
 
-  procedure Write_Byte (B: Byte) is
+  procedure Write_Byte (B : Byte) is
   begin
     Byte_IO.Write (Outfile, B);
   end Write_Byte;

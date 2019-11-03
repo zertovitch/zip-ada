@@ -5,8 +5,8 @@
 --
 package BWT is
 
-  procedure Encode (message : in out String; index: out Positive);
+  procedure Encode (message : in out String; index : out Positive);
 
-  procedure Decode (message : in out String; index: in Positive);
+  procedure Decode (message : in out String; index : in Positive);
 
 end BWT;

@@ -37,8 +37,8 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found 21-Aug-2016 on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found 21-Aug-2016 on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 --  Change log:
 --  ==========
@@ -78,7 +78,7 @@ package Zip_Streams is
    --  Ada.Calendar.Time.
    type Time is private;
 
-   default_time: constant Time;  --  some default time
+   default_time : constant Time;  --  some default time
 
    ------------------------------------------------------
    --  Root_Zipstream_Type: root abstract stream type  --
@@ -101,40 +101,40 @@ package Zip_Streams is
    function Size (S : in Root_Zipstream_Type) return ZS_Size_Type is abstract;
 
    --  This procedure sets the name of the stream
-   procedure Set_Name(S : in out Root_Zipstream_Type; Name : String);
+   procedure Set_Name (S : in out Root_Zipstream_Type; Name : String);
 
    --  This procedure returns the name of the stream
-   function Get_Name(S : in Root_Zipstream_Type) return String;
+   function Get_Name (S : in Root_Zipstream_Type) return String;
 
    procedure Set_Unicode_Name_Flag (S     : out Root_Zipstream_Type;
                                     Value : in Boolean);
-   function Is_Unicode_Name(S : in Root_Zipstream_Type)
-                            return Boolean;
+   function Is_Unicode_Name (S : in Root_Zipstream_Type)
+                             return Boolean;
 
    procedure Set_Read_Only_Flag (S     : out Root_Zipstream_Type;
                                  Value : in Boolean);
-   function Is_Read_Only(S : in Root_Zipstream_Type)
-                         return Boolean;
+   function Is_Read_Only (S : in Root_Zipstream_Type)
+                          return Boolean;
 
    --  This procedure sets the Modification_Time of the stream
-   procedure Set_Time(S : in out Root_Zipstream_Type;
-                      Modification_Time : Time);
+   procedure Set_Time (S : in out Root_Zipstream_Type;
+                       Modification_Time : Time);
 
    --  Set_Time again, but with the standard Ada Time type.
    --  Overriding is useless and potentially harmful, so we prevent it with
    --  a class-wide profile.
-   procedure Set_Time(S : out Root_Zipstream_Type'Class;
-                      Modification_Time : Ada.Calendar.Time);
+   procedure Set_Time (S : out Root_Zipstream_Type'Class;
+                       Modification_Time : Ada.Calendar.Time);
 
    --  This procedure returns the ModificationTime of the stream
-   function Get_Time(S : in Root_Zipstream_Type)
-                     return Time;
+   function Get_Time (S : in Root_Zipstream_Type)
+                      return Time;
 
    --  Get_Time again, but with the standard Ada Time type.
    --  Overriding is useless and potentially harmful, so we prevent it with
    --  a class-wide profile.
-   function Get_Time(S : in Root_Zipstream_Type'Class)
-                     return Ada.Calendar.Time;
+   function Get_Time (S : in Root_Zipstream_Type'Class)
+                      return Ada.Calendar.Time;
 
    --  Returns true if the index is at the end of the stream, else false
    function End_Of_Stream (S : in Root_Zipstream_Type)
@@ -179,12 +179,12 @@ package Zip_Streams is
 
    package Calendar is
       --
-      function Convert(date : in Ada.Calendar.Time) return Time;
-      function Convert(date : in Time) return Ada.Calendar.Time;
+      function Convert (date : in Ada.Calendar.Time) return Time;
+      function Convert (date : in Time) return Ada.Calendar.Time;
       --
       subtype DOS_Time is Interfaces.Unsigned_32;
-      function Convert(date : in DOS_Time) return Time;
-      function Convert(date : in Time) return DOS_Time;
+      function Convert (date : in DOS_Time) return Time;
+      function Convert (date : in Time) return DOS_Time;
       --
       use Ada.Calendar;
       --
@@ -201,7 +201,7 @@ package Zip_Streams is
          Day     : Day_Number;
          Seconds : Day_Duration := 0.0) return Time;
       --
-      function ">"  (Left, Right : Time) return Boolean;
+      function ">" (Left, Right : Time) return Boolean;
       --
       Time_Error : exception;
    end Calendar;
@@ -218,7 +218,7 @@ private
    --  in Zip archives. Subject to change, this is why this type is private.
    type Time is new Interfaces.Unsigned_32;
 
-   default_time: constant Time:= 16789 * 65536;
+   default_time : constant Time := 16789 * 65536;
 
    type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with
       record

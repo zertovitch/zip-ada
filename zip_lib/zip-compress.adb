@@ -1,4 +1,4 @@
--- Legal licensing note:
+--  Legal licensing note:
 
 --  Copyright (c) 2007 .. 2018 Gautier de Montmollin (Maintainer of the Ada version)
 --  SWITZERLAND
@@ -21,8 +21,8 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 with Zip.CRC_Crypto,
      Zip.Compress.Shrink,
@@ -44,107 +44,107 @@ package body Zip.Compress is
 
   procedure Compress_data
    (input,
-    output          : in out Zip_Streams.Root_Zipstream_Type'Class;
-    input_size_known: Boolean;
-    input_size      : File_size_type;
-    method          : Compression_Method;
-    feedback        : Feedback_proc;
-    password        : String;
-    content_hint    : Data_content_type;
-    CRC             : out Interfaces.Unsigned_32;
-    output_size     : out File_size_type;
-    zip_type        : out Interfaces.Unsigned_16
+    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+    input_size_known : Boolean;
+    input_size       : File_size_type;
+    method           : Compression_Method;
+    feedback         : Feedback_proc;
+    password         : String;
+    content_hint     : Data_content_type;
+    CRC              : out Interfaces.Unsigned_32;
+    output_size      : out File_size_type;
+    zip_type         : out Interfaces.Unsigned_16
    )
   is
     use Interfaces;
-    counted: File_size_type;
-    user_aborting: Boolean;
-    idx_in:  constant ZS_Index_Type:= Index(input);
-    idx_out: constant ZS_Index_Type:= Index(output);
-    compression_ok: Boolean;
-    first_feedback: Boolean:= True;
+    counted : File_size_type;
+    user_aborting : Boolean;
+    idx_in :  constant ZS_Index_Type := Index (input);
+    idx_out : constant ZS_Index_Type := Index (output);
+    compression_ok : Boolean;
+    first_feedback : Boolean := True;
     --
-    is_encrypted: constant Boolean:= password /= "";
-    encrypt_pack, mem_encrypt_pack: Crypto_pack;
-    encrypt_header: Byte_Buffer(1..12);
-    package Byte_soup is new Ada.Numerics.Discrete_Random(Byte);
+    is_encrypted : constant Boolean := password /= "";
+    encrypt_pack, mem_encrypt_pack : Crypto_pack;
+    encrypt_header : Byte_Buffer (1 .. 12);
+    package Byte_soup is new Ada.Numerics.Discrete_Random (Byte);
     use Byte_soup;
-    cg: Byte_soup.Generator;
+    cg : Byte_soup.Generator;
     --
     --  Store data as is, or, if do_write = False, just compute CRC (this is for encryption).
     --
-    procedure Store_data(do_write: Boolean) is
+    procedure Store_data (do_write : Boolean) is
       Buffer      : Byte_Buffer (1 .. buffer_size);
       Last_Read   : Natural;
     begin
-      zip_type:= compression_format_code.store;
-      counted:= 0;
-      while not End_Of_Stream(input) loop
+      zip_type := compression_format_code.store;
+      counted := 0;
+      while not End_Of_Stream (input) loop
         if input_size_known and counted >= input_size then
           exit;
         end if;
-        -- Copy data
+        --  Copy data
         BlockRead (input, Buffer, Last_Read);
-        counted:= counted + File_size_type (Last_Read);
-        Update(CRC, Buffer (1 .. Last_Read));
+        counted := counted + File_size_type (Last_Read);
+        Update (CRC, Buffer (1 .. Last_Read));
         if do_write then
-          Encode(encrypt_pack, Buffer (1 .. Last_Read));
-          BlockWrite(output, Buffer (1 .. Last_Read));
+          Encode (encrypt_pack, Buffer (1 .. Last_Read));
+          BlockWrite (output, Buffer (1 .. Last_Read));
         end if;
-        -- Feedback
+        --  Feedback
         if feedback /= null and then
-          (first_feedback or (counted mod (2**16)=0) or
+          (first_feedback or (counted mod (2**16) = 0) or
           (input_size_known and counted = input_size))
         then
           if input_size_known then
-            feedback(
+            feedback (
               percents_done =>
-                Natural( (100.0 * Float(counted)) / Float(input_size) ),
+                Natural ((100.0 * Float (counted)) / Float (input_size)),
               entry_skipped => False,
-              user_abort    => user_aborting );
+              user_abort    => user_aborting);
           else
-            feedback(
+            feedback (
               percents_done => 0,
               entry_skipped => False,
-              user_abort    => user_aborting );
+              user_abort    => user_aborting);
           end if;
-          first_feedback:= False;
+          first_feedback := False;
           if user_aborting then
             raise User_abort;
           end if;
         end if;
       end loop;
-      output_size:= counted;
-      compression_ok:= True;
+      output_size := counted;
+      compression_ok := True;
     end Store_data;
     --
-    procedure Compress_data_single_method(actual_method: Single_Method) is
+    procedure Compress_data_single_method (actual_method : Single_Method) is
     begin
-      Init(CRC);
+      Init (CRC);
       if is_encrypted then
-        Init_keys(encrypt_pack, password);
-        Set_mode(encrypt_pack, encrypted);
+        Init_keys (encrypt_pack, password);
+        Set_mode (encrypt_pack, encrypted);
         --  A bit dumb from Zip spec: we need to know the final CRC in order to set up
         --  the last byte of the encryption header, that allows for detecting if a password
         --  is OK - this, with 255/256 probability of correct detection of a wrong password!
         --  Result: 1st scan of the whole input stream with CRC calculation:
-        Store_data(do_write => False);
-        Reset(cg);
-        for i in 1..11 loop
-          encrypt_header(i):= Random(cg);
+        Store_data (do_write => False);
+        Reset (cg);
+        for i in 1 .. 11 loop
+          encrypt_header (i) := Random (cg);
         end loop;
-        encrypt_header(12):= Byte(Shift_Right( Final(CRC), 24 ));
-        Set_Index(input, idx_in);
-        Init(CRC);
-        Encode(encrypt_pack, encrypt_header);
-        BlockWrite(output, encrypt_header);
+        encrypt_header (12) := Byte (Shift_Right (Final (CRC), 24));
+        Set_Index (input, idx_in);
+        Init (CRC);
+        Encode (encrypt_pack, encrypt_header);
+        BlockWrite (output, encrypt_header);
         --
         --  We need to remember at this point the encryption keys in case we need
         --  to rewrite from here (compression failed, store data).
         --
-        mem_encrypt_pack:= encrypt_pack;
+        mem_encrypt_pack := encrypt_pack;
       else
-        Set_mode(encrypt_pack, clear);
+        Set_mode (encrypt_pack, clear);
       end if;
       --
       --  Dispatch the work to child procedures doing the stream compression
@@ -155,70 +155,70 @@ package body Zip.Compress is
       case actual_method is
         --
         when Store =>
-          Store_data(do_write => True);
+          Store_data (do_write => True);
         --
         when Shrink =>
-          Zip.Compress.Shrink(
+          Zip.Compress.Shrink (
             input, output, input_size_known, input_size, feedback,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= compression_format_code.shrink;
+          zip_type := compression_format_code.shrink;
         --
         when Reduction_Method =>
-          Zip.Compress.Reduce(
+          Zip.Compress.Reduce (
             input, output, input_size_known, input_size, feedback,
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= compression_format_code.reduce +
-            Unsigned_16(
-              Compression_Method'Pos(actual_method) -
-              Compression_Method'Pos(Reduce_1)
+          zip_type := compression_format_code.reduce +
+            Unsigned_16 (
+              Compression_Method'Pos (actual_method) -
+              Compression_Method'Pos (Reduce_1)
             );
         when Deflation_Method =>
-          Zip.Compress.Deflate(
+          Zip.Compress.Deflate (
             input, output, input_size_known, input_size, feedback,
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= compression_format_code.deflate;
+          zip_type := compression_format_code.deflate;
         when LZMA_Method =>
-          Zip.Compress.LZMA_E(
+          Zip.Compress.LZMA_E (
             input, output, input_size_known, input_size, feedback,
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type:= compression_format_code.lzma;
+          zip_type := compression_format_code.lzma;
       end case;
-      CRC:= Final(CRC);
+      CRC := Final (CRC);
       --
-      -- Handle case where compression has been unefficient:
-      -- data to be compressed is too "random"; then compressed data
-      -- happen to be larger than uncompressed data
+      --  Handle case where compression has been unefficient:
+      --  data to be compressed is too "random"; then compressed data
+      --  happen to be larger than uncompressed data
       --
       if not compression_ok then
-        -- Go back to the beginning and just store the data
-        Set_Index(input, idx_in);
+        --  Go back to the beginning and just store the data
+        Set_Index (input, idx_in);
         if is_encrypted then
-          Set_Index(output, idx_out + 12);
+          Set_Index (output, idx_out + 12);
           --  Restore the encryption keys to their state just after the encryption header:
-          encrypt_pack:= mem_encrypt_pack;
+          encrypt_pack := mem_encrypt_pack;
         else
-          Set_Index(output, idx_out);
+          Set_Index (output, idx_out);
         end if;
-        Init(CRC);
-        Store_data(do_write => True);
-        CRC:= Final(CRC);
+        Init (CRC);
+        Store_data (do_write => True);
+        CRC := Final (CRC);
       end if;
       if is_encrypted then
-        output_size:= output_size + 12;
+        output_size := output_size + 12;
       end if;
     end Compress_data_single_method;
 
-    fast_presel: constant Boolean:=
+    fast_presel : constant Boolean :=
       method = Preselection_1 or (input_size_known and input_size < 22_805);
 
-    data_type_to_LZMA_method: constant array(Data_content_type) of LZMA_Method:=
+    data_type_to_LZMA_method : constant array (Data_content_type) of LZMA_Method :=
       (JPEG    => LZMA_for_JPEG,
        ARW_RW2 => LZMA_for_ARW,
        ORF_CR2 => LZMA_for_ORF,
@@ -235,58 +235,58 @@ package body Zip.Compress is
     case method is
       --
       when Single_Method =>
-        Compress_data_single_method(method);
+        Compress_data_single_method (method);
       --
       when Preselection_Method =>
         case content_hint is
           when Neutral =>  --  No clue about what kind of data
             if input_size_known and input_size < 9_000 then
-              Compress_data_single_method(Deflate_3);  --  Deflate
+              Compress_data_single_method (Deflate_3);  --  Deflate
             elsif fast_presel then
               --  See: Optimum, LZ77 sheet in za_work.xls
               --       or l2_vs_l3.xls with a larger data set.
-              Compress_data_single_method(LZMA_2);                 --  LZMA with IZ_10 match finder
+              Compress_data_single_method (LZMA_2);                 --  LZMA with IZ_10 match finder
             else
-              Compress_data_single_method(LZMA_3);                 --  LZMA with BT4 match finder
+              Compress_data_single_method (LZMA_3);                 --  LZMA with BT4 match finder
             end if;
           when ARW_RW2 | ORF_CR2 | MP3 | MP4 | JPEG | PGM | PPM | PNG | WAV =>
             if input_size_known and input_size < 2_250 then
-              Compress_data_single_method(Deflate_3);  --  Deflate
+              Compress_data_single_method (Deflate_3);  --  Deflate
             else
-              Compress_data_single_method(data_type_to_LZMA_method(content_hint));
+              Compress_data_single_method (data_type_to_LZMA_method (content_hint));
             end if;
           when GIF =>
             if input_size_known and input_size < 350 then
-              Compress_data_single_method(Deflate_1);
+              Compress_data_single_method (Deflate_1);
             else
-              Compress_data_single_method(LZMA_for_GIF);
+              Compress_data_single_method (LZMA_for_GIF);
             end if;
           when Zip_in_Zip =>
             if input_size_known and input_size < 1_000 then
-              Compress_data_single_method(Deflate_3);  --  Deflate
+              Compress_data_single_method (Deflate_3);  --  Deflate
             elsif fast_presel then
-              Compress_data_single_method(LZMA_2_for_Zip_in_Zip);
+              Compress_data_single_method (LZMA_2_for_Zip_in_Zip);
             else
-              Compress_data_single_method(LZMA_3_for_Zip_in_Zip);
+              Compress_data_single_method (LZMA_3_for_Zip_in_Zip);
             end if;
           when Source_code =>
             if input_size_known and input_size < 8_000 then
-              Compress_data_single_method(Deflate_3);  --  Deflate
+              Compress_data_single_method (Deflate_3);  --  Deflate
             elsif fast_presel then
-              Compress_data_single_method(LZMA_2_for_Source);
+              Compress_data_single_method (LZMA_2_for_Source);
             else
-              Compress_data_single_method(LZMA_3_for_Source);
+              Compress_data_single_method (LZMA_3_for_Source);
             end if;
         end case;
     end case;
   end Compress_data;
 
-  function Guess_type_from_name(name: String) return Data_content_type is
-    up: constant String:= To_Upper(name);
-    ext_1: constant String:= Tail(up, 2);
-    ext_2: constant String:= Tail(up, 3);
-    ext_3: constant String:= Tail(up, 4);
-    ext_4: constant String:= Tail(up, 5);
+  function Guess_type_from_name (name : String) return Data_content_type is
+    up : constant String := To_Upper (name);
+    ext_1 : constant String := Tail (up, 2);
+    ext_2 : constant String := Tail (up, 3);
+    ext_3 : constant String := Tail (up, 4);
+    ext_4 : constant String := Tail (up, 5);
   begin
     if ext_3 = ".JPG" or else ext_4 = ".JPEG" then
       return JPEG;

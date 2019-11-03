@@ -32,7 +32,7 @@ package body BZip2 is
   package body CRC is
 
     CRC32_Table :
-      constant array( Unsigned_32'(0)..255 ) of Unsigned_32:= (
+      constant array (Unsigned_32'(0) .. 255) of Unsigned_32 := (
          16#00000000#, 16#04c11db7#, 16#09823b6e#, 16#0d4326d9#,
          16#130476dc#, 16#17c56b6b#, 16#1a864db2#, 16#1e475005#,
          16#2608edb8#, 16#22c9f00f#, 16#2f8ad6d6#, 16#2b4bcb61#,
@@ -99,15 +99,15 @@ package body BZip2 is
          16#bcb4666d#, 16#b8757bda#, 16#b5365d03#, 16#b1f740b4#
     );
 
-    procedure Update (CRC: in out Unsigned_32; val : Byte) is
+    procedure Update (CRC : in out Unsigned_32; val : Byte) is
     begin
       CRC :=
-        CRC32_Table( 16#FF# and ( Shift_Right(CRC, 24) xor Unsigned_32( val ) ) )
+        CRC32_Table (16#FF# and (Shift_Right (CRC, 24) xor Unsigned_32 (val)))
         xor
-        Shift_Left( CRC , 8 );
+        Shift_Left (CRC, 8);
     end Update;
 
-    procedure Init (CRC: out Unsigned_32) is
+    procedure Init (CRC : out Unsigned_32) is
     begin
       CRC := 16#FFFF_FFFF#;
     end Init;

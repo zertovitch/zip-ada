@@ -6,7 +6,7 @@
 --    LZMA_Enc, a standalone encoder to .lzma files
 --    Zip.Compress.LZMA_E, creates Zip files entries with LZMA encoding
 
--- Legal licensing note:
+--  Legal licensing note:
 
 --  Copyright (c) 2016 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
@@ -29,8 +29,8 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 package LZMA.Encoding is
 
@@ -49,9 +49,9 @@ package LZMA.Encoding is
     with function  Read_Byte return Byte;
     with function  More_Bytes return Boolean;
     --  Output of LZMA-compressed data:
-    with procedure Write_Byte (b: Byte);
+    with procedure Write_Byte (b : Byte);
     --
-  procedure Encode(
+  procedure Encode (
     level                  : Compression_level           := Level_1;
     literal_context_bits   : Literal_context_bits_range  := 3;   --  Bits of last byte are used.
     literal_position_bits  : Literal_position_bits_range := 0;   --  Position mod 2**bits is used.

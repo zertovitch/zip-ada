@@ -29,8 +29,8 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found 21-Aug-2016 on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found 21-Aug-2016 on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 with Interfaces;
 
@@ -64,16 +64,16 @@ package LZ77 is
     Look_Ahead         : Integer := 65;     --  Default values.
     Threshold          : Integer := 2;      --  Default values.
     --
-    Method: Method_Type;
+    Method : Method_Type;
     --
-    -- Input of data:
+    --  Input of data:
     with function  Read_byte return Byte;
     with function  More_bytes return Boolean;
-    -- Output of LZ-compressed data:
-    with procedure Write_literal( b: Byte );
-    with procedure Write_DL_code( distance, length: Integer );
+    --  Output of LZ-compressed data:
+    with procedure Write_literal (b : Byte);
+    with procedure Write_DL_code (distance, length : Integer);
     --
-    LZMA_friendly: Boolean:= True;  --  Up to 4 recent distances may be preferred
+    LZMA_friendly : Boolean := True;  --  Up to 4 recent distances may be preferred
   procedure Encode;
 
 end LZ77;

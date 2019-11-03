@@ -8,7 +8,7 @@
 --    LZMA_Dec, a standalone decoder for .lzma files
 --    UnZip.Decompress, extracts Zip files entries with, among others, LZMA encoding
 
--- Legal licensing note:
+--  Legal licensing note:
 
 --  Copyright (c) 2014 .. 2019 Gautier de Montmollin (Maintainer of the Ada version)
 --  SWITZERLAND
@@ -31,14 +31,14 @@
 --  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 --  THE SOFTWARE.
 
--- NB: this is the MIT License, as found on the site
--- http://www.opensource.org/licenses/mit-license.php
+--  NB: this is the MIT License, as found on the site
+--  http://www.opensource.org/licenses/mit-license.php
 
 generic
   --  Input:
   with function Read_Byte return Byte;
   --  Output:
-  with procedure Write_Byte (b: Byte);
+  with procedure Write_Byte (b : Byte);
 
 package LZMA.Decoding is
 
@@ -54,7 +54,7 @@ package LZMA.Decoding is
   --  side below: type LZMA_Hints) and *not* giving any hardcoded
   --  size (has_size = False), and keeping given_size = dummy_size (default).
 
-  dummy_size: constant Data_Bytes_Count:= Data_Bytes_Count'Last;
+  dummy_size : constant Data_Bytes_Count := Data_Bytes_Count'Last;
 
   --  The hints represent knowledge prior to decompressing a LZMA
   --  stream. Notably, the LZMA header with has_size = True is *not*
@@ -75,7 +75,7 @@ package LZMA.Decoding is
   --  Usage #1 : Object-less procedure, if you care only about the decompression  --
   ----------------------------------------------------------------------------------
 
-  procedure Decompress(hints: LZMA_Hints);
+  procedure Decompress (hints : LZMA_Hints);
   --  The parameter hints.has_size must have the same value as
   --  uncompressed_size_info in LZMA.Encoding.Encode: there are unfortunately
   --  two incompatible LZMA header variants: one including uncompressed
@@ -87,23 +87,23 @@ package LZMA.Decoding is
   ---------------------------------------------------------------------------
 
   type LZMA_Decoder_Info is limited private;
-  procedure Decode(info: out LZMA_Decoder_Info; hints: LZMA_Hints; res: out LZMA_Result);
+  procedure Decode (info : out LZMA_Decoder_Info; hints : LZMA_Hints; res : out LZMA_Result);
 
   --  The technical details:
-  function Literal_context_bits(info: LZMA_Decoder_Info) return Natural;
-  function Literal_pos_bits(info: LZMA_Decoder_Info) return Natural;
-  function Pos_bits(info: LZMA_Decoder_Info) return Natural;
+  function Literal_context_bits (info : LZMA_Decoder_Info) return Natural;
+  function Literal_pos_bits (info : LZMA_Decoder_Info) return Natural;
+  function Pos_bits (info : LZMA_Decoder_Info) return Natural;
 
-  function Unpack_size_defined(info: LZMA_Decoder_Info) return Boolean;
-  function Unpack_size_as_defined(info: LZMA_Decoder_Info) return Data_Bytes_Count;
+  function Unpack_size_defined (info : LZMA_Decoder_Info) return Boolean;
+  function Unpack_size_as_defined (info : LZMA_Decoder_Info) return Data_Bytes_Count;
   --  Sizes in bytes:
-  function Probability_model_size(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
-  function Dictionary_size(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
-  function Dictionary_size_in_properties(info: LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Probability_model_size (info : LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Dictionary_size (info : LZMA_Decoder_Info) return Interfaces.Unsigned_32;
+  function Dictionary_size_in_properties (info : LZMA_Decoder_Info) return Interfaces.Unsigned_32;
   --
-  function Range_decoder_corrupted(info: LZMA_Decoder_Info) return Boolean;
+  function Range_decoder_corrupted (info : LZMA_Decoder_Info) return Boolean;
 
-  LZMA_Error: exception;
+  LZMA_Error : exception;
 
 private
 

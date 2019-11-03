@@ -3,7 +3,7 @@ with Ada.Unchecked_Deallocation;
 
 package body BWT is
 
-  procedure Encode (message : in out String; index: out Positive) is
+  procedure Encode (message : in out String; index : out Positive) is
     subtype Rng is Integer range message'Range;
     subtype Message_Clone is String (Rng);
     type Table is array (Rng) of Message_Clone;
@@ -23,14 +23,14 @@ package body BWT is
     --  Fill table m with rotated copies of message.
     for i in Rng loop
       for j in Rng loop
-        m(i)(j) := message (Rng'First + (j-Rng'First + i-Rng'First) mod message'Length);
+        m (i)(j) := message (Rng'First + (j - Rng'First + i - Rng'First) mod message'Length);
       end loop;
     end loop;
     Sort (m.all);
     --  Copy last column and find index of original message.
     for i in Rng loop
-      new_message (i) := m(i)(Rng'Last);
-      if not found and then m(i) = message then
+      new_message (i) := m (i)(Rng'Last);
+      if not found and then m (i) = message then
         found := True;
         index := i;  --  Found row with the message without rotation.
       end if;
@@ -39,7 +39,7 @@ package body BWT is
     message := new_message;
   end Encode;
 
-  procedure Decode (message : in out String; index: in Positive) is
+  procedure Decode (message : in out String; index : in Positive) is
     subtype Rng is Integer range message'Range;
     subtype Message_Clone is String (Rng);
     type Table is array (Rng) of Message_Clone;
@@ -58,7 +58,7 @@ package body BWT is
       --  Shift columns right
       for i in Rng loop
         for j in reverse Rng'First + 1 .. Rng'Last loop
-          m(i)(j) := m(i)(j-1);
+          m (i)(j) := m (i)(j - 1);
         end loop;
       end loop;
       --  Insert transformed string t as first column.
@@ -71,7 +71,7 @@ package body BWT is
       --  list of all triplets. And so on.
       --
       for i in Rng loop
-        m(i)(1) := message (i);
+        m (i)(1) := message (i);
       end loop;
       Sort (m.all);
     end loop;

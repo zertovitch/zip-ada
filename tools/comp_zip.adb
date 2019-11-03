@@ -13,15 +13,15 @@ with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 
 procedure Comp_Zip is
-  z: array(1..2) of Zip.Zip_info;
+  z : array (1 .. 2) of Zip.Zip_info;
 
-  function Try_with_zip(zip_name: String) return String is
+  function Try_with_zip (zip_name : String) return String is
   begin
-    if Zip.Exists(zip_name) then
+    if Zip.Exists (zip_name) then
       return zip_name;
     else
       return zip_name & ".zip";
-      -- Maybe the file doesn't exist, but we tried our best...
+      --  Maybe the file doesn't exist, but we tried our best...
     end if;
   end Try_with_zip;
 
@@ -30,43 +30,43 @@ procedure Comp_Zip is
 
   procedure Blurb is
   begin
-    Put_Line("Comp_Zip * compare two zip archive files, including their contents");
-    Put_Line("Demo for the Zip-Ada library, by G. de Montmollin");
-    Put_Line("Library version " & Zip.version & " dated " & Zip.reference );
-    Put_Line("URL: " & Zip.web);
+    Put_Line ("Comp_Zip * compare two zip archive files, including their contents");
+    Put_Line ("Demo for the Zip-Ada library, by G. de Montmollin");
+    Put_Line ("Library version " & Zip.version & " dated " & Zip.reference);
+    Put_Line ("URL: " & Zip.web);
     Show_License (Current_Output, "zip.ads");
   end Blurb;
 
 begin
   if Argument_Count < 2 then
     Blurb;
-    Put_Line("Usage: comp_zip archive1[.zip] archive2[.zip] [options]");
+    Put_Line ("Usage: comp_zip archive1[.zip] archive2[.zip] [options]");
     New_Line;
-    Put_Line("Options: -q1   : (quiet level 1): summary only");
-    Put_Line("         -q2   : (quiet level 2): shorter summary only");
-    Put_Line("         -pPwd : define a password for decryption (e.g. ""Pwd"")");
+    Put_Line ("Options: -q1   : (quiet level 1): summary only");
+    Put_Line ("         -q2   : (quiet level 2): shorter summary only");
+    Put_Line ("         -pPwd : define a password for decryption (e.g. ""Pwd"")");
     return;
   end if;
-  for i in 1..2 loop
+  for i in 1 .. 2 loop
     declare
-      n: constant String:= Try_with_zip(Argument(i));
+      n : constant String := Try_with_zip (Argument (i));
     begin
-      Zip.Load( z(i), n );
+      Zip.Load (z (i), n);
     exception
       when Zip.Zip_file_open_error =>
-        Put( "Can't open archive [" & n & ']' ); raise;
+        Put ("Can't open archive [" & n & ']'); raise;
       when UnZip.Wrong_password      =>
-        Put( "Archive has a password" ); raise;
+        Put ("Archive has a password"); raise;
     end;
   end loop;
   for a in 3 .. Argument_Count loop
     declare
-      arg: String renames Argument(a);
+      arg : String renames Argument (a);
     begin
-      if arg'Length > 2 and then arg(arg'First..arg'First+1) = "-q" then
-        quiet:= Natural'Value(arg(arg'First+2..arg'Last));
-      elsif arg'Length > 2 and then arg(arg'First..arg'First+1) = "-p" then
-        password := To_Unbounded_String (arg(arg'First+2..arg'Last));
+      if arg'Length > 2 and then arg (arg'First .. arg'First + 1) = "-q" then
+        quiet := Natural'Value (arg (arg'First + 2 .. arg'Last));
+      elsif arg'Length > 2 and then arg (arg'First .. arg'First + 1) = "-p" then
+        password := To_Unbounded_String (arg (arg'First + 2 .. arg'Last));
       end if;
     end;
   end loop;
@@ -74,6 +74,6 @@ begin
   if quiet = 0 then
     Blurb;
   end if;
-  Comp_Zip_Prc(z(1), z(2), quiet, To_String (password));
+  Comp_Zip_Prc (z (1), z (2), quiet, To_String (password));
   --
 end Comp_Zip;

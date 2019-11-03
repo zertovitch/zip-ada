@@ -31,11 +31,11 @@ begin
   Open (f, "mini_zip.zip", "demo/demo_unzip.adb");
   s := Stream (f);
   while not End_Of_File (f) loop
-    Character'Read (s,c);
-    Put(c);
+    Character'Read (s, c);
+    Put (c);
   end loop;
   New_Line;
-  Put("*** Dump done. Size of entry named [" &
+  Put ("*** Dump done. Size of entry named [" &
     Name (f) & "] is" &
     UnZip.Streams.Count'Image (Size (f)) &
     ". Press Enter!"
