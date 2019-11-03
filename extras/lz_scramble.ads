@@ -7,4 +7,4 @@
 --  Minimum size recommended: 13 bytes of *compressed* data
 --  (see PKCrack documentation).
 
-function LZ_Scramble(length: Positive) return String;
+function LZ_Scramble (length : Positive) return String;

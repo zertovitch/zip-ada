@@ -8,7 +8,7 @@ begin
   --    via the file_system_routines parameter. See tools/unzipada.adb for
   --    a complete example.
   --
-  Extract("aaa.zip");                             -- ok
-  Extract("aaa.zip", "file2.txt");                -- ok
-  Extract("aaa.zip", "file2.txt", "file2_b.txt"); -- ok
+  Extract ("aaa.zip");                              --  ok
+  Extract ("aaa.zip", "file2.txt");                 --  ok
+  Extract ("aaa.zip", "file2.txt", "file2_b.txt");  --  ok
 end Test_Extract;

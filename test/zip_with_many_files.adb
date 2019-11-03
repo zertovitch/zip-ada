@@ -15,22 +15,22 @@ with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 
 procedure Zip_with_many_files is
 
-  procedure Create_with_many (n: Positive) is
+  procedure Create_with_many (n : Positive) is
     stream  : aliased File_Zipstream;
     archive : Zip_Create_info;
 
-    procedure Add_one_entry(file_name: String; rep: Natural) is
+    procedure Add_one_entry (file_name : String; rep : Natural) is
     begin
-      Zip.Create.Add_String(
+      Zip.Create.Add_String (
         Info              => archive,
         Contents          => "..." & rep * ("Hello! My name is: """ & file_name & '"' & ASCII.LF),
         Name_in_archive   => file_name
       );
     end Add_one_entry;
 
-    function Leading_zeros (i, zeros: Integer) return String is
-      pad: constant Integer := 10 ** zeros;
-      str: String (1..zeros+2);
+    function Leading_zeros (i, zeros : Integer) return String is
+      pad : constant Integer := 10 ** zeros;
+      str : String (1 .. zeros + 2);
     begin
       Put (str, i + pad);
       return str (3 .. str'Last);
@@ -39,19 +39,19 @@ procedure Zip_with_many_files is
     n_img : constant String := Integer'Image (n);
 
   begin
-    Create(
+    Create (
       archive,
       stream'Unchecked_Access,
       n_img (n_img'First + 1 .. n_img'Last) & ".zip",
       Zip.Compress.Deflate_1
     );
     for i in 1 .. n loop
-      Add_one_entry(
+      Add_one_entry (
         "Entry #" & Leading_zeros (i, 5) & ".txt",
-        Integer'Max(0, i / 100 - 10)  --  Obtain a certain number of incompressible entries.
+        Integer'Max (0, i / 100 - 10)  --  Obtain a certain number of incompressible entries.
       );
     end loop;
-    Finish(archive);
+    Finish (archive);
   end Create_with_many;
 begin
   Create_with_many (2 ** 12);

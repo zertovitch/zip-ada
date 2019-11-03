@@ -1,3 +1,5 @@
+--  Testing stream compressors. Not directly related to Zip.
+--
 --  Files -> LZHuf compression -> LZHuf decompression -> Zip archiving nz_lzhuf.zip
 --  Files -> LZMA  compression -> LZMA  decompression -> Zip archiving nz_lzma.zip
 --  Files ->           (no compression here)          -> Zip archiving nz_0.zip
@@ -18,9 +20,9 @@ procedure Test_non_zip is
 
   type Raw_scheme is (no_compression, lzhuf_scheme, lzma_scheme);
 
-  nz : array (Raw_scheme) of aliased File_Zipstream;
+  nz   : array (Raw_scheme) of aliased File_Zipstream;
   info : array (Raw_scheme) of Zip_Create_info;
-  zi: array (Raw_scheme) of Zip.Zip_info;
+  zi   : array (Raw_scheme) of Zip.Zip_info;
 
   subtype Byte is Interfaces.Unsigned_8;
 
@@ -30,10 +32,10 @@ procedure Test_non_zip is
 
   package Byte_IO is new Ada.Sequential_IO (Byte);
 
-  Infile, Outfile: Byte_IO.File_Type;
+  Infile, Outfile : Byte_IO.File_Type;
 
   function Read_Byte return Byte is
-    B: Byte;
+    B : Byte;
   begin
     Byte_IO.Read (Infile, B);
     return B;
@@ -44,14 +46,14 @@ procedure Test_non_zip is
     return not Byte_IO.End_Of_File (Infile);
   end More_bytes;
 
-  procedure Write_Byte(B: Byte) is
+  procedure Write_Byte (B : Byte) is
   begin
     Byte_IO.Write (Outfile, B);
   end Write_Byte;
 
-  procedure Test_LZHuf (fn: String) is
+  procedure Test_LZHuf (fn : String) is
     package File_LZH is
-      new LZH(
+      new LZH (
         Read_byte  => Read_Byte,
         More_bytes => More_Bytes,
         Write_byte => Write_Byte
@@ -73,16 +75,16 @@ procedure Test_non_zip is
     Add_File (info (lzhuf_scheme), temp_decoded, Name_in_archive => fn);
   end Test_LZHuf;
 
-  procedure Test_LZMA (fn: String) is
-    procedure File_LZMA_Encode is new LZMA.Encoding.Encode(Read_byte, More_bytes, Write_byte);
-    package File_LZMA_Decoding is new LZMA.Decoding(Read_Byte, Write_Byte);
+  procedure Test_LZMA (fn : String) is
+    procedure File_LZMA_Encode is new LZMA.Encoding.Encode (Read_byte, More_bytes, Write_byte);
+    package File_LZMA_Decoding is new LZMA.Decoding (Read_Byte, Write_Byte);
     use File_LZMA_Decoding;
-    default_hints: constant LZMA_Hints:=
-      ( has_size               => True,
+    default_hints : constant LZMA_Hints :=
+       (has_size               => True,
         given_size             => dummy_size,
         marker_expected        => False,
         fail_on_bad_range_code => False);
-    lzma_decoder: LZMA_Decoder_Info;
+    lzma_decoder : LZMA_Decoder_Info;
     res : LZMA_Result;
     --
     temp_encoded : constant String := "lzma.tmp";
@@ -117,7 +119,7 @@ begin
   end loop;
   --
   for i in 1 .. Argument_Count loop
-    Put_Line ("Testing raw compression on: " & Argument(i));
+    Put_Line ("Testing raw compression on: " & Argument (i));
     --  Plain :
     Put_Line ("  - Plain - no compression before zipping");
     Add_File (info (no_compression), Argument (i));

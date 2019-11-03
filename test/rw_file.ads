@@ -1,6 +1,6 @@
--- Contributed by ITEC - NXP Semiconductors
+--  Contributed by ITEC - NXP Semiconductors
 --
--- June 2008
+--  June 2008
 --
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;

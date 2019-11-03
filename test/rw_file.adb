@@ -1,4 +1,4 @@
--- NB: implementation for test purposes, very slow !!
+--  NB: implementation for test purposes, very slow !!
 
 with Ada.Sequential_IO;
 
