@@ -448,7 +448,7 @@ package body Rezip_lib is
       MyStream   : aliased File_Zipstream;
       cur_dir : constant String := Current_Directory;
       size_memory : array (1 .. randomized_stable) of Zip.File_size_type := (others => 0);
-      size : Zip.File_size_type := 0;
+      current_size : Zip.File_size_type := 0;
       zfm : Unsigned_16;
       attempt : Positive := 1;
       dummy_exp_opt : Unbounded_String;
@@ -490,8 +490,8 @@ package body Rezip_lib is
         Close (MyStream);
         Delete_File (temp_zip);
         --
-        if randomized_stable = 1 or not is_rand then  --  normal behaviour (1 attempts)
-          size := header.dd.compressed_size;
+        if randomized_stable = 1 or not is_rand then  --  normal behaviour (1 attempt)
+          current_size := header.dd.compressed_size;
           zfm := header.zip_type;
           info.iter := 1;
           exit;
@@ -502,9 +502,9 @@ package body Rezip_lib is
         --  attempts.
         --
         if attempt = 1 or else
-          header.dd.compressed_size < size  --  better size
+          header.dd.compressed_size < current_size  --  better size
         then
-          size := header.dd.compressed_size;
+          current_size := header.dd.compressed_size;
           zfm := header.zip_type;
           if Exists (rand_winner) then
             Delete_File (rand_winner);
@@ -519,9 +519,9 @@ package body Rezip_lib is
           for i in size_memory'First + 1 .. size_memory'Last loop
             size_memory (i - 1) := size_memory (i);
           end loop;
-          size_memory (size_memory'Last) := size;
+          size_memory (size_memory'Last) := current_size;
         else
-          size_memory (attempt) := size;
+          size_memory (attempt) := current_size;
         end if;
         --
         --  Check stability over n=randomized_stable attempts
@@ -539,7 +539,7 @@ package body Rezip_lib is
         end if;
         attempt := attempt + 1;
       end loop;
-      info.size        := size;
+      info.size        := current_size;
       info.uncomp_size := Unsigned_64 (header.dd.uncompressed_size);
       --  uncomp_size should not matter (always the same).
       info.zfm        := zfm;
@@ -581,7 +581,7 @@ package body Rezip_lib is
     --  Compress data as a Zip archive (like external methods), then call post-processing
     procedure Process_Internal_as_Zip (a : Approach; e : in out Dir_entry) is
       zip_file : aliased File_Zipstream;
-      archive : Zip_Create_info;
+      archive : Zip_Create_Info;
       temp_zip : constant String := Simple_Name (Flexible_temp_files.Radix) & "_$temp$.zip";
       data_name : constant String := Simple_Name (Temp_name (False, original));
       zi_ext : Zip.Zip_info;
@@ -590,7 +590,7 @@ package body Rezip_lib is
       cur_dir : constant String := Current_Directory;
     begin
       Set_Directory (Containing_Directory (Flexible_temp_files.Radix));
-      Create (archive, zip_file'Unchecked_Access, temp_zip);
+      Create_Archive (archive, zip_file'Unchecked_Access, temp_zip);
       Set (archive, Approach_to_Method (a));
       Add_File (archive, data_name);
       Finish (archive);
@@ -633,7 +633,7 @@ package body Rezip_lib is
       total_choice : Packer_info := null_packer_info;
       summary : Ada.Text_IO.File_Type;
       T0, T1 : Ada.Calendar.Time;
-      seconds : Duration;
+      repack_duration : Duration;
       --
       type Approach_Filtering is array (Approach) of Boolean;
       consider_a_priori : Approach_Filtering;
@@ -1210,17 +1210,17 @@ package body Rezip_lib is
       Put_Line (summary, "    </table>");
       Put_Line (summary, "</dd>");
       T1 := Clock;
-      seconds := T1 - T0;
+      repack_duration := T1 - T0;
       Put (summary, "Time elapsed : ");
-      Put (summary,  Float (seconds), 4, 2, 0);
+      Put (summary,  Float (repack_duration), 4, 2, 0);
       Put (summary,  " seconds, or");
-      Put (summary,  Float (seconds) / 60.0, 4, 2, 0);
+      Put (summary,  Float (repack_duration) / 60.0, 4, 2, 0);
       Put (summary,  " minutes, or");
-      Put (summary,  Float (seconds) / 3600.0, 4, 2, 0);
+      Put (summary,  Float (repack_duration) / 3600.0, 4, 2, 0);
       Put_Line (summary,  " hours.</font></body></html>");
       Close (summary);
       Dual_IO.Put ("Time elapsed : ");
-      DFIO.Put (Float (seconds), 4, 2, 0);
+      DFIO.Put (Float (repack_duration), 4, 2, 0);
       Dual_IO.Put_Line (" sec");
       Dual_IO.Put_Line ("All details for " & orig_name & " in " & html_report_name);
     end Repack_contents;

@@ -6,10 +6,12 @@ echo Data name = %1
 if (%2)==() goto vide
 
 if exist *.tmp del *.tmp
-del %2.zip
+if exist %2.zip del %2.zip
 
 ren %1 $13_kzip.tmp
 kzip %2 $13_kzip.tmp
+
+if not exist %2.zip goto no_data
 
 ren $13_kzip.tmp $00store.tmp
 rem zip -0 -P tralala %2 $00store.tmp
@@ -99,4 +101,9 @@ echo Please start test_uza for a sample test (binary, text)
 echo as well as a list of the needed compressors.
 echo.
 echo Usage: test_1 file archive
+goto fin
+
+:no_data
+echo UnZipAda test... No file name matches %1
+
 :fin

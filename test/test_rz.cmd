@@ -11,7 +11,7 @@ if exist test_rz.repacked.zip del test_rz.repacked.zip
 if exist test_rz.ReZip.html   del test_rz.ReZip.html
 if exist test_rz.ReZip.log    del test_rz.ReZip.log
 
-zipada test_rz *.ad* *.txt *.cmd *.sh *.pdf *.mdb
+zipada test_rz *.ad* *.txt *.cmd *.sh *.pdf *.mdb *.xls
 
 rezip -int %1 %2 %3 %4 %5 %6 %7 %8 %9 test_rz
 

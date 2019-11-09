@@ -52,7 +52,7 @@ procedure ZipAda is
 
   --  Final zipfile stream
   MyStream : aliased File_Zipstream;
-  Info : Zip_Create_info;
+  Info : Zip_Create_Info;
   password, password_confirm : Unbounded_String;
 
   procedure Add_1_Stream (Stream : in out Root_Zipstream_Type'Class) is
@@ -124,7 +124,7 @@ procedure ZipAda is
   --
   --  http://rosettacode.org/wiki/Walk_a_directory/Recursively#Ada
 
-  procedure Walk (Name : String; Pattern : String; Level : Natural; Recursive : Boolean) is
+  procedure Walk (Directory_Or_File_Name : String; Pattern : String; Level : Natural; Recursive : Boolean) is
     --
     procedure Process_file (Item : Directory_Entry_Type) is
     begin
@@ -151,20 +151,20 @@ procedure ZipAda is
       len := Full_Name (".")'Length + 1;
     end if;
     --  Process files
-    Search (Name, Pattern, (Directory => False, others => True), Process_file'Access);
+    Search (Directory_Or_File_Name, Pattern, (Directory => False, others => True), Process_file'Access);
     --  Process subdirectories
     if Recursive then
-      Search (Name, "", (Directory => True, others => False), Walk_subdirectory'Access);
+      Search (Directory_Or_File_Name, "", (Directory => True, others => False), Walk_subdirectory'Access);
     end if;
   exception
     when Ada.Directories.Name_Error => -- "unknown directory" -> probably a file.
       if Level = 0 then
-            if Zip.Exists (Name) then
-              Zip_a_file (Name);
+            if Zip.Exists (Directory_Or_File_Name) then
+              Zip_a_file (Directory_Or_File_Name);
             else
-              Put_Line ("  ** Warning [a]: name not matched: " & Name);
+              Put_Line ("  ** Warning [a]: name not matched: " & Directory_Or_File_Name);
             end if;
-        Zip_a_file (Name);
+        Zip_a_file (Directory_Or_File_Name);
       end if;
   end Walk;
 
@@ -268,7 +268,7 @@ procedure ZipAda is
       Put_Line ("Creating archive " & arg_zip);
       Put_Line ("Method: " & Compression_Method'Image (method));
       T0 := Clock;
-      Create (Info, MyStream'Unchecked_Access, arg_zip, method, Zip.error_on_duplicate);
+      Create_Archive (Info, MyStream'Unchecked_Access, arg_zip, method, Zip.error_on_duplicate);
     else -- First real argument has already been used for archive's name
       if To_Upper (arg) = To_Upper (Name (Info)) then
         Put_Line ("  ** Warning: skipping archive's name as entry: " & arg);

@@ -11,7 +11,7 @@ echo ""
 
 #  Have a badly compressible file (random.bin), a bit more than 2**n because of rare repetitions
 
-files="*.mix *.ad* *.txt *.cmd *.sh *.bmp *.csv *.pdf *.html *.bin"
+files="*.mix *.ad* *.txt *.cmd *.sh *.bmp *.csv *.pdf *.html *.bin *.xls"
 
 ../zipada     -esh              test_zash     $files
 ../zipada     -edf              test_zadf     $files

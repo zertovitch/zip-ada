@@ -1,7 +1,7 @@
 if "%1"=="" goto fin
 
 rem  Custom temp dir
-set temp0=e:\temp
+set temp0=%temp%
 
 rem  Compress
 ..\lzma_enc %1 %temp0%\lzma_dat

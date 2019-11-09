@@ -4,7 +4,6 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress;
 with Zip.Create;                        use Zip.Create;
 
@@ -12,8 +11,8 @@ with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 
 procedure Zip_with_big_files is
-  stream  : aliased File_Zipstream;
-  archive : Zip_Create_info;
+  stream  : aliased Zip_File_Stream;
+  archive : Zip_Create_Info;
 
   procedure Add_one_entry (file_name : String; rep : Natural) is
   begin
@@ -34,7 +33,7 @@ procedure Zip_with_big_files is
 
 begin
   for max in 40 .. 41 loop  --  ok with 40, too large with 41
-    Create (
+    Create_Archive (
       archive,
       stream'Unchecked_Access,
       "big" & Integer'Image (max) & ".zip", Zip.Compress.Store

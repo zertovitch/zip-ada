@@ -22,12 +22,12 @@ begin
   Create (fo, Out_File, Argument (2));
   declare
     msg : String (1 .. Integer (Size (fi)));
-    index : Positive;
+    idx : Positive;
   begin
     String'Read (Stream (fi), msg);
-    BWT.Encode (msg, index);
+    BWT.Encode (msg, idx);
     String'Write (Stream (fo), msg);
-    Put_Line (Current_Error, "Index: " & Integer'Image (index));
+    Put_Line (Current_Error, "Index: " & Integer'Image (idx));
   end;
   Close (fi);
   Close (fo);

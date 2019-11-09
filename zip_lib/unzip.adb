@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2018 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,10 +27,8 @@
 with Zip.Headers, UnZip.Decompress;
 with Zip_Streams;
 
-with Ada.Exceptions;                    use Ada.Exceptions;
-with Interfaces;                        use Interfaces;
-
 with Ada.IO_Exceptions;
+with Interfaces;                        use Interfaces;
 
 package body UnZip is
 
@@ -256,10 +254,9 @@ package body UnZip is
 
     method := Zip.Method_from_code (local_header.zip_type);
     if method = unknown then
-      Ada.Exceptions.Raise_Exception
-        (UnZip.Unsupported_method'Identity,
+      raise UnZip.Unsupported_method with
          "Format (method) #" & Unsigned_16'Image (local_header.zip_type) &
-         " is unknown");
+         " is unknown";
     end if;
 
     --  calculate offset of data
@@ -377,8 +374,8 @@ package body UnZip is
         Set_Index (zip_file, work_index);  --  eventually skips the file name
       exception
         when others =>
-          Raise_Exception (Zip.Archive_corrupted'Identity,
-            "End of stream reached (location: between local header and archived data)");
+          raise Zip.Archive_corrupted with
+            "End of stream reached (location: between local header and archived data)";
       end;
       UnZip.Decompress.Decompress_data (
         zip_file                   => zip_file,
@@ -443,7 +440,7 @@ package body UnZip is
 
   exception
     when Ada.IO_Exceptions.End_Error =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "End of stream reached");
+      raise Zip.Archive_corrupted with "End of stream reached";
   end UnZipFile;
 
   ----------------------------------
@@ -578,7 +575,7 @@ package body UnZip is
     Close (zip_file);
   exception
     when Zip.Headers.bad_local_header =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
+      raise Zip.Archive_corrupted with "Bad local header";
   end Extract;
 
   --  Extract one precise file (what) from an archive (from),
@@ -636,7 +633,7 @@ package body UnZip is
     Close (zip_file);
   exception
     when Zip.Headers.bad_local_header =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
+      raise Zip.Archive_corrupted with "Bad local header";
   end Extract;
 
   --  Extract all files from an archive (from)
@@ -685,7 +682,7 @@ package body UnZip is
   exception
     when Zip.Headers.bad_local_header | Zip.Archive_is_empty =>
       Close (zip_file);  --  Normal case: end of archived entries (of fuzzy data) was hit
-    when Zip.Zip_file_open_error =>
+    when Zip.Archive_open_error =>
       raise;    --  Couldn't open zip file
     when others =>
       Close (zip_file);
@@ -793,7 +790,7 @@ package body UnZip is
       if use_a_file and then Is_Open (zip_file) then
         Close (zip_file);
       end if;
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
+      raise Zip.Archive_corrupted with "Bad local header";
     when others =>
       if use_a_file and then Is_Open (zip_file) then
         Close (zip_file);
@@ -870,7 +867,7 @@ package body UnZip is
       if use_a_file and then Is_Open (zip_file) then
         Close (zip_file);
       end if;
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
+      raise Zip.Archive_corrupted with "Bad local header";
     when others =>
       if use_a_file and then Is_Open (zip_file) then
         Close (zip_file);

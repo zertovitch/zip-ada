@@ -693,11 +693,11 @@ is
     --
     type Emission_mode is (simulate, effective);
     --
-    procedure Emit_data_compression_structures (mode : Emission_mode) is
+    procedure Emit_data_compression_structures (emit_mode : Emission_mode) is
       procedure Emit_data_compression_atom (x : Alphabet; extra_code : U32 := 0) is
         --  x is a bit length (value in 0..15), or a RLE instruction
       begin
-        case mode is
+        case emit_mode is
           when simulate =>
             truc_freq (x) := truc_freq (x) + 1;  --  +1 for x's histogram bar
           when effective =>
@@ -1601,7 +1601,7 @@ is
     end More_bytes;
 
     --  LZ77 parameters
-    Look_Ahead         : constant Integer := 258;
+    Look_Ahead_LZ77    : constant Integer := 258;
     String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_e
     type Text_buffer_index is mod String_buffer_size;
     type Text_buffer is array (Text_buffer_index) of Byte;
@@ -1669,7 +1669,7 @@ is
     procedure My_LZ77 is
       new LZ77.Encode
          (String_buffer_size => String_buffer_size,
-          Look_Ahead         => Look_Ahead,
+          Look_Ahead         => Look_Ahead_LZ77,
           Threshold          => 2,  --  From a string match length > 2, a DL code is sent
           Method             => LZ77_choice (method),
           Read_byte          => Read_byte,
@@ -1713,7 +1713,7 @@ is
 
   begin  --  Encode
     Read_Block;
-    R := Text_buffer_index (String_buffer_size - Look_Ahead);
+    R := Text_buffer_index (String_buffer_size - Look_Ahead_LZ77);
     Bytes_in := 0;
     if input_size_known then
       X_Percent := Integer (input_size / 40);

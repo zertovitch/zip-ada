@@ -4,7 +4,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2018 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -42,8 +42,9 @@
 --  with one copy per concurrent call.
 
 with Zip.Headers;
-with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Zip_Streams;
+
+with Ada.Strings.Unbounded;
 
 private package UnZip.Decompress is
 
@@ -61,7 +62,7 @@ private package UnZip.Decompress is
     explode_slide_8KB_LZMA_EOS : Boolean; -- relevant for the "explode" and "LZMA" formats
     data_descriptor_after_data : Boolean;
     is_encrypted               : Boolean;
-    password                   : in out Unbounded_String;
+    password                   : in out Ada.Strings.Unbounded.Unbounded_String;
     get_new_password           : Get_password_proc; -- if null, initial pwd must fit
     hint                       : in out Zip.Headers.Local_File_Header
     --  Values are known, or smart fakes, and are later corrected if a closing

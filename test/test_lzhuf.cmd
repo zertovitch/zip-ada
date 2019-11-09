@@ -1,7 +1,7 @@
 if "%1"=="" goto fin
 
 rem  Custom temp dir
-set temp0=e:\temp
+set temp0=%temp%
 
 rem  Compress
 ..\lz e %1 %temp0%\lzhuf.dat

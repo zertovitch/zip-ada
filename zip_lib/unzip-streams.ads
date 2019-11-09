@@ -134,7 +134,7 @@ package UnZip.Streams is
    procedure Extract (
      Destination      : in out Ada.Streams.Root_Stream_Type'Class;
      Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
-     Name             : in String;               -- Name of zipped entry
+     Entry_Name       : in String;               -- Name of zipped entry
      Password         : in String  := "";        -- Decryption password
      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
    );
@@ -160,12 +160,12 @@ private
    end record;
 
    overriding procedure Read
-     (Stream : in out UnZip_Stream_Type;
+     (Self   : in out UnZip_Stream_Type;
       Item   :    out Ada.Streams.Stream_Element_Array;
       Last   :    out Ada.Streams.Stream_Element_Offset);
 
    overriding procedure Write
-     (Stream : in out UnZip_Stream_Type;
+     (Self   : in out UnZip_Stream_Type;
       Item   : in     Ada.Streams.Stream_Element_Array);
 
    type Zipped_File_Type is access UnZip_Stream_Type;

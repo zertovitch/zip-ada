@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2018 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,7 +36,7 @@ with Interfaces; use Interfaces;
 with LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
 
-with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
 
 procedure Zip.Compress.Reduce
@@ -253,10 +253,10 @@ is
       min := subrange'First;
       max := subrange'Last;
     end if;
-    New_Line;
+    Ada.Text_IO.New_Line;
     for si in subrange loop
       Show_symbol (si);
-      Put ("| ");
+      Ada.Text_IO.Put ("| ");
       for sj in min .. max loop
         if ordered then -- show top probas
           sk := order (si, sj);
@@ -264,12 +264,12 @@ is
           sk := sj;
         end if;
         Show_symbol (sk);
-        Put (':' & Count'Image (markov_d (si, sj)) & ' ');
+        Ada.Text_IO.Put (':' & Count'Image (markov_d (si, sj)) & ' ');
       end loop;
       if ordered then
-        Put ("|" & Count'Image (total_row (si)) & Integer'Image (Slen (si)));
+        Ada.Text_IO.Put ("|" & Count'Image (total_row (si)) & Integer'Image (Slen (si)));
       end if;
-      New_Line;
+      Ada.Text_IO.New_Line;
     end loop;
   end Show_partial_markov;
 
@@ -428,13 +428,13 @@ is
   --    3   289         2048
   --    4   273         4096
 
-  type Phase_type is (stats, compress);
+  type Phase_type is (compute_stats, compress_for_real);
 
   generic
     phase : Phase_type;
-  procedure Encode;
+  procedure Encode_with_Reduce;
 
-  procedure Encode is
+  procedure Encode_with_Reduce is
     using_LZ77 : Boolean;
     Derail_LZ77 : exception;
     X_Percent : Natural;
@@ -448,7 +448,7 @@ is
     begin
       b := InBuf (InBufIdx);
       InBufIdx := InBufIdx + 1;
-      if phase = stats then
+      if phase = compute_stats then
         Zip.CRC_Crypto.Update (CRC, (1 => b));
       end if;
       Bytes_in := Bytes_in + 1;
@@ -511,13 +511,13 @@ is
       lz77_pos := lz77_pos + 1;
       case phase is
         --
-        when stats =>
+        when compute_stats =>
           markov_d (last_b, curr_b) := markov_d (last_b, curr_b) + 1;
           --  We also feed the cache which will be read at the 2nd phase:
           LZ_cache.buf (LZ_cache.nxt) := b;
           LZ_cache.nxt := LZ_cache.nxt + 1;
           LZ_cache.cnt := Natural'Min (LZ_cache_size, LZ_cache.cnt + 1);
-        when compress => -- Probabilistic reduction
+        when compress_for_real =>  --  Probabilistic reduction
           if Slen (last_b) = 0 then
             --  follower set is empty for this character
             Put_code (b, 8);
@@ -534,7 +534,7 @@ is
           end if;
       end case;
       last_b := curr_b;
-      if phase = compress and then
+      if phase = compress_for_real and then
          using_LZ77 and then
          (lz77_size - lz77_pos) < File_size_type (LZ_cache.cnt)
         --  We have entered the zone covered by the cache, so no need
@@ -618,7 +618,7 @@ is
       end loop;
     end Finish_Cache;
 
-  begin  --  Encode
+  begin  --  Encode_with_Reduce
     Read_Block;
     R := String_buffer_size - Look_Ahead;
     Bytes_in := 0;
@@ -636,10 +636,10 @@ is
       if feedback /= null then
         feedback (100, False, user_aborting);
       end if;
-  end Encode;
+  end Encode_with_Reduce;
 
-  procedure Build_stats is new Encode (phase => stats);
-  procedure Compress    is new Encode (phase => compress);
+  procedure Build_stats   is new Encode_with_Reduce (phase => compute_stats);
+  procedure Compress_data is new Encode_with_Reduce (phase => compress_for_real);
 
   mem : ZS_Index_Type;
 
@@ -666,7 +666,7 @@ begin
   lz77_size := lz77_pos;
   lz77_pos := 0;
   begin
-    Compress;  --  Emit the compressed message
+    Compress_data;  --  Emit the compressed message
     Flush_output;
     compression_ok := True;
   exception

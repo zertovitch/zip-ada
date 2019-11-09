@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2018 Gautier de Montmollin (Maintainer of the Ada version)
+--  Copyright (c) 2007 .. 2019 Gautier de Montmollin (Maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -77,7 +77,7 @@ package body Zip.Compress is
       Buffer      : Byte_Buffer (1 .. buffer_size);
       Last_Read   : Natural;
     begin
-      zip_type := compression_format_code.store;
+      zip_type := Compression_format_code.store_code;
       counted := 0;
       while not End_Of_Stream (input) loop
         if input_size_known and counted >= input_size then
@@ -162,7 +162,7 @@ package body Zip.Compress is
             input, output, input_size_known, input_size, feedback,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type := compression_format_code.shrink;
+          zip_type := Compression_format_code.shrink_code;
         --
         when Reduction_Method =>
           Zip.Compress.Reduce (
@@ -170,7 +170,7 @@ package body Zip.Compress is
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type := compression_format_code.reduce +
+          zip_type := Compression_format_code.reduce_code +
             Unsigned_16 (
               Compression_Method'Pos (actual_method) -
               Compression_Method'Pos (Reduce_1)
@@ -181,14 +181,14 @@ package body Zip.Compress is
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type := compression_format_code.deflate;
+          zip_type := Compression_format_code.deflate_code;
         when LZMA_Method =>
           Zip.Compress.LZMA_E (
             input, output, input_size_known, input_size, feedback,
             actual_method,
             CRC, encrypt_pack, output_size, compression_ok
           );
-          zip_type := compression_format_code.lzma;
+          zip_type := Compression_format_code.lzma_code;
       end case;
       CRC := Final (CRC);
       --

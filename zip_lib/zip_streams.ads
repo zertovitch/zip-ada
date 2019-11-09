@@ -78,7 +78,9 @@ package Zip_Streams is
    --  Ada.Calendar.Time.
    type Time is private;
 
-   default_time : constant Time;  --  some default time
+   default_time   : constant Time;  --  some default time
+   special_time_1 : constant Time;  --  special time code (for users of Zip_Streams)
+   special_time_2 : constant Time;  --  special time code (for users of Zip_Streams)
 
    ------------------------------------------------------
    --  Root_Zipstream_Type: root abstract stream type  --
@@ -179,36 +181,37 @@ package Zip_Streams is
 
    package Calendar is
       --
-      function Convert (date : in Ada.Calendar.Time) return Time;
-      function Convert (date : in Time) return Ada.Calendar.Time;
+      function Convert (Date : in Ada.Calendar.Time) return Time;
+      function Convert (Date : in Time) return Ada.Calendar.Time;
       --
       subtype DOS_Time is Interfaces.Unsigned_32;
-      function Convert (date : in DOS_Time) return Time;
-      function Convert (date : in Time) return DOS_Time;
+      function Convert (Date : in DOS_Time) return Time;
+      function Convert (Date : in Time) return DOS_Time;
+      --
+      Time_Error : exception;
       --
       use Ada.Calendar;
       --
       procedure Split
-        (Date    : Time;
-         Year    : out Year_Number;
-         Month   : out Month_Number;
-         Day     : out Day_Number;
-         Seconds : out Day_Duration);
+        (Date       : Time;
+         To_Year    : out Year_Number;
+         To_Month   : out Month_Number;
+         To_Day     : out Day_Number;
+         To_Seconds : out Day_Duration);
       --
       function Time_Of
-        (Year    : Year_Number;
-         Month   : Month_Number;
-         Day     : Day_Number;
-         Seconds : Day_Duration := 0.0) return Time;
+        (From_Year    : Year_Number;
+         From_Month   : Month_Number;
+         From_Day     : Day_Number;
+         From_Seconds : Day_Duration := 0.0) return Time;
       --
       function ">" (Left, Right : Time) return Boolean;
-      --
-      Time_Error : exception;
    end Calendar;
 
   --  Parameter Form added to *_IO.[Open|Create]
   --  See RM A.8.2: File Management
   --  Example: "encoding=8bits", "encoding=utf8"
+  --
   Form_For_IO_Open_and_Create : Ada.Strings.Unbounded.Unbounded_String
     := Ada.Strings.Unbounded.Null_Unbounded_String;
 
@@ -218,7 +221,9 @@ private
    --  in Zip archives. Subject to change, this is why this type is private.
    type Time is new Interfaces.Unsigned_32;
 
-   default_time : constant Time := 16789 * 65536;
+   default_time   : constant Time := 16789 * 65536;
+   special_time_1 : constant Time := default_time + 1;
+   special_time_2 : constant Time := default_time + 2;
 
    type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with
       record

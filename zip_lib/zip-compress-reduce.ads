@@ -18,7 +18,7 @@
 --
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2018 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy

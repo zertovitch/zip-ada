@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2018 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2009 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -62,7 +62,7 @@ package body BZip2.Decoding is
     bits_available : Natural := 0;
     inuse_count : Natural;
     seq_to_unseq : array (0 .. 255) of Natural;
-    alpha_size : Natural;
+    alpha_size_glob : Natural;  --  Not global actually, but less local than "alpha_size" below
     group_count : Natural;
     --
     selector_count : Natural;
@@ -71,10 +71,11 @@ package body BZip2.Decoding is
     type Alpha_U32_array is array (0 .. max_alpha_size) of Unsigned_32;
     type Alpha_Nat_array is array (0 .. max_alpha_size) of Natural;
 
-    len  : array (0 .. max_groups) of Alpha_Nat_array;
-    limit,
-    base,
-    perm : array (0 .. max_groups) of Alpha_U32_array;
+    len          : array (0 .. max_groups) of Alpha_Nat_array;
+    limit_glob,  --  Not global actually, but less local than "limit" below
+    base_glob,   --  Not global actually, but less local than "base" below
+    perm_glob    --  Not global actually, but less local than "perm" below
+                 : array (0 .. max_groups) of Alpha_U32_array;
     --
     minlens : Length_array (0 .. max_groups);
     cftab : array (0 .. 257) of Natural;
@@ -268,7 +269,7 @@ package body BZip2.Decoding is
     begin
       for t in 0 .. group_count - 1 loop
         current_bit_length := Natural (Get_Bits (5));
-        for symbol in 0 .. alpha_size - 1 loop
+        for symbol in 0 .. alpha_size_glob - 1 loop
           loop
             if current_bit_length not in 1 .. 20 then
               raise data_error;
@@ -291,7 +292,7 @@ package body BZip2.Decoding is
       for t in 0 .. group_count - 1 loop
         minlen := 32;
         maxlen := 0;
-        for i in 0 .. alpha_size - 1 loop
+        for i in 0 .. alpha_size_glob - 1 loop
           if len (t)(i) > maxlen then
             maxlen := len (t)(i);
           end if;
@@ -300,8 +301,8 @@ package body BZip2.Decoding is
           end if;
         end loop;
         Create_Huffman_Decoding_Tables (
-          limit (t), base (t), perm (t), len (t),
-          minlen, maxlen, alpha_size
+          limit_glob (t), base_glob (t), perm_glob (t), len (t),
+          minlen, maxlen, alpha_size_glob
         );
         minlens (t) := minlen;
       end loop;
@@ -346,11 +347,11 @@ package body BZip2.Decoding is
         group_pos := group_pos - 1;
         zn := gminlen;
         zvec := Get_Bits_32 (zn);
-        while zvec > limit (gsel)(zn) loop
+        while zvec > limit_glob (gsel)(zn) loop
           zn := zn + 1;
           zvec := Shift_Left (zvec, 1) or Get_Bits_32 (1);
         end loop;
-        return perm (gsel)(Natural (zvec - base (gsel)(zn)));
+        return perm_glob (gsel)(Natural (zvec - base_glob (gsel)(zn)));
       end Get_MTF_Value;
       --
       procedure Move_MTF_Block is
@@ -492,7 +493,7 @@ package body BZip2.Decoding is
         block_randomized := Get_Boolean;
         block_origin := Natural (Get_Cardinal_24);
         Receive_Mapping_Table;
-        alpha_size := inuse_count + 2;
+        alpha_size_glob := inuse_count + 2;
         Receive_Selectors;
         Undo_MTF_Values_For_Selectors;
         Receive_Huffman_Bit_Lengths;

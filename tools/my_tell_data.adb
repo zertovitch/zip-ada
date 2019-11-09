@@ -10,7 +10,7 @@ with Ada.Text_IO;                       use Ada.Text_IO;
 with Interfaces;                        use Interfaces;
 
 procedure My_tell_data
-             (name               : String;
+             (file_name          : String;
               compressed_bytes   : UnZip.File_size_type;
               uncompressed_bytes : UnZip.File_size_type;
               method             : UnZip.PKZip_method) is
@@ -37,7 +37,7 @@ begin
   My_dots.done_dots := 0;
   declare
     maxlen : constant := 24;
-    cut : constant String := CutName (name, maxlen);
+    cut : constant String := CutName (file_name, maxlen);
   begin
     Put (cut);
     for l in cut'Length .. maxlen loop

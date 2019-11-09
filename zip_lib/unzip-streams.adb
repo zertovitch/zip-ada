@@ -26,7 +26,6 @@
 
 with Zip.Headers, UnZip.Decompress;
 
-with Ada.Exceptions;                    use Ada.Exceptions;
 with Ada.Strings.Unbounded;
 with Ada.Unchecked_Deallocation;
 with Interfaces;                        use Interfaces;
@@ -74,7 +73,7 @@ package body UnZip.Streams is
       Zip.Headers.Read_and_check (zip_stream, local_header);
     exception
       when Zip.Headers.bad_local_header =>
-        Raise_Exception (Zip.Archive_corrupted'Identity, "Bad local header");
+        raise Zip.Archive_corrupted with "Bad local header";
       when others =>
         raise Zip.Archive_corrupted;
     end;
@@ -114,8 +113,8 @@ package body UnZip.Streams is
       Zip_Streams.Set_Index (zip_stream, work_index);  --  eventually skips the file name
     exception
       when others =>
-        Raise_Exception (Zip.Archive_corrupted'Identity,
-          "End of stream reached (location: between local header and archived data)");
+        raise Zip.Archive_corrupted with
+          "End of stream reached (location: between local header and archived data)";
     end;
 
     if out_stream_ptr = null then
@@ -307,10 +306,9 @@ package body UnZip.Streams is
      )
    is
     temp_info : Zip.Zip_info;
-    --  this local record (but not the full tree) is copied by Open(..)
   begin
     Zip.Load (temp_info, Archive_Name, Case_sensitive);
-    Open (File, temp_info, Name, Password);
+    Open (File, temp_info, Name, Password, Ignore_Directory);
   end Open;
 
   procedure Open
@@ -323,10 +321,9 @@ package body UnZip.Streams is
      )
   is
     temp_info : Zip.Zip_info;
-    --  this local record (but not the full tree) is copied by Open(..)
   begin
     Zip.Load (temp_info, Archive_Stream, Case_sensitive);
-    Open (File, temp_info, Name, Password);
+    Open (File, temp_info, Name, Password, Ignore_Directory);
   end Open;
 
   ------------------------------------------
@@ -334,16 +331,16 @@ package body UnZip.Streams is
   ------------------------------------------
 
   overriding procedure Read
-    (Stream : in out UnZip_Stream_Type;
+    (Self   : in out UnZip_Stream_Type;
      Item   :    out Ada.Streams.Stream_Element_Array;
      Last   :    out Ada.Streams.Stream_Element_Offset)
   is
     use Ada.Streams;
   begin
-    if Stream.state = uninitialized then
+    if Self.state = uninitialized then
       raise Use_Error;
     end if;
-    if Stream.state = end_of_zip then
+    if Self.state = end_of_zip then
       --  Zero transfer -> Last:= Item'First - 1, see RM 13.13.1(8)
       --  No End_Error here, T'Read will raise it: RM 13.13.2(37)
       if Item'First > Stream_Element_Offset'First then
@@ -361,20 +358,20 @@ package body UnZip.Streams is
     end if;
     --  From now on, we can assume Item'Length > 0.
 
-    if Stream.index + Item'Length <= Stream.uncompressed'Last then
+    if Self.index + Item'Length <= Self.uncompressed'Last then
       --  * Normal case: even after reading, the index will be in the range
       Last := Item'Last;
       Item :=
-        Stream.uncompressed (Stream.index .. Stream.index + Item'Length - 1);
-      Stream.index := Stream.index + Item'Length;
+        Self.uncompressed (Self.index .. Self.index + Item'Length - 1);
+      Self.index := Self.index + Item'Length;
       --  Now: Stream.index <= Stream.uncompressed'Last,
       --  then at least one element is left to be read, end_of_zip not possible
     else
       --  * Special case: we exhaust the buffer
-      Last := Item'First + (Stream.uncompressed'Last - Stream.index);
+      Last := Item'First + (Self.uncompressed'Last - Self.index);
       Item (Item'First .. Last) :=
-        Stream.uncompressed (Stream.index .. Stream.uncompressed'Last);
-      Stream.state := end_of_zip;
+        Self.uncompressed (Self.index .. Self.uncompressed'Last);
+      Self.state := end_of_zip;
       --  If Last < Item'Last, the T'Read attribute raises End_Error
       --  because of the incomplete reading.
     end if;
@@ -394,7 +391,7 @@ package body UnZip.Streams is
   end Size;
 
   overriding procedure Write
-    (Stream : in out UnZip_Stream_Type;
+    (Self   : in out UnZip_Stream_Type;
      Item   : in     Ada.Streams.Stream_Element_Array)
   is
     write_not_supported : exception;
@@ -405,7 +402,7 @@ package body UnZip.Streams is
   procedure Extract (
      Destination      : in out Ada.Streams.Root_Stream_Type'Class;
      Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
-     Name             : in String;               -- Name of zipped entry
+     Entry_Name       : in String;               -- Name of zipped entry
      Password         : in String  := "";        -- Decryption password
      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
    )
@@ -428,7 +425,7 @@ package body UnZip.Streams is
       S_Extract (
         Archive_Info,
         input_stream.all,
-        Name,
+        Entry_Name,
         Password,
         dummy_mem_ptr,
         Destination'Unchecked_Access,

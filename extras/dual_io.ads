@@ -79,8 +79,8 @@ package Dual_IO is
    procedure Get (Item : out Character);
    procedure Put (Item : in Character);
 
-   procedure Look_Ahead (Item        : out Character;
-                         End_Of_Line : out Boolean)
+   procedure Look_Ahead (Item           : out Character;
+                         Is_End_Of_Line : out Boolean)
       renames Text_IO.Look_Ahead;
 
    --  No echo -> not logged -> renames suffices

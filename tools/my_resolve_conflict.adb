@@ -8,7 +8,7 @@ with UnZip;                             use UnZip;
 with Ada.Text_IO;                       use Ada.Text_IO;
 
 procedure My_resolve_conflict
-             (name            :  in String;
+             (file_name       :  in String;
               name_encoding   :  in Zip.Zip_name_encoding;
               action          : out Name_conflict_intervention;
               new_name        : out String;
@@ -19,7 +19,7 @@ is
 begin
   loop
     New_Line;
-    Put_Line ("File " & name & " already exists.");
+    Put_Line ("File " & file_name & " already exists.");
     Put (" Overwrite ?  (y)es / (n)o / (A)ll / (N)one / (r)ename / (q)uit ");
     Get_Immediate (c);
     Put_Line ("-> " & c);

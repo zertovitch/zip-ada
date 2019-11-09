@@ -34,10 +34,10 @@ procedure Test_LZ77 is
 
   ----- LZSS Parameters -----
   String_buffer_size : constant := 2**15;  --  2**15 for Deflate
-  Look_Ahead         : constant := 258;    --  258   for Deflate
+  Look_Ahead_Test    : constant := 258;    --  258   for Deflate
   Threshold          : constant := 2;      --  2     for Deflate
 
-  type Text_Buffer is array (0 .. String_buffer_size + Look_Ahead - 1) of Byte;
+  type Text_Buffer is array (0 .. String_buffer_size + Look_Ahead_Test - 1) of Byte;
   Text_Buf : Text_Buffer;
   R : Natural;
 
@@ -115,7 +115,7 @@ begin
       declare
         procedure My_LZ77 is
           new LZ77.Encode (
-            String_buffer_size, Look_Ahead, Threshold,
+            String_buffer_size, Look_Ahead_Test, Threshold,
             m,
             Read_byte, More_bytes,
             Emit_literal, Emit_DL_code
@@ -126,7 +126,7 @@ begin
         else
           Open (f_in, In_File, Argument (1));
         end if;
-        R := String_buffer_size - Look_Ahead;
+        R := String_buffer_size - Look_Ahead_Test;
         Create (f_out, Out_File, "lz77_" & To_Lower (Method_Type'Image (m)) & "_decode.out");
 
         --  The dump.lz77 file is used in various places:

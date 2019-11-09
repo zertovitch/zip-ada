@@ -28,7 +28,6 @@ with Zip.Headers;
 
 with Ada.Characters.Handling;
 with Ada.Unchecked_Deallocation;
-with Ada.Exceptions;                    use Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;
@@ -223,23 +222,19 @@ package body Zip is
           --  Here we have a case where the entry name already exists in the dictionary.
           case duplicate_names is
             when error_on_duplicate =>
-              Ada.Exceptions.Raise_Exception
-                (Duplicate_name'Identity,
+              raise Duplicate_name with
                  "Same full entry name (in dictionary: " & dico_name &
                  ") appears twice in archive directory; " &
-                 "procedure Load was called with strict name policy."
-                );
+                 "procedure Load was called with strict name policy.";
             when admit_duplicates =>
               if file_index > node.file_index then
                 Insert_into_tree (node.right);
               elsif file_index < node.file_index then
                 Insert_into_tree (node.left);
               else
-                Ada.Exceptions.Raise_Exception
-                  (Duplicate_name'Identity,
+                raise Duplicate_name with
                    "Archive directory corrupt: same full entry name (in dictionary: " &
-                   dico_name & "), with same data position, appear twice."
-                  );
+                   dico_name & "), with same data position, appear twice.";
               end if;
           end case;
         end if;
@@ -323,9 +318,9 @@ package body Zip is
     info.zip_archive_format := Zip_32;
   exception
     when Zip.Headers.bad_end =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
+      raise Zip.Archive_corrupted with "Bad (or no) end-of-central-directory";
     when Zip.Headers.bad_central_header =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad central directory entry header");
+      raise Zip.Archive_corrupted with "Bad central directory entry header";
   end Load;
 
   -----------------------------------------------------------
@@ -347,7 +342,7 @@ package body Zip is
       Open (MyStream, In_File);
     exception
       when others =>
-        Raise_Exception (Zip_file_open_error'Identity, "Archive: [" & from & ']');
+        raise Archive_open_error with "Archive: [" & from & ']';
     end;
     --  Call the stream version of Load(...)
     Load (
@@ -585,9 +580,9 @@ package body Zip is
 
   exception
     when Zip.Headers.bad_end | Ada.IO_Exceptions.End_Error =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
+      raise Zip.Archive_corrupted with "Bad (or no) end-of-central-directory";
     when Zip.Headers.bad_central_header =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad central directory entry header");
+      raise Zip.Archive_corrupted with "Bad central directory entry header";
   end Find_first_offset;
 
   --  Internal: find offset of a zipped file by reading sequentially the
@@ -635,12 +630,12 @@ package body Zip is
         end if;
       end;
     end loop;
-    Raise_Exception (File_name_not_found'Identity, "Entry: [" & name & ']');
+    raise Entry_name_not_found with "Entry: [" & name & ']';
   exception
     when Zip.Headers.bad_end =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad (or no) end-of-central-directory");
+      raise Zip.Archive_corrupted with "Bad (or no) end-of-central-directory";
     when Zip.Headers.bad_central_header =>
-      Raise_Exception (Zip.Archive_corrupted'Identity, "Bad central directory entry header");
+      raise Zip.Archive_corrupted with "Bad central directory entry header";
   end Find_offset;
 
   --  Internal: find offset of a zipped file using the zip_info tree 8-)
@@ -675,10 +670,7 @@ package body Zip is
         return;
       end if;
     end loop;
-    Ada.Exceptions.Raise_Exception (
-      File_name_not_found'Identity,
-      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
-    );
+    raise Entry_name_not_found with "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']';
   end Find_offset;
 
   procedure Find_offset_without_directory (
@@ -718,10 +710,10 @@ package body Zip is
       entry_name_encoding : Zip_name_encoding;
       read_only           : Boolean;
       encrypted_2_x       : Boolean; -- PKZip 2.x encryption
-      user_code           : in out Integer
+      entry_user_code     : in out Integer
     )
     is
-    pragma Unreferenced (date_time, method, read_only, encrypted_2_x, user_code);
+    pragma Unreferenced (date_time, method, read_only, encrypted_2_x, entry_user_code);
     begin
       if Trash_dir (entry_name) = simple_name then
         name_encoding := entry_name_encoding;
@@ -742,7 +734,7 @@ package body Zip is
       when Found =>
         return;
     end;
-    raise File_name_not_found;
+    raise Entry_name_not_found with "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']';
   end Find_offset_without_directory;
 
   function Exists (
@@ -791,10 +783,7 @@ package body Zip is
         return;
       end if;
     end loop;
-    Ada.Exceptions.Raise_Exception (
-      File_name_not_found'Identity,
-      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
-    );
+    raise Entry_name_not_found with "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']';
   end Set_user_code;
 
   function User_code (
@@ -818,10 +807,7 @@ package body Zip is
         return aux.user_code;
       end if;
     end loop;
-    Ada.Exceptions.Raise_Exception (
-      File_name_not_found'Identity,
-      "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']'
-    );
+    raise Entry_name_not_found with "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']';
     return 0;  --  Fake, since exception has been raised just before. Removes an OA warning.
   end User_code;
 
@@ -967,24 +953,25 @@ package body Zip is
   end Image;
 
   function Method_from_code (x : Natural) return PKZip_method is
-    --  An enumeration clause might be more elegant, but needs
-    --  curiously an Unchecked_Conversion... (RM 13.4)
+    --  An enumeration clause might be more elegant instead of this function,
+    --  but would need curiously an Unchecked_Conversion... (RM 13.4)
+    use Compression_format_code;
   begin
     case x is
-      when compression_format_code.store      => return store;
-      when compression_format_code.shrink     => return shrink;
-      when compression_format_code.reduce     => return reduce_1;
-      when compression_format_code.reduce + 1 => return reduce_2;
-      when compression_format_code.reduce + 2 => return reduce_3;
-      when compression_format_code.reduce + 3 => return reduce_4;
-      when compression_format_code.implode    => return implode;
-      when compression_format_code.tokenize   => return tokenize;
-      when compression_format_code.deflate    => return deflate;
-      when compression_format_code.deflate_e  => return deflate_e;
-      when compression_format_code.bzip2      => return bzip2;
-      when compression_format_code.lzma       => return lzma_meth;
-      when compression_format_code.ppmd       => return ppmd;
-      when others => return unknown;
+      when store_code      => return store;
+      when shrink_code     => return shrink;
+      when reduce_code     => return reduce_1;
+      when reduce_code + 1 => return reduce_2;
+      when reduce_code + 2 => return reduce_3;
+      when reduce_code + 3 => return reduce_4;
+      when implode_code    => return implode;
+      when tokenize_code   => return tokenize;
+      when deflate_code    => return deflate;
+      when deflate_e_code  => return deflate_e;
+      when bzip2_code      => return bzip2;
+      when lzma_code       => return lzma_meth;
+      when ppmd_code       => return ppmd;
+      when others          => return unknown;
     end case;
   end Method_from_code;
 

@@ -86,8 +86,11 @@ package Zip is
   );
 
   Archive_corrupted,
-  Zip_file_open_error,
+  Archive_open_error,
   Duplicate_name : exception;
+
+  Zip_file_open_error : exception renames Archive_open_error;  --  Archive is not always a file!
+  pragma Obsolescent (Zip_file_open_error, "Better use: Archive_open_error");
 
   --  Zip_file_Error: exception renames Archive_corrupted;   --   Now really obsolete.
   --  pragma Obsolescent(Zip_file_Error);                    --   Now really obsolete.
@@ -135,7 +138,7 @@ package Zip is
      unknown
     );
 
-  subtype reduce is PKZip_method range reduce_1 .. reduce_4;
+  subtype Reduce_Format is PKZip_method range reduce_1 .. reduce_4;
 
   --  Return a String image, nicer than the 'Image attribute.
   function Image (m : PKZip_method) return String;
@@ -261,7 +264,9 @@ package Zip is
     crc_32         :    out Interfaces.Unsigned_32
   );
 
-  File_name_not_found : exception;
+  Entry_name_not_found : exception;
+  File_name_not_found : exception renames Entry_name_not_found;
+  pragma Obsolescent (File_name_not_found, "Better use: Entry_name_not_found");
 
   function Exists (info : Zip_info; name : String) return Boolean;
 
@@ -389,8 +394,8 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String := "56 preview 5";
-  reference : constant String := ">= 02-Nov-2019";
+  version   : constant String := "56 preview 6";
+  reference : constant String := ">= 09-Nov-2019";
   web       : constant String := "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -478,17 +483,17 @@ private
   --  Codes for compression formats in Zip archives
   --  See PKWARE's Appnote, "4.4.5 compression method"
   --
-  package compression_format_code is
-    store     : constant :=  0;
-    shrink    : constant :=  1;
-    reduce    : constant :=  2;
-    implode   : constant :=  6;
-    tokenize  : constant :=  7;
-    deflate   : constant :=  8;
-    deflate_e : constant :=  9;
-    bzip2     : constant := 12;
-    lzma      : constant := 14;
-    ppmd      : constant := 98;
-  end compression_format_code;
+  package Compression_format_code is
+    store_code     : constant :=  0;
+    shrink_code    : constant :=  1;
+    reduce_code    : constant :=  2;
+    implode_code   : constant :=  6;
+    tokenize_code  : constant :=  7;
+    deflate_code   : constant :=  8;
+    deflate_e_code : constant :=  9;
+    bzip2_code     : constant := 12;
+    lzma_code      : constant := 14;
+    ppmd_code      : constant := 98;
+  end Compression_format_code;
 
 end Zip;

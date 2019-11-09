@@ -2,7 +2,6 @@
 --  Compression time is not in the focus here.
 
 with Zip, Ada.Calendar, Ada.Text_IO;
-with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress;
 with Zip.Create;                        use Zip.Create;
 
@@ -13,8 +12,8 @@ procedure Test_Zip_Create_Info_Timing is
   use Ada.Calendar;
 
   procedure Create_with_many (n : Positive; duplicates : Zip.Duplicate_name_policy) is
-    stream  : aliased File_Zipstream;
-    archive : Zip_Create_info;
+    stream  : aliased Zip_File_Stream;
+    archive : Zip_Create_Info;
 
     procedure Add_one_entry (file_name : String) is
     begin
@@ -34,7 +33,7 @@ procedure Test_Zip_Create_Info_Timing is
     end Leading_zeros;
 
   begin
-    Create (
+    Create_Archive (
       archive,
       stream'Unchecked_Access,
       "test_create.zip",

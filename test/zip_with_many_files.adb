@@ -6,8 +6,6 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Zip_Streams;                       use Zip_Streams;
-with Zip.Compress;
 with Zip.Create;                        use Zip.Create;
 
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
@@ -16,15 +14,16 @@ with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 procedure Zip_with_many_files is
 
   procedure Create_with_many (n : Positive) is
-    stream  : aliased File_Zipstream;
-    archive : Zip_Create_info;
+    stream  : aliased Zip_File_Stream;
+    archive : Zip_Create_Info;
 
     procedure Add_one_entry (file_name : String; rep : Natural) is
     begin
       Zip.Create.Add_String (
         Info              => archive,
         Contents          => "..." & rep * ("Hello! My name is: """ & file_name & '"' & ASCII.LF),
-        Name_in_archive   => file_name
+        Name_in_archive   => file_name,
+        Creation_time     => use_clock
       );
     end Add_one_entry;
 
@@ -39,11 +38,10 @@ procedure Zip_with_many_files is
     n_img : constant String := Integer'Image (n);
 
   begin
-    Create (
+    Create_Archive (
       archive,
       stream'Unchecked_Access,
-      n_img (n_img'First + 1 .. n_img'Last) & ".zip",
-      Zip.Compress.Deflate_1
+      n_img (n_img'First + 1 .. n_img'Last) & ".zip"
     );
     for i in 1 .. n loop
       Add_one_entry (

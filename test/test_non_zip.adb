@@ -8,7 +8,6 @@
 
 with Comp_Zip_Prc, LZH, LZMA.Encoding, LZMA.Decoding;
 
-with Zip_Streams;                       use Zip_Streams;
 with Zip.Create;                        use Zip.Create;
 
 with Ada.Command_Line;                  use Ada.Command_Line;
@@ -20,8 +19,8 @@ procedure Test_non_zip is
 
   type Raw_scheme is (no_compression, lzhuf_scheme, lzma_scheme);
 
-  nz   : array (Raw_scheme) of aliased File_Zipstream;
-  info : array (Raw_scheme) of Zip_Create_info;
+  nz   : array (Raw_scheme) of aliased Zip_File_Stream;
+  info : array (Raw_scheme) of Zip_Create_Info;
   zi   : array (Raw_scheme) of Zip.Zip_info;
 
   subtype Byte is Interfaces.Unsigned_8;
@@ -115,7 +114,7 @@ begin
     return;
   end if;
   for r in Raw_scheme loop
-    Create (info (r), nz (r)'Unchecked_Access, "$nz" & Raw_scheme'Image (r) & ".zip");
+    Create_Archive (info (r), nz (r)'Unchecked_Access, "$nz" & Raw_scheme'Image (r) & ".zip");
   end loop;
   --
   for i in 1 .. Argument_Count loop

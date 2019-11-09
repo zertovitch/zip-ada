@@ -3,8 +3,8 @@ echo.
 echo This batch file will perform a small test of UnZipAda tool.
 echo Don't hesitate to tune it your way!
 echo.
-echo The test will try to call the following compressors,
-echo they should be also visible in the path:
+echo The test will try to call the following compressors.
+echo If you want them in the test, they should be visible in the path.
 echo.
 echo   pkzip090.exe (or 092), from: pkz090.exe,  10.02.1989, Shrink, Reduce 1-4
 echo   pkzip101.exe (or 102), from: pkz101.exe,  21.07.1989, Implode, Shrink
@@ -41,7 +41,7 @@ call test_1 $test.bin binana
 
 echo *****************************************************************
 echo.
-echo 3) Tests with structured data (*.csv, *.xls, *.mdb)
+echo 3) Tests with structured data (separately, *.csv, *.xls, *.mdb)
 echo.
 pause
 copy /B *.csv $tst_csv

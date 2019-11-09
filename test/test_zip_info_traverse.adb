@@ -5,9 +5,9 @@ with Zip, Ada.Command_Line, Ada.Text_IO;
 procedure Test_Zip_Info_Traverse is
   use Zip, Ada.Command_Line, Ada.Text_IO;
   zi : Zip_info;
-  procedure Action (name : String) is
+  procedure Action (entry_name : String) is
   begin
-    Put_Line (name);
+    Put_Line (entry_name);
   end Action;
   procedure Listing is new Traverse (Action);
 begin

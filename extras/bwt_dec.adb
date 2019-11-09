@@ -23,10 +23,10 @@ begin
   Create (fo, Out_File, Argument (3));
   declare
     msg : String (1 .. Integer (Size (fi)));
-    index : constant Positive := Integer'Value (Argument (2));
+    idx : constant Positive := Integer'Value (Argument (2));
   begin
     String'Read (Stream (fi), msg);
-    BWT.Decode (msg, index);
+    BWT.Decode (msg, idx);
     String'Write (Stream (fo), msg);
   end;
   Close (fi);

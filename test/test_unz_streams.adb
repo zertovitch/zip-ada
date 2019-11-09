@@ -28,9 +28,9 @@ procedure Test_UnZ_Streams is
     Close (f);
     --
   exception
-    when Zip.Zip_file_open_error =>
+    when Zip.Archive_open_error =>
       Put_Line ("Can't open archive [" & a & ']');
-    when Zip.File_name_not_found =>
+    when Zip.Entry_name_not_found =>
       Put_Line ("Cannot find [" & n & "] in archive [" & a & ']');
     when UnZip.Wrong_password      =>
       Put_Line ("Password doesn't fit!");
@@ -52,14 +52,14 @@ procedure Test_UnZ_Streams is
     Extract (
       Destination      => Stream (o).all,
       Archive_Info     => z,
-      Name             => n,
+      Entry_Name       => n,
       Ignore_Directory => trash_dir
     );
     Close (o);
   exception
-    when Zip.Zip_file_open_error =>
+    when Zip.Archive_open_error =>
       Put_Line ("Can't open archive [" & a & ']');
-    when Zip.File_name_not_found =>
+    when Zip.Entry_name_not_found =>
       Put_Line ("Cannot find [" & n & "] in archive [" & a & ']');
   end Test_Output_Stream;
 

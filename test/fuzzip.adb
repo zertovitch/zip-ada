@@ -13,11 +13,11 @@
 --  which triggers Zip.Archive_Corrupted or similar.
 
 with Zip;
-with Zip.Compress; use Zip.Compress;
+with Zip.Compress;                      use Zip.Compress;
 with Zip.Create;
 with UnZip.Streams;
 
-with Zip_Streams; use Zip_Streams;
+with Zip_Streams;                       use Zip_Streams;
 
 with RW_File;
 
@@ -47,16 +47,16 @@ procedure Fuzzip is
   procedure Test_all_methods_single_data (data_for_testing : Unbounded_String) is
 
     procedure Single_test (method : Compression_Method) is
+      use Zip.Create;
       mem_stream_Zip_archive,
       mem_stream_content,
-      mem_stream_unpacked : aliased Memory_Zipstream;
-      zci : Zip.Create.Zip_Create_info;
+      mem_stream_unpacked : aliased Zip_Memory_Stream;
+      zci : Zip.Create.Zip_Create_Info;
       zi : Zip.Zip_info;
       unpacked : Unbounded_String;
       name_for_data_for_testing : constant String := "data_for_testing.dat";
       name_in_zip : constant String := "packed_" & Compression_Method'Image (method) & ".dat";
       check_ok : Boolean;
-      use Zip.Create;
     begin
       test_counter := test_counter + 1;
       if trace >= max_trace then
@@ -66,7 +66,7 @@ procedure Fuzzip is
         );
       end if;
       --  Step 2
-      Create (zci, mem_stream_Zip_archive'Unchecked_Access, "to_memo.zip", method);
+      Create_Archive (zci, mem_stream_Zip_archive'Unchecked_Access, "to_memo.zip", method);
       Set (mem_stream_content, data_for_testing);
       Set_Name (mem_stream_content, name_in_zip);
       Add_Stream (zci, mem_stream_content);

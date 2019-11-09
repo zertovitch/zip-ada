@@ -9,7 +9,6 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Zip_Streams;                       use Zip_Streams;
 with Zip.Create;                        use Zip.Create;
 
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
@@ -110,7 +109,7 @@ procedure Demo_csv_into_zip is
   procedure Pack_results (
     g            : GroupCountries;
     p            : Peril;
-    to_archive   : in out Zip_Create_info
+    to_archive   : in out Zip_Create_Info
   )
   is
     temp_name : constant String := "temp.csv";
@@ -130,17 +129,17 @@ procedure Demo_csv_into_zip is
     --         ( http://excel-writer.sf.net/ ) as a string or a stream.
     Zip.Create.Add_File (
       Info              => to_archive,
-      Name              => temp_name,
+      File_Name         => temp_name,
       Name_in_archive   => final_name,
       Delete_file_after => True
     );
   end Pack_results;
 
   procedure Output_all_results is
-    MyStream_file : aliased File_Zipstream;  --  Zip archive as a file
-    archive : Zip_Create_info;
+    MyStream_file : aliased Zip_File_Stream;
+    archive : Zip_Create_Info;
   begin
-    Create (archive,
+    Create_Archive (archive,
       MyStream_file'Unchecked_Access,
       "detailed_results.zip"
     );

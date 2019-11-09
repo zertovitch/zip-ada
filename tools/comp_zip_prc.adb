@@ -26,7 +26,7 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
   total_errors : Natural := 0;
   total_bytes : Integer_64 := 0;
 
-  procedure Compare_1_file (name : String) is
+  procedure Compare_1_file (file_name : String) is
     f : array (1 .. 2) of Zipped_File_Type;
     s : array (1 .. 2) of Stream_Access;
     c : array (1 .. 2) of Character;
@@ -43,7 +43,7 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
     end CutName;
 
     l : constant := 20;
-    mininame : constant String := To_Lower (CutName (name, l));
+    mininame : constant String := To_Lower (CutName (file_name, l));
     stuffing : constant String (1 .. l - mininame'Length + 1) := (others => ' ');
 
   begin
@@ -52,12 +52,12 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
     end if;
     for i in 1 .. 2 loop
       begin
-        Open (f (i), z (i), name, password);
+        Open (f (i), z (i), file_name, password);
         if i = 1 then
           total_1 := total_1 + 1;
         end if;
       exception
-        when Zip.File_name_not_found =>
+        when Zip.Entry_name_not_found =>
           if quiet = 0 then
             Put ("   # Not found in archive [" & Zip.Zip_name (z (i)) & ']');
           end if;
@@ -66,7 +66,7 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
           else
             Close (f (1));
           end if;
-          if name (name'Last) = '/' or name (name'Last) = '\' then
+          if file_name (file_name'Last) = '/' or file_name (file_name'Last) = '\' then
             just_a_directory := just_a_directory + 1;
             if quiet = 0 then
               Put_Line (" (just a dir.)");

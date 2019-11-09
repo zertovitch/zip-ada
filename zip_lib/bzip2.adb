@@ -3,7 +3,7 @@
 --
 --  Legal licensing note:
 --
---  Copyright (c) 2018 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2018 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -99,22 +99,22 @@ package body BZip2 is
          16#bcb4666d#, 16#b8757bda#, 16#b5365d03#, 16#b1f740b4#
     );
 
-    procedure Update (CRC : in out Unsigned_32; val : Byte) is
+    procedure Update (CRC_Value : in out Unsigned_32; val : Byte) is
     begin
-      CRC :=
-        CRC32_Table (16#FF# and (Shift_Right (CRC, 24) xor Unsigned_32 (val)))
+      CRC_Value :=
+        CRC32_Table (16#FF# and (Shift_Right (CRC_Value, 24) xor Unsigned_32 (val)))
         xor
-        Shift_Left (CRC, 8);
+        Shift_Left (CRC_Value, 8);
     end Update;
 
-    procedure Init (CRC : out Unsigned_32) is
+    procedure Init (CRC_Value : out Unsigned_32) is
     begin
-      CRC := 16#FFFF_FFFF#;
+      CRC_Value := 16#FFFF_FFFF#;
     end Init;
 
-    function Final (CRC : Unsigned_32) return Unsigned_32 is
+    function Final (CRC_Value : Unsigned_32) return Unsigned_32 is
     begin
-      return not CRC;
+      return not CRC_Value;
     end Final;
 
   end CRC;

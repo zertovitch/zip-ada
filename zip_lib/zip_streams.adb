@@ -218,6 +218,10 @@ package body Zip_Streams is
         To_String (Str.Name),
         Form => To_String (Form_For_IO_Open_and_Create)
       );
+      --  NB: we could have here a call to Set_Time using
+      --  Ada.Directories.Modification_Time if the latter
+      --  was able to accept the Form as above for Open
+      --  (this is needed for Unicode names).
    end Open;
 
    procedure Create (Str : in out File_Zipstream; Mode : File_Mode) is
@@ -228,6 +232,10 @@ package body Zip_Streams is
         To_String (Str.Name),
         Form => To_String (Form_For_IO_Open_and_Create)
       );
+      --  NB: we could have here a call to Set_Time using
+      --  Ada.Directories.Modification_Time if the latter
+      --  was able to accept the Form as above for Create
+      --  (this is needed for Unicode names).
    end Create;
 
    procedure Close (Str : in out File_Zipstream) is
@@ -286,11 +294,11 @@ package body Zip_Streams is
       -----------------------------------------------
 
       procedure Split
-        (Date    : Time;
-         Year    : out Year_Number;
-         Month   : out Month_Number;
-         Day     : out Day_Number;
-         Seconds : out Day_Duration)
+        (Date       : Time;
+         To_Year    : out Year_Number;
+         To_Month   : out Month_Number;
+         To_Day     : out Day_Number;
+         To_Seconds : out Day_Duration)
       is
          d_date : constant Integer := Integer (Date  /  65536);
          d_time : constant Integer := Integer (Date and 65535);
@@ -299,17 +307,17 @@ package body Zip_Streams is
          minutes      : Integer;
          seconds_only : Integer;
       begin
-         Year := 1980 + d_date / 512;
+         To_Year := 1980 + d_date / 512;
          x := (d_date / 32) mod 16;
-         if x not in Month_Number then -- that is 0, or in 13..15
+         if x not in Month_Number then  --  that is 0, or in 13..15
            raise Time_Error;
          end if;
-         Month := x;
+         To_Month := x;
          x := d_date mod 32;
-         if x not in Day_Number then -- that is 0
+         if x not in Day_Number then  --  that is 0
            raise Time_Error;
          end if;
-         Day := x;
+         To_Day := x;
          hours   := d_time / 2048;
          minutes := (d_time / 32) mod 64;
          seconds_only := 2 * (d_time mod 32);
@@ -319,16 +327,16 @@ package body Zip_Streams is
          then
            raise Time_Error;
          end if;
-         Seconds := Day_Duration (hours * 3600 + minutes * 60 + seconds_only);
+         To_Seconds := Day_Duration (hours * 3600 + minutes * 60 + seconds_only);
       end Split;
       --
       function Time_Of
-        (Year    : Year_Number;
-         Month   : Month_Number;
-         Day     : Day_Number;
-         Seconds : Day_Duration := 0.0) return Time
+        (From_Year    : Year_Number;
+         From_Month   : Month_Number;
+         From_Day     : Day_Number;
+         From_Seconds : Day_Duration := 0.0) return Time
       is
-         year_2          : Integer := Year;
+         year_2          : Integer := From_Year;
          hours           : Unsigned_32;
          minutes         : Unsigned_32;
          seconds_only    : Unsigned_32;
@@ -338,13 +346,13 @@ package body Zip_Streams is
          if year_2 < 1980 then  --  avoid invalid DOS date
            year_2 := 1980;
          end if;
-         seconds_day := Unsigned_32 (Seconds);
+         seconds_day := Unsigned_32 (From_Seconds);
          hours := seconds_day / 3600;
          minutes :=  (seconds_day / 60) mod 60;
          seconds_only := seconds_day mod 60;
          result :=
            --  MSDN formula for encoding:
-             Unsigned_32 ((year_2 - 1980) * 512 + Month * 32 + Day) * 65536  --  Date
+             Unsigned_32 ((year_2 - 1980) * 512 + From_Month * 32 + From_Day) * 65536  --  Date
            +
              hours * 2048 + minutes * 32 + seconds_only / 2;  --  Time
          return Time (result);
@@ -355,34 +363,34 @@ package body Zip_Streams is
         return Unsigned_32 (Left) > Unsigned_32 (Right);
       end ">";
 
-      function Convert (date : in Ada.Calendar.Time) return Time is
-         year            : Year_Number;
-         month           : Month_Number;
-         day             : Day_Number;
+      function Convert (Date : in Ada.Calendar.Time) return Time is
+         year_temp       : Year_Number;
+         month_temp      : Month_Number;
+         day_temp        : Day_Number;
          seconds_day_dur : Day_Duration;
       begin
-         Split (date, year, month, day, seconds_day_dur);
-         return Time_Of (year, month, day, seconds_day_dur);
+         Split (Date, year_temp, month_temp, day_temp, seconds_day_dur);
+         return Time_Of (year_temp, month_temp, day_temp, seconds_day_dur);
       end Convert;
 
-      function Convert (date : in Time) return Ada.Calendar.Time is
-         year            : Year_Number;
-         month           : Month_Number;
-         day             : Day_Number;
+      function Convert (Date : in Time) return Ada.Calendar.Time is
+         year_temp       : Year_Number;
+         month_temp      : Month_Number;
+         day_temp        : Day_Number;
          seconds_day_dur : Day_Duration;
       begin
-         Split (date, year, month, day, seconds_day_dur);
-         return Time_Of (year, month, day, seconds_day_dur);
+         Split (Date, year_temp, month_temp, day_temp, seconds_day_dur);
+         return Time_Of (year_temp, month_temp, day_temp, seconds_day_dur);
       end Convert;
 
-      function Convert (date : in DOS_Time) return Time is
+      function Convert (Date : in DOS_Time) return Time is
       begin
-         return Time (date);      --  currently a trivial conversion
+         return Time (Date);      --  currently a trivial conversion
       end Convert;
 
-      function Convert (date : in Time) return DOS_Time is
+      function Convert (Date : in Time) return DOS_Time is
       begin
-         return DOS_Time (date);  --  currently a trivial conversion
+         return DOS_Time (Date);  --  currently a trivial conversion
       end Convert;
 
    end Calendar;

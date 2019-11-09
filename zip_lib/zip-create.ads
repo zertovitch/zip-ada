@@ -6,7 +6,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2018 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2019 Gautier de Montmollin (maintainer)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -52,87 +52,109 @@
 --   4-Feb-2009: GdM: Added procedure Add_File
 --
 
-with Zip.Headers; use Zip.Headers;
-with Zip.Compress; use Zip.Compress;
-with Zip_Streams; use Zip_Streams;
+with Zip.Compress;
+with Zip.Headers;
+with Zip_Streams;
 
 with Ada.Containers.Hashed_Maps;
 with Ada.Strings.Unbounded.Hash;
 
 package Zip.Create is
 
-   type Zip_Create_info is private;
+   type Zip_Create_Info is private;
+
+   subtype Zip_File_Stream is Zip_Streams.File_Zipstream;
+   --  You can use this type for creating Zip archives as files.
+   subtype Zip_Memory_Stream is Zip_Streams.Memory_Zipstream;
+   --  You can use this type for creating Zip archives in memory.
 
    --  Create the Zip archive; create the file if the stream is a file
 
-   procedure Create (Info          : out Zip_Create_info;
-                     Z_Stream      : in  Zipstream_Class_Access;
-                     Name          : String;
-                     Compress      : Zip.Compress.Compression_Method := Zip.Compress.Deflate_1;
-                     Duplicates    : Duplicate_name_policy := admit_duplicates
+   procedure Create_Archive (
+      Info            : out Zip_Create_Info;
+      Z_Stream        : in Zip_Streams.Zipstream_Class_Access;
+      Archive_Name    : String;
+      Compress_Method : Zip.Compress.Compression_Method := Zip.Compress.Deflate_1;
+      Duplicates      : Duplicate_name_policy           := admit_duplicates
    );
 
-   function Is_Created (Info : Zip_Create_info) return Boolean;
+   function Is_Created (Info : Zip_Create_Info) return Boolean;
 
    --  Set a new compression format for the next data to be added to the archive.
    --  Can be useful if data are known to be already compressed - or not.
 
-   procedure Set (Info       : in out Zip_Create_info;
+   procedure Set (Info       : in out Zip_Create_Info;
                   New_Method :        Zip.Compress.Compression_Method);
 
-   function Name (Info : Zip_Create_info) return String;
+   function Name (Info : Zip_Create_Info) return String;
 
-   --  Add a new entry to a Zip archive, from a general input Zipstream
+   --  Add a new entry to a Zip archive, from a general *input* Zipstream
    --  The entry's name is set by Set_Name on the Stream before calling Add_Stream.
 
-   procedure Add_Stream (Info     : in out Zip_Create_info;
-                         Stream   : in out Root_Zipstream_Type'Class;
+   procedure Add_Stream (Info     : in out Zip_Create_Info;
+                         Stream   : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Password : in     String := "");
 
-   procedure Add_Stream (Info            : in out Zip_Create_info;
-                         Stream          : in out Root_Zipstream_Type'Class;
+   procedure Add_Stream (Info            : in out Zip_Create_Info;
+                         Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Feedback        : in     Feedback_proc;
                          Password        : in     String := "";
                          Compressed_Size :    out Zip.File_size_type;
                          Final_Method    :    out Natural);
 
+   default_time                  : Zip_Streams.Time renames Zip_Streams.default_time;
+
+   --  If use_file_modification_time is passed to Add_File, Ada.Directories.Modification_Time
+   --  will be called on File_Name and that time will be used for setting the Zip entry's time
+   --  stamp. NB: Ada.Directories.Modification_Time is not reliable: it may fail on UTF-8 file
+   --  names on some Ada systems.
+   --
+   use_file_modification_time    : Zip_Streams.Time renames Zip_Streams.special_time_1;
+
+   --  If use_clock is passed to Add_File or Add_String, Ada.Calendar.Clock will be called
+   --  and that time will be used for setting the Zip entry's time stamp.
+   --  NB: Ada.Calendar.Clock may be time-consuming on some Ada systems.
+   --
+   use_clock                     : Zip_Streams.Time renames Zip_Streams.special_time_2;
+
    --  Add a new entry to a Zip archive, from an entire file
 
-   procedure Add_File (Info              : in out Zip_Create_info;
-                       Name              : String;
+   procedure Add_File (Info              : in out Zip_Create_Info;
+                       File_Name         : String;
                        --  Name_in_archive: default: add the file in
                        --  the archive under the File's name.
-                       Name_in_archive   : String := "";
+                       Name_in_archive   : String            := "";
                        --  Delete_file_after: practical to delete temporary file after adding.
-                       Delete_file_after : Boolean := False;
+                       Delete_file_after : Boolean           := False;
                        Name_encoding     : Zip_name_encoding := IBM_437;
-                       Modification_time : Time := default_time;
-                       Is_read_only      : Boolean := False;
-                       Feedback          : Feedback_proc := null;
-                       Password          : String := ""
+                       --  Time stamp for this entry
+                       Modification_time : Time              := default_time;
+                       Is_read_only      : Boolean           := False;
+                       Feedback          : Feedback_proc     := null;
+                       Password          : String            := ""
    );
 
    --  Add a new entry to a Zip archive, from a buffer stored in a string
 
-   procedure Add_String (Info               : in out Zip_Create_info;
+   procedure Add_String (Info               : in out Zip_Create_Info;
                          Contents           : String;
                          Name_in_archive    : String;
                          --  Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
-                         Name_UTF_8_encoded : Boolean := False;
-                         Password           : String := "";
-                         --  Time stamp for this entry, e.g. Zip.Convert(Ada.Calendar.Clock)
+                         Name_UTF_8_encoded : Boolean  := False;
+                         Password           : String   := "";
+                         --  Time stamp for this entry
                          Creation_time      : Zip.Time := default_time
    );
 
    use Ada.Strings.Unbounded;
 
-   procedure Add_String (Info               : in out Zip_Create_info;
+   procedure Add_String (Info               : in out Zip_Create_Info;
                          Contents           : Unbounded_String;
                          Name_in_archive    : String;
                          --  Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
-                         Name_UTF_8_encoded : Boolean := False;
-                         Password           : String := "";
-                         --  Time stamp for this entry, e.g. Zip.Convert(Ada.Calendar.Clock)
+                         Name_UTF_8_encoded : Boolean  := False;
+                         Password           : String   := "";
+                         --  Time stamp for this entry
                          Creation_time      : Zip.Time := default_time
    );
 
@@ -142,14 +164,14 @@ package Zip.Create is
    --  The streams' indices are set at the beginning of local headers in both archives.
    --
    procedure Add_Compressed_Stream (
-     Info           : in out Zip_Create_info;            --  Destination
-     Stream         : in out Root_Zipstream_Type'Class;  --  Source
+     Info           : in out Zip_Create_Info;                        --  Destination
+     Stream         : in out Zip_Streams.Root_Zipstream_Type'Class;  --  Source
      Feedback       : in     Feedback_proc
    );
 
    --  Complete the Zip archive; close the file if the stream is a file
 
-   procedure Finish (Info       : in out Zip_Create_info);
+   procedure Finish (Info : in out Zip_Create_Info);
 
    --  The following is raised on cases when the Zip archive creation exceeds
    --  the Zip_32 format's capacity: 4GB total size, 65535 entries.
@@ -157,8 +179,6 @@ package Zip.Create is
    Zip_Capacity_Exceeded : exception;
 
 private
-
-   type p_String is access String;
 
    type Dir_entry is record
       head : Zip.Headers.Central_File_Header;
@@ -174,8 +194,8 @@ private
    package Name_mapping is
      new Ada.Containers.Hashed_Maps (Unbounded_String, Positive, Hash, "=");
 
-   type Zip_Create_info is record
-     Stream             : Zipstream_Class_Access;
+   type Zip_Create_Info is record
+     Stream             : Zip_Streams.Zipstream_Class_Access;
      Compress           : Zip.Compress.Compression_Method;
      Contains           : Pdir_entries := null;
      --  'Contains' has unused room, to avoid reallocating each time:

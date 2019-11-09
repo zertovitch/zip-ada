@@ -26,7 +26,7 @@ procedure Find_Zip is
 
   ignore_case : constant Boolean := True;
 
-  procedure Search_1_file_using_output_stream (name : String) is
+  procedure Search_1_file_using_output_stream (file_name : String) is
     occ : Natural := 0;
     --  Define a circular buffer
     siz : constant := max;
@@ -38,20 +38,20 @@ procedure Find_Zip is
     type Search_stream is new Ada.Streams.Root_Stream_Type with null record;
     --
     overriding procedure Read
-      (Stream : in out Search_stream;
+      (Self   : in out Search_stream;
        Item   :    out Ada.Streams.Stream_Element_Array;
        Last   :    out Ada.Streams.Stream_Element_Offset) is null;  --  Not used.
 
     overriding procedure Write
-     (Stream : in out Search_stream;
-      Item   : in     Ada.Streams.Stream_Element_Array);
+      (Self   : in out Search_stream;
+       Item   : in     Ada.Streams.Stream_Element_Array);
 
     --  Implementation of Write:
     overriding procedure Write
-     (Stream : in out Search_stream;
-      Item   : in     Ada.Streams.Stream_Element_Array)
+      (Self   : in out Search_stream;
+       Item   : in     Ada.Streams.Stream_Element_Array)
     is
-      pragma Unreferenced (Stream);
+      pragma Unreferenced (Self);
       c : Character;
       i : Buffer_range := 0;
       j : Natural;
@@ -85,19 +85,19 @@ procedure Find_Zip is
     Extract (
       Destination      => sst,
       Archive_Info     => z,
-      Name             => name,
+      Entry_Name       => file_name,
       Ignore_Directory => False
     );
     if occ > 0 then
       Put (occ, 5);
-      Put_Line (" in [" & To_Lower (name) & "]'s contents");
+      Put_Line (" in [" & To_Lower (file_name) & "]'s contents");
     end if;
   end Search_1_file_using_output_stream;
 
   --  Old variant using an input stream (memory footprint is uncompressed
   --  size plus fixed amounts: can be large!)
 
-  procedure Search_1_file_using_input_stream (name : String) is
+  procedure Search_1_file_using_input_stream (file_name : String) is
     f : Zipped_File_Type;
     s : Stream_Access;
     c : Character;
@@ -109,7 +109,7 @@ procedure Find_Zip is
     i, bup : Buffer_range := 0;
     j : Natural;
   begin
-    Open (f, z, name);
+    Open (f, z, file_name);
     s := Stream (f);
     while not End_Of_File (f) loop
       Character'Read (s, c);
@@ -135,32 +135,32 @@ procedure Find_Zip is
     Close (f);
     if occ > 0 then
       Put (occ, 5);
-      Put_Line (" in [" & To_Lower (name) & "] (inward stream method)");
+      Put_Line (" in [" & To_Lower (file_name) & "] (inward stream method)");
     end if;
   end Search_1_file_using_input_stream;
   pragma Unreferenced (Search_1_file_using_input_stream);
 
   procedure Search_all_files is new Zip.Traverse (Search_1_file_using_output_stream);
 
-  procedure Search_in_entry_name (name : String) is
-    un : String := name;
+  procedure Search_in_entry_name (file_name : String) is
+    un : String := file_name;
   begin
     if ignore_case then
       un := To_Upper (un);
     end if;
     if Index (un, str (1 .. stl)) > 0 then
-      Put_Line (" Found in [" & To_Lower (name) & "]'s entry name");
+      Put_Line (" Found in [" & To_Lower (file_name) & "]'s entry name");
     end if;
   end Search_in_entry_name;
 
   procedure Search_all_file_names is new Zip.Traverse (Search_in_entry_name);
 
-  function Try_with_zip (name : String) return String is
+  function Try_with_zip (file_name : String) return String is
   begin
-    if Zip.Exists (name) then
-      return name;
+    if Zip.Exists (file_name) then
+      return file_name;
     else
-      return name & ".zip";
+      return file_name & ".zip";
       --  Maybe the file doesn't exist, but we tried our best...
     end if;
   end Try_with_zip;
@@ -180,7 +180,7 @@ begin
   begin
     Zip.Load (z, n);
   exception
-    when Zip.Zip_file_open_error =>
+    when Zip.Archive_open_error =>
       Put ("Can't open archive [" & n & ']'); raise;
     when UnZip.Wrong_password      =>
       Put ("Archive has a password"); raise;

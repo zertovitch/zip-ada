@@ -6,7 +6,7 @@ echo ""
 
 #  Create an archive
 
-../zipada test_rz *.ad* *.txt *.cmd *.sh *.pdf *.mdb
+../zipada test_rz *.ad* *.txt *.cmd *.sh *.pdf *.mdb *.xls
 
 #  Recompress it
 

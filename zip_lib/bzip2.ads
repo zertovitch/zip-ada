@@ -18,7 +18,7 @@
 --
 --  Legal licensing note:
 --
---  Copyright (c) 2018 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2018 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -55,9 +55,9 @@ private
   package CRC is
     use Interfaces;
     --
-    procedure Init (CRC : out Unsigned_32);
-    function  Final (CRC : Unsigned_32) return Unsigned_32;
-    procedure Update (CRC : in out Unsigned_32; val : Byte);
+    procedure Init (CRC_Value : out Unsigned_32);
+    function  Final (CRC_Value : Unsigned_32) return Unsigned_32;
+    procedure Update (CRC_Value : in out Unsigned_32; val : Byte);
       pragma Inline (Update);
   end CRC;
 

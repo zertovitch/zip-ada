@@ -5,7 +5,7 @@ echo.
 
 rem Ensure the input files exist
 if not exist file1.txt copy ziptest.adb file1.txt
-if not exist file2.txt copy ..\appnote.txt file2.txt
+if not exist file2.txt copy ..\doc\appnote.txt file2.txt
 
 ..\ziptest
 

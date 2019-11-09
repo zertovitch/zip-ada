@@ -1,6 +1,7 @@
 --  Zip_Dir_List shows the list of all directories appearing in a Zip archive file.
 --
---  Tools originally made for answering:
+--  Tool originally made for answering:
+--
 --  https://stackoverflow.com/questions/32508443/how-to-get-a-list-of-directories-in-a-zip
 
 with Zip;
@@ -40,21 +41,24 @@ procedure Zip_Dir_List is
     end loop;
     if sep > 0 then
       declare
-        the_dir : constant Unbounded_String := U (n (n'First .. sep));
+        the_path : constant Unbounded_String := U (n (n'First .. sep));
+        use Dir_maps;
       begin
-        dir_map.Include (the_dir, the_dir);  --  We store the directory as key and element
+        if dir_map.Find (the_path) = No_Element then
+          dir_map.Insert (the_path, the_path);  --  We store the path as key *and* element
+        end if;
       end;
     end if;
   end Record_directory;
 
   procedure Record_directories is new Zip.Traverse (Record_directory);
 
-  function Try_with_zip (name : String) return String is
+  function Try_with_zip (file_name : String) return String is
   begin
-    if Zip.Exists (name) then
-      return name;
+    if Zip.Exists (file_name) then
+      return file_name;
     else
-      return name & ".zip";
+      return file_name & ".zip";
       --  Maybe the file doesn't exist, but we tried our best...
     end if;
   end Try_with_zip;
@@ -75,7 +79,7 @@ begin
   begin
     Zip.Load (z, n);
   exception
-    when Zip.Zip_file_open_error =>
+    when Zip.Archive_open_error =>
       Put ("Can't open archive [" & n & ']'); raise;
   end;
   Record_directories (z);

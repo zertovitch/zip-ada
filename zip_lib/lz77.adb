@@ -1707,10 +1707,10 @@ package body LZ77 is
       --  #define CHARBITS : constant := 8;  [ NB: dictionary uses char (byte) ]
 
       --  Minimum match length & maximum match length.
-      THRESHOLD : constant := 2;
-      MATCHBITS : constant := 8;  --  [original: 4]
+      THRESHOLD_Rich : constant := 2;
+      MATCHBITS      : constant := 8;  --  [original: 4]
       --  [original: 2 ** MATCHBITS + THRESHOLD - 1]
-      MAXMATCH  : constant := 2 ** MATCHBITS + THRESHOLD;  -- 258 is Deflate-friendly.
+      MAXMATCH  : constant := 2 ** MATCHBITS + THRESHOLD_Rich;  -- 258 is Deflate-friendly.
 
       --  Sliding dictionary size and hash table's size.
       --  Some combinations of HASHBITS and THRESHOLD values will not work
@@ -1726,7 +1726,7 @@ package body LZ77 is
       --  This constant must be high enough so that only THRESHOLD + 1
       --  characters are in the hash accumulator at one time.
 
-      SHIFTBITS : constant := ((HASHBITS + THRESHOLD) / (THRESHOLD + 1));
+      SHIFTBITS : constant := ((HASHBITS + THRESHOLD_Rich) / (THRESHOLD_Rich + 1));
 
       --  Sector size constants [the dictionary is partitoned in sectors].
 
@@ -1803,13 +1803,13 @@ package body LZ77 is
         j : Integer;
         k : Integer_M32;
       begin
-        if bytestodo <= THRESHOLD then  -- Not enough bytes in sector for match?
+        if bytestodo <= THRESHOLD_Rich then  -- Not enough bytes in sector for match?
           nextlink (dictpos .. dictpos + bytestodo - 1) := (others => NIL);
           lastlink (dictpos .. dictpos + bytestodo - 1) := (others => NIL);
         else
           --  Matches can't cross sector boundaries.
-          nextlink (dictpos + bytestodo - THRESHOLD .. dictpos + bytestodo - 1) := (others => NIL);
-          lastlink (dictpos + bytestodo - THRESHOLD .. dictpos + bytestodo - 1) := (others => NIL);
+          nextlink (dictpos + bytestodo - THRESHOLD_Rich .. dictpos + bytestodo - 1) := (others => NIL);
+          lastlink (dictpos + bytestodo - THRESHOLD_Rich .. dictpos + bytestodo - 1) := (others => NIL);
 
           j :=  Integer (
                   Shift_Left (Unsigned_int (dict (dictpos)), SHIFTBITS)
@@ -1817,13 +1817,13 @@ package body LZ77 is
                   Unsigned_int (dict (dictpos + 1))
                 );
 
-          k := dictpos + bytestodo - THRESHOLD;  --  Calculate end of sector.
+          k := dictpos + bytestodo - THRESHOLD_Rich;  --  Calculate end of sector.
 
           for i in dictpos ..  k - 1 loop
             j := Integer (
                   (Shift_Left (Unsigned_int (j), SHIFTBITS) and (HASHSIZE - 1))
                    xor
-                   Unsigned_int (dict (i + THRESHOLD))
+                   Unsigned_int (dict (i + THRESHOLD_Rich))
                  );
             lastlink (i) := Unsigned_int (j) or HASH_MASK_1;
             nextlink (i) := hash (j);
@@ -1897,9 +1897,9 @@ package body LZ77 is
         if not GREEDY then  --  Non-greedy search loop (slow).
 
           while j /= 0 loop  --  Loop while there are still characters left to be compressed.
-            Find_Match (i, THRESHOLD);
+            Find_Match (i, THRESHOLD_Rich);
 
-            if matchlength > THRESHOLD then
+            if matchlength > THRESHOLD_Rich then
               matchlen1 := matchlength;
               matchpos1 := matchpos;
 
@@ -1913,7 +1913,7 @@ package body LZ77 is
                 else
                   if matchlen1 > j then
                     matchlen1 := j;
-                    if matchlen1 <= THRESHOLD then
+                    if matchlen1 <= THRESHOLD_Rich then
                       Write_literal_pos_i;
                       exit;
                     end if;
@@ -1940,13 +1940,13 @@ package body LZ77 is
 
           while j /= 0 loop  --  Loop while there are still characters left to be compressed.
 
-            Find_Match (i, THRESHOLD);
+            Find_Match (i, THRESHOLD_Rich);
 
             if matchlength > j then
               matchlength := j;     --  Clamp matchlength.
             end if;
 
-            if matchlength > THRESHOLD then  --  Valid match?
+            if matchlength > THRESHOLD_Rich then  --  Valid match?
               Write_DL_code (
                 length   => Integer (matchlength),
                 --  [The subtraction happens modulo 2**n, needs to be cleaned modulo 2**DICTSIZE]
@@ -1963,7 +1963,7 @@ package body LZ77 is
 
       end Dict_Search;
 
-      procedure Encode is
+      procedure Encode_Rich is
         dictpos, actual_read : Integer_M32 :=  0;
         deleteflag : Boolean := False;
       begin
@@ -1991,11 +1991,10 @@ package body LZ77 is
             deleteflag := True;   --  Ok to delete now.
           end if;
         end loop;
-
-      end Encode;
+      end Encode_Rich;
 
     begin
-      Encode;
+      Encode_Rich;
     end LZ77_by_Rich;
 
   begin
