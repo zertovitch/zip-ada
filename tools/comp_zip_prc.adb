@@ -32,7 +32,7 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
     c : array (1 .. 2) of Character;
     p : Integer_64 := 1;
 
-    function CutName (n : String; l : Natural) return String is
+    function Cut_name (n : String; l : Natural) return String is
       dots : constant String := "...";
     begin
       if n'Length > l then
@@ -40,10 +40,10 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
       else
         return n;
       end if;
-    end CutName;
+    end Cut_name;
 
     l : constant := 20;
-    mininame : constant String := To_Lower (CutName (file_name, l));
+    mininame : constant String := To_Lower (Cut_name (file_name, l));
     stuffing : constant String (1 .. l - mininame'Length + 1) := (others => ' ');
 
   begin

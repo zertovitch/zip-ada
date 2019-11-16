@@ -308,17 +308,18 @@ package Zip is
   -- Zip archive purposes and that might be generally useful.            --
   -------------------------------------------------------------------------
 
-  --  BlockRead: general-purpose procedure (nothing really specific to Zip /
+  --  Block_Read: general-purpose procedure (nothing really specific to Zip /
   --  UnZip): reads either the whole buffer from a file, or if the end of
   --  the file lays inbetween, a part of the buffer.
   --
-  --  The procedure's names and parameters match Borland Pascal / Delphi
+  --  The procedure's names and parameters corresponds to Borland / Turbo
+  --  Pascal / Delphi's BlockRead's.
 
   subtype Byte is Interfaces.Unsigned_8;
   type Byte_Buffer is array (Integer range <>) of aliased Byte;
   type p_Byte_Buffer is access Byte_Buffer;
 
-  procedure BlockRead (
+  procedure Block_Read (
     file          : in     Ada.Streams.Stream_IO.File_Type;
     buffer        :    out Byte_Buffer;
     actually_read :    out Natural
@@ -327,7 +328,7 @@ package Zip is
 
   --  Same for general streams
   --
-  procedure BlockRead (
+  procedure Block_Read (
     stream        : in out Zip_Streams.Root_Zipstream_Type'Class;
     buffer        :    out Byte_Buffer;
     actually_read :    out Natural
@@ -338,7 +339,7 @@ package Zip is
   --  the buffer cannot be fully read.
   --  This mimics the 'Read stream attribute; can be a lot faster, depending
   --  on the compiler's run-time library.
-  procedure BlockRead (
+  procedure Block_Read (
     stream : in out Zip_Streams.Root_Zipstream_Type'Class;
     buffer :    out Byte_Buffer
   );
@@ -346,7 +347,7 @@ package Zip is
   --  This mimics the 'Write stream attribute; can be a lot faster, depending
   --  on the compiler's run-time library.
   --  NB: here we can use the root stream type: no question of size, index,...
-  procedure BlockWrite (
+  procedure Block_Write (
     stream : in out Ada.Streams.Root_Stream_Type'Class;
     buffer : in     Byte_Buffer
   );

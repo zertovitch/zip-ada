@@ -95,7 +95,7 @@ package body Zip.Headers is
   is
     chb : Byte_Buffer (1 .. 46);
   begin
-    BlockRead (stream, chb);
+    Block_Read (stream, chb);
 
     if not PK_signature (chb, 1) then
       raise bad_central_header;
@@ -147,7 +147,7 @@ package body Zip.Headers is
     chb (39 .. 42) := Intel_bf (header.external_attributes);
     chb (43 .. 46) := Intel_bf (header.local_header_offset);
 
-    BlockWrite (stream, chb);
+    Block_Write (stream, chb);
   end Write;
 
   -----------------------------------------------------------------------
@@ -160,7 +160,7 @@ package body Zip.Headers is
   is
     lhb : Byte_Buffer (1 .. 30);
   begin
-    BlockRead (stream, lhb);
+    Block_Read (stream, lhb);
 
     if not PK_signature (lhb, 3) then
       raise bad_local_header;
@@ -199,7 +199,7 @@ package body Zip.Headers is
     lhb (27 .. 28) := Intel_bf (header.filename_length);
     lhb (29 .. 30) := Intel_bf (header.extra_field_length);
 
-    BlockWrite (stream, lhb);
+    Block_Write (stream, lhb);
   end Write;
 
   -------------------------------------------
@@ -233,7 +233,7 @@ package body Zip.Headers is
   is
     eb : Byte_Buffer (1 .. 22);
   begin
-    BlockRead (stream, eb);
+    Block_Read (stream, eb);
     Copy_and_check (eb, the_end);
   end Read_and_check;
 
@@ -263,7 +263,7 @@ package body Zip.Headers is
       ilb : Integer;
       x : ZS_Size_Type;
     begin
-      BlockRead (stream, large_buffer);
+      Block_Read (stream, large_buffer);
       for i in reverse min_end_start .. Size (stream) - 21 loop
         --  Yes, we must _search_ for the header...
         --  because PKWARE put a variable-size comment _after_ it 8-(
@@ -317,7 +317,7 @@ package body Zip.Headers is
     eb (17 .. 20) := Intel_bf (the_end.central_dir_offset);
     eb (21 .. 22) := Intel_bf (the_end.main_comment_length);
 
-    BlockWrite (stream, eb);
+    Block_Write (stream, eb);
   end Write;
 
   ------------------------------------------------------------------
@@ -346,7 +346,7 @@ package body Zip.Headers is
   is
     ddb : Byte_Buffer (1 .. 16);
   begin
-    BlockRead (stream, ddb);
+    Block_Read (stream, ddb);
     Copy_and_check (ddb, the_data_desc);
   end Read_and_check;
 
@@ -363,7 +363,7 @@ package body Zip.Headers is
     ddb  (9 .. 12) := Intel_bf (the_data_desc.compressed_size);
     ddb (13 .. 16) := Intel_bf (the_data_desc.uncompressed_size);
 
-    BlockWrite (stream, ddb);
+    Block_Write (stream, ddb);
   end Write;
 
 end Zip.Headers;

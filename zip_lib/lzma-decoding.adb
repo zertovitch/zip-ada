@@ -188,9 +188,7 @@ package body LZMA.Decoding is
       bit_nomatch  : Unsigned;
     begin
       if is_unpack_size_defined and then o.unpackSize = 0 then
-        raise
-          LZMA_Error with
-          "Decoded data will exceed expected data size (Process_Literal)";
+        raise LZMA_Error with "Decoded data will exceed expected data size (Process_Literal)";
       end if;
       --
       if not Is_Empty then
@@ -453,19 +451,16 @@ package body LZMA.Decoding is
           if Is_Finished_OK then
             return End_Of_Stream;
           else
-            raise
-              LZMA_Error with
+            raise LZMA_Error with
               "Range decoder not finished on EOS marker (in Process_Distance_and_Length)";
           end if;
         end if;
         if is_unpack_size_defined and then o.unpackSize = 0 then
-          raise
-            LZMA_Error with
+          raise LZMA_Error with
             "Decoded data will exceed expected data size (in Process_Distance_and_Length, #2).";
         end if;
         if not Is_Distance_Valid then
-          raise
-            LZMA_Error with
+          raise LZMA_Error with
             "Invalid distance (in Process_Distance_and_Length):" &
             "; Dictionary size =" & UInt32'Image (dict_size) &
             "; Position        =" & UInt32'Image (out_win.pos) &
@@ -475,14 +470,11 @@ package body LZMA.Decoding is
       else
         --  "Rep Match"
         if is_unpack_size_defined and then o.unpackSize = 0 then
-          raise
-            LZMA_Error with
+          raise LZMA_Error with
             "Decoded data will exceed expected data size (in Process_Distance_and_Length, #1)";
         end if;
         if Is_Empty then
-          raise
-            LZMA_Error with
-            "Output window buffer is empty (in Process_Distance_and_Length)";
+          raise LZMA_Error with "Output window buffer is empty (in Process_Distance_and_Length)";
         end if;
         Decode_Bit (probs.switch.rep_g0 (state), bit_b);
         if bit_b = The_distance_is_rep0_choice then
@@ -522,8 +514,7 @@ package body LZMA.Decoding is
       --  The LZ distance/length copy happens here.
       Copy_Match (dist => rep0 + 1);
       if data_length_error then
-        raise
-          LZMA_Error with
+        raise LZMA_Error with
           "Decoded data will exceed expected data size (in Process_Distance_and_Length, #3)";
       end if;
       o.unpackSize := o.unpackSize - Data_Bytes_Count (len);
@@ -607,8 +598,7 @@ package body LZMA.Decoding is
             end loop;
             last_bit := last_bit + Natural (8 * i);
             if last_bit > Data_Bytes_Count'Size - 1 then
-              raise
-                LZMA_Error with
+              raise LZMA_Error with
                 "Indicated size bits for decoded data," &
                 Natural'Image (last_bit) &
                 ", exceeds the maximum file size bits," &
@@ -634,7 +624,7 @@ package body LZMA.Decoding is
     Decode_Header (info, hints);
     Decode_Contents (info, res);
     if hints.fail_on_bad_range_code and info.range_dec_corrupted then
-      raise LZMA_Error with "Range decoder had a corrupted value (code = range)";
+      raise LZMA_Error with "Range decoder had a corrupted value";
     end if;
   end Decode;
 

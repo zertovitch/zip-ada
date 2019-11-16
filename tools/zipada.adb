@@ -40,7 +40,7 @@ procedure ZipAda is
     Show_License (Current_Output, "zip.ads");
   end Blurb;
 
-  function CutName (n : String; l : Natural) return String is
+  function Cut_name (n : String; l : Natural) return String is
     dots : constant String := "...";
   begin
     if n'Length > l then
@@ -48,7 +48,7 @@ procedure ZipAda is
     else
       return n;
     end if;
-  end CutName;
+  end Cut_name;
 
   --  Final zipfile stream
   MyStream : aliased File_Zipstream;
@@ -63,7 +63,7 @@ procedure ZipAda is
     Put ("  Adding ");
     declare
       maxlen : constant := 24;
-      cut : constant String := CutName (Get_Name (Stream), maxlen);
+      cut : constant String := Cut_name (Get_Name (Stream), maxlen);
     begin
       Put (cut & (1 + maxlen - cut'Length) * ' ');
     end;

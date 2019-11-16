@@ -17,7 +17,7 @@ procedure My_tell_data
 
   package MIO is new Modular_IO (UnZip.File_size_type);
 
-  function CutName (n : String; l : Natural) return String is
+  function Cut_name (n : String; l : Natural) return String is
     dots : constant String := "...";
   begin
     if n'Length > l then
@@ -25,7 +25,7 @@ procedure My_tell_data
     else
       return n;
     end if;
-  end CutName;
+  end Cut_name;
 
 begin
   New_Line;
@@ -37,7 +37,7 @@ begin
   My_dots.done_dots := 0;
   declare
     maxlen : constant := 24;
-    cut : constant String := CutName (file_name, maxlen);
+    cut : constant String := Cut_name (file_name, maxlen);
   begin
     Put (cut);
     for l in cut'Length .. maxlen loop

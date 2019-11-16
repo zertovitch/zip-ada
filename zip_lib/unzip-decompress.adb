@@ -217,7 +217,7 @@ package body UnZip.Decompress is
           Process_compressed_end_reached;
         else
           begin
-            Zip.BlockRead (
+            Zip.Block_Read (
               stream        => zip_file,
               buffer        => UnZ_Glob.inbuf,
               actually_read => UnZ_Glob.readpos
@@ -330,7 +330,7 @@ package body UnZip.Decompress is
         begin
           case mode is
             when write_to_binary_file =>
-              BlockWrite (Ada.Streams.Stream_IO.Stream (out_bin_file).all, UnZ_Glob.slide (0 .. x - 1));
+              Block_Write (Ada.Streams.Stream_IO.Stream (out_bin_file).all, UnZ_Glob.slide (0 .. x - 1));
             when write_to_text_file =>
               Zip.Write_as_text (
                 UnZ_IO.out_txt_file, UnZ_Glob.slide (0 .. x - 1), UnZ_IO.last_char
@@ -342,7 +342,7 @@ package body UnZip.Decompress is
                 UnZ_Glob.uncompressed_index := UnZ_Glob.uncompressed_index + 1;
               end loop;
             when write_to_stream =>
-              BlockWrite (output_stream_access.all, UnZ_Glob.slide (0 .. x - 1));
+              Block_Write (output_stream_access.all, UnZ_Glob.slide (0 .. x - 1));
             when just_test =>
               null;
           end case;
@@ -555,7 +555,7 @@ package body UnZip.Decompress is
         begin
           case mode is
             when write_to_binary_file =>
-              BlockWrite (Stream (UnZ_IO.out_bin_file).all, Writebuf (0 .. Write_Ptr - 1));
+              Block_Write (Stream (UnZ_IO.out_bin_file).all, Writebuf (0 .. Write_Ptr - 1));
             when write_to_text_file =>
               Zip.Write_as_text (UnZ_IO.out_txt_file, Writebuf (0 .. Write_Ptr - 1), UnZ_IO.last_char);
             when write_to_memory =>
@@ -565,7 +565,7 @@ package body UnZip.Decompress is
                 UnZ_Glob.uncompressed_index :=  UnZ_Glob.uncompressed_index + 1;
               end loop;
             when write_to_stream =>
-              BlockWrite (output_stream_access.all, Writebuf (0 .. Write_Ptr - 1));
+              Block_Write (output_stream_access.all, Writebuf (0 .. Write_Ptr - 1));
             when just_test =>
               null;
           end case;

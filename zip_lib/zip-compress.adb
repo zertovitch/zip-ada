@@ -84,12 +84,12 @@ package body Zip.Compress is
           exit;
         end if;
         --  Copy data
-        BlockRead (input, Buffer, Last_Read);
+        Block_Read (input, Buffer, Last_Read);
         counted := counted + File_size_type (Last_Read);
         Update (CRC, Buffer (1 .. Last_Read));
         if do_write then
           Encode (encrypt_pack, Buffer (1 .. Last_Read));
-          BlockWrite (output, Buffer (1 .. Last_Read));
+          Block_Write (output, Buffer (1 .. Last_Read));
         end if;
         --  Feedback
         if feedback /= null and then
@@ -137,7 +137,7 @@ package body Zip.Compress is
         Set_Index (input, idx_in);
         Init (CRC);
         Encode (encrypt_pack, encrypt_header);
-        BlockWrite (output, encrypt_header);
+        Block_Write (output, encrypt_header);
         --
         --  We need to remember at this point the encryption keys in case we need
         --  to rewrite from here (compression failed, store data).

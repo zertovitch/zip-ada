@@ -103,7 +103,7 @@ is
 
   procedure Read_Block is
   begin
-    Zip.BlockRead (
+    Zip.Block_Read (
       stream        => input,
       buffer        => InBuf.all,
       actually_read => MaxInBufIdx
@@ -128,7 +128,7 @@ is
       raise Compression_inefficient;
     end if;
     Encode (crypto, OutBuf (1 .. amount));
-    Zip.BlockWrite (output, OutBuf (1 .. amount));
+    Zip.Block_Write (output, OutBuf (1 .. amount));
     OutBufIdx := 1;
   end Write_Block;
 

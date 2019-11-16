@@ -839,11 +839,11 @@ package body Zip is
     Size_test_a'Size = Size_test_b'Size and
     Size_test_a'Alignment = Size_test_b'Alignment;
 
-  --  BlockRead - general-purpose procedure (nothing really specific
+  --  Block_Read - general-purpose procedure (nothing really specific
   --  to Zip / UnZip): reads either the whole buffer from a file, or
   --  if the end of the file lays inbetween, a part of the buffer.
 
-  procedure BlockRead (
+  procedure Block_Read (
     file          : in     Ada.Streams.Stream_IO.File_Type;
     buffer        :    out Byte_Buffer;
     actually_read :    out Natural
@@ -870,9 +870,9 @@ package body Zip is
         );
       end if;
     end if;
-  end BlockRead;
+  end Block_Read;
 
-  procedure BlockRead (
+  procedure Block_Read (
     stream        : in out Zip_Streams.Root_Zipstream_Type'Class;
     buffer        :    out Byte_Buffer;
     actually_read :    out Natural
@@ -899,22 +899,22 @@ package body Zip is
         );
       end if;
     end if;
-  end BlockRead;
+  end Block_Read;
 
-  procedure BlockRead (
+  procedure Block_Read (
     stream : in out Zip_Streams.Root_Zipstream_Type'Class;
     buffer :    out Byte_Buffer
   )
   is
     actually_read : Natural;
   begin
-    BlockRead (stream, buffer, actually_read);
+    Block_Read (stream, buffer, actually_read);
     if actually_read < buffer'Length then
       raise Ada.IO_Exceptions.End_Error;
     end if;
-  end BlockRead;
+  end Block_Read;
 
-  procedure BlockWrite (
+  procedure Block_Write (
     stream : in out Ada.Streams.Root_Stream_Type'Class;
     buffer : in     Byte_Buffer
   )
@@ -930,7 +930,7 @@ package body Zip is
       Byte_Buffer'Write (stream'Access, buffer);
       --  ^This is 30x to 70x slower on GNAT 2009 !
     end if;
-  end BlockWrite;
+  end Block_Write;
 
   function Image (m : PKZip_method) return String is
   begin
@@ -1003,12 +1003,12 @@ package body Zip is
         );
         --  !! do something if user_abort = True !!
       end if;
-      Zip.BlockRead (from, buf (1 .. Integer'Min (remains, buf'Last)), actually_read);
+      Zip.Block_Read (from, buf (1 .. Integer'Min (remains, buf'Last)), actually_read);
       if actually_read = 0 then -- premature end, unexpected
         raise Zip.Archive_corrupted;
       end if;
       remains := remains - actually_read;
-      Zip.BlockWrite (into, buf (1 .. actually_read));
+      Zip.Block_Write (into, buf (1 .. actually_read));
     end loop;
   end Copy_chunk;
 
@@ -1026,9 +1026,9 @@ package body Zip is
   begin
     Open (f, In_File, file_name);
     loop
-      Zip.BlockRead (f, buf, actually_read);
+      Zip.Block_Read (f, buf, actually_read);
       exit when actually_read = 0; -- this is expected
-      Zip.BlockWrite (into, buf (1 .. actually_read));
+      Zip.Block_Write (into, buf (1 .. actually_read));
     end loop;
     Close (f);
   end Copy_file;
