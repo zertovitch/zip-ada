@@ -2,16 +2,17 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
 * Changes in '56':
-  - Zip: Zip_info type is now controlled (no need to call Delete;
-        additionally, clones are done correctly)
-  - UnZip.Streams: added Size and Name functions for Zipped_File_Type
-  - (Tools) Added Zip_Dir_List
+  - Zip: the Zip_info type is now controlled (no need to call Delete;
+        additionally, clones are done correctly).
+  - UnZip.Streams: added Size and Name functions for Zipped_File_Type.
+  - LZ77: added nice simple LZ77 compressor by Rich Geldreich, Jr.
+  - (Tools) Added Zip_Dir_List.
   - Some refactoring was needed for -gnatwh warning switch (warnings for
         hiding declarations). Subprogram Create in package Zip.Create
         was renamed to Create_Archive.
-  - Adapted to -gnatytc style checks
+  - Adapted to -gnatytc style checks.
   - Better names for some exceptions (the old names
-        can be still used); better exception messages
+        can be still used); better exception messages.
 
 * Changes in '55', 22-Nov-2018 [rev. 725]:
   - Zip_Streams: ZS_Size_Type is now 64-bit signed, enabling Zip.Create

@@ -10,7 +10,7 @@ echo ""
 
 #  Recompress it
 
-../rezip -int %1 %2 %3 %4 %5 %6 %7 %8 %9 test_rz
+../rezip -int $1 $2 $3 $4 $5 $6 $7 $8 $9 test_rz
 
 firefox test_rz.ReZip.html
 

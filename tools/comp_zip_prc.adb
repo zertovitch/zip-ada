@@ -42,7 +42,7 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
       end if;
     end Cut_name;
 
-    l : constant := 20;
+    l : constant := 40;
     mininame : constant String := To_Lower (Cut_name (file_name, l));
     stuffing : constant String (1 .. l - mininame'Length + 1) := (others => ' ');
 

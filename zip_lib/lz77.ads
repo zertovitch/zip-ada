@@ -49,7 +49,7 @@ package LZ77 is
     IZ_10,
     --  Use LZMA SDK's BT4 algorithm (see body for details and credits)
     BT4,
-    --
+    --  A nice simple LZ77 compressor by Rich Geldreich, Jr.
     Rich,
     --  Just send literals (plain bytes), no LZ77 compression at all.
     --  It is better with LZMA on some rare image formats for instance.
