@@ -201,8 +201,8 @@ private
      --  'Contains' has unused room, to avoid reallocating each time:
      Last_entry         : Natural := 0;
      Duplicates         : Duplicate_name_policy;
-     --  We set up a name dictionary just for avoiding duplicate entries:
-     dir                : Name_mapping.Map;
+     --  We set up a name dictionary just for detecting duplicate entries:
+     name_dictionary    : Name_mapping.Map;
      zip_archive_format : Zip_archive_format_type := Zip_32;
    end record;
 

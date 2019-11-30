@@ -176,7 +176,7 @@ package body Zip.Create is
       end loop;
       if Info.Duplicates = error_on_duplicate then
         --  Check for duplicates; raises Duplicate_name in this case.
-        Insert_to_name_dictionary (entry_name, Info.dir);
+        Insert_to_name_dictionary (entry_name, Info.name_dictionary);
       end if;
       Add_catalogue_entry (Info);
       Last := Info.Last_entry;
@@ -370,7 +370,7 @@ package body Zip.Create is
         String'Read (Stream'Access, extra);
         if Info.Duplicates = error_on_duplicate then
           --  Check for duplicates; raises Duplicate_name in this case:
-          Insert_to_name_dictionary (name, Info.dir);
+          Insert_to_name_dictionary (name, Info.name_dictionary);
         end if;
         Add_catalogue_entry (Info);
         Info.Contains (Info.Last_entry).head.local_header_offset :=
@@ -442,6 +442,7 @@ package body Zip.Create is
         Dispose (Info.Contains);
       end if;
       Info.Last_entry := 0;
+      Info.name_dictionary.Clear;
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;
