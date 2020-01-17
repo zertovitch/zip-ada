@@ -51,7 +51,7 @@ package LZMA is
   --  Position mod 2**bits is used in various places.
   subtype Position_bits_range         is Integer range 0 .. 4;
 
-  Default_dictionary_size : constant := 2 ** 15;  --  32 KB, like Deflate.
+  Default_dictionary_size : constant := 2 ** 15;  --  32 KiB, like Deflate.
 
   subtype Byte is Interfaces.Unsigned_8;
 

@@ -18,7 +18,7 @@
 --     the String_buffer_size, Look_Ahead, Threshold LZ77 parameters - those for Deflate.
 --
 --  Variant 3/, LZ77_using_BT4, was added on 06-Sep-2016.
---     The seems to be the best match finder for LZMA on data of the >= 1 MB scale.
+--     The seems to be the best match finder for LZMA on data of the >= 1 MiB scale.
 
 --  To do:
 --
@@ -949,8 +949,8 @@ package body LZ77 is
       reserveSize : constant Integer :=
         Integer'Min (
           String_buffer_size / 2 +
-          256 * (2 ** 10),  --  256 KB
-          512 * (2 ** 20)   --  512 MB
+          256 * (2 ** 10),  --  256 KiB
+          512 * (2 ** 20)   --  512 MiB
         );
       getBufSize : constant Integer := keepSizeBefore + keepSizeAfter + reserveSize;
 

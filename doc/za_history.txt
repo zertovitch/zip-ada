@@ -1,7 +1,7 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '56':
+* Changes in '56', 17-Jan-2020 [rev. 780]:
   - Zip: the Zip_info type is now controlled (no need to call Delete;
         additionally, clones are done correctly).
   - UnZip.Streams: added Size and Name functions for Zipped_File_Type.
@@ -18,7 +18,8 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
   - Zip_Streams: ZS_Size_Type is now 64-bit signed, enabling Zip.Create
         to capture archive size overflows in Zip_32 mode.
   - Zip.Create raises Zip_Capacity_Exceeded when archive creation exceeds
-        the Zip_32 format's capacity: 4GB total size, 65,535 entries.
+        the Zip_32 format's capacity:
+        4 GiB total compressed size; 65,535 entries.
   - Zip.Create is now using an Ada 2005+'s Containers's Hashed Maps;
         creation is much faster on Zip archives with many entries.
   - (Tools) ReZip has a new option for working only with its own internal
@@ -87,7 +88,7 @@ Latest changes (-!- marks an improvement which brings an incompatibility)
 * Changes in '46', 14-Sep-2013:
   - UnZip.Streams decompresses to input and (*new*) to output streams
   - Removed usage of signed integers for stream sizes, increasing
-      limits from 2 GB to 4 GB on 32-bit targets
+      limits from 2 GiB to 4 GiB on 32-bit targets
   - Added Zip.Traverse_Unicode
   - UnZip: does not attempt to create empty paths or drives
 

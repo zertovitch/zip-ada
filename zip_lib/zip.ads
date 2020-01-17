@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2019 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2020 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -395,8 +395,8 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String := "56 preview 6";
-  reference : constant String := ">= 09-Nov-2019";
+  version   : constant String := "56";
+  reference : constant String := "17-Jan-2020";
   web       : constant String := "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -418,7 +418,7 @@ private
   --  Vector (Ada.Containers). The loading of the dictionary was
   --  much faster (2x), but there were performance bottlenecks elsewhere,
   --  not solved by profiling. On an archive with 18000 small entries of
-  --  around 1 KB each, comp_zip ran 100x slower!
+  --  around 1 KiB each, comp_zip ran 100x slower!
   --  Neither the restricted use of Unbounded_String, nor the replacement
   --  of the Vector by an array helped solving the performance issue.
 

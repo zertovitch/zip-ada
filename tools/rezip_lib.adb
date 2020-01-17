@@ -111,11 +111,11 @@ package body Rezip_lib is
       --  7-Zip 9.20 or later; LZMA:
       (U ("7z"), U ("7-Zip"), NN,
          U ("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma_meth, 0, False),
-      (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**19 = 512 KB
+      (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**19 = 512 KiB
          U ("a -tzip -mm=LZMA:a=2:d=19:mf=bt#RAND#(3,4):fb=128:lc=0:lp=2"), NN, 63, Zip.lzma_meth, 0, False),
-      (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**25 = 32 MB
+      (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**25 = 32 MiB
          U ("a -tzip -mm=LZMA:a=2:d=25:mf=bt#RAND#(3,4):fb=255:lc=7"), NN, 63, Zip.lzma_meth, 0, False),
-      (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**26 = 64 MB
+      (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**26 = 64 MiB
          U ("a -tzip -mm=LZMA:a=2:d=26:mf=bt#RAND#(3,4):fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma_meth, 0, False),
       (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT4.
          U ("a -tzip -mm=LZMA:a=2:d=#RAND_EXP#(1,5000)k:mf=bt4:fb=#RAND#(255,273):lc=#RAND#(0,8):lp#RAND#(0,4):pb#RAND#(0,4)"),

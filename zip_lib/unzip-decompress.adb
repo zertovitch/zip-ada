@@ -51,9 +51,9 @@ package body UnZip.Decompress is
     --## RULE OFF Directly_Accessed_Globals
     --
     --  I/O Buffers: Size of input buffer
-    inbuf_size : constant := 16#8000#;  -- (orig: 16#1000# B =  4 KB)
+    inbuf_size : constant := 16#8000#;  --  (orig: 16#1000# B =  4 KiB)
     --  I/O Buffers: Size of sliding dictionary and output buffer
-    wsize     : constant := 16#10000#; -- (orig: 16#8000# B = 32 KB)
+    wsize     : constant := 16#10000#;  --  (orig: 16#8000# B = 32 KiB)
 
     ----------------------------------------------------------------------------
     -- Specifications of UnZ_* packages (remain of Info Zip's code structure) --

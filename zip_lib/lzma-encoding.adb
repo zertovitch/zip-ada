@@ -225,14 +225,14 @@ package body LZMA.Encoding is
     --  String_buffer_size: the actual dictionary size used.
     String_buffer_size : constant array (Compression_level) of Positive :=
       (Level_0            => 16,       --  Fake: actually we don't use any LZ77 for level 0
-       Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value: 32 KB
+       Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value: 32 KiB
        Level_3            =>
          Integer'Max (
-           Min_dictionary_size,                --  minimum:  4 KB
+           Min_dictionary_size,                --  minimum:  4 KiB
            Integer'Min (
-             --    dictionary_size is specified; default is 32 KB
+             --    dictionary_size is specified; default is 32 KiB
              Ceiling_power_of_2 (dictionary_size),
-             2 ** 25                           --  maximum: 32 MB
+             2 ** 25                           --  maximum: 32 MiB
            )
          )
       );

@@ -152,7 +152,7 @@ package body Zip.Create is
    four_gb : constant := 4 * (1024 ** 3);
 
    Zip_32_size_exceeded_message : constant String :=
-     "Zip file too large (for Zip_32 archive format): more than 4GB.";
+     "Zip file too large (for Zip_32 archive format): more than 4 GiB total compressed size.";
 
    use Zip.Compress;
 
