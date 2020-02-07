@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2006 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2006 .. 2020 Gautier de Montmollin (see spec. for credits)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -168,9 +168,12 @@ is
 
   TABLESIZE : constant := 8191;  --  We'll need 4K entries in table
 
-  SPECIAL   : constant := 256;   --  Special function code
-  INCSIZE   : constant := 1;     --  Code indicating a jump in code size
-  CLEARCODE : constant := 2;     --  Code indicating code table has been cleared
+  --  PKZip's Shrink is a variant of the LZW algorithm in that the
+  --  compressor controls the code increase and the table clearing.
+  --  See appnote.txt, section 5.1.
+  Special_Code : constant := 256;
+  Code_for_increasing_code_size : constant := 1;
+  Code_for_clearing_table       : constant := 2;
 
   FIRSTENTRY : constant := 257;  --  First available table entry
   UNUSED : constant := -1;       --  Prefix indicating an unused code table entry
@@ -391,10 +394,11 @@ is
       Flush_bit_buffer;
       Flush_output;                 --  Flush our output buffer
     elsif Table_full then
-      --  Ok, lets clear the code table (adaptive reset)
       Put_code (Last_code);
-      Put_code (SPECIAL);
-      Put_code (CLEARCODE);
+      --  NB: PKZip does not necessarily clear the table when
+      --  it is full. Hence the need for the special code below.
+      Put_code (Special_Code);
+      Put_code (Code_for_clearing_table);
       Clear_Table;
       Table_Add (Last_code, Suffix);
       Last_code := Suffix;
@@ -425,8 +429,8 @@ is
            Free_list (Next_free) > Max_code
         then
           --  Time to increase the code size and change the max. code
-          Put_code (SPECIAL);
-          Put_code (INCSIZE);
+          Put_code (Special_Code);
+          Put_code (Code_for_increasing_code_size);
           code_size := code_size + 1;
           Max_code := 2 **  code_size - 1;
         end if;

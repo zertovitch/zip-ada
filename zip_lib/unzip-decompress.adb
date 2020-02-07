@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2020 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -588,17 +588,16 @@ package body UnZip.Decompress is
       end Write_Byte;
 
       procedure Clear_Leaf_Nodes is
-        Pc           : Integer;  -- previous code
-        Act_Max_Code : Integer;  -- max code to be searched for leaf nodes
-
+        Pc              : Integer;  --  Previous code
+        Actual_Max_Code : Integer;  --  Max code to be searched for leaf nodes
       begin
-        Act_Max_Code := Next_Free - 1;
-        for I in First_Entry .. Act_Max_Code loop
+        Actual_Max_Code := Next_Free - 1;
+        for I in First_Entry .. Actual_Max_Code loop
           Previous_Code (I) :=
             Integer (Unsigned_32 (Previous_Code (I)) or 16#8000#);
         end loop;
 
-        for I in First_Entry .. Act_Max_Code loop
+        for I in First_Entry .. Actual_Max_Code loop
           Pc := Previous_Code (I) mod 16#8000#;
           if  Pc > 256 then
             Previous_Code (Pc) := Previous_Code (Pc) mod 16#8000#;
@@ -608,7 +607,7 @@ package body UnZip.Decompress is
         --  Build new free list
         Pc := -1;
         Next_Free := -1;
-        for I in First_Entry .. Act_Max_Code loop
+        for I in First_Entry .. Actual_Max_Code loop
           --  Either free before or marked now
           if (Unsigned_32 (Previous_Code (I)) and 16#C000#)  /= 0 then
             --  Link last item to this item
@@ -622,26 +621,43 @@ package body UnZip.Decompress is
         end loop;
 
         if Pc /= -1 then
-          Previous_Code (Pc) := -Act_Max_Code - 1;
+          Previous_Code (Pc) := -Actual_Max_Code - 1;
         end if;
 
       end Clear_Leaf_Nodes;
 
       procedure Unshrink is
-        Incode       : Integer;  --  Code read in
         Last_Incode  : Integer;
         Last_Outcode : Zip.Byte;
+      
+        procedure Attempt_Table_Increase is
+          Candidate : constant Integer := Next_Free;
+        begin
+          if Candidate <= Max_Code then
+            if Candidate not in Previous_Code'Range then
+              raise Zip.Archive_corrupted with "Wrong LZW (Shrink) index";
+            end if;
+            Next_Free := -Previous_Code (Candidate);
+            --  Next node in free list
+            Previous_Code (Candidate) := Last_Incode;
+            Actual_Code   (Candidate) := Last_Outcode;
+          end if;
+        end Attempt_Table_Increase;
+      
+        Incode       : Integer;  --  Code read in
         Code_Size    : Integer := Initial_Code_Size;  --  Actual code size (9..13)
         Stack        : Zip.Byte_Buffer (0 .. Max_Stack);  --  Stack for output
         Stack_Ptr    : Integer := Max_Stack;
         New_Code     : Integer;  --  Save new normal code read
 
-        Code_for_Special   : constant := 256;
-        Code_Increase_size : constant := 1;
-        Code_Clear_table   : constant := 2;
+        --  PKZip's Shrink is a variant of the LZW algorithm in that the
+        --  compressor controls the code increase and the table clearing.
+        --  See appnote.txt, section 5.1.
+        Special_Code : constant := 256;
+        Code_for_increasing_code_size : constant := 1;
+        Code_for_clearing_table       : constant := 2;
 
         S : UnZip.File_size_type := UnZ_Glob.uncompsize;
-        --  Fix Jan-2009: replaces a remaining bits counter as Unsigned_*32*...
 
         procedure Read_Code is
           pragma Inline (Read_Code);
@@ -650,7 +666,11 @@ package body UnZip.Decompress is
         end Read_Code;
 
       begin
-        Previous_Code := (others => 0);
+        --  Initialize free codes list
+        for I in Previous_Code'Range loop
+          Previous_Code (I) := -(I + 1);
+        end loop;
+        --
         Actual_Code   := (others => 0);
         Stack         := (others => 0);
         Writebuf      := (others => 0);
@@ -661,12 +681,6 @@ package body UnZip.Decompress is
         elsif UnZ_Glob.uncompsize = 0 then
           return;  --  compression of a 0-file with Shrink.pas
         end if;
-
-        --  initialize free codes list
-
-        for I in Previous_Code'Range loop
-          Previous_Code (I) := -(I + 1);
-        end loop;
 
         Next_Free := First_Entry;
         Write_Ptr := 0;
@@ -680,12 +694,13 @@ package body UnZip.Decompress is
         Write_Byte (Last_Outcode);
         S := S - 1;
 
+        Main_Unshrink_Loop:
         while S > 0 and then not Zip_EOF loop
           Read_Code;
-          if Incode = Code_for_Special then
+          if Incode = Special_Code then  --  Code = 256
             Read_Code;
             case Incode is
-              when Code_Increase_size =>
+              when Code_for_increasing_code_size =>
                 Code_Size := Code_Size + 1;
                 if some_trace then
                   Ada.Text_IO.Put (
@@ -695,20 +710,19 @@ package body UnZip.Decompress is
                 if Code_Size > Maximum_Code_Size then
                   raise Zip.Archive_corrupted with "Wrong LZW (Shrink) code size";
                 end if;
-              when Code_Clear_table =>
+              when Code_for_clearing_table =>
                 Clear_Leaf_Nodes;
               when others =>
                 raise Zip.Archive_corrupted with
                   "Wrong LZW (Shrink) special code" & Integer'Image (Incode);
             end case;
-
-          else -- Normal code
+          else  --  Normal code (either a literal (< 256), or a tree node (> 256))
             New_Code := Incode;
-            if Incode < 256 then          -- Simple char
+            if Incode < 256 then          --  Literal (simple character)
               Last_Outcode :=  Zip.Byte (Incode);
               Write_Byte (Last_Outcode);
               S := S - 1;
-            else
+            else  --  Tree node (code > 256)
               if Previous_Code (Incode) < 0 then
                 Stack (Stack_Ptr) := Last_Outcode;
                 Stack_Ptr := Stack_Ptr - 1;
@@ -725,30 +739,19 @@ package body UnZip.Decompress is
                 Stack_Ptr := Stack_Ptr - 1;
                 Incode := Previous_Code (Incode);
               end loop;
-
               Last_Outcode := Zip.Byte (Incode mod 256);
               Write_Byte (Last_Outcode);
-
               for I in Stack_Ptr + 1 .. Max_Stack  loop
                 Write_Byte (Stack (I));
               end loop;
               S := S - UnZip.File_size_type (Max_Stack - Stack_Ptr + 1);
-
               Stack_Ptr := Max_Stack;
             end if;
-            Incode := Next_Free;
-            if Incode <= Max_Code then
-              if Incode not in Previous_Code'Range then
-                raise Zip.Archive_corrupted with "Wrong LZW (Shrink) index";
-              end if;
-              Next_Free := -Previous_Code (Incode);
-              --  Next node in free list
-              Previous_Code (Incode) := Last_Incode;
-              Actual_Code   (Incode) := Last_Outcode;
-            end if;
+            Attempt_Table_Increase;
             Last_Incode := New_Code;
           end if;
-        end loop;
+        end loop Main_Unshrink_Loop;
+
         if some_trace then
           Ada.Text_IO.Put ("[ Unshrink main loop finished ]");
         end if;
