@@ -3,7 +3,7 @@
 --
 --      home page:     http://unzip-ada.sf.net/
 --      project page:  http://sf.net/projects/unzip-ada/
---      mirror:        https://github.com/svn2github/unzip-ada
+--      mirror:        https://github.com/zertovitch/zip-ada
 --
 --  Build me with "gprbuild -p -P zipada", or "gnatmake -p -P zipada",
 --  or open me with GPS.
@@ -12,7 +12,7 @@
 --
 project ZipAda is
 
-   type Build_Mode_Type is
+   type Zip_Build_Mode_Type is
       ("Debug", 
        "Fast", 
        "Small",
@@ -23,10 +23,10 @@ project ZipAda is
        --  The demos, tools and tests may use some Ada 2012+ features.
        "Check_2005"
       );
-   Build_Mode : Build_Mode_Type := external ("Build_Mode", "Fast");
+   Zip_Build_Mode : Zip_Build_Mode_Type := external ("Zip_Build_Mode", "Fast");
    for Exec_Dir use ".";
    
-   case Build_Mode is
+   case Zip_Build_Mode is
       when "Check_2005" =>
          for Source_Dirs use ("zip_lib");
          for Main use ();
@@ -55,7 +55,7 @@ project ZipAda is
          );
    end case;
 
-   case Build_Mode is
+   case Zip_Build_Mode is
       when "Fast"      =>  for Object_Dir use "obj_opt";
       when "Small"     =>  for Object_Dir use "obj_small";
       when "Profiling" =>  for Object_Dir use "obj_pro";
@@ -69,7 +69,7 @@ project ZipAda is
 
    package Linker is
 
-      case Build_Mode is
+      case Zip_Build_Mode is
          when "Fast" | "Small" =>
             for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections");
          when "Profiling" =>
@@ -98,7 +98,7 @@ project ZipAda is
 
    package Compiler is
 
-      case Build_Mode is
+      case Zip_Build_Mode is
 
          when "Check_2005" =>
             for Default_Switches ("ada") use Common_Options & 
