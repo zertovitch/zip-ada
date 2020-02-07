@@ -15,6 +15,6 @@ echo ""
 if [[ ( $1 == "") ]]; then
 gprbuild -p -Pzipada.gpr
 else
-gprbuild -p -Pzipada.gpr -XBuild_Mode=$1
+gprbuild -p -Pzipada.gpr -XZip_Build_Mode=$1
 fi
 

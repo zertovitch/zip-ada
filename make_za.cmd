@@ -25,8 +25,8 @@ call make_one find_zip
 
 rem The Demos and Tests...
 
-gprbuild -p -Pzipada.gpr      -XBuild_Mode=%gnatoptions_87312863%
-gprbuild -p -Pzipada_test.gpr -XBuild_Mode=%gnatoptions_87312863%
+gprbuild -p -Pzipada.gpr      -XZip_Build_Mode=%gnatoptions_87312863%
+gprbuild -p -Pzipada_test.gpr -XZip_Build_Mode=%gnatoptions_87312863%
 
 set gnatoptions_87312863=
 

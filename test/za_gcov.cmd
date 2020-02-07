@@ -1,6 +1,6 @@
 rem Code coverage for compression to check which cases are covered.
 
-rem gprbuild -P zipada.gpr -XBuild_Mode=Debug -f -cargs -fprofile-arcs -ftest-coverage -largs -fprofile-arcs
+rem gprbuild -P zipada.gpr -XZip_Build_Mode=Debug -f -cargs -fprofile-arcs -ftest-coverage -largs -fprofile-arcs
 
 rem Do something with zipada and lots of mixed data...
 

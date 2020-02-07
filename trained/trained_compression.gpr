@@ -8,7 +8,7 @@ project Trained_Compression extends "../ZipAda" is  --  Check zipada.gpr for det
      "trained_decoder.adb"
    );
 
-   case Build_Mode is
+   case Zip_Build_Mode is
       when "Fast"      =>  for Object_Dir use "../obj_opt/trained";
       when "Small"     =>  for Object_Dir use "../obj_small/trained";
       when "Profiling" =>  for Object_Dir use "../obj_pro/trained";
