@@ -528,18 +528,14 @@ package body UnZip.Decompress is
 
       --  Original in Pascal written by Christian Ghisler.
 
-      Max_Code  : constant := 8192;
-      Max_Stack : constant := 8192;
       Initial_Code_Size : constant := 9;
       Maximum_Code_Size : constant := 13;
-      First_Entry       : constant := 257;
+      Max_Code          : constant := 2 ** Maximum_Code_Size;
+      Max_Stack         : constant := 2 ** Maximum_Code_Size;
 
       --  Rest of slide=write buffer =766 bytes
 
       Write_Max : constant := wsize - 3 * (Max_Code - 256) - Max_Stack - 2;
-
-      Previous_Code : array (First_Entry .. Max_Code) of Integer;
-      Actual_Code   : array (First_Entry .. Max_Code) of Zip.Byte;
 
       Next_Free : Integer;      --  Next free code in trie
       Write_Ptr : Integer;      --  Pointer to output buffer
@@ -587,65 +583,90 @@ package body UnZip.Decompress is
         end if;
       end Write_Byte;
 
-      procedure Clear_Leaf_Nodes is
-        Pc              : Integer;  --  Previous code
-        Actual_Max_Code : Integer;  --  Max code to be searched for leaf nodes
-      begin
-        Actual_Max_Code := Next_Free - 1;
-        for I in First_Entry .. Actual_Max_Code loop
-          Previous_Code (I) :=
-            Integer (Unsigned_32 (Previous_Code (I)) or 16#8000#);
-        end loop;
-
-        for I in First_Entry .. Actual_Max_Code loop
-          Pc := Previous_Code (I) mod 16#8000#;
-          if  Pc > 256 then
-            Previous_Code (Pc) := Previous_Code (Pc) mod 16#8000#;
-          end if;
-        end loop;
-
-        --  Build new free list
-        Pc := -1;
-        Next_Free := -1;
-        for I in First_Entry .. Actual_Max_Code loop
-          --  Either free before or marked now
-          if (Unsigned_32 (Previous_Code (I)) and 16#C000#)  /= 0 then
-            --  Link last item to this item
-            if Pc = -1 then
-              Next_Free := I;
-            else
-              Previous_Code (Pc) := -I;
-            end if;
-            Pc := I;
-          end if;
-        end loop;
-
-        if Pc /= -1 then
-          Previous_Code (Pc) := -Actual_Max_Code - 1;
-        end if;
-
-      end Clear_Leaf_Nodes;
-
       procedure Unshrink is
-        Last_Incode  : Integer;
-        Last_Outcode : Zip.Byte;
-      
+        S : UnZip.File_size_type := UnZ_Glob.uncompsize;
+
+        Last_Incode     : Integer;
+        Last_Outcode    : Zip.Byte;
+        Code_Size       : Integer := Initial_Code_Size;  --  Actual code size [9 .. 13]
+        Actual_Max_Code : Integer;  --  Max code to be searched for leaf nodes
+        First_Entry     : constant := 257;
+        Previous_Code   : array (First_Entry .. Max_Code) of Integer;
+        Stored_Literal  : array (First_Entry .. Max_Code) of Zip.Byte;
+
+        procedure Clear_Leaf_Nodes is
+          Is_Leaf : array (First_Entry .. Max_Code) of Boolean := (others => True);
+          Pc : Integer;  --  Previous code
+        begin
+          if full_trace then
+            Ada.Text_IO.Put ("[Clear leaf nodes @ pos" &
+              UnZip.File_size_type'Image (UnZ_Glob.uncompsize - S) &
+              "; old Next_Free =" & Integer'Image (Next_Free));
+          end if;
+          for I in First_Entry .. Actual_Max_Code loop
+            Pc := Previous_Code (I);
+            if  Pc > 256 then
+              --  Pc is in a tree as well
+              Is_Leaf (Pc) := False;
+            end if;
+          end loop;
+
+          --  Build new free list
+          Pc := -1;
+          Next_Free := -1;
+          for I in First_Entry .. Actual_Max_Code loop
+            --  Either free before, or marked now as leaf
+            if Previous_Code (I) < 0 or Is_Leaf (I) then
+              --  Link last item to this item
+              if Pc = -1 then
+                Next_Free := I;
+              else
+                --  Next free node from Pc is I.
+                Previous_Code (Pc) := -I;
+              end if;
+              Pc := I;
+            end if;
+          end loop;
+
+          if Pc /= -1 then
+            --  Last (old or new) free node points to the first "never used".
+            Previous_Code (Pc) := -(Actual_Max_Code + 1);
+          end if;
+          if Next_Free = -1 then
+            --  Unlikely but possible case:
+            --     - no previously free or leaf node found, or
+            --     - table clearing is ordered when the table is still empty.
+            Next_Free := Actual_Max_Code + 1;
+          end if;
+
+          if full_trace then
+            Ada.Text_IO.Put ("; new Next_Free =" & Integer'Image (Next_Free) & ']');
+          end if;
+        end Clear_Leaf_Nodes;
+
         procedure Attempt_Table_Increase is
           Candidate : constant Integer := Next_Free;
         begin
-          if Candidate <= Max_Code then
+          if Candidate > Max_Code then
+            --  This case is supported by PKZip's LZW variant.
+            --  Table clearing is done only on a special command.
+            if some_trace then
+              Ada.Text_IO.Put ("[Table is full]");
+            end if;
+          else
             if Candidate not in Previous_Code'Range then
               raise Zip.Archive_corrupted with "Wrong LZW (Shrink) index";
             end if;
             Next_Free := -Previous_Code (Candidate);
+            Actual_Max_Code := Integer'Max (Actual_Max_Code, Next_Free - 1);
+
             --  Next node in free list
-            Previous_Code (Candidate) := Last_Incode;
-            Actual_Code   (Candidate) := Last_Outcode;
+            Previous_Code (Candidate)  := Last_Incode;
+            Stored_Literal (Candidate) := Last_Outcode;
           end if;
         end Attempt_Table_Increase;
-      
+
         Incode       : Integer;  --  Code read in
-        Code_Size    : Integer := Initial_Code_Size;  --  Actual code size (9..13)
         Stack        : Zip.Byte_Buffer (0 .. Max_Stack);  --  Stack for output
         Stack_Ptr    : Integer := Max_Stack;
         New_Code     : Integer;  --  Save new normal code read
@@ -656,8 +677,6 @@ package body UnZip.Decompress is
         Special_Code : constant := 256;
         Code_for_increasing_code_size : constant := 1;
         Code_for_clearing_table       : constant := 2;
-
-        S : UnZip.File_size_type := UnZ_Glob.uncompsize;
 
         procedure Read_Code is
           pragma Inline (Read_Code);
@@ -671,9 +690,9 @@ package body UnZip.Decompress is
           Previous_Code (I) := -(I + 1);
         end loop;
         --
-        Actual_Code   := (others => 0);
-        Stack         := (others => 0);
-        Writebuf      := (others => 0);
+        Stored_Literal := (others => 0);
+        Stack       := (others => 0);
+        Writebuf    := (others => 0);
 
         if UnZ_Glob.compsize = File_size_type'Last then
           --  Compressed Size was not in header!
@@ -683,18 +702,19 @@ package body UnZip.Decompress is
         end if;
 
         Next_Free := First_Entry;
+        Actual_Max_Code := First_Entry - 1;
         Write_Ptr := 0;
 
         Read_Code;
-        Last_Incode  := Incode;
+        Last_Incode := Incode;
         if Incode not in 0 .. 255 then
-          raise Zip.Archive_corrupted with "Wrong LZW (Shrink) 1st byte";
+          raise Zip.Archive_corrupted with "Wrong LZW (Shrink) 1st byte; must be a literal";
         end if;
         Last_Outcode := Zip.Byte (Incode);
         Write_Byte (Last_Outcode);
         S := S - 1;
 
-        Main_Unshrink_Loop:
+        Main_Unshrink_Loop :
         while S > 0 and then not Zip_EOF loop
           Read_Code;
           if Incode = Special_Code then  --  Code = 256
@@ -704,7 +724,8 @@ package body UnZip.Decompress is
                 Code_Size := Code_Size + 1;
                 if some_trace then
                   Ada.Text_IO.Put (
-                    "[LZW code size ->" & Integer'Image (Code_Size) & ']'
+                    "[Increment LZW code size to" & Integer'Image (Code_Size) &
+                    " bits @ pos" & UnZip.File_size_type'Image (UnZ_Glob.uncompsize - S) & ']'
                   );
                 end if;
                 if Code_Size > Maximum_Code_Size then
@@ -724,23 +745,45 @@ package body UnZip.Decompress is
               S := S - 1;
             else  --  Tree node (code > 256)
               if Previous_Code (Incode) < 0 then
+                --  First node is orphan (parent is a free node).
+                if full_trace then
+                  Ada.Text_IO.Put ("[ Node from stream is orphan ]");
+                end if;
                 Stack (Stack_Ptr) := Last_Outcode;
                 Stack_Ptr := Stack_Ptr - 1;
                 Incode := Last_Incode;
               end if;
               while Incode > 256 loop
-                --  Test added 11-Dec-2007 for situations happening on corrupt files:
-                if Stack_Ptr < Stack'First or
-                   Incode > Actual_Code'Last
-                then
-                  raise Zip.Archive_corrupted with "LZW (Shrink): Stack_Ptr or Incode out of range";
+                if Stack_Ptr < Stack'First then
+                  raise Zip.Archive_corrupted with "LZW (Shrink): String stack exhausted";
                 end if;
-                Stack (Stack_Ptr) := Actual_Code (Incode);
+                if Incode > Max_Code then
+                  raise Zip.Archive_corrupted with "LZW (Shrink): Incode out of range";
+                end if;
+                if Previous_Code (Incode) < 0 then
+                  --  Linked node is orphan (parent is a free node).
+                  --  This rare case appears only on some data compressed by PKZIP.
+                  --  The last PKZIP version known to us that is able to compress
+                  --  with the Shrink algorithm is PKZIP v.1.10, 1990-03-15.
+                  if some_trace then
+                    Ada.Text_IO.Put ("[ Linked node is orphan ]");
+                  end if;
+                  Stack (Stack_Ptr) := Last_Outcode;
+                  Incode := Last_Incode;
+                else
+                  Stack (Stack_Ptr) := Stored_Literal (Incode);
+                  Incode := Previous_Code (Incode);
+                end if;
                 Stack_Ptr := Stack_Ptr - 1;
-                Incode := Previous_Code (Incode);
               end loop;
-              Last_Outcode := Zip.Byte (Incode mod 256);
+              --  NB: Incode cannot be negative (orphan case treated above).
+              --      It is <= 256 because of the while loop.
+              --      It is /= 256 because it is set to a Last_Incode value (directly or
+              --        through Previous_Code) which is either < 256 or > 256.
+              --      So Incode is in [0 .. 255].
+              Last_Outcode := Zip.Byte (Incode);
               Write_Byte (Last_Outcode);
+              --  Now we output the string in forward order.
               for I in Stack_Ptr + 1 .. Max_Stack  loop
                 Write_Byte (Stack (I));
               end loop;
