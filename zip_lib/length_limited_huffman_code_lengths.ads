@@ -11,8 +11,9 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2016 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
+--
 --  The copyright holder is only the maintainer of the Ada version;
 --  authors of the C code and those of the algorithm are cited below.
 

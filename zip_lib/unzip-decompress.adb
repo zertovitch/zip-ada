@@ -1,6 +1,10 @@
+--  UnZip.Decompress
+--------------------
+--  Internal to the UnZip package. See root package (UnZip) for details & credits.
+
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2020 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2020 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -666,10 +670,10 @@ package body UnZip.Decompress is
           end if;
         end Attempt_Table_Increase;
 
-        Incode       : Integer;  --  Code read in
-        Stack        : Zip.Byte_Buffer (0 .. Max_Stack);  --  Stack for output
-        Stack_Ptr    : Integer := Max_Stack;
-        New_Code     : Integer;  --  Save new normal code read
+        Incode    : Integer;  --  Code read in
+        New_Code  : Integer;  --  Save new normal code read
+        Stack     : Zip.Byte_Buffer (0 .. Max_Stack);  --  Stack for output
+        Stack_Ptr : Integer := Max_Stack;
 
         --  PKZip's Shrink is a variant of the LZW algorithm in that the
         --  compressor controls the code increase and the table clearing.
@@ -691,8 +695,8 @@ package body UnZip.Decompress is
         end loop;
         --
         Stored_Literal := (others => 0);
-        Stack       := (others => 0);
-        Writebuf    := (others => 0);
+        Stack          := (others => 0);
+        Writebuf       := (others => 0);
 
         if UnZ_Glob.compsize = File_size_type'Last then
           --  Compressed Size was not in header!
@@ -762,7 +766,7 @@ package body UnZip.Decompress is
                 end if;
                 if Previous_Code (Incode) < 0 then
                   --  Linked node is orphan (parent is a free node).
-                  --  This rare case appears only on some data compressed by PKZIP.
+                  --  This rare case appears on some data, compressed only by PKZIP.
                   --  The last PKZIP version known to us that is able to compress
                   --  with the Shrink algorithm is PKZIP v.1.10, 1990-03-15.
                   if some_trace then
@@ -779,7 +783,7 @@ package body UnZip.Decompress is
               --  NB: Incode cannot be negative (orphan case treated above).
               --      It is <= 256 because of the while loop.
               --      It is /= 256 because it is set to a Last_Incode value (directly or
-              --        through Previous_Code) which is either < 256 or > 256.
+              --        through Previous_Code) which is either in [0 .. 255] or > 256.
               --      So Incode is in [0 .. 255].
               Last_Outcode := Zip.Byte (Incode);
               Write_Byte (Last_Outcode);

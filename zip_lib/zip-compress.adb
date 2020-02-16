@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2019 Gautier de Montmollin (Maintainer of the Ada version)
+--  Copyright (c) 2007 .. 2019 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy

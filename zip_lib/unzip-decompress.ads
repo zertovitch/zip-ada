@@ -1,6 +1,7 @@
 --  UnZip.Decompress
 --------------------
 --  Private, internal to the UnZip package.
+--  See root package (UnZip) for details & credits.
 
 --  Legal licensing note:
 

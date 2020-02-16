@@ -8,7 +8,7 @@
 --
 --  Legal licensing note:
 --
---  Copyright (c) 1999 .. 2009 Gautier de Montmollin (Maintainer of the Ada version)
+--  Copyright (c) 1999 .. 2009 Gautier de Montmollin (maintainer of the Ada version)
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
 --  of this software and associated documentation files (the "Software"), to deal

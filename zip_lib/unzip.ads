@@ -11,9 +11,9 @@
 --  imploded, reduced, shrunk and stored streams from a Zip archive stream.
 --
 --  Pure Ada 2005+ code, 100% portable: OS-, CPU- and compiler- independent.
+--  Location on the web: see the Zip.web constant.
 
 --  Ada translation and substantial rewriting by Gautier de Montmollin
---    On the web: see the Zip.web constant.
 --  based on Pascal version 2.10 by Abimbola A Olowofoyeku,
 --    http://www.foyeh.org/
 --  itself based on Pascal version by Christian Ghisler,
@@ -24,7 +24,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2019 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
