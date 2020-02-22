@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2019 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintainer)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -55,7 +55,7 @@ package body Zip_Streams is
 
    --  Ada.Calendar versions
 
-   procedure Set_Time (S : out Root_Zipstream_Type'Class;
+   procedure Set_Time (S : in out Root_Zipstream_Type'Class;
                        Modification_Time : Ada.Calendar.Time) is
    begin
      Set_Time (S, Calendar.Convert (Modification_Time));

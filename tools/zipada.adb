@@ -14,9 +14,12 @@ with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Directories;                   use Ada.Directories;
 with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Wide_Text_IO;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
+with Ada.Strings.UTF_Encoding.Conversions;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
+with Ada.Strings.Wide_Fixed;            use Ada.Strings.Wide_Fixed;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Interfaces;
 
@@ -40,8 +43,8 @@ procedure ZipAda is
     Show_License (Current_Output, "zip.ads");
   end Blurb;
 
-  function Cut_name (n : String; l : Natural) return String is
-    dots : constant String := "...";
+  function Cut_name (n : Wide_String; l : Natural) return Wide_String is
+    dots : constant Wide_String := "...";
   begin
     if n'Length > l then
       return dots & n (n'Last - (l - 1) + dots'Length .. n'Last);
@@ -63,9 +66,11 @@ procedure ZipAda is
     Put ("  Adding ");
     declare
       maxlen : constant := 24;
-      cut : constant String := Cut_name (Get_Name (Stream), maxlen);
+      Unicode_name : constant Wide_String :=
+        Ada.Strings.UTF_Encoding.Conversions.Convert (Get_Name (Stream));
+      cut : constant Wide_String := Cut_name (Unicode_name, maxlen);
     begin
-      Put (cut & (1 + maxlen - cut'Length) * ' ');
+      Ada.Wide_Text_IO.Put (cut & (1 + maxlen - cut'Length) * ' ');
     end;
     --
     Add_Stream (
@@ -110,6 +115,7 @@ procedure ZipAda is
   begin
     Set_Name (InStream, arg);
     Set_Time (InStream, Ada.Directories.Modification_Time (arg));
+    Set_Unicode_Name_Flag (InStream, True);
     Open (InStream, In_File);
     Add_1_Stream (InStream);
     Close (InStream);
@@ -295,9 +301,16 @@ procedure ZipAda is
 
 begin
   Blurb;
+  --  Set the file name encoding as UTF-8.
+  --  NB: GNAT (as of version CE 2019) doesn't seem to need it.
+  Zip_Streams.Form_For_IO_Open_and_Create := To_Unbounded_String ("encoding=utf8");
+  --
   for i in 1 .. Argument_Count loop
     Process_argument (i);
   end loop;
+  --
+  --  We are done, or no archive was created.
+  --
   if Is_Created (Info) then
     Finish (Info);
     T1 := Clock;

@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2019 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintainer)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -125,7 +125,7 @@ package Zip_Streams is
    --  Set_Time again, but with the standard Ada Time type.
    --  Overriding is useless and potentially harmful, so we prevent it with
    --  a class-wide profile.
-   procedure Set_Time (S : out Root_Zipstream_Type'Class;
+   procedure Set_Time (S : in out Root_Zipstream_Type'Class;
                        Modification_Time : Ada.Calendar.Time);
 
    --  This procedure returns the ModificationTime of the stream
