@@ -153,7 +153,7 @@ project ZipAda is
    end Builder;
 
    package Ide is
-      for Default_Switches ("adacontrol") use ("-f", "verif.aru");
+      for Default_Switches ("adacontrol") use ("-f", "tools/verif.aru", "-r");
       for Vcs_Kind use "Subversion";
    end Ide;
    

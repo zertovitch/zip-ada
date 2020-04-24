@@ -117,3 +117,6 @@ search statements(multiple_exits); -- case_others_null, case_others
 search pragmas (nonstandard);
 search characters (not_iso_646);
 search reduceable_scope (use);
+
+search usage (variable, from_spec);
+-- search global_references (all, function, procedure);
