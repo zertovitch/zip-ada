@@ -514,7 +514,7 @@ package body BZip2.Decoding is
     buf : Buffer (1 .. output_buffer_size);
     last : Natural;
 
-    procedure Read is
+    procedure Read_Chunk is
       shorten : Natural := 0;
 
       procedure RLE_Read is
@@ -653,12 +653,12 @@ package body BZip2.Decoding is
       end if;
       RLE_Read;
       last := last - shorten;
-    end Read;
+    end Read_Chunk;
 
   begin
     Init;
     loop
-      Read;
+      Read_Chunk;
       Write (buf (1 .. last));
       exit when end_reached and rle_run_left = 0;
     end loop;

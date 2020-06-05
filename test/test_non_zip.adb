@@ -33,29 +33,29 @@ procedure Test_non_zip is
 
   Infile, Outfile : Byte_IO.File_Type;
 
-  function Read_Byte return Byte is
+  function TNZ_Read_Byte return Byte is
     B : Byte;
   begin
     Byte_IO.Read (Infile, B);
     return B;
-  end Read_Byte;
+  end TNZ_Read_Byte;
 
-  function More_bytes return Boolean is
+  function TNZ_More_bytes return Boolean is
   begin
     return not Byte_IO.End_Of_File (Infile);
-  end More_bytes;
+  end TNZ_More_bytes;
 
-  procedure Write_Byte (B : Byte) is
+  procedure TNZ_Write_Byte (B : Byte) is
   begin
     Byte_IO.Write (Outfile, B);
-  end Write_Byte;
+  end TNZ_Write_Byte;
 
   procedure Test_LZHuf (fn : String) is
     package File_LZH is
       new LZH (
-        Read_byte  => Read_Byte,
-        More_bytes => More_Bytes,
-        Write_byte => Write_Byte
+        Read_byte  => TNZ_Read_Byte,
+        More_bytes => TNZ_More_bytes,
+        Write_byte => TNZ_Write_Byte
       );
     temp_encoded : constant String := "lzhuf.tmp";
     temp_decoded : constant String := "lzhuf_decoded.tmp";
@@ -75,8 +75,8 @@ procedure Test_non_zip is
   end Test_LZHuf;
 
   procedure Test_LZMA (fn : String) is
-    procedure File_LZMA_Encode is new LZMA.Encoding.Encode (Read_byte, More_bytes, Write_byte);
-    package File_LZMA_Decoding is new LZMA.Decoding (Read_Byte, Write_Byte);
+    procedure File_LZMA_Encode is new LZMA.Encoding.Encode (TNZ_Read_Byte, TNZ_More_bytes, TNZ_Write_Byte);
+    package File_LZMA_Decoding is new LZMA.Decoding (TNZ_Read_Byte, TNZ_Write_Byte);
     use File_LZMA_Decoding;
     default_hints : constant LZMA_Hints :=
        (has_size               => True,

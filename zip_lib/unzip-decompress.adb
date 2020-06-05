@@ -577,7 +577,7 @@ package body UnZip.Decompress is
         Process_feedback (File_size_type (Write_Ptr));
       end Unshrink_Flush;
 
-      procedure Write_Byte (B : Zip.Byte) is
+      procedure UD_Write_Byte (B : Zip.Byte) is
       begin
         Writebuf (Write_Ptr) := B;
         Write_Ptr := Write_Ptr + 1;
@@ -585,7 +585,7 @@ package body UnZip.Decompress is
           Unshrink_Flush;
           Write_Ptr := 0;
         end if;
-      end Write_Byte;
+      end UD_Write_Byte;
 
       procedure Unshrink is
         S : UnZip.File_size_type := UnZ_Glob.uncompsize;
@@ -715,7 +715,7 @@ package body UnZip.Decompress is
           raise Zip.Archive_corrupted with "Wrong LZW (Shrink) 1st byte; must be a literal";
         end if;
         Last_Outcode := Zip.Byte (Incode);
-        Write_Byte (Last_Outcode);
+        UD_Write_Byte (Last_Outcode);
         S := S - 1;
 
         Main_Unshrink_Loop :
@@ -745,7 +745,7 @@ package body UnZip.Decompress is
             New_Code := Incode;
             if Incode < 256 then          --  Literal (simple character)
               Last_Outcode :=  Zip.Byte (Incode);
-              Write_Byte (Last_Outcode);
+              UD_Write_Byte (Last_Outcode);
               S := S - 1;
             else  --  Tree node (code > 256)
               if Previous_Code (Incode) < 0 then
@@ -786,10 +786,10 @@ package body UnZip.Decompress is
               --        through Previous_Code) which is either in [0 .. 255] or > 256.
               --      So Incode is in [0 .. 255].
               Last_Outcode := Zip.Byte (Incode);
-              Write_Byte (Last_Outcode);
+              UD_Write_Byte (Last_Outcode);
               --  Now we output the string in forward order.
               for I in Stack_Ptr + 1 .. Max_Stack  loop
-                Write_Byte (Stack (I));
+                UD_Write_Byte (Stack (I));
               end loop;
               S := S - UnZip.File_size_type (Max_Stack - Stack_Ptr + 1);
               Stack_Ptr := Max_Stack;
@@ -1879,27 +1879,27 @@ package body UnZip.Decompress is
 
       procedure Bunzip2 is
         type BZ_Buffer is array (Natural range <>) of Interfaces.Unsigned_8;
-        procedure Read (b : out BZ_Buffer) is
-        pragma Inline (Read);
+        procedure UD_Read (b : out BZ_Buffer) is
+        pragma Inline (UD_Read);
         begin
           for i in b'Range loop
             b (i) := UnZ_IO.Read_byte_decrypted;
           end loop;
-        end Read;
-        procedure Write (b : in BZ_Buffer) is
-        pragma Inline (Write);
+        end UD_Read;
+        procedure UD_Write (b : in BZ_Buffer) is
+        pragma Inline (UD_Write);
         begin
           for i in b'Range loop
             UnZ_Glob.slide (UnZ_Glob.slide_index) := b (i);
             UnZ_Glob.slide_index := UnZ_Glob.slide_index + 1;
             UnZ_IO.Flush_if_full (UnZ_Glob.slide_index);
           end loop;
-        end Write;
+        end UD_Write;
         package My_BZip2 is new BZip2.Decoding
            (Buffer    => BZ_Buffer,
             check_CRC => False,  --  CRC check is already done by UnZ_IO
-            Read      => Read,
-            Write     => Write
+            Read      => UD_Read,
+            Write     => UD_Write
           );
       begin
         My_BZip2.Decompress;

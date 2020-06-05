@@ -17,19 +17,19 @@ procedure LZMA_Dec is
   --  You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
   --  For instance, see the BlockRead in the Zip package for how to do it.
 
-  function Read_Byte return Byte is
+  function Demo_Read_Byte return Byte is
     b : Byte;
   begin
     Byte'Read (Stream (f_in), b);
     return b;
-  end Read_Byte;
+  end Demo_Read_Byte;
 
-  procedure Write_Byte (b : Byte) is
+  procedure Demo_Write_Byte (b : Byte) is
   begin
     Byte'Write (Stream (f_out), b);
-  end Write_Byte;
+  end Demo_Write_Byte;
 
-  package My_LZMA_Decoding is new LZMA.Decoding (Read_Byte, Write_Byte);
+  package My_LZMA_Decoding is new LZMA.Decoding (Demo_Read_Byte, Demo_Write_Byte);
   use My_LZMA_Decoding;
 
   procedure Print_Data_Bytes_Count (title : String; v : Data_Bytes_Count) is

@@ -19,7 +19,7 @@ procedure bunzip is
   --  This possible if and only if Byte = Stream_Element and
   --  arrays types are both packed.
 
-  procedure Read (b : out Buffer) is
+  procedure BU_Read (b : out Buffer) is
     use Ada.Streams;
     Last : Stream_Element_Offset;
     SE_Buffer : Stream_Element_Array (1 .. b'Length);
@@ -34,9 +34,9 @@ procedure bunzip is
     --      -- after end of compressed code
     --
     Read (Stream (f_in).all, SE_Buffer, Last);
-  end Read;
+  end BU_Read;
 
-  procedure Write (b : in Buffer) is
+  procedure BU_Write (b : in Buffer) is
     use Ada.Streams;
     SE_Buffer : Stream_Element_Array (1 .. b'Length);
     for SE_Buffer'Address use b'Address;
@@ -50,7 +50,7 @@ procedure bunzip is
     --  and makes +60% more time on ObjectAda 7.2.2
     --
     Write (Stream (f_out).all, SE_Buffer);
-  end Write;
+  end BU_Write;
 
   package My_BZip2 is new BZip2.Decoding
   (
@@ -58,8 +58,8 @@ procedure bunzip is
     output_buffer_size => 4096,
     Buffer             => Buffer,
     check_CRC          => True,
-    Read               => Read,
-    Write              => Write
+    Read               => BU_Read,
+    Write              => BU_Write
   );
 
 begin

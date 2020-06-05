@@ -49,10 +49,10 @@ procedure LZHuf is
     return B;
   end Read_IO_Byte;
 
-  function More_bytes return Boolean is
+  function File_More_bytes return Boolean is
   begin
     return not End_Of_File (Infile);
-  end More_bytes;
+  end File_More_bytes;
 
   procedure Write_IO_Byte (B : Unsigned_8) is
   pragma Inline (Write_IO_Byte);
@@ -63,7 +63,7 @@ procedure LZHuf is
   package File_LZH is
     new LZH (
       Read_byte  => Read_IO_Byte,
-      More_bytes => More_Bytes,
+      More_bytes => File_More_bytes,
       Write_byte => Write_IO_Byte
     );
   use File_LZH;
