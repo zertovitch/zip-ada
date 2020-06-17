@@ -7,9 +7,21 @@
 --  UnZip.Streams
 -----------------
 --
---  Extracts, as a stream, a file which is has been compressed into a Zip archive.
---  The Zip archive itself (the input) can be a file or a more general stream.
---  This package is resembling Ada.Streams.Stream_IO, to facilitate transition.
+--  Variant 1: extracts, as an *input* stream, a file which is has been
+--             compressed into a Zip archive. The Zip archive itself
+--             can be a file, or a more general stream. Subprograms are
+--             resembling Ada.Streams.Stream_IO, to facilitate transition.
+--
+--  Variant 2: extracts to an *output* stream a file which is has been
+--             compressed into a Zip archive.
+--
+--  Stream directions in a nutshell...
+--
+--                     Zip Archive  |  File-in-archive
+--                     -------------|-----------------
+--      Variant 1:     Input        |  Input
+--      Variant 2:     Input        |  Output
+--
 
 --  Legal licensing note:
 
@@ -44,7 +56,7 @@ with Ada.Streams, Ada.IO_Exceptions;
 package UnZip.Streams is
 
    ----------------------------------------------------------------------------
-   --                           ** Input Stream **                           --
+   --                    ** Variant 1: Input Stream **                       --
    --                                                                        --
    --  Extract a Zip archive entry as an input stream.                       --
    --                                                                        --
@@ -66,7 +78,7 @@ package UnZip.Streams is
    --  in the archive file named Archive_Name. The function Stream(..)
    --  then gives access to the opened stream.
 
-   --  Version: Zip as a file
+   --  Version: Zip as a file.
    procedure Open
      (File             : in out Zipped_File_Type; -- File-in-archive handle
       Archive_Name     : in String;               -- Name of archive file
@@ -76,7 +88,7 @@ package UnZip.Streams is
       Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
      );
 
-   --  Version: Zip as a stream
+   --  Version: Zip as a stream.
    procedure Open
      (File             : in out Zipped_File_Type; -- File-in-archive handle
       Archive_Stream   : in out Zip_Streams.Root_Zipstream_Type'Class; -- Archive's stream
@@ -92,6 +104,7 @@ package UnZip.Streams is
    --  You need to call Zip.Load( Archive_Info... ) prior to opening the
    --  compressed file.
 
+   --  Version: Zip as Zip_info.
    procedure Open
      (File             : in out Zipped_File_Type; -- File-in-archive handle
       Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
@@ -120,7 +133,7 @@ package UnZip.Streams is
    End_Error    : exception renames Ada.IO_Exceptions.End_Error;
 
    ------------------------------------------------------------------
-   --                    ** Output Stream **                       --
+   --               ** Variant 2: Output Stream **                 --
    --                                                              --
    --  Extract a Zip archive entry to an available output stream.  --
    --                                                              --
