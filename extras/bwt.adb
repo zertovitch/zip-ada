@@ -54,6 +54,7 @@ package body BWT is
       Array_Type   => Table);
     m : p_Table := new Table'(others => (others => ' '));
   begin
+    Shift_Insert_Sort :
     for iter in Rng loop
       --  Shift columns right
       for i in Rng loop
@@ -61,20 +62,19 @@ package body BWT is
           m (i)(j) := m (i)(j - 1);
         end loop;
       end loop;
-      --  Insert transformed string t as first column.
+      --  Insert transformed string t as first column (again and again).
       --
-      --  The miracle: t(i) is the correct predecessor of
-      --  each sorted character on row i (status at the end of
-      --  iteration 1). This gives the full list of pairs.
-      --  After sorting, t(i) is also the correct predecessor
-      --  each sorted pair (end of iteration 2). We have then the
-      --  list of all triplets. And so on.
+      --  The miracle: after iteration #1, t(i) is the correct predecessor
+      --  of the character on sorted row i. This gives the full list of pairs.
+      --  After 2nd sorting (end of iteration #2), t(i) is also the correct
+      --  predecessor each sorted pair.
+      --  We have then the list of all triplets. And so on.
       --
       for i in Rng loop
         m (i)(1) := message (i);
       end loop;
       Sort (m.all);
-    end loop;
+    end loop Shift_Insert_Sort;
     --  After iteration n we have a sorted list of all rotated
     --  versions of the original string. The table is identical
     --  to the table after encoding.
