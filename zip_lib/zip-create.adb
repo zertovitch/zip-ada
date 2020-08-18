@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2019 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintenance and further development)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,6 +25,7 @@
 --  http://www.opensource.org/licenses/mit-license.php
 
 with Ada.Directories;
+with Ada.IO_Exceptions;
 with Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
 
@@ -399,6 +400,175 @@ package body Zip.Create is
       end if;
       Info.Contains (Info.Last_entry).head.short_info := lh;
    end Add_Compressed_Stream;
+
+   use Ada.Streams;
+
+   procedure Dispose is new
+     Ada.Unchecked_Deallocation (
+       Stream_Element_Array,
+       Stream_Element_Array_Access);
+
+   procedure Resize (A           : in out Stream_Element_Array_Access;
+                     A_Last_Used :        Stream_Element_Offset;
+                     New_Size    :        Stream_Element_Offset)
+   is
+     Hlp : constant Stream_Element_Array_Access :=
+                      new Stream_Element_Array (1 .. New_Size);
+   begin
+     if A = null then
+       A := Hlp;
+     else
+       for I in 1 .. Stream_Element_Offset'Min (Hlp'Last, A_Last_Used) loop
+         Hlp (I) := A (I);
+       end loop;
+       Dispose (A);
+       A := Hlp;
+     end if;
+   end Resize;
+
+   overriding procedure Write
+     (Stream : in out Zip_Entry_Stream_Type;
+      Item   :        Ada.Streams.Stream_Element_Array)
+   is
+     Needed : Stream_Element_Offset;
+   begin
+     if Stream.Buffer_Access = null then
+       raise Ada.IO_Exceptions.Use_Error
+         with "Stream is not open (Zip_Entry_Stream_Type)";
+     end if;
+     Needed := Stream.Last_Element + Item'Length;
+     if Stream.Buffer_Access'Length < Needed then
+       declare
+         New_Size : Stream_Element_Offset := Stream.Buffer_Access'Length;
+         Growth : constant Stream_Element_Offset
+                    := Stream_Element_Offset (Stream.Growth);
+       begin
+         loop
+           if New_Size > Stream_Element_Offset'Last / Growth then
+             --  We want to avoid an out-of-range with New_Size * Growth.
+             raise Constraint_Error
+               with "Buffer capacity exhaustion (Zip_Entry_Stream_Type)";
+           end if;
+           New_Size := New_Size * Growth;
+           exit when New_Size >= Needed;
+         end loop;
+         --  Ada.Text_IO.Put_Line("Grow");
+         Resize (Stream.Buffer_Access, Stream.Last_Element, New_Size);
+       end;
+     end if;
+     --
+     for I in Item'Range loop
+       Stream.Last_Element := Stream.Last_Element + 1;
+       Stream.Buffer_Access (Stream.Last_Element) := Item (I);
+     end loop;
+   end Write;
+
+   procedure Open (
+     Zip_Entry_Stream     :    out Zip_Entry_Stream_Type;
+     Initial_Buffer_Size  : in     Positive := Default_Zip_Entry_Buffer_Size;
+     Buffer_Growth_Factor : in     Positive := Default_Zip_Entry_Buffer_Growth
+   )
+   is
+   begin
+     Zip_Entry_Stream.Last_Element := 0;
+     Zip_Entry_Stream.Growth := Buffer_Growth_Factor;
+     Resize (
+       Zip_Entry_Stream.Buffer_Access,
+       Zip_Entry_Stream.Last_Element,
+       Stream_Element_Offset (Initial_Buffer_Size)
+     );
+   end Open;
+
+   procedure Close (
+     Zip_Entry_Stream : in out Zip_Entry_Stream_Type;
+     Entry_Name       : in     String;
+     Creation_Time    : in     Zip.Time := default_time;
+     Info             : in out Zip_Create_Info
+   )
+   is
+     --  We define a local reader class for reading the contents of
+     --  Zip_Entry_Stream as an *input* stream.
+     type Captive_Type is new Zip_Streams.Root_Zipstream_Type with record
+       Loc : Stream_Element_Offset := 1;
+     end record;
+     --
+     overriding procedure Read
+       (Stream : in out Captive_Type;
+        Item   : out Stream_Element_Array;
+        Last   : out Stream_Element_Offset);
+     overriding procedure Write
+       (Stream : in out Captive_Type;
+        Item   :        Stream_Element_Array) is null;
+     overriding function Index (S : in Captive_Type) return ZS_Index_Type;
+     overriding function Size (S : in Captive_Type) return ZS_Size_Type;
+     overriding function End_Of_Stream (S : in Captive_Type) return Boolean;
+     --
+     overriding procedure Set_Index (
+        S  : in out Captive_Type;
+        To :        ZS_Index_Type)
+     is
+     begin
+       S.Loc := Stream_Element_Offset (To);
+     end Set_Index;
+     --
+     overriding function Index (S : in Captive_Type) return ZS_Index_Type is
+     begin
+       return ZS_Index_Type (S.Loc);
+     end Index;
+     --
+     overriding function Size (S : in Captive_Type) return ZS_Size_Type is
+     begin
+       return ZS_Index_Type (Zip_Entry_Stream.Last_Element);
+     end Size;
+     --
+     overriding function End_Of_Stream (S : in Captive_Type) return Boolean is
+     begin
+       return S.Loc > Zip_Entry_Stream.Last_Element;
+     end End_Of_Stream;
+     --
+     overriding procedure Read
+       (Stream : in out Captive_Type;
+        Item   : out Stream_Element_Array;
+        Last   : out Stream_Element_Offset)
+     is
+       Available_From_Buffer : constant Stream_Element_Offset :=
+         Stream_Element_Offset'Max (
+           0,
+           1 + Zip_Entry_Stream.Last_Element - Stream.Loc
+           --  When Stream.Loc is equal to Zip_Entry_Stream.Last_Element,
+           --  there is one (last) element to read.
+         );
+       Copy_Length : constant Stream_Element_Offset :=
+         Stream_Element_Offset'Min (Item'Length, Available_From_Buffer);
+     begin
+       --  Read Copy_Length bytes from Zip_Entry_Stream.Buffer_Access,
+       --  position Stream.Loc, into Item.
+       --  Copy_Length = 0 when Item is empty or the buffer is
+       --  fully read (i.e., when Loc = Last_Element + 1).
+       Last := Item'First + Copy_Length - 1;
+       for Offset in reverse 0 .. Copy_Length - 1 loop
+         Item (Item'First + Offset) :=
+           Zip_Entry_Stream.Buffer_Access (Stream.Loc + Offset);
+       end loop;
+       Stream.Loc := Stream.Loc + Copy_Length;
+     end Read;
+     --
+     Reader_Stream : Captive_Type;
+   begin
+     Reader_Stream.Set_Name (Entry_Name);
+     if Creation_Time = use_clock
+               --  If we have use_file_modification_time by mistake, use clock as well:
+       or else Creation_Time = use_file_modification_time
+     then
+       Set_Time (Reader_Stream, Ada.Calendar.Clock);
+     else
+       Set_Time (Reader_Stream, Creation_Time);
+     end if;
+     --
+     Add_Stream (Info, Reader_Stream);
+     --
+     Dispose (Zip_Entry_Stream.Buffer_Access);
+   end Close;
 
    procedure Finish (Info : in out Zip_Create_Info) is
       ed : Zip.Headers.End_of_Central_Dir;

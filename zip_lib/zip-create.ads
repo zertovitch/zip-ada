@@ -6,7 +6,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2019 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintenance and further development)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,6 +34,7 @@
 --  Change log:
 --  ==========
 --
+--  17-Aug-2020: GdM: Added Zip_Entry_Stream_Type.
 --  23-Mar-2016: GdM: Create with Duplicate_name_policy
 --  14-Feb-2015: GdM: Added "Is_Created" function
 --  13-Feb-2015: GdM: Added "Password" parameter
@@ -169,12 +170,47 @@ package Zip.Create is
      Feedback       : in     Feedback_proc
    );
 
-   --  Complete the Zip archive; close the file if the stream is a file
+   --  Zip_Entry_Stream_Type
+   -------------------------
+   --  With that type, you can add an entry as an *output* stream
+   --  to a Zip archive. The workflow is:
+   --
+   --     Create_Archive (Info, ...);
+   --     [for each entry]:
+   --         Open (Zip_Entry_Stream, Guess);  --  Guess = guess of data size
+   --         [various occurrences of]: T'Write (Zip_Entry_Stream, Data);
+   --         Close (Zip_Entry_Stream, "contents.dat", Info);
+   --     Finish (Info);
+   --
+   --  For a full example, see: test/test_zip_entry_stream.adb  
 
+   type Zip_Entry_Stream_Type is
+     new Ada.Streams.Root_Stream_Type with private;
+
+   Default_Zip_Entry_Buffer_Size   : constant := 1024 ** 2;
+   Default_Zip_Entry_Buffer_Growth : constant := 8;
+
+   procedure Open (
+     Zip_Entry_Stream     :    out Zip_Entry_Stream_Type;
+     Initial_Buffer_Size  : in     Positive := Default_Zip_Entry_Buffer_Size;
+     Buffer_Growth_Factor : in     Positive := Default_Zip_Entry_Buffer_Growth
+   );
+
+   procedure Close (
+     Zip_Entry_Stream : in out Zip_Entry_Stream_Type;
+     Entry_Name       : in     String;
+     Creation_Time    : in     Zip.Time := default_time;
+     Info             : in out Zip_Create_Info
+   );
+
+   --  Finish: complete the Zip archive when all desired entries have
+   --  been added; close the Zip file if the archive stream is a file.
+   --
    procedure Finish (Info : in out Zip_Create_Info);
 
-   --  The following is raised on cases when the Zip archive creation exceeds
-   --  the Zip_32 format's capacity: 4GB total size, 65535 entries.
+   --  The following exception is raised on cases when the Zip archive
+   --  creation exceeds the Zip_32 format's capacity: 4GB total size,
+   --  65535 entries.
 
    Zip_Capacity_Exceeded : exception;
 
@@ -205,5 +241,24 @@ private
      name_dictionary    : Name_mapping.Map;
      zip_archive_format : Zip_archive_format_type := Zip_32;
    end record;
+
+   type Stream_Element_Array_Access is
+     access Ada.Streams.Stream_Element_Array;
+
+   type Zip_Entry_Stream_Type is new Ada.Streams.Root_Stream_Type with record
+     Buffer_Access : Stream_Element_Array_Access := null;
+     Last_Element  : Ada.Streams.Stream_Element_Offset;
+     Growth        : Positive;
+   end record;
+
+   overriding procedure Read
+     (Stream : in out Zip_Entry_Stream_Type;
+      Item   :    out Ada.Streams.Stream_Element_Array;
+      Last   :    out Ada.Streams.Stream_Element_Offset)
+   is null;
+
+   overriding procedure Write
+     (Stream : in out Zip_Entry_Stream_Type;
+      Item   :        Ada.Streams.Stream_Element_Array);
 
 end Zip.Create;

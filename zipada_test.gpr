@@ -14,6 +14,7 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
      "test_lz77.adb",                    --  Test the LZ77 package
      "test_non_zip.adb",                 --  Test compression raw schemes without Zip archive format
      "test_zip_create_info_timing.adb",  --  Timing for entries management during Zip creation
+     "test_zip_entry_stream.adb",        --  Test Zip_Entry_Stream_Type
      "test_zip_info_timing.adb",         --  Timing of loading of Zip archive's directory
      "test_zip_info_traverse.adb",       --  Check duplicate-tolerant traversal
      "test_stream_performance.adb",
