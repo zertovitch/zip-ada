@@ -1350,7 +1350,9 @@ package body LZ77 is
         --  NB: heap allocation used only for convenience because of
         --      small default stack sizes on some compilers.
         tree := new Int_array (0 .. cyclicSize * 2 - 1);
-        tree.all := (others => Null_position);
+        for i in tree'Range loop
+          tree (i) := Null_position;
+        end loop;
       end BT4_Algo;
 
       --  Moves data from the end of the buffer to the beginning, discarding
