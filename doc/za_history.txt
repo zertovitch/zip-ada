@@ -1,9 +1,11 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
-* Changes in '57':
+* Changes in '57' (not yet released):
   - UnZip: fixed bad decoding case for the Shrink (LZW) format,
         on some data compressed only by PKZIP up to v.1.10, 1990-03-15. 
+  - Zip.Create: added Zip_Entry_Stream_Type for doing output
+        streaming into Zip archives.
 
 * Changes in '56', 17-Jan-2020 [rev. 780]:
   - Zip: the Zip_info type is now controlled (no need to call Delete;

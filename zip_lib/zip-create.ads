@@ -182,7 +182,7 @@ package Zip.Create is
    --         Close (Zip_Entry_Stream, "contents.dat", Info);
    --     Finish (Info);
    --
-   --  For a full example, see: test/test_zip_entry_stream.adb  
+   --  For a full example, see: test/test_zip_entry_stream.adb
 
    type Zip_Entry_Stream_Type is
      new Ada.Streams.Root_Stream_Type with private;

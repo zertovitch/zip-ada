@@ -517,6 +517,7 @@ package body Zip.Create is
      end Index;
      --
      overriding function Size (S : in Captive_Type) return ZS_Size_Type is
+     pragma Unreferenced (S);
      begin
        return ZS_Index_Type (Zip_Entry_Stream.Last_Element);
      end Size;
