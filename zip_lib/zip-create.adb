@@ -519,7 +519,7 @@ package body Zip.Create is
      overriding function Size (S : in Captive_Type) return ZS_Size_Type is
      pragma Unreferenced (S);
      begin
-       return ZS_Index_Type (Zip_Entry_Stream.Last_Element);
+       return ZS_Size_Type (Zip_Entry_Stream.Last_Element);
      end Size;
      --
      overriding function End_Of_Stream (S : in Captive_Type) return Boolean is
