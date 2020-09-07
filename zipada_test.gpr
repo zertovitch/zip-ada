@@ -32,6 +32,7 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
    end case;
    
    for Exec_Dir use ".";
+   for Create_Missing_Dirs use "True";  --  Flips by default the "-p" switch
    
    --  package Builder  renames ZipAda.Builder;
    --  package Compiler renames ZipAda.Compiler;

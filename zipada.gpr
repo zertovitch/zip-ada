@@ -5,7 +5,7 @@
 --      project page:  http://sf.net/projects/unzip-ada/
 --      mirror:        https://github.com/zertovitch/zip-ada
 --
---  Build me with "gprbuild -p -P zipada", or "gnatmake -p -P zipada",
+--  Build me with "gprbuild -P zipada", or "gnatmake -P zipada",
 --  or open me with GPS.
 --
 --  Important: for building tests, see the zipada_test.gpr project file.
@@ -25,6 +25,7 @@ project ZipAda is
       );
    Zip_Build_Mode : Zip_Build_Mode_Type := external ("Zip_Build_Mode", "Fast");
    for Exec_Dir use ".";
+   for Create_Missing_Dirs use "True";  --  Flips by default the "-p" switch
    
    case Zip_Build_Mode is
       when "Check_2005" =>
