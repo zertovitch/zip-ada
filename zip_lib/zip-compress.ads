@@ -22,7 +22,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2020 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -93,6 +93,7 @@ package Zip.Compress is
      LZMA_for_PNG,
      LZMA_for_GIF,
      LZMA_for_WAV,
+     LZMA_for_AU,
      --  Multi-method:
      --    Preselection: select a method depending on hints, like the uncompressed size
      Preselection_1,  --  Not too slow; selects Deflate_3 or LZMA_2*
@@ -113,7 +114,7 @@ package Zip.Compress is
   --  start a new block and what sort of block to put next.
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_0 .. Deflation_Method'Last;
 
-  subtype LZMA_Method is Compression_Method range LZMA_0 .. LZMA_for_WAV;
+  subtype LZMA_Method is Compression_Method range LZMA_0 .. LZMA_for_AU;
 
   subtype Multi_Method is Compression_Method range Preselection_1 .. Preselection_2;
 
@@ -133,6 +134,7 @@ package Zip.Compress is
     Zip_in_Zip,
     GIF, PNG, PGM, PPM,
     WAV,
+    AU,          --  Audacity .au raw sound file
     MP3, MP4
   );
 

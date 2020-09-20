@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2016 .. 2020 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -183,6 +183,7 @@ is
       LZMA_for_PPM          => (4, 0, 0, Level_2),
       LZMA_for_PNG          => (8, 0, 2, Level_2),
       LZMA_for_WAV          => (0, 1, 1, Level_2),
+      LZMA_for_AU           => (0, 2, 2, Level_2),
       LZMA_2_for_Zip_in_Zip => (8, 4, 0, Level_2),
       LZMA_3_for_Zip_in_Zip => (8, 4, 0, Level_3),
       LZMA_2_for_Source     => (3, 0, 0, Level_2),

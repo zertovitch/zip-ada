@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2020 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -228,6 +228,7 @@ package body Zip.Compress is
        PPM     => LZMA_for_PPM,
        PNG     => LZMA_for_PNG,
        WAV     => LZMA_for_WAV,
+       AU      => LZMA_for_AU,
        others  => LZMA_1  --  Fake, should be unused as such.
       );
 
@@ -249,7 +250,7 @@ package body Zip.Compress is
             else
               Compress_data_single_method (LZMA_3);                 --  LZMA with BT4 match finder
             end if;
-          when ARW_RW2 | ORF_CR2 | MP3 | MP4 | JPEG | PGM | PPM | PNG | WAV =>
+          when ARW_RW2 | ORF_CR2 | MP3 | MP4 | JPEG | PGM | PPM | PNG | WAV | AU =>
             if input_size_known and input_size < 2_250 then
               Compress_data_single_method (Deflate_3);  --  Deflate
             else
@@ -299,7 +300,9 @@ package body Zip.Compress is
       or else ext_3 = ".PAS" or else ext_3 = ".INC" or else ext_2 = ".PP" or else ext_3 = ".LPR"
       or else ext_3 = ".MAK" or else ext_2 = ".IN"
       or else ext_2 = ".SH" or else ext_3 = ".BAT" or else ext_3 = ".CMD"
-      or else ext_3 = ".XML" or else ext_3 = ".XSL" or else ext_4 = ".SGML"
+      or else ext_3 = ".XML" or else ext_3 = ".XSL"
+      or else ext_4 = ".SGML"
+      or else ext_3 = ".AUP"  --  Audacity project (XML)
       or else ext_3 = ".HTM" or else ext_4 = ".HTML"
       or else ext_2 = ".JS" or else ext_3 = ".LSP"
       or else ext_3 = ".CSV" or else ext_3 = ".SQL"
@@ -352,6 +355,9 @@ package body Zip.Compress is
     end if;
     if ext_3 = ".WAV" or else ext_3 = ".UAX" then
       return WAV;
+    end if;
+    if ext_2 = ".AU" then  --  Audacity raw data
+      return AU;
     end if;
     return Neutral;
   end Guess_type_from_name;
