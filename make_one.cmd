@@ -19,7 +19,9 @@ echo    The Making of... %1
 echo \=====================================================/
 echo.
 
-gnatmake -PZipAda.gpr %1 -XZip_Build_Mode=%gnatoptions_87312863%
+set linkoptions_7245=-largs -Xlinker --stack=0x2000000,0x20000
+
+gnatmake -PZipAda.gpr %1 -XZip_Build_Mode=%gnatoptions_87312863% %linkoptions_7245%
 
 rem -largs extras/zip_icons.rbj
 

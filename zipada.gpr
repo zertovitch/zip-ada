@@ -1,4 +1,4 @@
---  This is a GNAT, GCC or GNAT Programming Studio (GPS) project file
+--  This is a GNAT, GCC or GNAT Studio project file
 --  for the Zip-Ada project:
 --
 --      home page:     http://unzip-ada.sf.net/
@@ -6,7 +6,7 @@
 --      mirror:        https://github.com/zertovitch/zip-ada
 --
 --  Build me with "gprbuild -P zipada", or "gnatmake -P zipada",
---  or open me with GPS.
+--  or open me with GNAT Studio.
 --
 --  Important: for building tests, see the zipada_test.gpr project file.
 --

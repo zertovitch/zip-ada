@@ -25,8 +25,10 @@ call make_one find_zip
 
 rem The Demos and Tests...
 
-gprbuild -p -Pzipada.gpr      -XZip_Build_Mode=%gnatoptions_87312863%
-gprbuild -p -Pzipada_test.gpr -XZip_Build_Mode=%gnatoptions_87312863%
+set linkoptions_7245=-largs -Xlinker --stack=0x2000000,0x20000
+
+gprbuild -p -Pzipada.gpr      -XZip_Build_Mode=%gnatoptions_87312863% %linkoptions_7245%
+gprbuild -p -Pzipada_test.gpr -XZip_Build_Mode=%gnatoptions_87312863% %linkoptions_7245%
 
 set gnatoptions_87312863=
 

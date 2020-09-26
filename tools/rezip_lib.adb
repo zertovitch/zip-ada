@@ -5,14 +5,14 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 --
--- To do:
---  * In order to facilitate customization, ReZip could have a config file (
---    http://sf.net/projects/ini-files/ ) to store external packer program
---    names. See ZipMax as an example...
+--  To do:
+--    * In order to facilitate customization, ReZip could have a config file
+--      ( http://sf.net/projects/ini-files/ ) to store external packer
+--      program names. See ZipMax as an example...
 --
--- External programs used (feel free to customize/add/remove):
---   7-Zip, KZip, Zip (info-zip), AdvZip, DeflOpt
---   Web URL's: see Zipper_specification below or run ReZip without arguments.
+--  External programs used (feel free to customize/add/remove):
+--    7-Zip, KZip, Zip (info-zip), AdvZip, DeflOpt
+--    Web URL's: see Zipper_specification below or run ReZip without arguments.
 
 with Zip.Headers, Zip.Compress, UnZip;
 with Zip.Create;                        use Zip.Create;
@@ -88,7 +88,7 @@ package body Rezip_lib is
     range external_1 .. Approach'Last;
 
   ext : array (External) of Zipper_specification :=
-    ( -- Zip 2.32 or later:
+    ( --  Zip 2.32 or later:
       (U ("zip"), U ("Zip"), U ("http://info-zip.org/"),
          U ("-9"), NN, 20, Zip.deflate, 0, False),
       --  7-Zip 4.64 or later; Deflate:
@@ -117,8 +117,8 @@ package body Rezip_lib is
          U ("a -tzip -mm=LZMA:a=2:d=25:mf=bt#RAND#(3,4):fb=255:lc=7"), NN, 63, Zip.lzma_meth, 0, False),
       (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**26 = 64 MiB
          U ("a -tzip -mm=LZMA:a=2:d=26:mf=bt#RAND#(3,4):fb=222:lc=8:lp0:pb1"), NN, 63, Zip.lzma_meth, 0, False),
-      (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT4.
-         U ("a -tzip -mm=LZMA:a=2:d=#RAND_EXP#(1,5000)k:mf=bt4:fb=#RAND#(255,273):lc=#RAND#(0,8):lp#RAND#(0,4):pb#RAND#(0,4)"),
+      (U ("7z"), U ("7-Zip"), NN, --  Super-randomized version
+         U ("a -tzip -mm=LZMA:a=2:d=#RAND_EXP#(1,65535)k:mf=bt#RAND#(2,4):fb=#RAND#(128,273):lc=#RAND#(0,8):lp#RAND#(0,4):pb#RAND#(0,4)"),
          NN, 63, Zip.lzma_meth, 0, True),
       --  AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U ("advzip"), U ("AdvZip"), U ("http://advancemame.sf.net/comp-readme.html"),
