@@ -1,7 +1,9 @@
 @echo off
-echo Test UnZipAda for one data file compressed with external zippers (no ZipAda !)
-echo Archive name = %2
-echo Data name = %1
+echo    Test UnZipAda for one data file, compressed
+echo    with external zippers (no ZipAda !)
+echo    -------------------------------------------
+echo    Archive name = %2
+echo    Data name = %1
 
 if (%2)==() goto vide
 

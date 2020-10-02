@@ -37,8 +37,10 @@ set files=%files% %root%/test/*.ad*
 set files=%files% %root%/demo/*.ad* 
 set files=%files% %root%/trained/*.ad* %root%/trained/*.gpr
 rem Documentation
-set files=%files% %root%/doc/*.txt %root%/doc/za*.xls
+set files=%files% %root%/doc/*.txt %root%/doc/za*.xls %root%/doc/za*.pdf
+rem Tools
 set files=%files% %root%/tools/*.ad* %root%/tools/rez*.cmd %root%/tools/verif.* %root%/tools/adactl*.cmd %root%/tools/save.cmd %root%/tools/clean*.cmd
+rem Extras
 set files=%files% %root%/extras/*.ad* %root%/extras/*.a %root%/extras/*.rc %root%/extras/*.rbj %root%/extras/*.ico %root%/extras/*.pl %root%/extras/w*.cmd
 rem Scripts
 set files=%files% %root%/*_za.cmd %root%/make_one.cmd %root%/*.sh

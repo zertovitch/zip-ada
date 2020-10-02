@@ -12,6 +12,7 @@ echo   pkzip110.exe,          from: pkz110.exe,  15.03.1990, Implode, Shrink
 echo   pkzip193.exe,          from: pkz193a.exe, 15.10.1991, Deflate
 echo   pkzip204.exe,          from: pkz204.exe,  25.02.1993, Deflate
 echo   pkzip250.exe           from: pkz250.exe,   1.03.1999, Deflate
+echo.
 echo   7z.exe
 echo   kzip.exe
 echo   zip.exe (v.3 or later, with BZip2 add-on)
@@ -22,27 +23,27 @@ echo available on the Web.
 
 copy /b ..\unzipada.exe .
 
-echo *****************************************************************
-echo.
-echo 1) I will use the text files (sources etc.) in the Zip-Ada
-echo distribution as compression data
-echo.
+echo ******************************************************************
+echo *
+echo *  1) I will use the text files (sources etc.) in the Zip-Ada
+echo *     distribution as compression data
+echo *
 pause
 copy *.ad? + ..\*.ad? +..\*.txt + ..\zip_lib\*.ad? + *.cmd $test.txt
 call test_1 $test.txt tuttifru
 
-echo *****************************************************************
-echo.
-echo 2) Now, a test with binaries (*.exe)
-echo.
+echo ******************************************************************
+echo * 
+echo *  2) Now, a test with binaries (*.exe, *.pdf)
+echo *
 pause
-copy /B *.exe $test.bin
+copy /B *.exe + ..\doc\*.pdf $test.bin
 call test_1 $test.bin binana
 
-echo *****************************************************************
-echo.
-echo 3) Tests with structured data (separately, *.csv, *.xls, *.mdb)
-echo.
+echo ******************************************************************
+echo *
+echo *  3) Tests with structured data (separately, *.csv, *.xls, *.mdb)
+echo *
 pause
 copy /B *.csv $tst_csv
 call test_1 $tst_csv stct_csv

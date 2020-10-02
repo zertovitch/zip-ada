@@ -30,8 +30,10 @@
 
 - Port PPMd variant I (see attempts in /extras/ppmd_sandbox) or reprogram it
       from scratch (both are tough!), in order to have a complete coverage
-      of the Zip format and of compression methods in general.
-      A clean reprogramming could cover many algorithms of the PPM family.
+      of the Zip format (for compression formats not specialized on specific
+      data types) and of compression methods in general.
+      A clean reprogramming could cover many algorithms of the PPM family, not only
+      the PPMd v.I that is in the Zip archive format.
 
 - more profiling - see prof_za.cmd and test/prof.cmd
 
