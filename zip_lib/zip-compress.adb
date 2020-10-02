@@ -315,7 +315,8 @@ package body Zip.Compress is
       or else ext_3 = ".ODB" or else ext_3 = ".ODS" or else ext_3 = ".ODT"
       or else ext_3 = ".OTR" or else ext_3 = ".OTS" or else ext_3 = ".OTT"
       or else ext_3 = ".CRX" or else ext_3 = ".NTH"
-      or else ext_4 = ".DOCX" or else ext_4 = ".PPTX" or else ext_4 = ".XLSX"
+      or else ext_4 = ".DOCX" or else ext_4 = ".PPTX"
+      or else ext_4 = ".XLSX" or else ext_4 = ".XLSB" or else ext_4 = ".XLSM"
     then
       return Zip_in_Zip;
     end if;
