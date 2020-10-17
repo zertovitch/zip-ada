@@ -195,10 +195,12 @@ package body Zip.Create is
         if Is_Read_Only (Stream) then
           cfh.external_attributes := cfh.external_attributes or 1;
         end if;
-        if Info.zip_archive_format = Zip_32 and then Size (Stream) >= four_GiB
+        Info.Contains (Last).name := new String'(entry_name);
+        if Info.zip_archive_format = Zip_32
+          and then Size (Stream) >= four_GiB
         then
           raise Zip_Capacity_Exceeded with
-            "Data too large (for Zip_32 archive format): size is 4 GiB or more.";
+            "Entry data too large (for Zip_32 archive format): size is 4 GiB or more.";
           --  NB: Theoretically we could relax this rule by setting the
           --      uncompressed size to 4 GiB - 1 in the headers and hope
           --      for some compression. TBD: check conventions around this.
@@ -206,7 +208,6 @@ package body Zip.Create is
         shi.file_timedate         := Get_Time (Stream);
         shi.dd.uncompressed_size  := Unsigned_32 (Size (Stream));
         shi.filename_length       := entry_name'Length;
-        Info.Contains (Last).name := new String'(entry_name);
         shi.extra_field_length    := 0;
 
         mem1 := Index (Info.Stream.all);
@@ -583,10 +584,20 @@ package body Zip.Create is
       ed : Zip.Headers.End_of_Central_Dir;
       procedure Dispose is new Ada.Unchecked_Deallocation (String, p_String);
       current_index : ZS_Index_Type;
+      --
+      --  If the stream is of File_Zipstream type or descendent, close the file too.
+      procedure Close_eventual_file is
+      begin
+        if Info.Stream.all in File_Zipstream'Class then
+          Zip_Streams.Close (File_Zipstream (Info.Stream.all));
+        end if;
+      end Close_eventual_file;
+      --
       procedure Get_index_and_check_Zip_32_limit is
       begin
         current_index := Index (Info.Stream.all);
         if Info.zip_archive_format = Zip_32 and then current_index >= four_GiB then
+          Close_eventual_file;
           raise Zip_Capacity_Exceeded with Zip_32_size_exceeded_message;
         end if;
       end Get_index_and_check_Zip_32_limit;
@@ -602,19 +613,20 @@ package body Zip.Create is
       if Info.zip_archive_format = Zip_32
         and then Info.Last_entry > Integer (Unsigned_16'Last)
       then
+        Close_eventual_file;
         raise Zip_Capacity_Exceeded with
            "Too many entries (for Zip_32 archive format): more than 65535.";
       end if;
       if Info.Contains /= null then
         for e in 1 .. Info.Last_entry loop
-           ed.total_entries := ed.total_entries + 1;
-           Zip.Headers.Write (Info.Stream.all, Info.Contains (e).head);
-           String'Write (Info.Stream, Info.Contains (e).name.all);
-           --  The extra field here is assumed to be empty!
-           ed.central_dir_size :=
-             ed.central_dir_size +
-               Zip.Headers.central_header_length +
-                 Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
+          ed.total_entries := ed.total_entries + 1;
+          Zip.Headers.Write (Info.Stream.all, Info.Contains (e).head);
+          String'Write (Info.Stream, Info.Contains (e).name.all);
+          --  The extra field here is assumed to be empty!
+          ed.central_dir_size :=
+            ed.central_dir_size +
+              Zip.Headers.central_header_length +
+                Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
           Dispose (Info.Contains (e).name);
           Get_index_and_check_Zip_32_limit;
         end loop;
@@ -627,12 +639,7 @@ package body Zip.Create is
       ed.disk_total_entries := ed.total_entries;
       Zip.Headers.Write (Info.Stream.all, ed);
       Get_index_and_check_Zip_32_limit;
-      --
-      --  If we have a real file (File_Zipstream or descendent), close the file too:
-      --
-      if Info.Stream.all in File_Zipstream'Class then
-        Zip_Streams.Close (File_Zipstream (Info.Stream.all));
-      end if;
+      Close_eventual_file;
    end Finish;
 
 end Zip.Create;

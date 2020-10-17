@@ -204,7 +204,8 @@ package Zip.Create is
    );
 
    --  Finish: complete the Zip archive when all desired entries have
-   --  been added; close the Zip file if the archive stream is a file.
+   --  been added; close the Zip file if the archive stream is in
+   --  File_Zipstream's class.
    --
    procedure Finish (Info : in out Zip_Create_Info);
 
