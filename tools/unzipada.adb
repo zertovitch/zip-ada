@@ -103,7 +103,7 @@ procedure UnZipAda is
   seconds_elapsed : Duration;
 
   package IIO is new Integer_IO (Integer);
-  package MIO is new Modular_IO (UnZip.File_size_type);
+  package MIO is new Modular_IO (Zip.Zip_32_Data_Size_Type);
 
   procedure Blurb is
   begin

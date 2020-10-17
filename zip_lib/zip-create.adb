@@ -144,7 +144,7 @@ package body Zip.Create is
                          Stream   : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Password : in     String := "")
    is
-     Compressed_Size : Zip.File_size_type;  --  dummy
+     Compressed_Size : Zip.Zip_32_Data_Size_Type;  --  dummy
      Final_Method    : Natural;             --  dummy
    begin
      Add_Stream (Info, Stream, null, Password, Compressed_Size, Final_Method);
@@ -161,7 +161,7 @@ package body Zip.Create is
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Feedback        : in     Feedback_proc;
                          Password        : in     String := "";
-                         Compressed_Size :    out Zip.File_size_type;
+                         Compressed_Size :    out Zip.Zip_32_Data_Size_Type;
                          Final_Method    :    out Natural)
    is
       mem1, mem2 : ZS_Index_Type := 1;
@@ -268,7 +268,7 @@ package body Zip.Create is
       temp_zip_stream : aliased File_Zipstream;
       use Ada.Text_IO;
       fd : File_Type;
-      Compressed_Size : Zip.File_size_type; -- unused
+      Compressed_Size : Zip.Zip_32_Data_Size_Type; -- unused
       Final_Method    : Natural; -- unused
    begin
      --  Read the file

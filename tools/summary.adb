@@ -3,8 +3,6 @@
 --  Description:     Part of the UnZipAda demo
 ------------------------------------------------------------------------------
 
-with Zip;
-
 package body Summary is
 
   procedure Reset is

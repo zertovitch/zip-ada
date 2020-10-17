@@ -3,7 +3,7 @@
 --  Description:     Part of the UnZipAda demo
 ------------------------------------------------------------------------------
 
-with UnZip, My_dots, Summary;
+with Zip, UnZip, My_dots, Summary;
 
 with Ada.Text_IO;                       use Ada.Text_IO;
 
@@ -11,11 +11,11 @@ with Interfaces;                        use Interfaces;
 
 procedure My_tell_data
              (file_name          : String;
-              compressed_bytes   : UnZip.File_size_type;
-              uncompressed_bytes : UnZip.File_size_type;
+              compressed_bytes   : Zip.Zip_32_Data_Size_Type;
+              uncompressed_bytes : Zip.Zip_32_Data_Size_Type;
               method             : UnZip.PKZip_method) is
 
-  package MIO is new Modular_IO (UnZip.File_size_type);
+  package MIO is new Modular_IO (Zip.Zip_32_Data_Size_Type);
 
   function Cut_name (n : String; l : Natural) return String is
     dots : constant String := "...";
@@ -51,7 +51,7 @@ begin
   else
     Put (" :");
     MIO.Put (
-      UnZip.File_size_type (
+      Zip.Zip_32_Data_Size_Type (
         (100.0 * Long_Float (compressed_bytes)) / Long_Float (uncompressed_bytes)
       ), 4);
     Put ("% of ");

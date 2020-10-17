@@ -55,7 +55,7 @@ package body Rezip_lib is
     --  options with dynamically expanded tokens
     made_by_version     : Unsigned_16;
     pkzm                : Zip.PKZip_method;
-    limit               : Zip.File_size_type;
+    limit               : Zip.Zip_32_Data_Size_Type;
     --  Compression is considered too slow or unefficient beyond limit
     --  E.g., kzip's algorithm might be O(N^2) or worse; on large files,
     --   deflate_e or other methods are better anyway
@@ -155,8 +155,8 @@ package body Rezip_lib is
     )
     is
       file_index     : Zip_Streams.ZS_Index_Type;
-      comp_size      : Zip.File_size_type;
-      uncomp_size    : Zip.File_size_type;
+      comp_size      : Zip.Zip_32_Data_Size_Type;
+      uncomp_size    : Zip.Zip_32_Data_Size_Type;
       file_out       : Ada.Streams.Stream_IO.File_Type;
       dummy_encoding : Zip.Zip_name_encoding;
       dummy_crc      : Unsigned_32;
@@ -212,7 +212,7 @@ package body Rezip_lib is
       );
 
     type Packer_info is record
-      size             : Zip.File_size_type;
+      size             : Zip.Zip_32_Data_Size_Type;
       zfm              : Unsigned_16;
       count            : Natural;
       saved            : Integer_64;  --  Number of bytes saved by chosen method
@@ -277,8 +277,8 @@ package body Rezip_lib is
     end Img;
 
     --  From AZip_Common...
-    function Image_1000 (r : Zip.File_size_type; separator : Character := ''') return String is
-      s : constant String := Zip.File_size_type'Image (r);
+    function Image_1000 (r : Zip.Zip_32_Data_Size_Type; separator : Character := ''') return String is
+      s : constant String := Zip.Zip_32_Data_Size_Type'Image (r);
       t : String (s'First .. s'First + (s'Length * 4) / 3);
       j, c : Natural;
     begin
@@ -447,8 +447,8 @@ package body Rezip_lib is
       header : Zip.Headers.Local_File_Header;
       MyStream   : aliased File_Zipstream;
       cur_dir : constant String := Current_Directory;
-      size_memory : array (1 .. randomized_stable) of Zip.File_size_type := (others => 0);
-      current_size : Zip.File_size_type := 0;
+      size_memory : array (1 .. randomized_stable) of Zip.Zip_32_Data_Size_Type := (others => 0);
+      current_size : Zip.Zip_32_Data_Size_Type := 0;
       zfm : Unsigned_16;
       attempt : Positive := 1;
       dummy_exp_opt : Unbounded_String;
@@ -641,8 +641,8 @@ package body Rezip_lib is
       lightred : constant String := "#f43048";
 
       procedure Process_one (unique_name : String) is
-        comp_size   :  Zip.File_size_type;
-        uncomp_size :  Zip.File_size_type;
+        comp_size   :  Zip.Zip_32_Data_Size_Type;
+        uncomp_size :  Zip.Zip_32_Data_Size_Type;
         choice : Approach := original;
         deco : constant String := "-->-->-->" & (20 + unique_name'Length) * '-';
         mth : Zip.PKZip_method;

@@ -100,7 +100,7 @@ package Zip.Create is
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Feedback        : in     Feedback_proc;
                          Password        : in     String := "";
-                         Compressed_Size :    out Zip.File_size_type;
+                         Compressed_Size :    out Zip.Zip_32_Data_Size_Type;
                          Final_Method    :    out Natural);
 
    default_time                  : Zip_Streams.Time renames Zip_Streams.default_time;
@@ -209,7 +209,7 @@ package Zip.Create is
    procedure Finish (Info : in out Zip_Create_Info);
 
    --  The following exception is raised on cases when the Zip archive
-   --  creation exceeds the Zip_32 format's capacity: 4GB total size,
+   --  creation exceeds the Zip_32 format's capacity: 4GiB total size,
    --  65535 entries.
 
    Zip_Capacity_Exceeded : exception;

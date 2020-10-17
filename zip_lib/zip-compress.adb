@@ -46,18 +46,18 @@ package body Zip.Compress is
    (input,
     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
     input_size_known : Boolean;
-    input_size       : File_size_type;
+    input_size       : Zip_32_Data_Size_Type;
     method           : Compression_Method;
     feedback         : Feedback_proc;
     password         : String;
     content_hint     : Data_content_type;
     CRC              : out Interfaces.Unsigned_32;
-    output_size      : out File_size_type;
+    output_size      : out Zip_32_Data_Size_Type;
     zip_type         : out Interfaces.Unsigned_16
    )
   is
     use Interfaces;
-    counted : File_size_type;
+    counted : Zip_32_Data_Size_Type;
     user_aborting : Boolean;
     idx_in :  constant ZS_Index_Type := Index (input);
     idx_out : constant ZS_Index_Type := Index (output);
@@ -85,7 +85,7 @@ package body Zip.Compress is
         end if;
         --  Copy data
         Block_Read (input, Buffer, Last_Read);
-        counted := counted + File_size_type (Last_Read);
+        counted := counted + Zip_32_Data_Size_Type (Last_Read);
         Update (CRC, Buffer (1 .. Last_Read));
         if do_write then
           Encode (encrypt_pack, Buffer (1 .. Last_Read));

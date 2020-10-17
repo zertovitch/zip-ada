@@ -74,7 +74,7 @@ package body UnZip.Decompress is
       compsize,            --  compressed size of file
       reachedsize,         --  number of bytes read from zipfile
       uncompsize,          --  uncompressed size of file
-      effective_writes : UnZip.File_size_type;
+      effective_writes : Zip.Zip_32_Data_Size_Type;
       --  ^ count of effective bytes written or tested, for feedback only
       percents_done    : Natural;
       crc32val : Unsigned_32;  -- crc calculated from data
@@ -150,7 +150,7 @@ package body UnZip.Decompress is
       procedure LZMA_Decode;  --  Jun-2014
     end UnZ_Meth;
 
-    procedure Process_feedback (new_bytes : File_size_type) is
+    procedure Process_feedback (new_bytes : Zip.Zip_32_Data_Size_Type) is
     pragma Inline (Process_feedback);
       new_percents_done : Natural;
       user_aborting : Boolean;
@@ -234,7 +234,7 @@ package body UnZip.Decompress is
             Process_compressed_end_reached;
           end if;
           UnZ_Glob.reachedsize :=
-            UnZ_Glob.reachedsize + UnZip.File_size_type (UnZ_Glob.readpos);
+            UnZ_Glob.reachedsize + Zip.Zip_32_Data_Size_Type (UnZ_Glob.readpos);
           UnZ_Glob.readpos := UnZ_Glob.readpos - 1;  --  Reason: index of inbuf starts at 0
         end if;
         UnZ_Glob.inpos := 0;
@@ -355,7 +355,7 @@ package body UnZip.Decompress is
             raise UnZip.Write_Error;
         end;
         Zip.CRC_Crypto.Update (UnZ_Glob.crc32val, UnZ_Glob.slide (0 .. x - 1));
-        Process_feedback (File_size_type (x));
+        Process_feedback (Zip_32_Data_Size_Type (x));
         if full_trace then
           Ada.Text_IO.Put_Line ("finished]");
         end if;
@@ -574,7 +574,7 @@ package body UnZip.Decompress is
             raise UnZip.Write_Error;
         end;
         Zip.CRC_Crypto.Update (UnZ_Glob.crc32val, Writebuf (0 .. Write_Ptr - 1));
-        Process_feedback (File_size_type (Write_Ptr));
+        Process_feedback (Zip_32_Data_Size_Type (Write_Ptr));
       end Unshrink_Flush;
 
       procedure UD_Write_Byte (B : Zip.Byte) is
@@ -588,7 +588,7 @@ package body UnZip.Decompress is
       end UD_Write_Byte;
 
       procedure Unshrink is
-        S : UnZip.File_size_type := UnZ_Glob.uncompsize;
+        S : Zip.Zip_32_Data_Size_Type := UnZ_Glob.uncompsize;
 
         Last_Incode     : Integer;
         Last_Outcode    : Zip.Byte;
@@ -604,7 +604,7 @@ package body UnZip.Decompress is
         begin
           if full_trace then
             Ada.Text_IO.Put ("[Clear leaf nodes @ pos" &
-              UnZip.File_size_type'Image (UnZ_Glob.uncompsize - S) &
+              Zip.Zip_32_Data_Size_Type'Image (UnZ_Glob.uncompsize - S) &
               "; old Next_Free =" & Integer'Image (Next_Free));
           end if;
           for I in First_Entry .. Actual_Max_Code loop
@@ -698,7 +698,7 @@ package body UnZip.Decompress is
         Stack          := (others => 0);
         Writebuf       := (others => 0);
 
-        if UnZ_Glob.compsize = File_size_type'Last then
+        if UnZ_Glob.compsize = Zip.Zip_32_Data_Size_Type'Last then
           --  Compressed Size was not in header!
           raise UnZip.Not_supported;
         elsif UnZ_Glob.uncompsize = 0 then
@@ -729,7 +729,7 @@ package body UnZip.Decompress is
                 if some_trace then
                   Ada.Text_IO.Put (
                     "[Increment LZW code size to" & Integer'Image (Code_Size) &
-                    " bits @ pos" & UnZip.File_size_type'Image (UnZ_Glob.uncompsize - S) & ']'
+                    " bits @ pos" & Zip.Zip_32_Data_Size_Type'Image (UnZ_Glob.uncompsize - S) & ']'
                   );
                 end if;
                 if Code_Size > Maximum_Code_Size then
@@ -791,7 +791,7 @@ package body UnZip.Decompress is
               for I in Stack_Ptr + 1 .. Max_Stack  loop
                 UD_Write_Byte (Stack (I));
               end loop;
-              S := S - UnZip.File_size_type (Max_Stack - Stack_Ptr + 1);
+              S := S - Zip.Zip_32_Data_Size_Type (Max_Stack - Stack_Ptr + 1);
               Stack_Ptr := Max_Stack;
             end if;
             Attempt_Table_Increase;
@@ -862,7 +862,7 @@ package body UnZip.Decompress is
         char_read,
         last_char : Integer := 0;
         --  ^ some := 0 are useless, just to calm down ObjectAda 7.2.2
-        S : UnZip.File_size_type := UnZ_Glob.uncompsize;
+        S : Zip.Zip_32_Data_Size_Type := UnZ_Glob.uncompsize;
         --  number of bytes left to decompress
         unflushed : Boolean := True;
         maximum_AND_mask : constant Unsigned_32 := Shift_Left (1, 8 - factor) - 1;
@@ -932,7 +932,7 @@ package body UnZip.Decompress is
 
             when distance =>
               length := length + 3;
-              S := S - UnZip.File_size_type (length);
+              S := S - Zip.Zip_32_Data_Size_Type (length);
 
               UnZ_IO.Copy_or_zero (
                 distance   => char_read + 1 + Integer (Shift_Right (V, 8 - factor) * 2**8),
@@ -1407,8 +1407,8 @@ package body UnZip.Decompress is
       --------[ Method: Copy stored ]--------
 
       procedure Copy_stored is
-        size : constant UnZip.File_size_type := UnZ_Glob.compsize;
-        read_in, absorbed : UnZip.File_size_type;
+        size : constant Zip.Zip_32_Data_Size_Type := UnZ_Glob.compsize;
+        read_in, absorbed : Zip.Zip_32_Data_Size_Type;
       begin
         absorbed := 0;
         if Get_mode (local_crypto_pack) = encrypted then
@@ -2002,8 +2002,8 @@ package body UnZip.Decompress is
     end case;
 
     UnZ_Glob.compsize  := hint.dd.compressed_size;
-    if UnZ_Glob.compsize > File_size_type'Last - 2 then  --  This means: unknown size
-      UnZ_Glob.compsize := File_size_type'Last - 2;      --  Avoid wraparound in read_buffer
+    if UnZ_Glob.compsize > Zip_32_Data_Size_Type'Last - 2 then  --  This means: unknown size
+      UnZ_Glob.compsize := Zip_32_Data_Size_Type'Last - 2;      --  Avoid wraparound in read_buffer
     end if;                                              --  From TT's version, 2008
     UnZ_Glob.uncompsize := hint.dd.uncompressed_size;
     UnZ_IO.Init_Buffers;

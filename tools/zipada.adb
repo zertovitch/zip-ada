@@ -59,7 +59,7 @@ procedure ZipAda is
   password, password_confirm : Unbounded_String;
 
   procedure Add_1_Stream (Stream : in out Root_Zipstream_Type'Class) is
-    Compressed_Size : Zip.File_size_type;
+    Compressed_Size : Zip.Zip_32_Data_Size_Type;
     Final_Method    : Natural;
     use Interfaces;
   begin

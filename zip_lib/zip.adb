@@ -183,7 +183,7 @@ package body Zip is
       file_name        : String;
       file_index       : Zip_Streams.ZS_Index_Type;
       comp_size,
-      uncomp_size      : File_size_type;
+      uncomp_size      : Zip_32_Data_Size_Type;
       crc_32           : Unsigned_32;
       date_time        : Time;
       method           : PKZip_method;
@@ -544,7 +544,7 @@ package body Zip is
   is
     the_end    : Zip.Headers.End_of_Central_Dir;
     header     : Zip.Headers.Central_File_Header;
-    min_offset : File_size_type;
+    min_offset : Zip_32_Data_Size_Type;
     use Zip_Streams;
   begin
     Zip.Headers.Load (file, the_end);
@@ -593,8 +593,8 @@ package body Zip is
     name           : in     String;
     case_sensitive : in     Boolean;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type;
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   )
   is
@@ -623,8 +623,8 @@ package body Zip is
         then
           --  Name found in central directory !
           file_index  := Zip_Streams.ZS_Index_Type (1 + header.local_header_offset) + the_end.offset_shifting;
-          comp_size   := File_size_type (header.short_info.dd.compressed_size);
-          uncomp_size := File_size_type (header.short_info.dd.uncompressed_size);
+          comp_size   := Zip_32_Data_Size_Type (header.short_info.dd.compressed_size);
+          uncomp_size := Zip_32_Data_Size_Type (header.short_info.dd.uncompressed_size);
           crc_32      := header.short_info.dd.crc_32;
           return;
         end if;
@@ -645,8 +645,8 @@ package body Zip is
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type;
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   )
   is
@@ -678,8 +678,8 @@ package body Zip is
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type;
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   )
   is
@@ -702,8 +702,8 @@ package body Zip is
     procedure Check_entry (
       entry_name          : String; -- 'name' is compressed entry's name
       entry_index         : Zip_Streams.ZS_Index_Type;
-      entry_comp_size     : File_size_type;
-      entry_uncomp_size   : File_size_type;
+      entry_comp_size     : Zip_32_Data_Size_Type;
+      entry_uncomp_size   : Zip_32_Data_Size_Type;
       entry_crc_32        : Interfaces.Unsigned_32;
       date_time           : Time;
       method              : PKZip_method;
@@ -814,8 +814,8 @@ package body Zip is
   procedure Get_sizes (
     info           : in     Zip_info;
     name           : in     String;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type
   )
   is
     dummy_file_index : Zip_Streams.ZS_Index_Type;

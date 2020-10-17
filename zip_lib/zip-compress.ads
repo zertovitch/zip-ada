@@ -146,13 +146,13 @@ package Zip.Compress is
     input,
     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
     input_size_known : Boolean;
-    input_size       : File_size_type; -- ignored if input_size_known = False
+    input_size       : Zip_32_Data_Size_Type; -- ignored if input_size_known = False
     method           : Compression_Method;
     feedback         : Feedback_proc;
     password         : String;
     content_hint     : Data_content_type;
     CRC              : out Interfaces.Unsigned_32;
-    output_size      : out File_size_type;
+    output_size      : out Zip_32_Data_Size_Type;
     zip_type         : out Interfaces.Unsigned_16
     --  ^ code corresponding to the compression method actually used
   );

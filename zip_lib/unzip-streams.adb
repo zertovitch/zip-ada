@@ -55,9 +55,9 @@ package body UnZip.Streams is
     out_stream_ptr  :        p_Stream;
     --  if not null, extract to out_stream_ptr, not to memory
     password        : in out Ada.Strings.Unbounded.Unbounded_String;
-    hint_comp_size  : in     File_size_type; -- Added 2007 for .ODS files
+    hint_comp_size  : in     Zip.Zip_32_Data_Size_Type; -- Added 2007 for .ODS files
     hint_crc_32     : in     Unsigned_32;    -- Added 2012 for decryption
-    cat_uncomp_size : in     File_size_type
+    cat_uncomp_size : in     Zip.Zip_32_Data_Size_Type
   )
   is
     work_index : Zip_Streams.ZS_Index_Type := header_index;
@@ -168,8 +168,8 @@ package body UnZip.Streams is
                       )
   is
     header_index : Zip_Streams.ZS_Index_Type;
-    comp_size    : File_size_type;
-    uncomp_size  : File_size_type;
+    comp_size    : Zip.Zip_32_Data_Size_Type;
+    uncomp_size  : Zip.Zip_32_Data_Size_Type;
     crc_32 : Interfaces.Unsigned_32;
     work_password : Ada.Strings.Unbounded.Unbounded_String :=
       Ada.Strings.Unbounded.To_Unbounded_String (password);
@@ -383,8 +383,8 @@ package body UnZip.Streams is
   end Stream;
 
   function Size (File : in Zipped_File_Type) return Count is
-    comp_size   : File_size_type;
-    uncomp_size : File_size_type;
+    comp_size   : Zip.Zip_32_Data_Size_Type;
+    uncomp_size : Zip.Zip_32_Data_Size_Type;
   begin
     Zip.Get_sizes (File.archive_info, File.file_name.all, comp_size, uncomp_size);
     return Count (uncomp_size);

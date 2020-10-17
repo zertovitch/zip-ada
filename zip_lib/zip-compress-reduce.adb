@@ -43,12 +43,12 @@ procedure Zip.Compress.Reduce
  (input,
   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
   input_size_known : Boolean;
-  input_size       : File_size_type;  --  ignored if unknown
+  input_size       : Zip_32_Data_Size_Type;  --  ignored if unknown
   feedback         : Feedback_proc;
   method           : Reduction_Method;
   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
   crypto           : in out Crypto_pack;
-  output_size      : out File_size_type;
+  output_size      : out Zip_32_Data_Size_Type;
   compression_ok   : out Boolean  --  indicates when compressed <= uncompressed
 )
 is
@@ -119,7 +119,7 @@ is
   procedure Write_Block is
     amount : constant Integer := OutBufIdx - 1;
   begin
-    output_size := output_size + File_size_type (Integer'Max (0, amount));
+    output_size := output_size + Zip_32_Data_Size_Type (Integer'Max (0, amount));
     if input_size_known and then output_size >= input_size then
       --  The compression so far is obviously unefficient for that file.
       --  Useless to go further.
@@ -411,7 +411,7 @@ is
   end record;
 
   LZ_cache : LZ_cache_type;
-  lz77_pos, lz77_size : File_size_type := 0;
+  lz77_pos, lz77_size : Zip_32_Data_Size_Type := 0;
 
   --  Possible ranges for LZ distance and length encoding
   --  in the Zip-Reduce format:
@@ -536,7 +536,7 @@ is
       last_b := curr_b;
       if phase = compress_for_real and then
          using_LZ77 and then
-         (lz77_size - lz77_pos) < File_size_type (LZ_cache.cnt)
+         (lz77_size - lz77_pos) < Zip_32_Data_Size_Type (LZ_cache.cnt)
         --  We have entered the zone covered by the cache, so no need
         --  to continue the LZ77 compression effort: the results are
         --  already stored.

@@ -90,7 +90,7 @@ package Zip is
   Duplicate_name : exception;
 
   Zip_file_open_error : exception renames Archive_open_error;  --  Archive is not always a file!
-  pragma Obsolescent (Zip_file_open_error, "Better use: Archive_open_error");
+  pragma Obsolescent (Zip_file_open_error, "Better use the name: Archive_open_error");
 
   --  Zip_file_Error: exception renames Archive_corrupted;   --   Now really obsolete.
   --  pragma Obsolescent(Zip_file_Error);                    --   Now really obsolete.
@@ -111,7 +111,10 @@ package Zip is
   Forgot_to_load_zip_info : exception;
 
   --  Data sizes in archive
-  subtype File_size_type is Interfaces.Unsigned_32;
+  subtype Zip_32_Data_Size_Type is Interfaces.Unsigned_32;
+
+  subtype File_size_type is Zip_32_Data_Size_Type;
+  pragma Obsolescent (File_size_type, "Better use the name: Zip_32_Data_Size_Type");
 
   ---------
 
@@ -189,8 +192,8 @@ package Zip is
     with procedure Action (
       name             : String;  --  'name' is compressed entry's name
       file_index       : Zip_Streams.ZS_Index_Type;
-      comp_size        : File_size_type;
-      uncomp_size      : File_size_type;
+      comp_size        : Zip_32_Data_Size_Type;
+      uncomp_size      : Zip_32_Data_Size_Type;
       crc_32           : Interfaces.Unsigned_32;
       date_time        : Time;
       method           : PKZip_method;
@@ -230,8 +233,8 @@ package Zip is
     name           : in     String;
     case_sensitive : in     Boolean;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type;
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   );
 
@@ -242,8 +245,8 @@ package Zip is
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type;
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   );
 
@@ -259,14 +262,14 @@ package Zip is
     name           : in     String;
     name_encoding  :    out Zip.Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type;
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   );
 
   Entry_name_not_found : exception;
   File_name_not_found : exception renames Entry_name_not_found;
-  pragma Obsolescent (File_name_not_found, "Better use: Entry_name_not_found");
+  pragma Obsolescent (File_name_not_found, "Better use the name: Entry_name_not_found");
 
   function Exists (info : Zip_info; name : String) return Boolean;
 
@@ -288,8 +291,8 @@ package Zip is
   procedure Get_sizes (
     info           : in     Zip_info;
     name           : in     String;
-    comp_size      :    out File_size_type;
-    uncomp_size    :    out File_size_type
+    comp_size      :    out Zip_32_Data_Size_Type;
+    uncomp_size    :    out Zip_32_Data_Size_Type
   );
 
   --  User-defined procedure for feedback occuring during
@@ -430,8 +433,8 @@ private
     dico_name        : String (1 .. name_len);  --  UPPER if case-insensitive search
     file_name        : String (1 .. name_len);
     file_index       : Zip_Streams.ZS_Index_Type;
-    comp_size        : File_size_type;
-    uncomp_size      : File_size_type;
+    comp_size        : Zip_32_Data_Size_Type;
+    uncomp_size      : Zip_32_Data_Size_Type;
     crc_32           : Interfaces.Unsigned_32;
     date_time        : Time;
     method           : PKZip_method;

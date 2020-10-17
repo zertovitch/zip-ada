@@ -75,12 +75,12 @@ procedure Zip.Compress.Deflate
  (input,
   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
   input_size_known : Boolean;
-  input_size       : File_size_type;
+  input_size       : Zip_32_Data_Size_Type;
   feedback         : Feedback_proc;
   method           : Deflation_Method;
   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
   crypto           : in out Crypto_pack;
-  output_size      : out File_size_type;
+  output_size      : out Zip_32_Data_Size_Type;
   compression_ok   : out Boolean  --  indicates compressed < uncompressed
 )
 is
@@ -133,7 +133,7 @@ is
   procedure Write_Block is
     amount : constant Integer := OutBufIdx - 1;
   begin
-    output_size := output_size + File_size_type (Integer'Max (0, amount));
+    output_size := output_size + Zip_32_Data_Size_Type (Integer'Max (0, amount));
     if input_size_known and then output_size >= input_size then
       --  The compression so far is obviously inefficient for that file.
       --  Useless to go further.
@@ -293,7 +293,7 @@ is
     return new_d;
   end Build_descriptors;
 
-  type Count_type is range 0 .. File_size_type'Last / 2 - 1;
+  type Count_type is range 0 .. Zip_32_Data_Size_Type'Last / 2 - 1;
   type Stats_type is array (Natural range <>) of Count_type;
 
   --  The following is a translation of Zopfli's OptimizeHuffmanForRle (v. 11-May-2016).
@@ -1771,7 +1771,7 @@ begin
     end;
     Put (log, "New stream" & sep & sep & sep & sep & sep & sep & sep & sep);
     if input_size_known then
-      Put (log, sep & File_size_type'Image (input_size) &
+      Put (log, sep & Zip_32_Data_Size_Type'Image (input_size) &
                sep & sep & sep & sep & sep & sep & "bytes input");
     end if;
     New_Line (log);
