@@ -10,8 +10,11 @@ with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Numerics.Discrete_Random,
      Ada.Sequential_IO;
 
+with Interfaces;
+
 procedure Random_Data is
-  n : Natural := 100;
+  use Interfaces;
+  n : Integer_64 := 100;
   type Byte is mod 2**8;
   package BIO is new Ada.Sequential_IO (Byte);
   use BIO;
@@ -31,7 +34,7 @@ procedure Random_Data is
   end Spit_random;
 begin
   if Argument_Count >= 1 then
-    n := Integer'Value (Argument (1));
+    n := Integer_64'Value (Argument (1));
   end if;
   if Argument_Count >= 2 then
     Create (f, Out_File, Argument (2));

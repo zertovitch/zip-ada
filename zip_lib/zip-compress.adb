@@ -62,6 +62,8 @@ package body Zip.Compress is
     out_size := out_size + Zip_32_Data_Size_Type (by);
   end Increment;
 
+  default_byte_IO_buffer_size : constant := 1024 * 1024;  --  1 MiB
+
   -------------------
   -- Compress_data --
   -------------------

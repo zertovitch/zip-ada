@@ -394,8 +394,8 @@ is
   procedure Encode_with_Reduce is
     using_LZ77 : Boolean;
     Derail_LZ77 : exception;
-    X_Percent : Natural;
-    Bytes_in   : Natural;   --  Count of input file bytes processed
+    feedback_milestone,
+    Bytes_in   : Zip_Streams.ZS_Size_Type := 0;   --  Count of input file bytes processed
     user_aborting : Boolean;
     real_pct : constant array (Phase_type) of Integer := (0, 50);
     PctDone : Natural;
@@ -413,9 +413,9 @@ is
         if Bytes_in = 1 then
           feedback (real_pct (phase), False, user_aborting);
         end if;
-        if X_Percent > 0 and then
-           ((Bytes_in - 1) mod X_Percent = 0
-            or Bytes_in = Integer (input_size))
+        if feedback_milestone > 0 and then
+           ((Bytes_in - 1) mod feedback_milestone = 0
+            or Bytes_in = ZS_Size_Type (input_size))
         then
           if input_size_known then
             PctDone := real_pct (phase) + Integer ((50.0 * Float (Bytes_in)) / Float (input_size));
@@ -578,11 +578,8 @@ is
   begin  --  Encode_with_Reduce
     Read_Block (IO_buffers, input);
     R := String_buffer_size - Look_Ahead;
-    Bytes_in := 0;
     if input_size_known then
-      X_Percent := Integer (input_size / 40);
-    else
-      X_Percent := 0;
+      feedback_milestone := ZS_Size_Type (input_size / feedback_steps);
     end if;
     using_LZ77 := True;
     My_LZ77;

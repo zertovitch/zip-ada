@@ -161,7 +161,7 @@ package Zip.Compress is
 
 private
 
-  default_byte_IO_buffer_size : constant := 1024 * 1024;  --  1 MiB
+  feedback_steps : constant := 100;
 
   Method_to_Format : constant Method_to_Format_type :=
     (Store               => store,

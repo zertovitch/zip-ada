@@ -395,13 +395,14 @@ is
     end if;
   end Shrink_Atom;
 
-  X_Percent : Natural;
-  Bytes_in  : Natural;  --  Count of input file bytes processed
+  feedback_milestone,
+  Bytes_in   : Zip_Streams.ZS_Size_Type := 0;   --  Count of input file bytes processed
 
   procedure Process_Input (Source : Byte_Buffer) is
     PctDone : Natural;
     user_aborting : Boolean;
     Last_processed : Integer := Source'First - 1;
+    use Zip_Streams;
   begin
     if Source'Length < 1 then
       Shrink_Atom (UNUSED);
@@ -412,9 +413,9 @@ is
           if Bytes_in = 1 then
             feedback (0, False, user_aborting);
           end if;
-          if X_Percent > 0 and then --  Bugfix GdM 23-Dec-2002
-             ((Bytes_in - 1) mod X_Percent = 0
-              or Bytes_in = Integer (input_size))
+          if feedback_milestone > 0 and then --  Bugfix GdM 23-Dec-2002
+             ((Bytes_in - 1) mod feedback_milestone = 0
+              or Bytes_in = ZS_Size_Type (input_size))
           then
             if input_size_known then
               PctDone := Integer ((100.0 * Float (Bytes_in)) / Float (input_size));
@@ -429,7 +430,7 @@ is
         end if;
         Shrink_Atom (Integer (Source (I)));
         Last_processed := I;
-        if input_size_known and then Bytes_in >= Integer (input_size) then
+        if input_size_known and then Bytes_in >= ZS_Size_Type (input_size) then
           --  The job is done, even though there are more in the buffer
           IO_buffers.InputEoF := True;
           exit;
@@ -446,15 +447,12 @@ begin
   Build_Data_Structures;
   Initialize_Data_Structures;
   output_size := 0;
-  Bytes_in := 0;
   --
   begin
     Read_Block (IO_buffers, input);                --  Prime the input buffer
     First_atom   := True;         --  1st character flag for Crunch procedure
     if input_size_known then
-      X_Percent := Integer (input_size / 40);
-    else
-      X_Percent := 0;
+      feedback_milestone := Zip_Streams.ZS_Size_Type (input_size / feedback_steps);
     end if;
     while not IO_buffers.InputEoF loop
       Remaining := IO_buffers.MaxInBufIdx - IO_buffers.InBufIdx + 1;

@@ -65,13 +65,14 @@ is
     end if;
   end Flush_output;
 
-  X_Percent : Natural;
-  Bytes_in  : Natural;   --  Count of input file bytes processed
+  feedback_milestone,
+  Bytes_in   : Zip_Streams.ZS_Size_Type := 0;   --  Count of input file bytes processed
   user_aborting : Boolean;
   PctDone : Natural;
 
   function Read_byte return Byte is
     b : Byte;
+    use Zip_Streams;
   begin
     b := IO_buffers.InBuf (IO_buffers.InBufIdx);
     IO_buffers.InBufIdx := IO_buffers.InBufIdx + 1;
@@ -81,9 +82,9 @@ is
       if Bytes_in = 1 then
         feedback (0, False, user_aborting);
       end if;
-      if X_Percent > 0 and then
-         ((Bytes_in - 1) mod X_Percent = 0
-          or Bytes_in = Integer (input_size))
+      if feedback_milestone > 0 and then
+         ((Bytes_in - 1) mod feedback_milestone = 0
+          or Bytes_in = ZS_Size_Type (input_size))
       then
         if input_size_known then
           PctDone := Integer ((100.0 * Float (Bytes_in)) / Float (input_size));
@@ -154,11 +155,8 @@ begin
   output_size := 0;
   begin
     Read_Block (IO_buffers, input);
-    Bytes_in := 0;
     if input_size_known then
-      X_Percent := Integer (input_size / 40);
-    else
-      X_Percent := 0;
+      feedback_milestone := Zip_Streams.ZS_Size_Type (input_size / feedback_steps);
     end if;
     Put_byte (16);  --  LZMA SDK major version
     Put_byte (02);  --  LZMA SDK minor version
