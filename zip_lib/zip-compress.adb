@@ -24,7 +24,8 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-with Zip.Compress.Shrink,
+with Zip.Create,
+     Zip.Compress.Shrink,
      Zip.Compress.Reduce,
      Zip.Compress.Deflate,
      Zip.Compress.LZMA_E;
@@ -37,6 +38,29 @@ with Ada.Characters.Handling,
 package body Zip.Compress is
 
   use Zip_Streams, Zip.CRC_Crypto;
+
+  --  The following procedure's purpose is to detect size overflows
+  --  for Zip_32 data. Even when the input size is known, we can have
+  --  the situation where data is random and the compressed output size
+  --  overflows. Additionally, Zip_32_Data_Size_Type is modular (unsigned),
+  --  so an overflow cannot be detected, even with range checks on.
+
+  procedure Increment (
+    out_size : in out Zip_32_Data_Size_Type;
+    by       : in     Natural
+  )
+  is
+    temp_size : constant ZS_Size_Type := ZS_Size_Type (out_size);
+    temp_by   : constant ZS_Size_Type := ZS_Size_Type (by);
+    max       : constant ZS_Size_Type := ZS_Size_Type (Zip_32_Data_Size_Type'Last);
+    use type Zip_32_Data_Size_Type, ZS_Size_Type;
+  begin
+    if temp_size + temp_by > max then
+      raise Zip.Create.Zip_Capacity_Exceeded with
+        "Compressed data too large (for Zip_32 archive format): size is 4 GiB or more.";
+    end if;
+    out_size := out_size + Zip_32_Data_Size_Type (by);
+  end Increment;
 
   -------------------
   -- Compress_data --
@@ -57,7 +81,6 @@ package body Zip.Compress is
    )
   is
     use Interfaces;
-    counted : Zip_32_Data_Size_Type;
     user_aborting : Boolean;
     idx_in :  constant ZS_Index_Type := Index (input);
     idx_out : constant ZS_Index_Type := Index (output);
@@ -76,16 +99,16 @@ package body Zip.Compress is
     procedure Store_data (do_write : Boolean) is
       Buffer      : Byte_Buffer (1 .. default_byte_IO_buffer_size);
       Last_Read   : Natural;
+      counted     : Zip_32_Data_Size_Type := 0;
     begin
       zip_type := Compression_format_code.store_code;
-      counted := 0;
       while not End_Of_Stream (input) loop
         if input_size_known and then counted >= input_size then
           exit;
         end if;
         --  Copy data
         Block_Read (input, Buffer, Last_Read);
-        counted := counted + Zip_32_Data_Size_Type (Last_Read);
+        Increment (counted, Last_Read);
         Update (CRC, Buffer (1 .. Last_Read));
         if do_write then
           Encode (encrypt_pack, Buffer (1 .. Last_Read));
@@ -422,7 +445,7 @@ package body Zip.Compress is
     amount : constant Integer := b.OutBufIdx - 1;
     use type Zip_32_Data_Size_Type;
   begin
-    output_size := output_size + Zip_32_Data_Size_Type (Integer'Max (0, amount));
+    Increment (output_size, Integer'Max (0, amount));
     if input_size_known and then output_size >= input_size then
       --  The compression so far is obviously inefficient for that file.
       --  Useless to go further.

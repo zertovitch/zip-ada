@@ -105,7 +105,7 @@ is
   procedure Put_byte (B : Byte) is  --  Put a byte, at the byte granularity level
   pragma Inline (Put_byte);
   begin
-   IO_buffers.OutBuf (IO_buffers.OutBufIdx) := B;
+    IO_buffers.OutBuf (IO_buffers.OutBufIdx) := B;
     IO_buffers.OutBufIdx := IO_buffers.OutBufIdx + 1;
     if IO_buffers.OutBufIdx > IO_buffers.OutBuf'Last then
       Write_Block (IO_buffers, input_size_known, input_size, output, output_size, crypto);
