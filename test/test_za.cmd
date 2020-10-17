@@ -16,7 +16,8 @@ if exist test_7z_?.zip del test_7z_?.zip
 if exist test_zopf.zip del test_zopf.zip
 
 rem Have a badly compressible file (random.bin), a bit more than 2**n because of rare repetitions
-if not exist rnd_1.bin for /l %%i in (0,10,100) do random_data %%i rnd_%%i.bin
+if not exist rnd_0.bin for /l %%i in (0,10,100) do random_data %%i rnd_%%i.bin
+if not exist rnd_1.bin for /l %%i in (1,1,9) do    random_data %%i rnd_%%i.bin
 if not exist random.bin random_data 8300
 if not exist random_and_text.mix copy /b random.bin+*.txt random_and_text.mix
 if exist test_rz.ReZip.html del test_rz.ReZip.html
@@ -46,7 +47,7 @@ zip        -9 -Z bzip2       test_izb9     %files%
 7z a -tzip -mx=9 -mm=deflate test_7z_d     %files%
 7z a -tzip -mx=9 -mm=LZMA    test_7z_l     %files%
 
-if not "%1" == "full" goto skip
+if "%1" == "" goto skip
 echo  --
 echo  --  If you need a coffee now, it's the right time to have one or two...
 echo  --
@@ -54,6 +55,10 @@ zipada     -er1              test_zar1     %files%
 zipada     -er2              test_zar2     %files%
 zipada     -er3              test_zar3     %files%
 zipada     -er4              test_zar4     %files%
+echo  --
+echo  --  Now, a good lunch is recommended...
+echo  --
+if not "%1" == "full" goto skip
 kzip                         test_kzip     %files%
 advzip -a -4                 test_zopf.zip %files%
 :skip
@@ -76,24 +81,30 @@ dir /OS test_za??.zip test_iz??.zip test_kzip.zip test_7z_?.zip test_zopf.zip |f
 ren Zip.Compress.Deflate.zcd Zip.Compress.Deflate.%nice_date%.zcd
 
 echo.
-if exist test_zar1.zip comp_zip test_zash test_zar1 -q2
-if exist test_zar2.zip comp_zip test_zash test_zar2 -q2
-if exist test_zar3.zip comp_zip test_zash test_zar3 -q2
-if exist test_zar4.zip comp_zip test_zash test_zar4 -q2
-comp_zip test_zash test_zadf -q2
-comp_zip test_zash test_zad1 -q2
-comp_zip test_zash test_zad2 -q2
-comp_zip test_zash test_zad3 -q2
-comp_zip test_zash test_zal1 -q2
-comp_zip test_zash test_zal2 -q2
-comp_zip test_zash test_zal3 -q2
-comp_zip test_zash test_zap1 -q2
-comp_zip test_zash test_zap2 -q2
-comp_zip test_zash test_izd9 -q2
-comp_zip test_zash test_izb9 -q2
-comp_zip test_zash test_7z_d -q2
-comp_zip test_zash test_7z_l -q2
-if exist test_kzip.zip comp_zip test_zash test_kzip -q2
-if exist test_zopf.zip comp_zip test_zash test_zopf -q2
+call :comp_1 zar1
+call :comp_1 zar2
+call :comp_1 zar3
+call :comp_1 zar4
+call :comp_1 zadf
+call :comp_1 zad1
+call :comp_1 zad2
+call :comp_1 zad3
+call :comp_1 zal1
+call :comp_1 zal2
+call :comp_1 zal3
+call :comp_1 zap1
+call :comp_1 zap2
+call :comp_1 izd9
+call :comp_1 izb9
+call :comp_1 7z_d
+call :comp_1 7z_l
+call :comp_1 kzip
+call :comp_1 zopf
 
 pause
+goto fin
+
+:comp_1
+if exist test_%1.zip comp_zip test_zash test_%1 -q2
+
+:fin

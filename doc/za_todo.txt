@@ -1,6 +1,14 @@
 - Support the Zip_64 format - see ZIP64 in appnote.txt and
      Zip_archive_format_type in zip.ads .
 
+- Zip_32: check possible 4GiB size overflow on compression.
+          Could happen on trying to compress random data on a file
+          which is almost 4 GiB long (inefficient compression).
+
+- Zip_32: allow uncompressed data with size 4GiB or more if there is a
+          convention on how to store the "fake" size. 4 GiB - 1 ?
+          See corresponding "raise Zip_Capacity_Exceeded" in Zip.Create.
+
 - LZ77: add a 3rd procedure that sends a list of possible DL codes instead
      of a single DL code (BT4 can do that),
      letting LZMA.Encoding choose the most predicted-probable one.

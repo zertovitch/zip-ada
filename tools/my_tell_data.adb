@@ -3,17 +3,17 @@
 --  Description:     Part of the UnZipAda demo
 ------------------------------------------------------------------------------
 
-with Zip, UnZip, My_dots, Summary;
-
-with Ada.Text_IO;                       use Ada.Text_IO;
-
-with Interfaces;                        use Interfaces;
+with Zip;
+with My_dots, Summary;
+with Ada.Text_IO;
 
 procedure My_tell_data
              (file_name          : String;
               compressed_bytes   : Zip.Zip_32_Data_Size_Type;
               uncompressed_bytes : Zip.Zip_32_Data_Size_Type;
-              method             : UnZip.PKZip_method) is
+              method             : Zip.PKZip_method)
+is
+  use Ada.Text_IO;
 
   package MIO is new Modular_IO (Zip.Zip_32_Data_Size_Type);
 
@@ -26,6 +26,8 @@ procedure My_tell_data
       return n;
     end if;
   end Cut_name;
+
+  use type Zip.Zip_32_Data_Size_Type;
 
 begin
   New_Line;

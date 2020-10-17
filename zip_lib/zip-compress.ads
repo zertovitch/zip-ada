@@ -48,7 +48,7 @@
 
 ---------------------------------------------------------------------------------
 
-with Zip_Streams;
+with Zip_Streams, Zip.CRC_Crypto;
 
 package Zip.Compress is
 
@@ -161,7 +161,7 @@ package Zip.Compress is
 
 private
 
-  buffer_size : constant := 1024 * 1024;  --  1 MiB
+  default_byte_IO_buffer_size : constant := 1024 * 1024;  --  1 MiB
 
   Method_to_Format : constant Method_to_Format_type :=
     (Store               => store,
@@ -174,5 +174,46 @@ private
      LZMA_Method         => lzma_meth,
      Multi_Method        => unknown
     );
+
+  -----------------------------------
+  --  I/O buffers for compression  --
+  -----------------------------------
+
+  type IO_Buffers_Type is record
+    InBuf  : p_Byte_Buffer;     --  I/O buffers
+    OutBuf : p_Byte_Buffer;
+    --
+    InBufIdx  : Positive;       --  Points to next char in buffer to be read
+    OutBufIdx : Positive := 1;  --  Points to next free space in output buffer
+    --
+    MaxInBufIdx : Natural;      --  Count of valid chars in input buffer
+    InputEoF    : Boolean;      --  End of file indicator
+  end record;
+
+  procedure Allocate_Buffers (
+    b                : in out IO_Buffers_Type;
+    input_size_known :        Boolean;
+    input_size       :        Zip_32_Data_Size_Type
+  );
+
+  procedure Deallocate_Buffers (b : in out IO_Buffers_Type);
+
+  procedure Read_Block (
+    b     : in out IO_Buffers_Type;
+    input : in out Zip_Streams.Root_Zipstream_Type'Class
+  );
+
+  procedure Write_Block (
+    b                : in out IO_Buffers_Type;
+    input_size_known :        Boolean;
+    input_size       :        Zip_32_Data_Size_Type;
+    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+    output_size      : in out Zip_32_Data_Size_Type;
+    crypto           : in out Zip.CRC_Crypto.Crypto_pack
+  );
+
+  --  Exception for the case where compression works but produces
+  --  a bigger file than the file to be compressed (data is too "random").
+  Compression_inefficient : exception;
 
 end Zip.Compress;

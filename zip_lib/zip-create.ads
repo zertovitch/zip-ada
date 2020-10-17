@@ -209,7 +209,7 @@ package Zip.Create is
    procedure Finish (Info : in out Zip_Create_Info);
 
    --  The following exception is raised on cases when the Zip archive
-   --  creation exceeds the Zip_32 format's capacity: 4GiB total size,
+   --  creation exceeds the Zip_32 format's capacity: 4 GiB total size,
    --  65535 entries.
 
    Zip_Capacity_Exceeded : exception;
@@ -217,8 +217,8 @@ package Zip.Create is
 private
 
    type Dir_entry is record
-      head : Zip.Headers.Central_File_Header;
-      name : p_String;
+     head : Zip.Headers.Central_File_Header;
+     name : p_String;
    end record;
 
    type Dir_entries is array (Positive range <>) of Dir_entry;

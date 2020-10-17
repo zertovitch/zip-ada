@@ -27,7 +27,6 @@
 with LZMA.Encoding;
 with Zip.CRC_Crypto;
 
-with Ada.Unchecked_Deallocation;
 with Interfaces; use Interfaces;
 
 procedure Zip.Compress.LZMA_E
@@ -48,64 +47,21 @@ is
   -- Buffered I/O --
   ------------------
 
-  --  Define data types needed to implement input and output file buffers
-
-  procedure Dispose is
-    new Ada.Unchecked_Deallocation (Byte_Buffer, p_Byte_Buffer);
-
-  InBuf  : p_Byte_Buffer;  --  I/O buffers
-  OutBuf : p_Byte_Buffer;
-
-  InBufIdx  : Positive;  --  Points to next char in buffer to be read
-  OutBufIdx : Positive;  --  Points to next free space in output buffer
-
-  MaxInBufIdx : Natural;  --  Count of valid chars in input buffer
-  InputEoF : Boolean;     --  End of file indicator
-
-  procedure Read_Block is
-  begin
-    Zip.Block_Read (
-      stream        => input,
-      buffer        => InBuf.all,
-      actually_read => MaxInBufIdx
-    );
-    InputEoF := MaxInBufIdx = 0;
-    InBufIdx := 1;
-  end Read_Block;
-
-  --  Exception for the case where compression works but produces
-  --  a bigger file than the file to be compressed (data is too "random").
-  Compression_inefficient : exception;
-
-  procedure Write_Block is
-    amount : constant Integer := OutBufIdx - 1;
-  begin
-    output_size := output_size + Zip_32_Data_Size_Type (Integer'Max (0, amount));
-    if input_size_known and then output_size >= input_size then
-      --  The compression so far is obviously unefficient for that file.
-      --  Useless to go further.
-      --  Stop immediately before growing the file more than the
-      --  uncompressed size.
-      raise Compression_inefficient;
-    end if;
-    Encode (crypto, OutBuf (1 .. amount));
-    Zip.Block_Write (output, OutBuf (1 .. amount));
-    OutBufIdx := 1;
-  end Write_Block;
+  IO_buffers : IO_Buffers_Type;
 
   procedure Put_byte (B : Unsigned_8) is
   begin
-    OutBuf (OutBufIdx) := B;
-    OutBufIdx := OutBufIdx + 1;
-    if OutBufIdx > OutBuf.all'Last then
-      Write_Block;
+    IO_buffers.OutBuf (IO_buffers.OutBufIdx) := B;
+    IO_buffers.OutBufIdx := IO_buffers.OutBufIdx + 1;
+    if IO_buffers.OutBufIdx > IO_buffers.OutBuf.all'Last then
+      Write_Block (IO_buffers, input_size_known, input_size, output, output_size, crypto);
     end if;
   end Put_byte;
 
   procedure Flush_output is
   begin
-    if OutBufIdx > 1 then
-      Write_Block;
+    if IO_buffers.OutBufIdx > 1 then
+      Write_Block (IO_buffers, input_size_known, input_size, output, output_size, crypto);
     end if;
   end Flush_output;
 
@@ -117,8 +73,8 @@ is
   function Read_byte return Byte is
     b : Byte;
   begin
-    b := InBuf (InBufIdx);
-    InBufIdx := InBufIdx + 1;
+    b := IO_buffers.InBuf (IO_buffers.InBufIdx);
+    IO_buffers.InBufIdx := IO_buffers.InBufIdx + 1;
     Zip.CRC_Crypto.Update (CRC, (1 => b));
     Bytes_in := Bytes_in + 1;
     if feedback /= null then
@@ -146,10 +102,10 @@ is
   function More_bytes return Boolean is
   pragma Inline (More_bytes);
   begin
-    if InBufIdx > MaxInBufIdx then
-      Read_Block;
+    if IO_buffers.InBufIdx > IO_buffers.MaxInBufIdx then
+      Read_Block (IO_buffers, input);
     end if;
-    return not InputEoF;
+    return not IO_buffers.InputEoF;
   end More_bytes;
 
   use LZMA, LZMA.Encoding;
@@ -194,18 +150,10 @@ is
     new LZMA.Encoding.Encode (Read_byte, More_bytes, Put_byte);
 
 begin
-  --  Allocate input and output buffers.
-  if input_size_known then
-    InBuf := new Byte_Buffer
-      (1 .. Integer'Min (Integer'Max (8, Integer (input_size)), buffer_size));
-  else
-    InBuf := new Byte_Buffer (1 .. buffer_size);
-  end if;
-  OutBuf := new Byte_Buffer (1 .. buffer_size);
-  OutBufIdx := 1;
+  Allocate_Buffers (IO_buffers, input_size_known, input_size);
   output_size := 0;
   begin
-    Read_Block;
+    Read_Block (IO_buffers, input);
     Bytes_in := 0;
     if input_size_known then
       X_Percent := Integer (input_size / 40);
@@ -238,6 +186,5 @@ begin
     when Compression_inefficient =>
       compression_ok := False;
   end;
-  Dispose (InBuf);
-  Dispose (OutBuf);
+  Deallocate_Buffers (IO_buffers);
 end Zip.Compress.LZMA_E;

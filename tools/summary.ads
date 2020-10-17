@@ -3,18 +3,18 @@
 --  Description:     Part of the UnZipAda demo
 ------------------------------------------------------------------------------
 
-with Zip, UnZip;
+with Zip;
 
 package Summary is
 
   total_uncompressed, total_compressed : Zip.Zip_32_Data_Size_Type;
   total_entries : Natural;
-  files_per_method : array (UnZip.PKZip_method) of Natural;
+  files_per_method : array (Zip.PKZip_method) of Natural;
   uncompressed_per_method,
-  compressed_per_method : array (UnZip.PKZip_method) of Zip.Zip_32_Data_Size_Type;
+  compressed_per_method : array (Zip.PKZip_method) of Zip.Zip_32_Data_Size_Type;
 
   procedure Reset;
 
-  function Nice_image (format : UnZip.PKZip_method) return String;
+  function Nice_image (format : Zip.PKZip_method) return String;
 
 end Summary;

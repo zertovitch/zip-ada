@@ -150,10 +150,10 @@ package body Zip.Create is
      Add_Stream (Info, Stream, null, Password, Compressed_Size, Final_Method);
    end Add_Stream;
 
-   four_gb : constant := 4 * (1024 ** 3);
+   four_GiB : constant := 4 * (1024 ** 3);  --  = 2 ** 32
 
    Zip_32_size_exceeded_message : constant String :=
-     "Zip file too large (for Zip_32 archive format): more than 4 GiB total compressed size.";
+     "Zip file too large (for Zip_32 archive format): 4 GiB or more total compressed size.";
 
    use Zip.Compress;
 
@@ -195,11 +195,19 @@ package body Zip.Create is
         if Is_Read_Only (Stream) then
           cfh.external_attributes := cfh.external_attributes or 1;
         end if;
-        shi.file_timedate        := Get_Time (Stream);
-        shi.dd.uncompressed_size := Unsigned_32 (Size (Stream));
-        shi.filename_length      := entry_name'Length;
-        Info.Contains (Last).name           := new String'(entry_name);
-        shi.extra_field_length   := 0;
+        if Info.zip_archive_format = Zip_32 and then Size (Stream) >= four_GiB
+        then
+          raise Zip_Capacity_Exceeded with
+            "Data too large (for Zip_32 archive format): size is 4 GiB or more.";
+          --  NB: Theoretically we could relax this rule by setting the
+          --      uncompressed size to 4 GiB - 1 in the headers and hope
+          --      for some compression. TBD: check conventions around this.
+        end if;
+        shi.file_timedate         := Get_Time (Stream);
+        shi.dd.uncompressed_size  := Unsigned_32 (Size (Stream));
+        shi.filename_length       := entry_name'Length;
+        Info.Contains (Last).name := new String'(entry_name);
+        shi.extra_field_length    := 0;
 
         mem1 := Index (Info.Stream.all);
         cfh.local_header_offset := Unsigned_32 (mem1) - 1;
@@ -235,7 +243,7 @@ package body Zip.Create is
           shi.bit_flag := shi.bit_flag or LZMA_EOS_Flag_Bit;
         end if;
         mem2 := Index (Info.Stream.all);
-        if Info.zip_archive_format = Zip_32 and then mem2 > four_gb then
+        if Info.zip_archive_format = Zip_32 and then mem2 >= four_GiB then
           raise Zip_Capacity_Exceeded with Zip_32_size_exceeded_message;
         end if;
         --  Go back to the local header to rewrite it with complete informations
@@ -578,7 +586,7 @@ package body Zip.Create is
       procedure Get_index_and_check_Zip_32_limit is
       begin
         current_index := Index (Info.Stream.all);
-        if Info.zip_archive_format = Zip_32 and then current_index > four_gb then
+        if Info.zip_archive_format = Zip_32 and then current_index >= four_GiB then
           raise Zip_Capacity_Exceeded with Zip_32_size_exceeded_message;
         end if;
       end Get_index_and_check_Zip_32_limit;

@@ -64,7 +64,7 @@ package body UnZip.Streams is
     local_header : Zip.Headers.Local_File_Header;
     data_descriptor_after_data : Boolean;
     encrypted : Boolean;
-    method : PKZip_method;
+    method : Zip.PKZip_method;
     use Zip;
     mode : Write_mode;
   begin

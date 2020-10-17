@@ -15,8 +15,8 @@ package body Summary is
     compressed_per_method   := (others => 0);
   end Reset;
 
-  function Nice_image (format : UnZip.PKZip_method) return String is
-    img_stuffed : String (1 .. UnZip.PKZip_method'Width) := (others => ' ');
+  function Nice_image (format : Zip.PKZip_method) return String is
+    img_stuffed : String (1 .. Zip.PKZip_method'Width) := (others => ' ');
     img : constant String := Zip.Image (format);
   begin
     img_stuffed (1 .. img'Length) := img;

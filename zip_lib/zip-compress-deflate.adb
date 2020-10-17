@@ -1,9 +1,6 @@
---  The "Deflate" method combines a LZ77 compression
---  method with some Huffman encoding gymnastics.
-
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2020 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,6 +25,8 @@
 --  http://www.opensource.org/licenses/mit-license.php
 
 -----------------
+--  The "Deflate" method combines a LZ77 compression
+--  method with some Huffman encoding gymnastics.
 --
 --  Magic numbers in this procedure are adjusted through experimentation and marked with: *Tuned*
 --
@@ -58,7 +57,7 @@
 --
 --  19-Feb-2011: All distance and length codes implemented.
 --  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
---  17-Feb-2011: Created.
+--  17-Feb-2011: Created (single-block, "fixed" Huffman encoding).
 
 with LZ77, Zip.CRC_Crypto;
 with Zip_Streams;
@@ -101,65 +100,22 @@ is
   -- Buffered I/O - byte granularity --
   -------------------------------------
 
-  --  Define data types needed to implement input and output file buffers
-
-  procedure Dispose_Buffer is
-    new Ada.Unchecked_Deallocation (Byte_Buffer, p_Byte_Buffer);
-
-  InBuf  : p_Byte_Buffer;  --  I/O buffers
-  OutBuf : p_Byte_Buffer;
-
-  InBufIdx  : Positive;       --  Points to next char in buffer to be read
-  OutBufIdx : Positive := 1;  --  Points to next free space in output buffer
-
-  MaxInBufIdx : Natural;  --  Count of valid chars in input buffer
-  InputEoF : Boolean;     --  End of file indicator
-
-  procedure Read_Block is
-  begin
-    Zip.Block_Read (
-      stream        => input,
-      buffer        => InBuf.all,
-      actually_read => MaxInBufIdx
-    );
-    InputEoF := MaxInBufIdx = 0;
-    InBufIdx := 1;
-  end Read_Block;
-
-  --  Exception for the case where compression works but produces
-  --  a bigger file than the file to be compressed (data is too "random").
-  Compression_inefficient : exception;
-
-  procedure Write_Block is
-    amount : constant Integer := OutBufIdx - 1;
-  begin
-    output_size := output_size + Zip_32_Data_Size_Type (Integer'Max (0, amount));
-    if input_size_known and then output_size >= input_size then
-      --  The compression so far is obviously inefficient for that file.
-      --  Useless to go further.
-      --  Stop immediately before growing the file more than the
-      --  uncompressed size.
-      raise Compression_inefficient;
-    end if;
-    Encode (crypto, OutBuf (1 .. amount));
-    Zip.Block_Write (output, OutBuf (1 .. amount));
-    OutBufIdx := 1;
-  end Write_Block;
+  IO_buffers : IO_Buffers_Type;
 
   procedure Put_byte (B : Byte) is  --  Put a byte, at the byte granularity level
   pragma Inline (Put_byte);
   begin
-    OutBuf (OutBufIdx) := B;
-    OutBufIdx := OutBufIdx + 1;
-    if OutBufIdx > OutBuf'Last then
-      Write_Block;
+   IO_buffers.OutBuf (IO_buffers.OutBufIdx) := B;
+    IO_buffers.OutBufIdx := IO_buffers.OutBufIdx + 1;
+    if IO_buffers.OutBufIdx > IO_buffers.OutBuf'Last then
+      Write_Block (IO_buffers, input_size_known, input_size, output, output_size, crypto);
     end if;
   end Put_byte;
 
   procedure Flush_byte_buffer is
   begin
-    if OutBufIdx > 1 then
-      Write_Block;
+    if IO_buffers.OutBufIdx > 1 then
+      Write_Block (IO_buffers, input_size_known, input_size, output, output_size, crypto);
     end if;
   end Flush_byte_buffer;
 
@@ -1566,8 +1522,8 @@ is
     function Read_byte return Byte is
       b : Byte;
     begin
-      b := InBuf (InBufIdx);
-      InBufIdx := InBufIdx + 1;
+      b := IO_buffers.InBuf (IO_buffers.InBufIdx);
+      IO_buffers.InBufIdx := IO_buffers.InBufIdx + 1;
       Zip.CRC_Crypto.Update (CRC, (1 => b));
       Bytes_in := Bytes_in + 1;
       if feedback /= null then
@@ -1594,10 +1550,10 @@ is
 
     function More_bytes return Boolean is
     begin
-      if InBufIdx > MaxInBufIdx then
-        Read_Block;
+      if IO_buffers.InBufIdx > IO_buffers.MaxInBufIdx then
+        Read_Block (IO_buffers, input);
       end if;
-      return not InputEoF;
+      return not IO_buffers.InputEoF;
     end More_bytes;
 
     --  LZ77 parameters
@@ -1712,7 +1668,7 @@ is
     end Read_LZ77_codes;
 
   begin  --  Encode
-    Read_Block;
+    Read_Block (IO_buffers, input);
     R := Text_buffer_index (String_buffer_size - Look_Ahead_LZ77);
     Bytes_in := 0;
     if input_size_known then
@@ -1776,14 +1732,7 @@ begin
     end if;
     New_Line (log);
   end if;
-  --  Allocate input and output buffers ...
-  if input_size_known then
-    InBuf := new Byte_Buffer
-      (1 .. Integer'Min (Integer'Max (8, Integer (input_size)), buffer_size));
-  else
-    InBuf := new Byte_Buffer (1 .. buffer_size);
-  end if;
-  OutBuf := new Byte_Buffer (1 .. buffer_size);
+  Allocate_Buffers (IO_buffers, input_size_known, input_size);
   output_size := 0;
   lz_buffer := new Full_range_LZ_buffer_type;
   begin
@@ -1796,8 +1745,7 @@ begin
       compression_ok := False;
   end;
   Dispose (lz_buffer);
-  Dispose_Buffer (InBuf);
-  Dispose_Buffer (OutBuf);
+  Deallocate_Buffers (IO_buffers);
   if trace then
     Close (log);
   end if;

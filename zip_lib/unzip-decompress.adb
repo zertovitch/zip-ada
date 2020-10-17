@@ -36,7 +36,7 @@ package body UnZip.Decompress is
 
   procedure Decompress_data (
     zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
-    format                     : PKZip_method;
+    format                     : Zip.PKZip_method;
     mode                       : Write_mode;
     output_file_name           : String; -- relevant only if mode = write_to_file
     output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory
@@ -2050,7 +2050,7 @@ package body UnZip.Decompress is
         when Zip.lzma_meth  => UnZ_Meth.LZMA_Decode;
         when others =>
           raise Unsupported_method with
-             "Format/method " & PKZip_method'Image (format) & " not supported for decompression";
+             "Format/method " & Zip.PKZip_method'Image (format) & " not supported for decompression";
       end case;
     exception
       when others =>

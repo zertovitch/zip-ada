@@ -53,7 +53,7 @@ private package UnZip.Decompress is
     zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
     --  zip_file must be open and its index is meant
     --  to point to the beginning of compressed data
-    format                     : PKZip_method;
+    format                     : Zip.PKZip_method;
     mode                       : Write_mode;
     output_file_name           : String; -- relevant only if mode = write_to_file
     output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory

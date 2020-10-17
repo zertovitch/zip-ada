@@ -167,6 +167,7 @@ package UnZip is
                    );
 
   subtype PKZip_method is Zip.PKZip_method;
+  pragma Obsolescent (PKZip_method, "Better use the type: Zip.PKZip_method");
 
   ----------------------------------------------
   -- Extraction procedures for user interface --
