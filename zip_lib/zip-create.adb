@@ -586,18 +586,27 @@ package body Zip.Create is
       current_index : ZS_Index_Type;
       --
       --  If the stream is of File_Zipstream type or descendent, close the file too.
-      procedure Close_eventual_file is
+      --  Deallocate catalogue entries.
+      procedure Close_eventual_file_and_deallocate is
       begin
-        if Info.Stream.all in File_Zipstream'Class then
-          Zip_Streams.Close (File_Zipstream (Info.Stream.all));
+        if Info.Stream.all in File_Zipstream'Class
+          and then File_Zipstream (Info.Stream.all).Is_Open
+        then
+          File_Zipstream (Info.Stream.all).Close;
         end if;
-      end Close_eventual_file;
+        if Info.Contains /= null then
+          for e in 1 .. Info.Last_entry loop
+            Dispose (Info.Contains (e).name);
+          end loop;
+          Dispose (Info.Contains);
+        end if;
+      end Close_eventual_file_and_deallocate;
       --
       procedure Get_index_and_check_Zip_32_limit is
       begin
         current_index := Index (Info.Stream.all);
         if Info.zip_archive_format = Zip_32 and then current_index >= four_GiB then
-          Close_eventual_file;
+          Close_eventual_file_and_deallocate;
           raise Zip_Capacity_Exceeded with Zip_32_size_exceeded_message;
         end if;
       end Get_index_and_check_Zip_32_limit;
@@ -613,7 +622,7 @@ package body Zip.Create is
       if Info.zip_archive_format = Zip_32
         and then Info.Last_entry > Integer (Unsigned_16'Last)
       then
-        Close_eventual_file;
+        Close_eventual_file_and_deallocate;
         raise Zip_Capacity_Exceeded with
            "Too many entries (for Zip_32 archive format): more than 65535.";
       end if;
@@ -627,10 +636,8 @@ package body Zip.Create is
             ed.central_dir_size +
               Zip.Headers.central_header_length +
                 Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
-          Dispose (Info.Contains (e).name);
           Get_index_and_check_Zip_32_limit;
         end loop;
-        Dispose (Info.Contains);
       end if;
       Info.Last_entry := 0;
       Info.name_dictionary.Clear;
@@ -639,7 +646,7 @@ package body Zip.Create is
       ed.disk_total_entries := ed.total_entries;
       Zip.Headers.Write (Info.Stream.all, ed);
       Get_index_and_check_Zip_32_limit;
-      Close_eventual_file;
+      Close_eventual_file_and_deallocate;
    end Finish;
 
 end Zip.Create;
