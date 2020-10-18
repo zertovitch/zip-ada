@@ -1330,8 +1330,8 @@ is
 
   --  This is the main, big, fat, circular buffer containing LZ codes,
   --  each LZ code being a literal or a DL code.
-  --  Heap allocation is needed because default stack is too small on some targets.
-  lz_buffer : p_Full_range_LZ_buffer_type;
+  --  Heap allocation is needed only because default stack is too small on some targets.
+  lz_buffer : p_Full_range_LZ_buffer_type := null;
   lz_buffer_index : LZ_buffer_index_type := 0;
   past_lz_data : Boolean := False;
   --  When True: some LZ_buffer_size data before lz_buffer_index (modulo!) are real, past data
@@ -1715,6 +1715,12 @@ is
     end case;
   end Encode;
 
+  procedure Deallocation is
+  begin
+    Dispose (lz_buffer);
+    Deallocate_Buffers (IO_buffers);
+  end Deallocation;
+
 begin
   if trace then
     begin
@@ -1742,9 +1748,12 @@ begin
     when Compression_inefficient =>  --  Escaped from Encode
       compression_ok := False;
   end;
-  Dispose (lz_buffer);
-  Deallocate_Buffers (IO_buffers);
   if trace then
     Close (log);
   end if;
+  Deallocation;
+exception
+  when others =>
+    Deallocation;
+    raise;
 end Zip.Compress.Deflate;

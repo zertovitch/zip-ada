@@ -17,7 +17,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2016 .. 2020 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1095,6 +1095,10 @@ package body LZMA.Encoding is
     end if;
     Flush_range_encoder;
     Dispose (Text_Buf);
+  exception
+    when others =>
+      Dispose (Text_Buf);
+      raise;
   end Encode;
 
 end LZMA.Encoding;

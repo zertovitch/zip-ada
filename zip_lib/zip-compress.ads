@@ -180,8 +180,8 @@ private
   -----------------------------------
 
   type IO_Buffers_Type is record
-    InBuf  : p_Byte_Buffer;     --  I/O buffers
-    OutBuf : p_Byte_Buffer;
+    InBuf  : p_Byte_Buffer := null;  --  I/O buffers
+    OutBuf : p_Byte_Buffer := null;
     --
     InBufIdx  : Positive;       --  Points to next char in buffer to be read
     OutBufIdx : Positive := 1;  --  Points to next free space in output buffer

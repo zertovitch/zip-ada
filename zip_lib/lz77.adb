@@ -30,7 +30,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2016 .. 2020 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1662,6 +1662,13 @@ package body LZ77 is
         end if;
       end getNextSymbol;
 
+      procedure Deallocation is
+      begin
+        Dispose (buf);
+        Dispose (tree);
+        Dispose (Hash234.hash4Table);
+      end Deallocation;
+
       actual_written, avail : Integer;
     begin
       --  NB: heap allocation used only for convenience because of
@@ -1678,9 +1685,11 @@ package body LZ77 is
           end if;
         end loop;
       end if;
-      Dispose (buf);
-      Dispose (tree);
-      Dispose (Hash234.hash4Table);
+      Deallocation;
+    exception
+      when others =>
+        Deallocation;
+        raise;
     end LZ77_using_BT4;
 
     procedure LZ77_by_Rich is

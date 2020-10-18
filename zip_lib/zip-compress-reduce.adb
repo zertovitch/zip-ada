@@ -620,4 +620,8 @@ begin
       compression_ok := False;
   end;
   Deallocate_Buffers (IO_buffers);
+exception
+  when others =>
+    Deallocate_Buffers (IO_buffers);
+    raise;
 end Zip.Compress.Reduce;

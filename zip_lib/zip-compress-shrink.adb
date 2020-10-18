@@ -141,7 +141,7 @@ is
   type Table_access is access Code_array;
   procedure Dispose is new Ada.Unchecked_Deallocation (Code_array, Table_access);
 
-  Code_table : Table_access;      --  Points to code table for LZW compression
+  Code_table : Table_access := null;  --  Points to code table for LZW compression
 
   --  Define data types needed to implement a free node list
   type Free_list_array is array (FIRSTENTRY .. TABLESIZE) of Natural;
@@ -150,8 +150,8 @@ is
   procedure Dispose is
     new Ada.Unchecked_Deallocation (Free_list_array, Free_list_access);
 
-  Free_list : Free_list_access;   --  Table of free code table entries
-  Next_free : Integer;            --  Index into free list table
+  Free_list : Free_list_access := null;  --  Table of free code table entries
+  Next_free : Integer;                   --  Index into free list table
 
   ----------------------------------------------------------------------------
   --  The following routines are used to allocate, initialize, and de-allocate
@@ -440,6 +440,12 @@ is
     end if;
   end Process_Input;
 
+  procedure Deallocation is
+  begin
+    Destroy_Data_Structures;
+    Deallocate_Buffers (IO_buffers);
+  end Deallocation;
+
   Remaining : Natural;
 
 begin
@@ -470,6 +476,9 @@ begin
       compression_ok := False;
   end;
   --
-  Destroy_Data_Structures;
-  Deallocate_Buffers (IO_buffers);
+  Deallocation;
+exception
+  when others =>
+    Deallocation;
+    raise;
 end Zip.Compress.Shrink;
