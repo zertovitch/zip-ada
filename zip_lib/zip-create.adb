@@ -600,6 +600,8 @@ package body Zip.Create is
           end loop;
           Dispose (Info.Contains);
         end if;
+        Info.Last_entry := 0;
+        Info.name_dictionary.Clear;
       end Close_eventual_file_and_deallocate;
       --
       procedure Get_index_and_check_Zip_32_limit is
@@ -639,12 +641,11 @@ package body Zip.Create is
           Get_index_and_check_Zip_32_limit;
         end loop;
       end if;
-      Info.Last_entry := 0;
-      Info.name_dictionary.Clear;
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;
       Zip.Headers.Write (Info.Stream.all, ed);
+      --
       Get_index_and_check_Zip_32_limit;
       Close_eventual_file_and_deallocate;
    end Finish;
