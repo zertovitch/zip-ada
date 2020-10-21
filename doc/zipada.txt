@@ -1,7 +1,7 @@
 What is Zip-Ada ?
 =================
 
-Zip-Ada is a library for dealing with the Zip compressed archive
+Zip-Ada is a pure Ada library for dealing with the Zip compressed archive
 file format. It supplies:
 
  - compression with the following sub-formats ("methods"):
@@ -16,11 +16,13 @@ file format. It supplies:
  - output archive to build can be any kind of indexed data stream
  - input data to compress can be any kind of data stream
  - output data to extract can be any kind of data stream
- - types Zip_info and Zip_Create_info are provided to handle archives quickly and easily 
+ - types Zip_info and Zip_Create_info are provided to handle
+     archives quickly and easily 
  - cross format compatibility with the most various tools and file formats
      based on the Zip format: 7-zip, Info-Zip's Zip, WinZip, PKZip, Java's JARs,
      OpenDocument files, MS Office 2007+, Nokia themes, Google Chrome extensions,
-     E-Pub documents and many others
+     Apple iPhone's iOS App Store Packages,
+     E-Pub documents, and many others
  - task safety: this library can be used ad libitum in parallel processing
  - endian-neutral I/O
 

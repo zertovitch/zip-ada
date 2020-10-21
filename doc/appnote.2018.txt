@@ -1,8 +1,8 @@
 File:    APPNOTE.TXT - .ZIP File Format Specification
-Version: 6.3.9 
-Status: FINAL - replaces version 6.3.8
-Revised: July 15, 2020
-Copyright (c) 1989 - 2014, 2018, 2019, 2020 PKWARE Inc., All Rights Reserved.
+Version: 6.3.5 
+Status: FINAL - replaces version 6.3.4
+Revised: November 20, 2018
+Copyright (c) 1989 - 2014, 2018 PKWARE Inc., All Rights Reserved.
 
 1.0 Introduction
 ---------------
@@ -205,30 +205,6 @@ Copyright (c) 1989 - 2014, 2018, 2019, 2020 PKWARE Inc., All Rights Reserved.
 
                  -Initial information on 0x0022 Extra Data
 
-   6.3.6         -Corrected typographical error          04/26/2019
-                  (4.4.1.3) 
-
-   6.3.7         -Added Zstandard compression method ID  
-                  (4.4.5)
-
-                 -Corrected several reported typos
-
-                 -Marked intended use for general purpose bit 14
- 
-                 -Added Data Stream Alignment Extra Data info
-                  (4.6.11)
-
-   6.3.8         -Resolved Zstandard compression method ID conflict  
-                  (4.4.5)
-
-                 -Added additional compression method ID values in use
-
-   6.3.9         -Corrected a typo in Data Stream Alignment description
-                  (4.6.11)
-
-
-
-
 3.0 Notations
 -------------
 
@@ -335,7 +311,7 @@ Copyright (c) 1989 - 2014, 2018, 2019, 2020 PKWARE Inc., All Rights Reserved.
    records defined in this specification MAY be used as needed to support 
    storage requirements for individual ZIP files.
 
-   4.3.2 Each file placed into a ZIP file MUST be preceded by  a "local 
+   4.3.2 Each file placed into a ZIP file MUST be preceeded by  a "local 
    file header" record for that file.  Each "local file header" MUST be 
    accompanied by a corresponding "central directory header" record within 
    the central directory section of the ZIP file.
@@ -652,7 +628,7 @@ Copyright (c) 1989 - 2014, 2018, 2019, 2020 PKWARE Inc., All Rights Reserved.
       4.4.1.2  String fields are not null terminated, since the length 
       is given explicitly.
 
-      4.4.1.3  The entries in the central directory MAY NOT necessarily
+      4.4.1.3  The entries in the central directory MAY NOY necessarily
       be in the same order that files appear in the .ZIP file.
 
       4.4.1.4  If one of the fields in the end of central directory
@@ -842,7 +818,7 @@ Copyright (c) 1989 - 2014, 2018, 2019, 2020 PKWARE Inc., All Rights Reserved.
                 PKWARE Proprietary Technology into Your Product" for 
                 more information.
 
-        Bit 14: Reserved by PKWARE for alternate streams.
+        Bit 14: Reserved by PKWARE.
 
         Bit 15: Reserved by PKWARE.
 
@@ -867,11 +843,7 @@ Copyright (c) 1989 - 2014, 2018, 2019, 2020 PKWARE Inc., All Rights Reserved.
        16 - IBM z/OS CMPSC Compression
        17 - Reserved by PKWARE
        18 - File is compressed using IBM TERSE (new)
-       19 - IBM LZ77 z Architecture 
-       20 - deprecated (use method 93 for zstd)
-       93 - Zstandard (zstd) Compression 
-       94 - MP3 Compression 
-       95 - XZ Compression 
+       19 - IBM LZ77 z Architecture (PFS)
        96 - JPEG variant
        97 - WavPack compressed data
        98 - PPMd version I, Rev 1
@@ -1581,7 +1553,6 @@ Value     Size      Description
           0x7075        Info-ZIP Unicode Path Extra Field
           0x756e        ASi UNIX
           0x7855        Info-ZIP UNIX (new)
-          0xa11e        Data Stream Alignment (Apache Commons-Compress)
           0xa220        Microsoft Open Packaging Growth Hint
           0xfd4a        SMS/QDOS
           0x9901        AE-x encryption structure (see APPENDIX E)
@@ -1810,32 +1781,6 @@ Value     Size      Description
           Sig           Short       verification signature (A028)
           PadVal        Short       Initial padding value
           Padding       variable    filled with NULL characters
-
-    4.6.11 -Data Stream Alignment (Apache Commons-Compress) (0xa11e):
-
-       (per Zbynek Vyskovsky) Defines alignment of data stream of this 
-       entry within the zip archive.  Additionally, indicates whether the 
-       compression method should be kept when re-compressing the zip file.
-
-       The purpose of this extra field is to align specific resources to 
-       word or page boundaries so they can be easily mapped into memory.  
-
-         Value         Size        Description
-         -----         ----        -----------
-         0xa11e        Short       tag for this extra block type
-         TSize         Short       total data size for this block (2+padding)
-         alignment     Short       required alignment and indicator
-         0x00          Variable    padding
-
-       The alignment field (lower 15 bits) defines the minimal alignment 
-       required by the data stream.   Bit 15 of alignment field indicates 
-       whether the compression method of this entry can be changed when 
-       recompressing the zip file.  The value 0 means the compression method 
-       should not be changed.  The value 1 indicates  the compression method 
-       may be changed. The padding field contains padding to ensure the correct 
-       alignment.  It can be changed at any time when the offset or required 
-       alignment changes. (see https://issues.apache.org/jira/browse/COMPRESS-391)
-
 
 4.7 Manifest Files
 ------------------
@@ -3381,7 +3326,7 @@ from 9-13).  Flag values are defined below.
       8.5.1 Capacities for split archives are as follows:
 
       Maximum number of segments = 4,294,967,295 - 1
-      Maximum .ZIP segment size = 4,294,967,295 bytes 
+      Maximum .ZIP segment size = 4,294,967,295 bytes (refer to section 8.5.6)
       Minimum segment size = 64K
       Maximum PKSFX segment size = 2,147,483,647 bytes
           

@@ -10,6 +10,6 @@ Complete description in: doc/zipada.txt
 
 If you are in a hurry (tl;dr), ignore the documentation,
 have GNAT installed (automatic on Linux), and try the
-command "gprbuild -p -P zipada.gpr".
+command "gprbuild -P zipada.gpr".
 Bonus: the file zipada.gpr is a text file,
 with some comments.
