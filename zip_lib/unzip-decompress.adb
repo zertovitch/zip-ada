@@ -2050,7 +2050,8 @@ package body UnZip.Decompress is
         when Zip.lzma_meth  => UnZ_Meth.LZMA_Decode;
         when others =>
           raise Unsupported_method with
-             "Format/method " & Zip.PKZip_method'Image (format) & " not supported for decompression";
+            "Format/method " & Image (format) &
+            " not supported for decompression";
       end case;
     exception
       when others =>

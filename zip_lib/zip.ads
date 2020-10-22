@@ -137,6 +137,11 @@ package Zip is
      deflate_e, --     D  -  "Enhanced deflate" or "Deflate64"
      bzip2,     --     D
      lzma_meth, --  C, D
+     zstandard,
+     mp3_recomp,
+     xz_recomp,
+     jpeg_recomp,
+     wavpack,
      ppmd,
      unknown
     );
@@ -399,7 +404,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String := "57";
-  reference : constant String := "18-Oct-2020";
+  reference : constant String := "22-Oct-2020";
   web       : constant String := "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -488,16 +493,21 @@ private
   --  See PKWARE's Appnote, "4.4.5 compression method"
   --
   package Compression_format_code is
-    store_code     : constant :=  0;
-    shrink_code    : constant :=  1;
-    reduce_code    : constant :=  2;
-    implode_code   : constant :=  6;
-    tokenize_code  : constant :=  7;
-    deflate_code   : constant :=  8;
-    deflate_e_code : constant :=  9;
-    bzip2_code     : constant := 12;
-    lzma_code      : constant := 14;
-    ppmd_code      : constant := 98;
+    store_code        : constant :=  0;
+    shrink_code       : constant :=  1;
+    reduce_code       : constant :=  2;
+    implode_code      : constant :=  6;
+    tokenize_code     : constant :=  7;
+    deflate_code      : constant :=  8;
+    deflate_e_code    : constant :=  9;
+    bzip2_code        : constant := 12;
+    lzma_code         : constant := 14;
+    zstandard_code    : constant := 93;
+    mp3_code          : constant := 94;
+    xz_code           : constant := 95;
+    jpeg_code         : constant := 96;
+    wavpack_code      : constant := 97;
+    ppmd_code         : constant := 98;
   end Compression_format_code;
 
 end Zip;

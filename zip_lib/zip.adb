@@ -935,20 +935,25 @@ package body Zip is
   function Image (m : PKZip_method) return String is
   begin
     case m is
-      when store     => return "Store";
-      when shrink    => return "Shrink";
-      when reduce_1  => return "Reduce 1";
-      when reduce_2  => return "Reduce 2";
-      when reduce_3  => return "Reduce 3";
-      when reduce_4  => return "Reduce 4";
-      when implode   => return "Implode";
-      when tokenize  => return "Tokenize";
-      when deflate   => return "Deflate";
-      when deflate_e => return "Deflate64";
-      when bzip2     => return "BZip2";
-      when lzma_meth => return "LZMA";
-      when ppmd      => return "PPMd";
-      when unknown   => return "(unknown)";
+      when store       => return "Store";
+      when shrink      => return "Shrink";
+      when reduce_1    => return "Reduce 1";
+      when reduce_2    => return "Reduce 2";
+      when reduce_3    => return "Reduce 3";
+      when reduce_4    => return "Reduce 4";
+      when implode     => return "Implode";
+      when tokenize    => return "Tokenize";
+      when deflate     => return "Deflate";
+      when deflate_e   => return "Deflate64";
+      when bzip2       => return "BZip2";
+      when lzma_meth   => return "LZMA";
+      when zstandard   => return "Zstandard";
+      when mp3_recomp  => return "MP3 recompression";
+      when xz_recomp   => return "XZ recompression";
+      when jpeg_recomp => return "JPEG recompression";
+      when wavpack     => return "WAVE recompression";
+      when ppmd        => return "PPMd";
+      when unknown     => return "(unknown)";
     end case;
   end Image;
 
@@ -970,6 +975,11 @@ package body Zip is
       when deflate_e_code  => return deflate_e;
       when bzip2_code      => return bzip2;
       when lzma_code       => return lzma_meth;
+      when zstandard_code  => return zstandard;
+      when mp3_code        => return mp3_recomp;
+      when xz_code         => return xz_recomp;
+      when jpeg_code       => return jpeg_recomp;
+      when wavpack_code    => return wavpack;
       when ppmd_code       => return ppmd;
       when others          => return unknown;
     end case;
