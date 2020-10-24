@@ -14,7 +14,7 @@ procedure Test_ZA is
   procedure Process_Archive (command, archive : VString; action : Action_Type) is
     full_name : VString := archive & ".zip";
     ref_archive : VString := +"test_zash";
-    files : VString := +"*.ad* *.txt *.cmd *.sh *.bin *.pdf *.xls";
+    files : VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls";
     --  Orig. set: *.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin *.xls
     r : Integer;
   begin
@@ -66,7 +66,13 @@ begin
     r := Shell_Execute (+".." & Directory_Separator & "random_data 66666");
   end if;
   --  if not exist random_and_text.mix copy /b random.bin+*.txt+..\doc\*.txt random_and_text.mix
- 
+  if not Exists ("za_work_copy.xls") then
+     Copy_File (
+       +".." & Directory_Separator & "doc" & Directory_Separator & "za_work.xls",
+       "za_work_copy.xls"
+     );
+  end if;
+  --
   for action in Action_Type loop
     if slow then
       --

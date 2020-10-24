@@ -31,7 +31,7 @@ begin
 
   --  Create an archive with default compression method (fast).
   r := Shell_Execute (+".." & Directory_Separator & 
-                      "zipada test_rz *.ad* *.txt *.cmd *.sh *.pdf *.mdb *.xls *.au");
+                      "zipada test_rz *.ad* *.txt *.cmd *.sh *.pgm *.ppm *.pdf *.db *.mdb *.xls *.au");
 
   --  Recompress the archive, with optional options...
   r := Shell_Execute (+".." & Directory_Separator & 
