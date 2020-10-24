@@ -17,6 +17,7 @@ project ZipAda is
        "Fast", 
        "Small",
        "Profiling",
+       "Coverage",
        "Style_Checks",
        --  Check_2005 mode is for checking that the *library* is strictly
        --  Ada-2005-compliant, for being compiled by a broader set of compilers.
@@ -60,25 +61,9 @@ project ZipAda is
       when "Fast"      =>  for Object_Dir use "obj_opt";
       when "Small"     =>  for Object_Dir use "obj_small";
       when "Profiling" =>  for Object_Dir use "obj_pro";
+      when "Coverage"  =>  for Object_Dir use "obj_cov";
       when others      =>  for Object_Dir use "obj_dbg";
    end case;
-
-   package Binder is
-      --  -Es: Store tracebacks in exception occurrences, and enable symbolic tracebacks
-      for Default_Switches ("ada") use ("-Es");
-   end Binder;
-
-   package Linker is
-
-      case Zip_Build_Mode is
-         when "Fast" | "Small" =>
-            for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections");
-         when "Profiling" =>
-            for Default_Switches ("ada") use ("-pg");
-         when others =>
-            for Default_Switches ("ada") use ("-g");
-      end case;
-   end Linker;
 
    Common_Options := (
      "-gnatwa",                        --  Warnings switches (a:turn on all info/warnings marked with +)
@@ -144,8 +129,24 @@ project ZipAda is
               "-fpredictive-commoning", "-fgcse-after-reload", "-ftree-vectorize", "-fipa-cp-clone",
               "-g", "-pg"
               );
+         when "Coverage" =>
+            for Default_Switches ("ada") use Common_Options & ("-fprofile-arcs", "-ftest-coverage");
       end case;
    end Compiler;
+
+   package Linker is
+      case Zip_Build_Mode is
+         when "Fast" | "Small" => for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections");
+         when "Profiling"      => for Default_Switches ("ada") use ("-pg");
+         when "Coverage"       => for Default_Switches ("ada") use ("-fprofile-arcs");
+         when others           => for Default_Switches ("ada") use ("-g");
+      end case;
+   end Linker;
+
+   package Binder is
+      --  -Es: Store tracebacks in exception occurrences, and enable symbolic tracebacks
+      for Default_Switches ("ada") use ("-Es");
+   end Binder;
 
    package Builder is
       --   "If -j0 is used, then the maximum number of simultaneous compilation

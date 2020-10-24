@@ -365,26 +365,35 @@ is
         Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15
       );
     stats_dis_copy : Stats_dis_type := stats_dis;
-    used           : Natural := 0;
+    --
+    procedure Patch_statistics_for_buggy_decoders is
+      --  Workaround for buggy Info-Zip decoder versions.
+      --  See "PatchDistanceCodesForBuggyDecoders" in Zopfli's deflate.c
+      --  NB: here, we patch the statistics and not the resulting bit lengths,
+      --      to be sure we avoid invalid Huffman code sets in the end.
+      --  The decoding bug concerns Zlib v.<= 1.2.1, UnZip v.<= 6.0, WinZip v.<=10.0.
+      used : Natural := 0;
+    begin
+      for i in stats_dis_copy'Range loop
+        if stats_dis_copy (i) /= 0 then
+          used := used + 1;
+        end if;
+      end loop;
+      case used is
+        when 0 =>  --  No distance code used at all (data must be almost random).
+          stats_dis_copy (0 .. 1) := (1, 1);
+        when 1 =>
+          if stats_dis_copy (0) = 0 then
+            stats_dis_copy (0) := 1;  --  Now, code 0 and some other code have non-zero counts.
+          else
+            stats_dis_copy (1) := 1;  --  Now, codes 0 and 1 have non-zero counts.
+          end if;
+        when others =>
+          null;  --  No workaround needed when 2 or more distance codes are defined.
+      end case;
+    end Patch_statistics_for_buggy_decoders;
   begin
-    --  See "PatchDistanceCodesForBuggyDecoders" in Zopfli's deflate.c
-    --  NB: here, we patch the occurrences and not the bit lengths, to avoid invalid codes.
-    --  The decoding bug concerns Zlib v.<= 1.2.1, UnZip v.<= 6.0, WinZip v.10.0.
-    for i in stats_dis_copy'Range loop
-      if stats_dis_copy (i) /= 0 then
-        used := used + 1;
-      end if;
-    end loop;
-    if used < 2 then
-      if used = 0 then  --  No distance code used at all (data must be almost random)
-        stats_dis_copy (0) := 1;
-        stats_dis_copy (1) := 1;
-      elsif stats_dis_copy (0) = 0 then
-        stats_dis_copy (0) := 1;  --  now code 0 and some other code have non-zero counts
-      else
-        stats_dis_copy (1) := 1;  --  now codes 0 and 1 have non-zero counts
-      end if;
-    end if;
+    Patch_statistics_for_buggy_decoders;
     LLHCL_lit_len (stats_lit_len, bl_for_lit_len);  --  Call the magic algorithm for setting
     LLHCL_dis (stats_dis_copy, bl_for_dis);         --    up Huffman lengths of both trees
     return Build_descriptors (bl_for_lit_len, bl_for_dis);

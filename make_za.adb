@@ -9,6 +9,7 @@
 --    Build mode can be Debug, Fast, Small, ...
 
 with HAC_Pack;  use HAC_Pack;
+--  NB: the "full Ada" package for HAC_Pack is in /src in the HAC project
 
 procedure Make_ZA is
   gprbuild_options : VString;
@@ -28,12 +29,25 @@ procedure Make_ZA is
     New_Line;
     r := Shell_Execute ("gprbuild -P " & gpr_name & gprbuild_options);
   end Build_with_nice_title;
+
+  type OS_Kind is (Nixux, Windoze);
+  k : OS_Kind;
     
 begin
+  if Index (Get_Env ("OS"), "Windows") > 0 then
+    k := Windoze;
+  else
+    k := Nixux;
+  end if;
   if Argument_Count > 0 then
     gprbuild_options := " -XZip_Build_Mode=" & Argument (1);
   end if;
-  gprbuild_options := gprbuild_options & " -largs -Xlinker --stack=0x2000000,0x20000";
+  case k is
+    when Nixux   =>
+      null;
+    when Windoze =>
+      gprbuild_options := gprbuild_options & " -largs -Xlinker --stack=0x2000000,0x20000";
+  end case;
   
   --  For Windows binary distribution with icons and Set_Modification_Time in UnZipAda:
   --

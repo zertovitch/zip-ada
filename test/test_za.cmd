@@ -15,11 +15,13 @@ if exist test_kzip.zip del test_kzip.zip
 if exist test_7z_?.zip del test_7z_?.zip
 if exist test_zopf.zip del test_zopf.zip
 
-rem Have a badly compressible file (random.bin), a bit more than 2**n because of rare repetitions
+rem Have a badly compressible files
 if not exist rnd_0.bin for /l %%i in (0,10,100) do random_data %%i rnd_%%i.bin
 if not exist rnd_1.bin for /l %%i in (1,1,9) do    random_data %%i rnd_%%i.bin
-if not exist random.bin random_data 8300
-if not exist random_and_text.mix copy /b random.bin+*.txt random_and_text.mix
+if not exist rand_alpha.txt random_data 77777 rand_alpha.txt 65 90
+rem We generate a "large" random file (will take more than 1 Deflate block in random_and_text.mix)
+if not exist random.bin random_data 66666
+if not exist random_and_text.mix copy /b random.bin+*.txt+..\doc\*.txt random_and_text.mix
 if exist test_rz.ReZip.html del test_rz.ReZip.html
 
 set files=*.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin *.xls
