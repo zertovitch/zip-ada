@@ -1,4 +1,11 @@
+--  This is a HAC script *and* an Ada program (your choice).
+--
+--  The HAX command-line tool can be built from the project HAC @
+--    https://hacadacompiler.sourceforge.io/ ,
+--    https://github.com/zertovitch/hac
+
 with HAC_Pack;  use HAC_Pack;
+--  NB: the "full Ada" package for HAC_Pack is in /src in the HAC project
 
 procedure Test_RZ is
 
@@ -21,9 +28,6 @@ begin
   New_Line;
   Put_Line ("Usage: hax test_rz.adb [ReZip options]");
   New_Line;
-  --  The HAX command-line tool can be built from the project HAC @
-  --    https://hacadacompiler.sourceforge.io/ ,
-  --    https://github.com/zertovitch/hac
 
   --  Create an archive with default compression method (fast).
   r := Shell_Execute (+".." & Directory_Separator & 
