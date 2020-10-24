@@ -9,5 +9,8 @@ copy /b extras\lib*.a obj_opt
 
 :skip_md
 
-set gnatoptions_87312863=Fast
-call make_za %1
+rem  The HAX command-line tool can be built from the project HAC @
+rem    https://hacadacompiler.sourceforge.io/ ,
+rem    https://github.com/zertovitch/hac
+
+hax make_za.adb Fast

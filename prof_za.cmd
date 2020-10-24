@@ -9,7 +9,10 @@ copy /b extras\lib*.a obj_pro
 
 :skip_md
 
-set gnatoptions_87312863=Profiling
-call make_za %1
+rem  The HAX command-line tool can be built from the project HAC @
+rem    https://hacadacompiler.sourceforge.io/ ,
+rem    https://github.com/zertovitch/hac
+
+hax make_za.adb Profiling
 
 echo run unzipada, then type "gprof unzipada.exe".
