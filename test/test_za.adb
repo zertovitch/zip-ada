@@ -13,10 +13,11 @@ procedure Test_ZA is
 
   fails, successes, zipada_used : Natural := 0;
 
+  files : VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls *.au";
+
   procedure Process_Archive (command, archive : VString; action : Action_Type) is
     full_name : VString := archive & ".zip";
     ref_archive : VString := +"test_zash";
-    files : VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls *.au";
     --  Orig. set: *.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin *.xls
     r : Integer;
   begin
@@ -76,7 +77,7 @@ procedure Test_ZA is
   procedure Create_List is
     log_name : VString := "test_za_" & Nice_Date (True) & ".log";
     all_zips : VString :=
-      +"test_za??.zip test_iz??.zip test_kzip.zip test_7z_?.zip test_zopf.zip";
+      +"test_za??.zip test_iz??.zip test_7z_?.* test_kzip.zip test_zopf.zip";
     r : Integer;
   begin
     if Index (Get_Env ("OS"), "Windows") > 0 then
@@ -134,7 +135,7 @@ begin
       Process_Archive (+".." & Directory_Separator & "zipada -er2", +"test_zar2", action);
       Process_Archive (+".." & Directory_Separator & "zipada -er3", +"test_zar3", action);
       Process_Archive (+".." & Directory_Separator & "zipada -er4", +"test_zar4", action);
-    end if;           
+    end if;
     Process_Archive   (+".." & Directory_Separator & "zipada -esh", +"test_zash", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -edf", +"test_zadf", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -ed1", +"test_zad1", action);
@@ -158,8 +159,10 @@ begin
     end if;
     New_Line;
   end loop;
+  --  LZMA, with a "solid" (=files not compressed individually)
+  --  archive container, the .7z archive format.
+  r := Shell_Execute  (+"7z a -mx=9 test_7z_l.7z " & files);
   Create_List;
-  New_Line;
   Put_Line ("Archive comparisons:");
   Put_Line (+"   " & successes & " successes");
   Put_Line (+"   " & fails & " failures");

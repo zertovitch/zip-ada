@@ -686,8 +686,8 @@ package body LZMA.Encoding is
         dlc : MProb := Strict_DL_code (distance, length - 1, sim_state, pos_state) * Malus_DL_short_len;
       begin
         if recursion > 0 and then length > Min_match_length + 1 then
-          --  The "DL + Lit" optimization will be done recursively "in real",
-          --  we can do it as well in the simulation.
+          --  Since the "DL then Literal" optimization will be done recursively "in real", we can
+          --  do it as well in the simulation, for getting a more accurate probability estimate.
           dlc := MProb'Max (dlc,
             Malus_DL_then_lit * DL_code_then_Literal (distance, length - 1, recursion - 1));
         end if;
@@ -971,36 +971,38 @@ package body LZMA.Encoding is
       end Compute_dlc_variants;
       sim_pos_state : Pos_state_range;
     begin
-      --  Distance-Length code of small length.
-      --  It may be better just to expand it as plain literals, fully or partially.
       if (not quick) and then length <= short and then distance >= length then
-        --  Consider shorten the DL code's length
+        --  Distance-Length (DL) code has a small length.
+        --  It may be better just to expand it as plain literals, fully or partially.
+        --  We consider shortening the DL code's length.
         if length > Min_match_length then
           b_head   := Text_Buf (Copy_start and Text_Buf_Mask);
           b_match  := Text_Buf ((R - rep_dist (0) - 1) and Text_Buf_Mask);
           head_lit := Any_literal (b_head, b_match, prev_byte, state, 0);
-          --  Literal + shorter DL (naive approach)
+          --  One literal, then a shorter DL code, case #1:
+          --  naive approach: we spot a super-probable literal.
           if head_lit >= Predicted.Lit_then_DL_threshold then
             LZ77_emits_literal_byte (b_head);
-            LZ77_emits_DL_code (distance, length - 1);
+            LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
           end if;
           Compute_dlc_variants;
-          --  Literal + shorter DL
+          --  One literal, then a shorter DL code, case #2:
+          --  we estimate the shorter DL code's probability.
           sim_pos_state := Pos_state_range (UInt32 (total_pos + 1) and pos_bits_mask);
           dlc_after_lit := Predicted.Strict_DL_code (distance, length - 1, Update_State_Literal (state), sim_pos_state);
           if head_lit * dlc_after_lit * Predicted.Malus_lit_then_DL > any_dlc then
             LZ77_emits_literal_byte (b_head);
-            LZ77_emits_DL_code (distance, length - 1);
+            LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
           end if;
-          --  Shorter DL + literal
+          --  We consider sending a shorter DL code, then a literal.
           dl_then_lit :=
             Predicted.DL_code_then_Literal (distance, length, 1) *
             Predicted.Malus_DL_then_lit;
           if dl_then_lit > any_dlc then
             b_tail := Text_Buf ((Copy_start + UInt32 (length - 1)) and Text_Buf_Mask);
-            LZ77_emits_DL_code (distance, length - 1);
+            LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             LZ77_emits_literal_byte (b_tail);
             return;
           end if;
@@ -1008,14 +1010,15 @@ package body LZMA.Encoding is
         --
         Compute_dlc_variants;
         if expanded_dlc > strict_dlc then
-          --  Full expansion of DL code as literals
+          --  Here we prefer a full expansion of DL code as literals.
           for x in 1 .. length loop
             LZ77_emits_literal_byte (Text_Buf ((Copy_start + UInt32 (x - 1)) and Text_Buf_Mask));
           end loop;
           return;
         end if;
       end if;
-      --  Go for the DL code, stricto sensu.
+      --  At this point, we go for sending the plain DL
+      --  code as instructed by the LZ77 algorithm.
       Encode_Bit (probs.switch.match (state, pos_state), DL_code_choice);
       for i in rep_dist'Range loop
         if dist_ip = rep_dist (i) then
