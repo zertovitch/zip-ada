@@ -30,28 +30,73 @@ procedure Test_ZA is
           zipada_used := zipada_used + 1;
         end if;
       when Compare =>
-        r := Shell_Execute (+".." & Directory_Separator & 
-                            "comp_zip " & ref_archive & " " & archive & " -q3");
-        if r = 0 then
-          successes := successes + 1;
-        else
-          fails := fails + 1;
+        if archive /= ref_archive then
+          r := Shell_Execute (+".." & Directory_Separator & 
+                              "comp_zip " & ref_archive & " " & archive & " -q3");
+          if r = 0 then
+            successes := successes + 1;
+          else
+            fails := fails + 1;
+          end if;
         end if;
     end case;
   end Process_Archive;
 
-  slow : Boolean := False;
-  full : Boolean := False;
+  function Nice_Date (with_intraday : Boolean) return VString is
+    t1 : constant Time := Clock;
+    day_secs, day_mins : Integer;
+    just_day : VString;
+    --
+    function Two_Digits (x : Integer) return VString is
+    begin
+      if x < 10 then
+        return "0" & Image (x);
+      else
+        return Image (x);
+      end if;
+    end Two_Digits;
+    --
+  begin
+    day_secs := Integer (Seconds (t1));
+    day_mins := day_secs / 60;
+    just_day := +"" &  --  VString concatenation
+      Year (t1)  & '-' &
+      Two_Digits (Month (t1)) & '-' &
+      Two_Digits (Day (t1));
+    if with_intraday then
+      return just_day & "--" &
+      Two_Digits (day_mins / 60) & '-' &
+      Two_Digits (day_mins mod 60) & '-' &
+      Two_Digits (day_secs mod 60);
+    else
+      return just_day;
+    end if;
+  end Nice_Date;
+
+  procedure Create_List is
+    log_name : VString := "test_za_" & Nice_Date (True) & ".log";
+    all_zips : VString :=
+      +"test_za??.zip test_iz??.zip test_kzip.zip test_7z_?.zip test_zopf.zip";
+    r : Integer;
+  begin
+    if Index (Get_Env ("OS"), "Windows") > 0 then
+      r := Shell_Execute (+"dir /OS " & all_zips & " |find "".zip"" >" & log_name);
+    else
+      r := Shell_Execute (+"ls -lrS " & all_zips & '>' & log_name);
+    end if;
+  end Create_List;
+
+  slow, full : Boolean := False;
   r : Integer;
 
 begin
   Put_Line ("Testing the ZipAda tool.");
   New_Line;
-  Put_Line ("A call to Comp_Zip is done to compare archives.");
+  Put_Line ("Calls to Comp_Zip are done to compare archives.");
   New_Line;
   Put_Line ("Usage: hax test_za.adb [option]");
   New_Line;
-  Put_Line ("  Options: slow : test some exotic / slow formats");
+  Put_Line ("  Options: slow : test some exotic / slow formats in Zip-Ada");
   Put_Line ("           full : all zippers, including very slow ones");
   New_Line;
   if Argument_Count > 0 then
@@ -111,11 +156,13 @@ begin
       Process_Archive (+"kzip",                                     +"test_kzip", action);
       Process_Archive (+"advzip -a -4",                             +"test_zopf", action);
     end if;
+    New_Line;
   end loop;
+  Create_List;
   New_Line;
   Put_Line ("Archive comparisons:");
   Put_Line (+"   " & successes & " successes");
   Put_Line (+"   " & fails & " failures");
   New_Line;
-  Put_Line (+"" & (zipada_used + 1) & " different methods of ZipAda tested.");
+  Put_Line (+"" & zipada_used & " different methods of ZipAda tested.");
 end Test_ZA;
