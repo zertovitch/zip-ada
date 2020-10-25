@@ -94,6 +94,7 @@ procedure ReZip is
   touch, lower, del_comment, compare, internal : Boolean := False;
   rand_stable : Positive := 1;
   format_choice : Zip_format_set := all_formats;
+  total_differences : Natural;
 
 begin
   Blurb;
@@ -158,7 +159,10 @@ begin
         if compare then
           Zip.Load (info_original_zip, arg_zip);
           Zip.Load (info_rezipped_zip, arg_rezip);
-          Comp_Zip_Prc (info_original_zip, info_rezipped_zip, 0);
+          Comp_Zip_Prc (
+            info_original_zip, info_rezipped_zip,
+            quiet => 2,
+            total_differences => total_differences);
         end if;
       else
         Ada.Text_IO.Put_Line ("  ** Error: archive not found: " & arg_zip);

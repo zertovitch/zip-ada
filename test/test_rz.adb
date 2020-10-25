@@ -38,8 +38,8 @@ begin
                       "rezip -int " & Gather_Arguments & " test_rz");
 
   --  Show recompression report.
-  r := Shell_Execute ("firefox test_rz.ReZip.html");
-  r := Shell_Execute ("start   test_rz.ReZip.html");
+  r := Shell_Execute ("firefox test_rz.ReZip.html");  --  Linux
+  r := Shell_Execute ("start   test_rz.ReZip.html");  --  Windows
 
   --  Compare before vs. after.
   r := Shell_Execute (+".." & Directory_Separator & 

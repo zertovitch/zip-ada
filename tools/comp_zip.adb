@@ -27,6 +27,7 @@ procedure Comp_Zip is
 
   quiet    : Natural := 0;
   password : Unbounded_String;
+  total_differences : Natural;
 
   procedure Blurb is
   begin
@@ -44,6 +45,8 @@ begin
     New_Line;
     Put_Line ("Options: -q1   : (quiet level 1): summary only");
     Put_Line ("         -q2   : (quiet level 2): shorter summary only");
+    Put_Line ("         -q3   : (quiet level 3): 1 line per archive");
+    Put_Line ("         -q4   : (quiet level 4): no console output, only error code");
     Put_Line ("         -pPwd : define a password for decryption (e.g. ""Pwd"")");
     return;
   end if;
@@ -74,6 +77,7 @@ begin
   if quiet = 0 then
     Blurb;
   end if;
-  Comp_Zip_Prc (z (1), z (2), quiet, To_String (password));
+  Comp_Zip_Prc (z (1), z (2), quiet, To_String (password), total_differences);
+  Set_Exit_Status (Exit_Status (total_differences));
   --
 end Comp_Zip;

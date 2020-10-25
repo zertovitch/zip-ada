@@ -11,10 +11,12 @@ procedure Test_ZA is
 
   type Action_Type is (Create, Compare);
 
+  fails, successes, zipada_used : Natural := 0;
+
   procedure Process_Archive (command, archive : VString; action : Action_Type) is
     full_name : VString := archive & ".zip";
     ref_archive : VString := +"test_zash";
-    files : VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls";
+    files : VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls *.au";
     --  Orig. set: *.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin *.xls
     r : Integer;
   begin
@@ -24,10 +26,17 @@ procedure Test_ZA is
           Delete_File (full_name);
         end if; 
         r := Shell_Execute (command & ' ' & full_name & ' ' & files);
+        if Index (command, "zipada") > 0 then
+          zipada_used := zipada_used + 1;
+        end if;
       when Compare =>
         r := Shell_Execute (+".." & Directory_Separator & 
-                            "comp_zip " & ref_archive & " " & archive & " -q2");
-        --  !!  To do: comp_zip should set a code if comparison fails.
+                            "comp_zip " & ref_archive & " " & archive & " -q3");
+        if r = 0 then
+          successes := successes + 1;
+        else
+          fails := fails + 1;
+        end if;
     end case;
   end Process_Archive;
 
@@ -75,9 +84,7 @@ begin
   --
   for action in Action_Type loop
     if slow then
-      --
       --  If you need a coffee now, it's the right time to have one or two...
-      --
       Process_Archive (+".." & Directory_Separator & "zipada -er1", +"test_zar1", action);
       Process_Archive (+".." & Directory_Separator & "zipada -er2", +"test_zar2", action);
       Process_Archive (+".." & Directory_Separator & "zipada -er3", +"test_zar3", action);
@@ -100,11 +107,15 @@ begin
     Process_Archive   (+"7z a -tzip -mx=9 -mm=deflate  ",           +"test_7z_d", action);
     Process_Archive   (+"7z a -tzip -mx=9 -mm=LZMA     ",           +"test_7z_l", action);
     if full then
-      --
       --  Now, a good lunch is recommended...
-      --
       Process_Archive (+"kzip",                                     +"test_kzip", action);
       Process_Archive (+"advzip -a -4",                             +"test_zopf", action);
     end if;
   end loop;
+  New_Line;
+  Put_Line ("Archive comparisons:");
+  Put_Line (+"   " & successes & " successes");
+  Put_Line (+"   " & fails & " failures");
+  New_Line;
+  Put_Line (+"" & (zipada_used + 1) & " different methods of ZipAda tested.");
 end Test_ZA;

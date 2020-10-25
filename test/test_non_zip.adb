@@ -103,6 +103,8 @@ procedure Test_non_zip is
     Add_File (info (lzma_scheme), temp_decoded, Name_in_archive => fn);
   end Test_LZMA;
 
+  total_differences : Natural;
+
 begin
   if Argument_Count = 0 then
     Put_Line ("Test_non_zip: test raw compression schemes on many files");
@@ -134,7 +136,7 @@ begin
     Finish (info (r));
     Zip.Load (zi (r), "$nz" & Raw_scheme'Image (r) & ".zip");
     if r > no_compression then
-      Comp_Zip_Prc (zi (no_compression), zi (r), quiet => 0);
+      Comp_Zip_Prc (zi (no_compression), zi (r), quiet => 0, total_differences => total_differences);
     end if;
   end loop;
   --

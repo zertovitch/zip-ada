@@ -1,7 +1,8 @@
 ------------------------------------------------------------------------------
 --  File:            Comp_Zip_Prc.adb
---  Description:     A zip comparison tool using Zip-Ada lib.
---                   Demonstrates the new Zip.Traverse procedure
+--  Description:     A Zip comparison tool using Zip-Ada lib.
+--                   Demonstrates the Zip.Traverse procedure.
+--                   See Comp_Zip for a command-line tool using it.
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -13,7 +14,13 @@ with Interfaces;                        use Interfaces;
 with Zip;
 with UnZip.Streams;                     use UnZip.Streams;
 
-procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : String := "") is
+procedure Comp_Zip_Prc (
+  z1, z2            :     Zip.Zip_info;
+  quiet             :     Natural;
+  password          :     String := "";
+  total_differences : out Natural
+)
+is
   z : array (1 .. 2) of Zip.Zip_info;
   total_1,
   total_2,
@@ -22,8 +29,7 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
   compare_failures,
   missing_1_in_2,
   just_a_directory,
-  missing_2_in_1,
-  total_errors : Natural := 0;
+  missing_2_in_1 : Natural := 0;
   total_bytes : Integer_64 := 0;
 
   procedure Compare_1_file (file_name : String) is
@@ -132,7 +138,9 @@ procedure Comp_Zip_Prc (z1, z2 : Zip.Zip_info; quiet : Natural; password : Strin
 begin
   z (1) := z1;
   z (2) := z2;
-  Put_Line ("* Comparing [" & Zip.Zip_name (z (1)) & "] and [" & Zip.Zip_name (z (2)) & "]");
+  if quiet <= 3 then
+    Put ("* Comparing [" & Zip.Zip_name (z (1)) & "] and [" & Zip.Zip_name (z (2)) & ']');
+  end if;
   Compare_all_files (z (1));
   total_2 := Zip.Entries (z (2));
   common := total_1 - missing_1_in_2;
@@ -143,32 +151,44 @@ begin
     Put_Line ("  Total files compared: " & Natural'Image (common));
     Put_Line ("  Total of correct bytes: " & Integer_64'Image (total_bytes));
   end if;
-  Put_Line ("* === Comparison summary ===");
-  Put (err_str, size_failures);
-  Put_Line ("    Size failures . . . . . . . . . . . :" & err_str);
-  Put (err_str, compare_failures);
-  Put_Line ("    Content comparison failures . . . . :" & err_str);
-  Put (err_str, missing_1_in_2);
-  Put ("    Files of 1st archive missing in 2nd :" & err_str);
-
-  if just_a_directory > 0 then
-    Put_Line (" (" & Integer'Image (just_a_directory) & " useless dir. names)");
-  else
-    New_Line;
-  end if;
-
   missing_2_in_1 := total_2 - common;
   --  t2 - m21 = t1 - m12 = # common files
-  Put (err_str, missing_2_in_1);
-  for i in err_str'Range loop
-    if err_str (i) = ' ' then err_str (i) := '_'; end if;
-  end loop;
-  Put_Line ("  __Files of 2nd archive missing in 1st :" & err_str & "__");
-
-  total_errors :=
+  total_differences :=
      size_failures + compare_failures +
      missing_1_in_2 + missing_2_in_1;
-
-  Put (err_str, total_errors);
-  Put_Line ("  Total of errors . . . . . . . . . . . :" & err_str);
+  case quiet is
+    when 0 .. 2 =>
+      New_Line;
+      Put_Line ("* === Comparison summary ===");
+      Put (err_str, size_failures);
+      Put_Line ("    Size failures . . . . . . . . . . . :" & err_str);
+      Put (err_str, compare_failures);
+      Put_Line ("    Content comparison failures . . . . :" & err_str);
+      Put (err_str, missing_1_in_2);
+      Put ("    Files of 1st archive missing in 2nd :" & err_str);
+      --
+      if just_a_directory > 0 then
+        Put_Line (" (" & Integer'Image (just_a_directory) & " useless dir. names)");
+      else
+        New_Line;
+      end if;
+      --
+      Put (err_str, missing_2_in_1);
+      for i in err_str'Range loop
+        if err_str (i) = ' ' then err_str (i) := '_'; end if;
+      end loop;
+      Put_Line ("  __Files of 2nd archive missing in 1st :" & err_str & "__");
+      --
+      Put (err_str, total_differences);
+      Put_Line ("  Total of errors . . . . . . . . . . . :" & err_str);
+    when 3 =>
+      if total_differences = 0 then
+        Put_Line (" OK");
+      else
+        Put (err_str, total_differences);
+        Put_Line (" Differences:" & err_str);
+      end if;
+    when others =>
+      null;
+  end case;
 end Comp_Zip_Prc;
