@@ -17,7 +17,7 @@ procedure Test_ZA is
 
   procedure Process_Archive (command, archive : VString; action : Action_Type) is
     full_name : VString := archive & ".zip";
-    ref_archive : VString := +"test_zash";
+    ref_archive : VString := +"$mth_zash";
     --  Orig. set: *.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin *.xls
     r : Integer;
   begin
@@ -42,6 +42,15 @@ procedure Test_ZA is
         end if;
     end case;
   end Process_Archive;
+
+  procedure Smuggle (other_dir, file_name: VString) is
+    copy_name : VString := "$_" & file_name;
+    other_path : VString := +".." & Directory_Separator & other_dir & Directory_Separator & file_name;
+  begin
+    if not Exists (copy_name) then
+      Copy_File (other_path, copy_name);
+    end if;
+  end Smuggle;
 
   function Nice_Date (with_intraday : Boolean) return VString is
     t1 : constant Time := Clock;
@@ -76,12 +85,11 @@ procedure Test_ZA is
 
   procedure Create_List is
     log_name : VString := "test_za_" & Nice_Date (True) & ".log";
-    all_zips : VString :=
-      +"test_za??.zip test_iz??.zip test_7z_?.* test_kzip.zip test_zopf.zip";
+    all_zips : VString := +"$mth_*";
     r : Integer;
   begin
     if Index (Get_Env ("OS"), "Windows") > 0 then
-      r := Shell_Execute (+"dir /OS " & all_zips & " |find "".zip"" >" & log_name);
+      r := Shell_Execute (+"dir /OS " & all_zips & " |find ""$mth"" >" & log_name);
     else
       r := Shell_Execute (+"ls -lrS " & all_zips & '>' & log_name);
     end if;
@@ -105,63 +113,75 @@ begin
     slow := full or (Argument (1) = "slow");
   end if;
   --  Have badly compressible files
-  if not Exists ("rnd_0.bin") then
+  if not Exists ("$rnd_0.bin") then
     for i in 0 .. 10 loop
-      r := Shell_Execute (+".." & Directory_Separator & "random_data " & i*10 & " rnd_" & i*10 & ".bin");
+      r := Shell_Execute (+".." & Directory_Separator & "random_data " & i*10 & " $rnd_" & i*10 & ".bin");
     end loop;
     for i in 1 .. 9 loop
-      r := Shell_Execute (+".." & Directory_Separator & "random_data " & i & " rnd_" & i & ".bin");
+      r := Shell_Execute (+".." & Directory_Separator & "random_data " & i & " $rnd_" & i & ".bin");
     end loop;
   end if;
-  if not Exists ("rand_alpha.txt") then
-    r := Shell_Execute (+".." & Directory_Separator & "random_data 77777 rand_alpha.txt 65 90");
+  if not Exists ("$rand_alpha.txt") then
+    r := Shell_Execute (+".." & Directory_Separator & "random_data 77777 $rand_alpha.txt 65 90");
   end if;
   --  We generate a "large" random file (will take more than 1 Deflate block in random_and_text.mix)
-  if not Exists ("random.bin") then
+  if not Exists ("$random.bin") then
     r := Shell_Execute (+".." & Directory_Separator & "random_data 66666");
   end if;
   --  if not exist random_and_text.mix copy /b random.bin+*.txt+..\doc\*.txt random_and_text.mix
-  if not Exists ("za_work_copy.xls") then
-     Copy_File (
-       +".." & Directory_Separator & "doc" & Directory_Separator & "za_work.xls",
-       "za_work_copy.xls"
-     );
-  end if;
+  --
+  --  Smuggle some files from the project as test files
+  --
+  Smuggle (+"doc",     +"za_work.xls");
+  Smuggle (+"doc",     +"appnote.txt");
+  Smuggle (+"doc",     +"lzma-specification.txt");
+  Smuggle (+"doc",     +"za_history.txt");
+  Smuggle (+"doc",     +"za_todo.txt");
+  Smuggle (+"doc",     +"za_fosdem_2019.pdf");
+  Smuggle (+"zip_lib", +"lz77.adb");
+  Smuggle (+"zip_lib", +"unzip-decompress.adb");
+  Smuggle (+"zip_lib", +"zip-compress-deflate.adb");
+  Smuggle (+"zip_lib", +"lzma-encoding.adb");
   --
   for action in Action_Type loop
     if slow then
       --  If you need a coffee now, it's the right time to have one or two...
-      Process_Archive (+".." & Directory_Separator & "zipada -er1", +"test_zar1", action);
-      Process_Archive (+".." & Directory_Separator & "zipada -er2", +"test_zar2", action);
-      Process_Archive (+".." & Directory_Separator & "zipada -er3", +"test_zar3", action);
-      Process_Archive (+".." & Directory_Separator & "zipada -er4", +"test_zar4", action);
+      Process_Archive (+".." & Directory_Separator & "zipada -er1", +"$mth_zar1", action);
+      Process_Archive (+".." & Directory_Separator & "zipada -er2", +"$mth_zar2", action);
+      Process_Archive (+".." & Directory_Separator & "zipada -er3", +"$mth_zar3", action);
+      Process_Archive (+".." & Directory_Separator & "zipada -er4", +"$mth_zar4", action);
     end if;
-    Process_Archive   (+".." & Directory_Separator & "zipada -esh", +"test_zash", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -edf", +"test_zadf", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -ed1", +"test_zad1", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -ed2", +"test_zad2", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -ed3", +"test_zad3", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -el1", +"test_zal1", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -el2", +"test_zal2", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -el3", +"test_zal3", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -ep1", +"test_zap1", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -ep2", +"test_zap2", action);
-    Process_Archive   (+"zip           -1              ",           +"test_izd1", action);
-    Process_Archive   (+"zip           -6              ",           +"test_izd6", action);
-    Process_Archive   (+"zip           -9              ",           +"test_izd9", action);
-    Process_Archive   (+"zip           -9 -Z bzip2     ",           +"test_izb9", action);
-    Process_Archive   (+"7z a -tzip -mx=9 -mm=deflate  ",           +"test_7z_d", action);
-    Process_Archive   (+"7z a -tzip -mx=9 -mm=LZMA     ",           +"test_7z_l", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -esh", +"$mth_zash", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -edf", +"$mth_zadf", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -ed1", +"$mth_zad1", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -ed2", +"$mth_zad2", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -ed3", +"$mth_zad3", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -el1", +"$mth_zal1", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -el2", +"$mth_zal2", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -el3", +"$mth_zal3", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -ep1", +"$mth_zap1", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -ep2", +"$mth_zap2", action);
+    Process_Archive   (+"zip           -1              ",           +"$mth_izd1", action);
+    Process_Archive   (+"zip           -6              ",           +"$mth_izd6", action);
+    Process_Archive   (+"zip           -9              ",           +"$mth_izd9", action);
+    Process_Archive   (+"zip           -9 -Z bzip2     ",           +"$mth_izb9", action);
+    Process_Archive   (+"7z a -tzip -mx=9 -mm=deflate  ",           +"$mth_7z_d", action);
+    Process_Archive   (+"7z a -tzip -mx=9 -mm=LZMA     ",           +"$mth_7z_l", action);
     if full then
       --  Now, a good lunch is recommended...
-      Process_Archive (+"kzip",                                     +"test_kzip", action);
-      Process_Archive (+"advzip -a -4",                             +"test_zopf", action);
+      Process_Archive (+"kzip",                                     +"$mth_kzip", action);
+      Process_Archive (+"advzip -a -4",                             +"$mth_zopf", action);
+    end if;
+    if action = Create then
+      --  LZMA, with a "solid" (=files not compressed individually)
+      --  archive container, the .7z archive format.
+      if Exists ("$mth_7z_l.7z") then
+        Delete_File ("$mth_7z_l.7z");
+      end if; 
+      r := Shell_Execute  (+"7z a -mx=9 $mth_7z_l.7z " & files);
     end if;
     New_Line;
   end loop;
-  --  LZMA, with a "solid" (=files not compressed individually)
-  --  archive container, the .7z archive format.
-  r := Shell_Execute  (+"7z a -mx=9 test_7z_l.7z " & files);
   Create_List;
   Put_Line ("Archive comparisons:");
   Put_Line (+"   " & successes & " successes");
