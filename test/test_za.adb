@@ -121,12 +121,13 @@ begin
       r := Shell_Execute (+".." & Directory_Separator & "random_data " & i & " $rnd_" & i & ".bin");
     end loop;
   end if;
+  --  We generate a "large" random file with restricted literal range ('A' .. 'Z').
   if not Exists ("$rand_alpha.txt") then
     r := Shell_Execute (+".." & Directory_Separator & "random_data 77777 $rand_alpha.txt 65 90");
   end if;
   --  We generate a "large" random file (will take more than 1 Deflate block in random_and_text.mix)
   if not Exists ("$random.bin") then
-    r := Shell_Execute (+".." & Directory_Separator & "random_data 66666");
+    r := Shell_Execute (+".." & Directory_Separator & "random_data 66666 $random.bin");
   end if;
   --  if not exist random_and_text.mix copy /b random.bin+*.txt+..\doc\*.txt random_and_text.mix
   --

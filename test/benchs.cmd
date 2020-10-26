@@ -1,22 +1,23 @@
 @echo off
 
-del benchs.log
+if exist benchs.log del benchs.log
 
 rem ***********************************************
 rem *** Classic lossless compression benchmarks ***
 rem ***********************************************
 
-rem Some classic corpora from latest millennium
-start /min /low bench calGAry %1
+rem Some vintage corpora from latest millennium
+rem https://corpus.canterbury.ac.nz/descriptions/
+start /min /low bench calGAry  %1
 start /min /low bench caNTrBry %1
 
-rem The 100 Million first signs of Wikipedia at some date in 2006
-rem https://cs.fit.edu/~mmahoney/compression/textdata.html
-rem http://cs.fit.edu/~mmahoney/compression/enwik8.zip
-rem http://download.wikipedia.org/enwiki/20060303/enwiki-20060303-pages-articles.xml.bz2
-start /min /low bench enwik8 %1
-
+rem Silesia corpus (~2003)
+rem http://sun.aei.polsl.pl/~sdeor/index.php?page=silesia
 start /min /low bench silesia %1
+
+rem The 100 Million first signs of Wikipedia at some date in 2006
+rem http://mattmahoney.net/dc/textdata.html
+start /min /low bench enwik8 %1
 
 rem **********************
 rem *** Our benchmarks ***
