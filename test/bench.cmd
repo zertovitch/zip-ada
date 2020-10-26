@@ -13,10 +13,11 @@ if not exist bench_%1.zip goto fin
 mkdir %1
 cd %1
 unzipada ..\bench_%1.zip
+cd ..
 
 :installed
 
-REM del bench_%1_*.zip
+del bench_%1_*.zip
 
 cd %1
 

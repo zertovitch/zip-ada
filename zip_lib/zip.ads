@@ -404,7 +404,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String := "57";
-  reference : constant String := "22-Oct-2020";
+  reference : constant String := "26-Oct-2020";
   web       : constant String := "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 

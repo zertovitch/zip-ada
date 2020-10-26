@@ -215,12 +215,12 @@ package body LZMA.Encoding is
        Level_3   => LZ77.BT4);
 
     Min_length : constant array (Compression_level) of Positive :=
-      (Level_1 | Level_2  => 3,    --  Deflate's Value
-       others             => 2);
+      (Level_1 | Level_2  => 3,     --  Deflate's minimum value
+       others             => 2);    --  LZMA's minimum value
 
     Max_length : constant array (Compression_level) of Positive :=
-      (Level_1 | Level_2  => 258,  --  Deflate's Value
-       others             => 273);
+      (Level_1 | Level_2  => 258,   --  Deflate's maximum value
+       others             => 273);  --  LZMA's maximum value
 
     --  String_buffer_size: the actual dictionary size used.
     String_buffer_size : constant array (Compression_level) of Positive :=
@@ -306,8 +306,8 @@ package body LZMA.Encoding is
     --  Purpose: estimate probabilities of different alternative
     --  encodings, in order to choose the most probable encoding.
     --  Note that the LZMA encoder is already very efficient by
-    --  taking the obvious choices and ignoring this package
-    --  and its uses (see occurrences of the constant named "quick").
+    --  taking the obvious choices. It is possible to ignore this
+    --  package and its uses (see occurrences of "compare_variants").
     --
     --  In the following probability computations, we assume independent
     --  (multiplicative) probabilities, just like the range encoder does
@@ -770,7 +770,14 @@ package body LZMA.Encoding is
     end Write_Literal_Matched;
 
     use type Estimates.MProb;
-    quick : constant Boolean := level <= Level_1;
+
+    type Variants_Comparison_Choice is
+      (
+        None,    --  "Mechanical" encoding, straight from the LZ77 algorithm.
+        Simple   --  Compare alternative encodings and choose the most probable.
+      );
+
+    compare_variants : Variants_Comparison_Choice;
 
     procedure LZ77_emits_literal_byte (b : Byte) is
       pb_lit_idx : constant Integer := Idx_for_Literal_prob (total_pos, prev_byte);
@@ -778,7 +785,7 @@ package body LZMA.Encoding is
     begin
       if b = b_match and then total_pos > Data_Bytes_Count (rep_dist (0) + 1)
         and then
-          (quick
+          (compare_variants = None
              or else
            Estimates.Short_Rep_Match (state, pos_state) >
            Estimates.Strict_Literal (b, b_match, probs.lit (pb_lit_idx .. probs.lit'Last), state, pos_state))
@@ -975,7 +982,7 @@ package body LZMA.Encoding is
       --
       sim_pos_state : Pos_state_range;
     begin
-      if (not quick) and then length <= Short_Length and then distance >= length then
+      if compare_variants >= Simple and then length <= Short_Length and then distance >= length then
         --  Distance-Length (DL) code has a small length.
         --  It may be better just to expand it as plain literals, fully or partially.
         --  We consider shortening the DL code's length.
@@ -1032,11 +1039,11 @@ package body LZMA.Encoding is
       end loop;
       if found_repeat >= rep_dist'First
         and then
-          (quick
+          (compare_variants = None
              or else
-           Repeat_Match (found_repeat, Unsigned (length))
+           Estimates.Repeat_Match (found_repeat, Unsigned (length))
            >=
-           Simple_Match (dist_ip, Unsigned (length)) *
+           Estimates.Simple_Match (dist_ip, Unsigned (length)) *
            Malus_simple_match_vs_rep
           )
       then
@@ -1092,6 +1099,12 @@ package body LZMA.Encoding is
     end Write_LZMA_header;
 
   begin
+    case level is
+      when Level_0 | Level_1 =>
+        compare_variants := None;
+      when Level_2 | Level_3 =>
+        compare_variants := Simple;
+    end case;
     Write_LZMA_header;
     My_LZ77;
     if params.has_end_mark then
