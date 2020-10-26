@@ -299,13 +299,15 @@ package body LZMA.Encoding is
 
     prev_byte : Byte := 0;
 
-    ------------------------
-    --  Package Predicted --
-    ------------------------
+    -------------------------
+    --  Package Estimates  --
+    -------------------------
     --
-    --  Purpose: compute predicted probabilities of different alternative encodings,
-    --  in order to choose the most probable. Note that the LZMA encoding is already very efficient
-    --  by taking the obvious choices and ignoring this package (see constant named "quick").
+    --  Purpose: estimate probabilities of different alternative
+    --  encodings, in order to choose the most probable encoding.
+    --  Note that the LZMA encoder is already very efficient by
+    --  taking the obvious choices and ignoring this package
+    --  and its uses (see occurrences of the constant named "quick").
     --
     --  In the following probability computations, we assume independent
     --  (multiplicative) probabilities, just like the range encoder does
@@ -315,7 +317,7 @@ package body LZMA.Encoding is
     --  predictions - e.g. if a Short Rep Match is chosen against a Literal, the context
     --  probabilities of the former will be increased instead of the latter.
 
-    package Predicted is
+    package Estimates is
       type MProb is new Long_Float range 0.0 .. 1.0;
       --
       function Strict_Literal (
@@ -363,15 +365,16 @@ package body LZMA.Encoding is
       --  Over the long run, it's better to let repeat matches happen.
       Malus_simple_match_vs_rep : constant := 0.55;
       --  DL code for short lengths may be unnecessary and replaced by fully expanded bytes.
+      Short_Length : constant := 18;
       Malus_DL_short_len : constant := 0.995;
       --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
       Lit_then_DL_threshold : constant := 0.875;   -- naive approach: literal's prob. only considered
       Malus_lit_then_DL     : constant := 0.0625;  -- full evaluation
       --
       Malus_DL_then_lit : constant := 0.125;
-    end Predicted;
+    end Estimates;
 
-    package body Predicted is
+    package body Estimates is
       To_Prob_Factor : constant MProb := 1.0 / MProb'Base (Probability_model_count);
 
       function To_Math (cp : CProb) return MProb is
@@ -730,7 +733,7 @@ package body LZMA.Encoding is
         return prob;
       end DL_code_then_Literal;
 
-    end Predicted;
+    end Estimates;
 
     -----------------------------------------------------------------------------------
     --  This part processes the case where LZ77 sends a literal (a plain text byte)  --
@@ -766,7 +769,7 @@ package body LZMA.Encoding is
       end loop;
     end Write_Literal_Matched;
 
-    use type Predicted.MProb;
+    use type Estimates.MProb;
     quick : constant Boolean := level <= Level_1;
 
     procedure LZ77_emits_literal_byte (b : Byte) is
@@ -777,8 +780,8 @@ package body LZMA.Encoding is
         and then
           (quick
              or else
-           Predicted.Short_Rep_Match (state, pos_state) >
-           Predicted.Strict_Literal (b, b_match, probs.lit (pb_lit_idx .. probs.lit'Last), state, pos_state))
+           Estimates.Short_Rep_Match (state, pos_state) >
+           Estimates.Strict_Literal (b, b_match, probs.lit (pb_lit_idx .. probs.lit'Last), state, pos_state))
       then
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
         --  case, and its cost (4 bits) is more affordable than the literal's cost.
@@ -954,24 +957,25 @@ package body LZMA.Encoding is
       Copy_start : constant UInt32 := (R - UInt32 (distance)) and Text_Buf_Mask;
       dist_ip : constant UInt32 := UInt32 (distance - 1);
       found_repeat : Integer := rep_dist'First - 1;
-      short : constant := 18;  --  tuned - magic number
-      use Predicted;
+      use Estimates;
       strict_dlc, expanded_dlc, any_dlc, dlc_after_lit, dl_then_lit, head_lit : MProb;
       b_head, b_match, b_tail : Byte;
       dlc_computed : Boolean := False;
+      --
       procedure Compute_dlc_variants is
       begin
         if not dlc_computed then
-          strict_dlc := Predicted.Strict_DL_code (distance, length, state, pos_state) *
-                        Predicted.Malus_DL_short_len;
-          expanded_dlc := Predicted.Expanded_DL_code (distance, length, strict_dlc);
+          strict_dlc := Strict_DL_code (distance, length, state, pos_state) *
+                        Malus_DL_short_len;
+          expanded_dlc := Expanded_DL_code (distance, length, strict_dlc);
           any_dlc := MProb'Max (strict_dlc, expanded_dlc);
           dlc_computed := True;
         end if;
       end Compute_dlc_variants;
+      --
       sim_pos_state : Pos_state_range;
     begin
-      if (not quick) and then length <= short and then distance >= length then
+      if (not quick) and then length <= Short_Length and then distance >= length then
         --  Distance-Length (DL) code has a small length.
         --  It may be better just to expand it as plain literals, fully or partially.
         --  We consider shortening the DL code's length.
@@ -981,7 +985,7 @@ package body LZMA.Encoding is
           head_lit := Any_literal (b_head, b_match, prev_byte, state, 0);
           --  One literal, then a shorter DL code, case #1:
           --  naive approach: we spot a super-probable literal.
-          if head_lit >= Predicted.Lit_then_DL_threshold then
+          if head_lit >= Lit_then_DL_threshold then
             LZ77_emits_literal_byte (b_head);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
@@ -990,16 +994,16 @@ package body LZMA.Encoding is
           --  One literal, then a shorter DL code, case #2:
           --  we estimate the shorter DL code's probability.
           sim_pos_state := Pos_state_range (UInt32 (total_pos + 1) and pos_bits_mask);
-          dlc_after_lit := Predicted.Strict_DL_code (distance, length - 1, Update_State_Literal (state), sim_pos_state);
-          if head_lit * dlc_after_lit * Predicted.Malus_lit_then_DL > any_dlc then
+          dlc_after_lit := Strict_DL_code (distance, length - 1, Update_State_Literal (state), sim_pos_state);
+          if head_lit * dlc_after_lit * Malus_lit_then_DL > any_dlc then
             LZ77_emits_literal_byte (b_head);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
           end if;
           --  We consider sending a shorter DL code, then a literal.
           dl_then_lit :=
-            Predicted.DL_code_then_Literal (distance, length, 1) *
-            Predicted.Malus_DL_then_lit;
+            DL_code_then_Literal (distance, length, 1) *
+            Malus_DL_then_lit;
           if dl_then_lit > any_dlc then
             b_tail := Text_Buf ((Copy_start + UInt32 (length - 1)) and Text_Buf_Mask);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
@@ -1030,9 +1034,11 @@ package body LZMA.Encoding is
         and then
           (quick
              or else
-           Predicted.Repeat_Match (found_repeat, Unsigned (length)) >=
-           Predicted.Simple_Match (dist_ip, Unsigned (length)) *
-           Predicted.Malus_simple_match_vs_rep)
+           Repeat_Match (found_repeat, Unsigned (length))
+           >=
+           Simple_Match (dist_ip, Unsigned (length)) *
+           Malus_simple_match_vs_rep
+          )
       then
         Write_Repeat_Match (found_repeat, Unsigned (length));
       else
