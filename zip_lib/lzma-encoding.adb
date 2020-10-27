@@ -365,7 +365,9 @@ package body LZMA.Encoding is
       --  Over the long run, it's better to let repeat matches happen.
       Malus_simple_match_vs_rep : constant := 0.55;
       --  DL code for short lengths may be unnecessary and replaced by fully expanded bytes.
-      Short_Length : constant := 18;
+      Short_Length : constant := 79;
+      --  ^ value 79 instead of 18 improves the 8 benchmarks in
+      --    doc/za_work.xls; optimal for silesia.
       Malus_DL_short_len : constant := 0.995;
       --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
       Lit_then_DL_threshold : constant := 0.875;   -- naive approach: literal's prob. only considered

@@ -59,9 +59,11 @@ rem   ### LZMA, external
 7z a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma_bt3 *
 7z a -tzip -mm=LZMA -mx9                        ../bench_%1_7zip_lzma_mx9 *
 
+rem   ### LZMA (Zip.Compress.LZMA_E)
+..\..\zipada -el1 ../bench_%1_lzma_1 *
+
 :skip
 rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
-..\..\zipada -el1 ../bench_%1_lzma_1 *
 ..\..\zipada -el2 ../bench_%1_lzma_2 *
 ..\..\zipada -el3 ../bench_%1_lzma_3 *
 ..\..\zipada -eps ../bench_%1_presel *
