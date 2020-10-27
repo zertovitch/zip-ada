@@ -13,11 +13,11 @@ procedure Test_ZA is
 
   fails, successes, zipada_used : Natural := 0;
 
-  files : VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls *.au";
+  files : constant VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls *.au";
 
   procedure Process_Archive (command, archive : VString; action : Action_Type) is
-    full_name : VString := archive & ".zip";
-    ref_archive : VString := +"$mth_zash";
+    full_name : constant VString := archive & ".zip";
+    ref_archive : constant VString := +"$mth_zash";
     --  Orig. set: *.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin *.xls
     r : Integer;
   begin
@@ -25,14 +25,14 @@ procedure Test_ZA is
       when Create =>
         if Exists (full_name) then
           Delete_File (full_name);
-        end if; 
+        end if;
         r := Shell_Execute (command & ' ' & full_name & ' ' & files);
         if Index (command, "zipada") > 0 then
           zipada_used := zipada_used + 1;
         end if;
       when Compare =>
         if archive /= ref_archive then
-          r := Shell_Execute (+".." & Directory_Separator & 
+          r := Shell_Execute (+".." & Directory_Separator &
                               "comp_zip " & ref_archive & " " & archive & " -q3");
           if r = 0 then
             successes := successes + 1;
@@ -44,8 +44,8 @@ procedure Test_ZA is
   end Process_Archive;
 
   procedure Smuggle (other_dir, file_name: VString) is
-    copy_name : VString := "$_" & file_name;
-    other_path : VString := +".." & Directory_Separator & other_dir & Directory_Separator & file_name;
+    copy_name : constant VString := "$_" & file_name;
+    other_path : constant VString := +".." & Directory_Separator & other_dir & Directory_Separator & file_name;
   begin
     if not Exists (copy_name) then
       Copy_File (other_path, copy_name);
@@ -84,8 +84,8 @@ procedure Test_ZA is
   end Nice_Date;
 
   procedure Create_List is
-    log_name : VString := "test_za_" & Nice_Date (True) & ".log";
-    all_zips : VString := +"$mth_*";
+    log_name : constant VString := "test_za_" & Nice_Date (True) & ".log";
+    all_zips : constant VString := +"$mth_*";
     r : Integer;
   begin
     if Index (Get_Env ("OS"), "Windows") > 0 then
@@ -178,7 +178,7 @@ begin
       --  archive container, the .7z archive format.
       if Exists ("$mth_7z_l.7z") then
         Delete_File ("$mth_7z_l.7z");
-      end if; 
+      end if;
       r := Shell_Execute  (+"7z a -mx=9 $mth_7z_l.7z " & files);
     end if;
     New_Line;

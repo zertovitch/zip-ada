@@ -30,11 +30,11 @@ begin
   New_Line;
 
   --  Create an archive with default compression method (fast).
-  r := Shell_Execute (+".." & Directory_Separator & 
+  r := Shell_Execute (+".." & Directory_Separator &
                       "zipada test_rz *.ad* *.txt *.cmd *.sh *.pgm *.ppm *.pdf *.db *.mdb *.xls *.au");
 
   --  Recompress the archive, with optional options...
-  r := Shell_Execute (+".." & Directory_Separator & 
+  r := Shell_Execute (+".." & Directory_Separator &
                       "rezip -int " & Gather_Arguments & " test_rz");
 
   --  Show recompression report.
@@ -42,7 +42,7 @@ begin
   r := Shell_Execute ("start   test_rz.ReZip.html");  --  Windows
 
   --  Compare before vs. after.
-  r := Shell_Execute (+".." & Directory_Separator & 
+  r := Shell_Execute (+".." & Directory_Separator &
                       "comp_zip test_rz test_rz.repacked -q2");
 
 end Test_RZ;

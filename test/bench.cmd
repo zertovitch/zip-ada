@@ -17,7 +17,8 @@ cd ..
 
 :installed
 
-del bench_%1_*.zip
+rem  Delete individual method-related archives
+if exist bench_%1_*.zip del bench_%1_*.zip
 
 cd %1
 
@@ -54,16 +55,16 @@ advzip -a -4 ../bench_%1_zopfli.zip *
 rem   ### BZip2
 zip -9 -Z bzip2 ../bench_%1_bzip2_9 *
 
-:skip
-rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
-call zipada -el1 ../bench_%1_lzma_1 *
-call zipada -el2 ../bench_%1_lzma_2 *
-call zipada -el3 ../bench_%1_lzma_3 *
-call zipada -eps ../bench_%1_presel *
-
 rem   ### LZMA, external
 7z a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma_bt3 *
 7z a -tzip -mm=LZMA -mx9                        ../bench_%1_7zip_lzma_mx9 *
+
+:skip
+rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
+..\..\zipada -el1 ../bench_%1_lzma_1 *
+..\..\zipada -el2 ../bench_%1_lzma_2 *
+..\..\zipada -el3 ../bench_%1_lzma_3 *
+..\..\zipada -eps ../bench_%1_presel *
 
 cd ..
 
@@ -83,7 +84,10 @@ echo ***************************************************************
 dir /OS- bench_%1_*.zip
 echo.>>benchs.log
 echo -- [%1] -- >>benchs.log
-del bench_%1_*.zip
+
+rem  Delete individual method-related archives
+if exist bench_%1_*.zip del bench_%1_*.zip
+
 unzip -v all_bench_%1.zip | find ".zip" | find "%%" | sort
 unzip -v all_bench_%1.zip | find ".zip" | find "%%" | sort>>benchs.log
 

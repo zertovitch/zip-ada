@@ -32,7 +32,7 @@ procedure Make_ZA is
 
   type OS_Kind is (Nixux, Windoze);
   k : OS_Kind;
-    
+
 begin
   if Index (Get_Env ("OS"), "Windows") > 0 then
     k := Windoze;
@@ -48,7 +48,7 @@ begin
     when Windoze =>
       gprbuild_options := gprbuild_options & " -largs -Xlinker --stack=0x2000000,0x20000";
   end case;
-  
+
   --  For Windows binary distribution with icons and Set_Modification_Time in UnZipAda:
   --
   --  -largs extras/zip_icons.rbj
