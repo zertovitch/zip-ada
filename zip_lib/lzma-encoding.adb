@@ -336,8 +336,19 @@ package body LZMA.Encoding is
         offset             : Data_Bytes_Count
       ) return MProb;
       --
-      function Repeat_Match (index_rm : Repeat_stack_range; length : Unsigned) return MProb;
-      function Simple_Match (distance : UInt32; length : Unsigned) return MProb;
+      function Repeat_Match (
+        index_rm  : Repeat_stack_range;
+        length    : Unsigned;
+        sim_state : State_range
+      )
+      return MProb;
+      --
+      function Simple_Match (
+        distance  : UInt32;
+        length    : Unsigned;
+        sim_state : State_range
+      )
+      return MProb;
       --  Strict_DL_code is either a Simple_Match or a Repeat_Match.
       function Strict_DL_code (
         distance      : Integer;
@@ -548,29 +559,41 @@ package body LZMA.Encoding is
         return res;
       end Simulate_Length;
 
-      function Repeat_Match (index_rm : Repeat_stack_range; length : Unsigned) return MProb is
-        res : MProb := Simulate_bit (probs.switch.rep (state), Rep_match_choice);
+      function Repeat_Match (
+        index_rm  : Repeat_stack_range;
+        length    : Unsigned;
+        sim_state : State_range
+      )
+      return MProb
+      is
+        res : MProb := Simulate_bit (probs.switch.rep (sim_state), Rep_match_choice);
       begin
         case index_rm is
           when 0 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (state), The_distance_is_rep0_choice)
-                       * Simulate_bit (probs.switch.rep0_long (state, pos_state), The_length_is_not_1_choice);
+            res := res * Simulate_bit (probs.switch.rep_g0 (sim_state), The_distance_is_rep0_choice)
+                       * Simulate_bit (probs.switch.rep0_long (sim_state, pos_state), The_length_is_not_1_choice);
           when 1 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (state), The_distance_is_not_rep0_choice)
-                       * Simulate_bit (probs.switch.rep_g1 (state), The_distance_is_rep1_choice);
+            res := res * Simulate_bit (probs.switch.rep_g0 (sim_state), The_distance_is_not_rep0_choice)
+                       * Simulate_bit (probs.switch.rep_g1 (sim_state), The_distance_is_rep1_choice);
           when 2 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (state), The_distance_is_not_rep0_choice)
-                       * Simulate_bit (probs.switch.rep_g1 (state), The_distance_is_not_rep1_choice)
-                       * Simulate_bit (probs.switch.rep_g2 (state), The_distance_is_rep2_choice);
+            res := res * Simulate_bit (probs.switch.rep_g0 (sim_state), The_distance_is_not_rep0_choice)
+                       * Simulate_bit (probs.switch.rep_g1 (sim_state), The_distance_is_not_rep1_choice)
+                       * Simulate_bit (probs.switch.rep_g2 (sim_state), The_distance_is_rep2_choice);
           when 3 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (state), The_distance_is_not_rep0_choice)
-                       * Simulate_bit (probs.switch.rep_g1 (state), The_distance_is_not_rep1_choice)
-                       * Simulate_bit (probs.switch.rep_g2 (state), The_distance_is_not_rep2_choice);
+            res := res * Simulate_bit (probs.switch.rep_g0 (sim_state), The_distance_is_not_rep0_choice)
+                       * Simulate_bit (probs.switch.rep_g1 (sim_state), The_distance_is_not_rep1_choice)
+                       * Simulate_bit (probs.switch.rep_g2 (sim_state), The_distance_is_not_rep2_choice);
         end case;
         return res * Simulate_Length (probs.rep_len, length);
       end Repeat_Match;
 
-      function Simple_Match (distance : UInt32; length : Unsigned) return MProb is
+      function Simple_Match (
+        distance  : UInt32;
+        length    : Unsigned;
+        sim_state : State_range
+      )
+      return MProb
+      is
         --
         function Simulate_Bit_Tree_Reverse (prob : CProb_array; num_bits : Natural; symbol : UInt32)
         return MProb
@@ -622,7 +645,7 @@ package body LZMA.Encoding is
         end Simulate_Distance;
       begin
         return
-          Simulate_bit (probs.switch.rep (state), Simple_match_choice) *
+          Simulate_bit (probs.switch.rep (sim_state), Simple_match_choice) *
           Simulate_Length (probs.len, length) *
           Simulate_Distance;
       end Simple_Match;
@@ -638,7 +661,7 @@ package body LZMA.Encoding is
         dist_ip : constant UInt32 := UInt32 (distance - 1);
         found_repeat : Integer := rep_dist'First - 1;
         dlc : constant MProb := Simulate_bit (probs.switch.match (sim_state, sim_pos_state), DL_code_choice);
-        sma : constant MProb := Simple_Match (dist_ip, Unsigned (length));
+        sma : constant MProb := Simple_Match (dist_ip, Unsigned (length), sim_state);
         rma : MProb;
       begin
         for i in rep_dist'Range loop
@@ -648,11 +671,13 @@ package body LZMA.Encoding is
           end if;
         end loop;
         if found_repeat >= rep_dist'First then
-          rma := Repeat_Match (found_repeat, Unsigned (length));
+          rma := Repeat_Match (found_repeat, Unsigned (length), sim_state);
           if rma >= sma * Malus_simple_match_vs_rep  then
+            --  Repeat match case:
             return dlc * rma;
           end if;
         end if;
+        --  Simple match case:
         return dlc * sma;
       end Strict_DL_code;
 
@@ -1085,9 +1110,9 @@ package body LZMA.Encoding is
         and then
           (compare_variants = None
              or else
-           Estimates.Repeat_Match (found_repeat, Unsigned (length))
+           Estimates.Repeat_Match (found_repeat, Unsigned (length), state)
            >=
-           Estimates.Simple_Match (dist_ip, Unsigned (length)) *
+           Estimates.Simple_Match (dist_ip, Unsigned (length), state) *
            Malus_simple_match_vs_rep
           )
       then
