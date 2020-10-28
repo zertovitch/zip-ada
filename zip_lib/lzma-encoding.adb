@@ -651,12 +651,13 @@ package body LZMA.Encoding is
       end Simple_Match;
 
       --  We simulate here LZ77_emits_DL_code
-      function Strict_DL_code (
-        distance      : Integer;
-        length        : Match_length_range;
-        sim_state     : State_range;
-        sim_pos_state : Pos_state_range
-      ) return MProb
+      procedure Strict_DL_code (
+        distance      :        Integer;
+        length        :        Match_length_range;
+        sim_state     : in out State_range;
+        sim_pos_state :        Pos_state_range;
+        prob          : in out MProb
+      )
       is
         dist_ip : constant UInt32 := UInt32 (distance - 1);
         found_repeat : Integer := rep_dist'First - 1;
@@ -674,11 +675,29 @@ package body LZMA.Encoding is
           rma := Repeat_Match (found_repeat, Unsigned (length), sim_state);
           if rma >= sma * Malus_simple_match_vs_rep  then
             --  Repeat match case:
-            return dlc * rma;
+            prob := prob * dlc * rma;
+            sim_state :=  Update_State_Rep (sim_state);
+            return;
           end if;
         end if;
         --  Simple match case:
-        return dlc * sma;
+        prob := prob * dlc * sma;
+        sim_state := Update_State_Match (sim_state);
+      end Strict_DL_code;
+
+      function Strict_DL_code (
+        distance      : Integer;
+        length        : Match_length_range;
+        sim_state     : State_range;
+        sim_pos_state : Pos_state_range
+      )
+      return MProb
+      is
+        sim_state_var : State_range := sim_state;
+        prob : MProb := 1.0;
+      begin
+        Strict_DL_code (distance, length, sim_state_var, sim_pos_state, prob);
+        return prob;
       end Strict_DL_code;
 
       function Expanded_DL_code (
@@ -720,16 +739,17 @@ package body LZMA.Encoding is
         b : Byte;
         sim_prev_byte : Byte := prev_byte;
         sim_state : State_range := state;
+        sim_state_with_match : State_range := state;
         sim_rep_dist_0 : UInt32 := rep_dist (0);
         --
         prob : MProb := 1.0;
-        dlc : MProb :=
-          DL_Code_Erosion.Malus_strict_DL_short_len (distance, length) *
-          Strict_DL_code (distance, length - 1, sim_state, pos_state);
+        dlc : MProb := DL_Code_Erosion.Malus_strict_DL_short_len (distance, length);
       begin
+        Strict_DL_code (distance, length - 1, sim_state_with_match, pos_state, dlc);
         if recursion > 0 and then length > Min_match_length + 1 then
           --  Since the "DL then Literal" optimization will be done recursively "in real", we can
           --  do it as well in the simulation, for getting a more accurate probability estimate.
+          --  !!  We should involve sim_state in the recursion...
           dlc := MProb'Max (dlc,
             DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
             DL_code_then_Literal (distance, length - 1, recursion - 1));
@@ -751,9 +771,8 @@ package body LZMA.Encoding is
           if prob < dlc then
             --  Expansion would be less efficient, so we simulate the DL code.
             prob := dlc;
+            sim_state := sim_state_with_match;
             sim_prev_byte := Text_Buf ((R + UInt32 (length - 2) - UInt32 (distance)) and Text_Buf_Mask);
-            sim_state := Update_State_Match (state);  --  !! approximative: could be a rep match (sigh)...
-            --  The match (any: simple or repeat) always sets this:
             sim_rep_dist_0 := UInt32 (distance) - 1;
             exit;
           end if;
