@@ -374,7 +374,7 @@ package body LZMA.Encoding is
         Malus_DL_short_len : constant := 0.995;
         --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
         Lit_then_DL_threshold : constant := 0.875;   -- naive approach: literal's prob. only considered
-        Malus_lit_then_DL     : constant := 0.0625;  -- full evaluation
+        function Malus_lit_then_DL  (distance : Integer; length : Match_length_range) return MProb;
         --
         function Malus_DL_then_lit  (distance : Integer; length : Match_length_range) return MProb;
       end DL_Code_Erosion;
@@ -744,6 +744,12 @@ package body LZMA.Encoding is
       end DL_code_then_Literal;
 
       package body DL_Code_Erosion is
+        --  The "DL erosion" technique empirically works better for shorter distances and lengths.
+        function Malus_lit_then_DL (distance : Integer; length : Match_length_range) return MProb is
+        begin
+          return MProb'Max (0.0, 0.064 - MProb (distance) * 1.0e-9 - MProb (length) * 3.0e-5);
+        end Malus_lit_then_DL;
+        --
         function Malus_DL_then_lit (distance : Integer; length : Match_length_range) return MProb is
         begin
           return MProb'Max (0.0, 0.135 - MProb (distance) * 1.0e-8 - MProb (length) * 1.0e-4);
@@ -1019,7 +1025,9 @@ package body LZMA.Encoding is
           --  we estimate the shorter DL code's probability.
           sim_pos_state := Pos_state_range (UInt32 (total_pos + 1) and pos_bits_mask);
           dlc_after_lit := Strict_DL_code (distance, length - 1, Update_State_Literal (state), sim_pos_state);
-          if head_lit * dlc_after_lit * DL_Code_Erosion.Malus_lit_then_DL > any_dlc then
+          if head_lit * dlc_after_lit *
+             DL_Code_Erosion.Malus_lit_then_DL (distance, length)
+            > any_dlc then
             LZ77_emits_literal_byte (b_head);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
