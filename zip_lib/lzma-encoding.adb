@@ -318,7 +318,7 @@ package body LZMA.Encoding is
     --  probabilities of the former will be increased instead of the latter.
 
     package Estimates is
-      type MProb is new Long_Float range 0.0 .. 1.0;
+      type MProb is digits 15 range 0.0 .. 1.0;
       --
       function Strict_Literal (
         b, b_match    : Byte;
@@ -360,20 +360,25 @@ package body LZMA.Encoding is
         recursion : Natural)
       return MProb;
       --
-      --  Empirical, tuned, magic numbers
+      --  Empirical, tuned, magic numbers & functions
       --
       --  Over the long run, it's better to let repeat matches happen.
       Malus_simple_match_vs_rep : constant := 0.55;
-      --  DL code for short lengths may be unnecessary and replaced by fully expanded bytes.
-      Short_Length : constant := 79;
-      --  ^ value 79 instead of 18 improves the 8 benchmarks in
-      --    doc/za_work.xls; optimal for silesia.
-      Malus_DL_short_len : constant := 0.995;
-      --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
-      Lit_then_DL_threshold : constant := 0.875;   -- naive approach: literal's prob. only considered
-      Malus_lit_then_DL     : constant := 0.0625;  -- full evaluation
-      --
-      Malus_DL_then_lit : constant := 0.125;
+
+      package DL_Code_Erosion is
+        --  DL code for short lengths may be unnecessary and replaced by fully or partially expanded bytes.
+        Short_Length : constant := 79;
+        --  ^ value 79 instead of 18 improves the 8 benchmarks in
+        --    doc/za_work.xls; optimal for silesia.
+        --    Ideally we should get rid of that limit.
+        Malus_DL_short_len : constant := 0.995;
+        --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
+        Lit_then_DL_threshold : constant := 0.875;   -- naive approach: literal's prob. only considered
+        Malus_lit_then_DL     : constant := 0.0625;  -- full evaluation
+        --
+        function Malus_DL_then_lit  (distance : Integer; length : Match_length_range) return MProb;
+      end DL_Code_Erosion;
+
     end Estimates;
 
     package body Estimates is
@@ -688,13 +693,16 @@ package body LZMA.Encoding is
         sim_rep_dist_0 : UInt32 := rep_dist (0);
         --
         prob : MProb := 1.0;
-        dlc : MProb := Strict_DL_code (distance, length - 1, sim_state, pos_state) * Malus_DL_short_len;
+        dlc : MProb :=
+          DL_Code_Erosion.Malus_DL_short_len *
+          Strict_DL_code (distance, length - 1, sim_state, pos_state);
       begin
         if recursion > 0 and then length > Min_match_length + 1 then
           --  Since the "DL then Literal" optimization will be done recursively "in real", we can
           --  do it as well in the simulation, for getting a more accurate probability estimate.
           dlc := MProb'Max (dlc,
-            Malus_DL_then_lit * DL_code_then_Literal (distance, length - 1, recursion - 1));
+            DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
+            DL_code_then_Literal (distance, length - 1, recursion - 1));
         end if;
         --
         --  We have first a DL code of length 'length-1'. The real compression would try to
@@ -734,6 +742,13 @@ package body LZMA.Encoding is
         );
         return prob;
       end DL_code_then_Literal;
+
+      package body DL_Code_Erosion is
+        function Malus_DL_then_lit (distance : Integer; length : Match_length_range) return MProb is
+        begin
+          return MProb'Max (0.0, 0.135 - MProb (distance) * 1.0e-8 - MProb (length) * 1.0e-4);
+        end Malus_DL_then_lit;
+      end DL_Code_Erosion;
 
     end Estimates;
 
@@ -975,7 +990,7 @@ package body LZMA.Encoding is
       begin
         if not dlc_computed then
           strict_dlc := Strict_DL_code (distance, length, state, pos_state) *
-                        Malus_DL_short_len;
+                        DL_Code_Erosion.Malus_DL_short_len;
           expanded_dlc := Expanded_DL_code (distance, length, strict_dlc);
           any_dlc := MProb'Max (strict_dlc, expanded_dlc);
           dlc_computed := True;
@@ -984,7 +999,7 @@ package body LZMA.Encoding is
       --
       sim_pos_state : Pos_state_range;
     begin
-      if compare_variants >= Simple and then length <= Short_Length and then distance >= length then
+      if compare_variants >= Simple and then length <= DL_Code_Erosion.Short_Length and then distance >= length then
         --  Distance-Length (DL) code has a small length.
         --  It may be better just to expand it as plain literals, fully or partially.
         --  We consider shortening the DL code's length.
@@ -994,7 +1009,7 @@ package body LZMA.Encoding is
           head_lit := Any_literal (b_head, b_match, prev_byte, state, 0);
           --  One literal, then a shorter DL code, case #1:
           --  naive approach: we spot a super-probable literal.
-          if head_lit >= Lit_then_DL_threshold then
+          if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold then
             LZ77_emits_literal_byte (b_head);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
@@ -1004,15 +1019,15 @@ package body LZMA.Encoding is
           --  we estimate the shorter DL code's probability.
           sim_pos_state := Pos_state_range (UInt32 (total_pos + 1) and pos_bits_mask);
           dlc_after_lit := Strict_DL_code (distance, length - 1, Update_State_Literal (state), sim_pos_state);
-          if head_lit * dlc_after_lit * Malus_lit_then_DL > any_dlc then
+          if head_lit * dlc_after_lit * DL_Code_Erosion.Malus_lit_then_DL > any_dlc then
             LZ77_emits_literal_byte (b_head);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
           end if;
           --  We consider sending a shorter DL code, then a literal.
           dl_then_lit :=
-            DL_code_then_Literal (distance, length, 1) *
-            Malus_DL_then_lit;
+            DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
+            DL_code_then_Literal (distance, length, 1);
           if dl_then_lit > any_dlc then
             b_tail := Text_Buf ((Copy_start + UInt32 (length - 1)) and Text_Buf_Mask);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
