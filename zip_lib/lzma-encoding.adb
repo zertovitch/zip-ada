@@ -370,13 +370,18 @@ package body LZMA.Encoding is
         Short_Length : constant := 79;
         --  ^ value 79 instead of 18 improves the 8 benchmarks in
         --    doc/za_work.xls; optimal for silesia.
-        --    Ideally we should get rid of that limit.
-        Malus_DL_short_len : constant := 0.995;
+        --    !! Ideally we should get rid of that limit.
+        function Malus_strict_DL_short_len (distance : Integer; length : Match_length_range) return MProb;
+        pragma Inline (Malus_strict_DL_short_len);
         --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
-        Lit_then_DL_threshold : constant := 0.875;   -- naive approach: literal's prob. only considered
-        function Malus_lit_then_DL  (distance : Integer; length : Match_length_range) return MProb;
+        --  Naive approach: literal's probability only is considered:
+        function Lit_then_DL_threshold (distance : Integer; length : Match_length_range) return MProb;
+        pragma Inline (Lit_then_DL_threshold);
+        function Malus_lit_then_DL (distance : Integer; length : Match_length_range) return MProb;
+        pragma Inline (Malus_lit_then_DL);
         --
-        function Malus_DL_then_lit  (distance : Integer; length : Match_length_range) return MProb;
+        function Malus_DL_then_lit (distance : Integer; length : Match_length_range) return MProb;
+        pragma Inline (Malus_DL_then_lit);
       end DL_Code_Erosion;
 
     end Estimates;
@@ -694,7 +699,7 @@ package body LZMA.Encoding is
         --
         prob : MProb := 1.0;
         dlc : MProb :=
-          DL_Code_Erosion.Malus_DL_short_len *
+          DL_Code_Erosion.Malus_strict_DL_short_len (distance, length) *
           Strict_DL_code (distance, length - 1, sim_state, pos_state);
       begin
         if recursion > 0 and then length > Min_match_length + 1 then
@@ -744,14 +749,28 @@ package body LZMA.Encoding is
       end DL_code_then_Literal;
 
       package body DL_Code_Erosion is
-        --  The "DL erosion" technique empirically works better for shorter distances and lengths.
+        --
+        function Malus_strict_DL_short_len (distance : Integer; length : Match_length_range) return MProb is
+        pragma Unreferenced (length, distance);
+        begin
+          return 0.995;
+        end Malus_strict_DL_short_len;
+        --
+        function Lit_then_DL_threshold (distance : Integer; length : Match_length_range) return MProb is
+        pragma Unreferenced (length, distance);
+        begin
+          return 0.875;
+        end Lit_then_DL_threshold;
+        --
         function Malus_lit_then_DL (distance : Integer; length : Match_length_range) return MProb is
         begin
+          --  This "DL erosion" technique empirically works better for shorter distances and lengths.
           return MProb'Max (0.0, 0.064 - MProb (distance) * 1.0e-9 - MProb (length) * 3.0e-5);
         end Malus_lit_then_DL;
         --
         function Malus_DL_then_lit (distance : Integer; length : Match_length_range) return MProb is
         begin
+          --  This "DL erosion" technique empirically works better for shorter distances and lengths.
           return MProb'Max (0.0, 0.135 - MProb (distance) * 1.0e-8 - MProb (length) * 1.0e-4);
         end Malus_DL_then_lit;
       end DL_Code_Erosion;
@@ -996,7 +1015,7 @@ package body LZMA.Encoding is
       begin
         if not dlc_computed then
           strict_dlc := Strict_DL_code (distance, length, state, pos_state) *
-                        DL_Code_Erosion.Malus_DL_short_len;
+                        DL_Code_Erosion.Malus_strict_DL_short_len (distance, length);
           expanded_dlc := Expanded_DL_code (distance, length, strict_dlc);
           any_dlc := MProb'Max (strict_dlc, expanded_dlc);
           dlc_computed := True;
@@ -1015,7 +1034,7 @@ package body LZMA.Encoding is
           head_lit := Any_literal (b_head, b_match, prev_byte, state, 0);
           --  One literal, then a shorter DL code, case #1:
           --  naive approach: we spot a super-probable literal.
-          if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold then
+          if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold (distance, length) then
             LZ77_emits_literal_byte (b_head);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
