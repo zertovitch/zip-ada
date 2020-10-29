@@ -326,7 +326,8 @@ package body LZMA.Encoding is
     --  probabilities of the former will be increased instead of the latter.
 
     package Estimates is
-      type MProb is digits 15 range 0.0 .. 1.0;
+      type MProb_Float is digits 15;
+      subtype MProb is MProb_Float range 0.0 .. 1.0;
       --
       function Strict_Literal (
         b, b_match    : Byte;
@@ -733,6 +734,8 @@ package body LZMA.Encoding is
         b : Byte;
         --
         expanded_string_prob : MProb := 1.0;
+        sim_state_mem     : constant State_range := sim_state;
+        sim_prev_byte_mem : constant Byte        := sim_prev_byte;
       begin
         for x in 0 .. length - 1 loop
           b := Text_Buf ((R + UInt32 (x) - UInt32 (distance)) and Text_Buf_Mask);
@@ -745,8 +748,13 @@ package body LZMA.Encoding is
             sim_rep_dist_0 => rep_dist (0),
             prob           => expanded_string_prob
           );
-          --  Probability is decreasing over the loop, useless to continue under given threshold.
-          exit when expanded_string_prob < give_up;
+          --  Probability is decreasing over the loop, so it is
+          --  useless to continue under given threshold.
+          if expanded_string_prob < give_up then
+            sim_state     := sim_state_mem;
+            sim_prev_byte := sim_prev_byte_mem;
+            exit;
+          end if;
           sim_prev_byte := b;
         end loop;
         prob := prob * expanded_string_prob;
@@ -761,8 +769,8 @@ package body LZMA.Encoding is
       )
       return MProb
       is
-        sim_state_var : State_range := sim_state;
-        sim_prev_byte_var : Byte := sim_prev_byte;
+        sim_state_var     : State_range := sim_state;
+        sim_prev_byte_var : Byte        := sim_prev_byte;
         --
         prob : MProb := 1.0;
       begin
@@ -975,13 +983,13 @@ package body LZMA.Encoding is
         function Malus_lit_then_DL (distance : Integer; length : Match_length_range) return MProb is
         begin
           --  This "DL erosion" technique empirically works better for shorter distances and lengths.
-          return MProb'Max (0.0, 0.064 - MProb (distance) * 1.0e-9 - MProb (length) * 3.0e-5);
+          return MProb'Max (0.0, 0.064 - MProb_Float (distance) * 1.0e-9 - MProb_Float (length) * 3.0e-5);
         end Malus_lit_then_DL;
         --
         function Malus_DL_then_lit (distance : Integer; length : Match_length_range) return MProb is
         begin
           --  This "DL erosion" technique empirically works better for shorter distances and lengths.
-          return MProb'Max (0.0, 0.135 - MProb (distance) * 1.0e-8 - MProb (length) * 1.0e-4);
+          return MProb'Max (0.0, 0.135 - MProb_Float (distance) * 1.0e-8 - MProb_Float (length) * 1.0e-4);
         end Malus_DL_then_lit;
       end DL_Code_Erosion;
 
