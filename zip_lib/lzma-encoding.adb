@@ -299,6 +299,14 @@ package body LZMA.Encoding is
 
     prev_byte : Byte := 0;
 
+    type Variants_Comparison_Choice is
+      (
+        None,    --  "Mechanical" encoding, straight from the LZ77 algorithm.
+        Simple   --  Compare alternative encodings and choose the most probable.
+      );
+
+    compare_variants : Variants_Comparison_Choice;
+
     -------------------------
     --  Package Estimates  --
     -------------------------
@@ -358,9 +366,12 @@ package body LZMA.Encoding is
       ) return MProb;
       --  Expanded_DL_code is a DL code expanded as a string of literals.
       function Expanded_DL_code (
-        distance : Integer;
-        length   : Match_length_range;
-        give_up  : MProb)
+        distance      : Integer;
+        length        : Match_length_range;
+        give_up       : MProb;
+        sim_state     : State_range;
+        sim_prev_byte : Byte
+      )
       return MProb;
       --  End of the obvious cases. Now things get tougher...
       --
@@ -369,6 +380,15 @@ package body LZMA.Encoding is
         distance  : Integer;
         length    : Match_length_range;
         recursion : Natural)
+      return MProb;
+      --
+      function Any_DL_code (
+        distance         : Integer;
+        length           : Match_length_range;
+        sim_state        : State_range;
+        sim_pos_state    : Pos_state_range;
+        sim_prev_byte    : Byte
+      )
       return MProb;
       --
       --  Empirical, tuned, magic numbers & functions
@@ -650,7 +670,8 @@ package body LZMA.Encoding is
           Simulate_Distance;
       end Simple_Match;
 
-      --  We simulate here LZ77_emits_DL_code
+      --  We simulate here a Distance-Length code
+      --  sent straight to the encoder (no variants).
       procedure Strict_DL_code (
         distance      :        Integer;
         length        :        Match_length_range;
@@ -700,15 +721,16 @@ package body LZMA.Encoding is
         return prob;
       end Strict_DL_code;
 
-      function Expanded_DL_code (
-        distance : Integer;
-        length   : Match_length_range;
-        give_up  : MProb)
-      return MProb
+      procedure Expand_DL_code (
+        distance      :        Integer;
+        length        :        Match_length_range;
+        give_up       :        MProb;
+        sim_state     : in out State_range;
+        sim_prev_byte : in out Byte;
+        prob          : in out MProb
+      )
       is
         b : Byte;
-        sim_prev_byte : Byte := prev_byte;
-        sim_state : State_range := state;
         --
         expanded_string_prob : MProb := 1.0;
       begin
@@ -727,7 +749,25 @@ package body LZMA.Encoding is
           exit when expanded_string_prob < give_up;
           sim_prev_byte := b;
         end loop;
-        return expanded_string_prob;
+        prob := prob * expanded_string_prob;
+      end Expand_DL_code;
+
+      function Expanded_DL_code (
+        distance      : Integer;
+        length        : Match_length_range;
+        give_up       : MProb;
+        sim_state     : State_range;
+        sim_prev_byte : Byte
+      )
+      return MProb
+      is
+        sim_state_var : State_range := sim_state;
+        sim_prev_byte_var : Byte := sim_prev_byte;
+        --
+        prob : MProb := 1.0;
+      begin
+        Expand_DL_code (distance, length, give_up, sim_state_var, sim_prev_byte_var, prob);
+        return prob;
       end Expanded_DL_code;
 
       function DL_code_then_Literal (
@@ -791,6 +831,132 @@ package body LZMA.Encoding is
         );
         return prob;
       end DL_code_then_Literal;
+
+      --  We simulate here LZ77_emits_DL_code, including the variants!
+      --  So it must be as close as possible to LZ77_emits_DL_code's algorithm,
+      --  but without the actual Write's, and using sim_state instead of state, etc.
+      procedure Any_DL_code (
+        distance         :        Integer;
+        length           :        Match_length_range;
+        sim_state        : in out State_range;
+        sim_pos_state    : in out Pos_state_range;
+        sim_prev_byte    : in out Byte;
+        prob             : in out MProb
+      )
+      is
+        Copy_start : constant UInt32 := (R - UInt32 (distance)) and Text_Buf_Mask;
+        strict_dlc, expanded_dlc, any_dlc, dlc_after_lit, dl_then_lit, head_lit : MProb;
+        b_head, b_match, b_tail : Byte;
+        dlc_computed : Boolean := False;
+        sim_rep_dist_0 : constant UInt32 := rep_dist (0);
+        --
+        procedure Compute_dlc_variants is
+        begin
+          if not dlc_computed then
+            strict_dlc := Strict_DL_code (distance, length, sim_state, sim_pos_state) *
+                          DL_Code_Erosion.Malus_strict_DL_short_len (distance, length);
+            expanded_dlc := Expanded_DL_code (distance, length, strict_dlc, sim_state, sim_prev_byte);
+            --  !! ^ here we should recurse on Any_DL_code
+            any_dlc := MProb'Max (strict_dlc, expanded_dlc);
+            dlc_computed := True;
+          end if;
+        end Compute_dlc_variants;
+        --
+      begin
+        if compare_variants >= Simple and then length <= DL_Code_Erosion.Short_Length and then distance >= length then
+          if length > Min_match_length then
+            b_head   := Text_Buf (Copy_start and Text_Buf_Mask);
+            b_match  := Text_Buf ((R - rep_dist (0) - 1) and Text_Buf_Mask);
+            head_lit := Any_literal (b_head, b_match, prev_byte, sim_state, 0);
+            --  One literal, then a shorter DL code, case #1:
+            --  naive approach: we spot a super-probable literal.
+            if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold (distance, length) then
+              Any_literal (
+                b              => b_head,
+                b_match        => b_match,
+                b_prev         => sim_prev_byte,
+                offset         => Data_Bytes_Count (length - 1),
+                sim_state      => sim_state,
+                sim_rep_dist_0 => sim_rep_dist_0,
+                prob           => prob
+              );
+              Any_DL_code (distance, length - 1, sim_state, sim_pos_state, sim_prev_byte, prob);
+              --  Recursion here!
+              return;
+            end if;
+            Compute_dlc_variants;
+            sim_pos_state := Pos_state_range (UInt32 (total_pos + 1) and pos_bits_mask);
+            dlc_after_lit := Strict_DL_code (distance, length - 1, Update_State_Literal (sim_state), sim_pos_state);
+            if head_lit * dlc_after_lit *
+               DL_Code_Erosion.Malus_lit_then_DL (distance, length)
+              > any_dlc
+            then
+              Any_literal (
+                b              => b_head,
+                b_match        => b_match,
+                b_prev         => sim_prev_byte,
+                offset         => Data_Bytes_Count (length - 1),
+                sim_state      => sim_state,
+                sim_rep_dist_0 => sim_rep_dist_0,
+                prob           => prob
+              );
+              Any_DL_code (distance, length - 1, sim_state, sim_pos_state, sim_prev_byte, prob);
+              --  Recursion here!
+              return;
+            end if;
+            dl_then_lit :=
+              DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
+              DL_code_then_Literal (distance, length, 1);
+            if dl_then_lit > any_dlc then
+              b_tail := Text_Buf ((Copy_start + UInt32 (length - 1)) and Text_Buf_Mask);
+              Any_DL_code (distance, length - 1, sim_state, sim_pos_state, sim_prev_byte, prob);
+              --  Recursion here!
+              Any_literal (
+                b              => b_tail,
+                b_match        => b_match,
+                b_prev         => sim_prev_byte,
+                offset         => Data_Bytes_Count (length - 1),
+                sim_state      => sim_state,
+                sim_rep_dist_0 => sim_rep_dist_0,
+                prob           => prob
+              );
+              return;
+            end if;
+          end if;
+          --
+          Compute_dlc_variants;
+          if expanded_dlc > strict_dlc then
+            Expand_DL_code (
+              distance => distance,
+              length        => length,
+              give_up       => strict_dlc,
+              sim_state     => sim_state,
+              sim_prev_byte => sim_prev_byte,
+              prob          => prob);
+            return;
+          end if;
+        end if;
+        --  At this point, we go for simulating the plain DL code.
+        Strict_DL_code (distance, length, sim_state, sim_pos_state, prob);
+      end Any_DL_code;
+
+      function Any_DL_code (
+        distance         : Integer;
+        length           : Match_length_range;
+        sim_state        : State_range;
+        sim_pos_state    : Pos_state_range;
+        sim_prev_byte    : Byte
+      )
+      return MProb
+      is
+        sim_state_var     : State_range     := sim_state;
+        sim_prev_byte_var : Byte            := sim_prev_byte;
+        sim_pos_state_var : Pos_state_range := sim_pos_state;
+        prob : MProb := 1.0;
+      begin
+        Any_DL_code (distance, length, sim_state_var, sim_pos_state_var, sim_prev_byte_var, prob);
+        return prob;
+      end Any_DL_code;
 
       package body DL_Code_Erosion is
         --
@@ -856,14 +1022,6 @@ package body LZMA.Encoding is
     end Write_Literal_Matched;
 
     use type Estimates.MProb;
-
-    type Variants_Comparison_Choice is
-      (
-        None,    --  "Mechanical" encoding, straight from the LZ77 algorithm.
-        Simple   --  Compare alternative encodings and choose the most probable.
-      );
-
-    compare_variants : Variants_Comparison_Choice;
 
     procedure LZ77_emits_literal_byte (b : Byte) is
       pb_lit_idx : constant Integer := Idx_for_Literal_prob (total_pos, prev_byte);
@@ -1047,6 +1205,7 @@ package body LZMA.Encoding is
     end Write_Repeat_Match;
 
     procedure LZ77_emits_DL_code (distance : Integer; length : Match_length_range) is
+      --  NB: All changes here should be reflected in the simulation: Any_DL_code.
       Copy_start : constant UInt32 := (R - UInt32 (distance)) and Text_Buf_Mask;
       dist_ip : constant UInt32 := UInt32 (distance - 1);
       found_repeat : Integer := rep_dist'First - 1;
@@ -1060,7 +1219,8 @@ package body LZMA.Encoding is
         if not dlc_computed then
           strict_dlc := Strict_DL_code (distance, length, state, pos_state) *
                         DL_Code_Erosion.Malus_strict_DL_short_len (distance, length);
-          expanded_dlc := Expanded_DL_code (distance, length, strict_dlc);
+          expanded_dlc := Expanded_DL_code (distance, length, strict_dlc, state, prev_byte);
+          --  !! ^ here we should use Any_DL_code
           any_dlc := MProb'Max (strict_dlc, expanded_dlc);
           dlc_computed := True;
         end if;
@@ -1090,7 +1250,8 @@ package body LZMA.Encoding is
           dlc_after_lit := Strict_DL_code (distance, length - 1, Update_State_Literal (state), sim_pos_state);
           if head_lit * dlc_after_lit *
              DL_Code_Erosion.Malus_lit_then_DL (distance, length)
-            > any_dlc then
+            > any_dlc
+          then
             LZ77_emits_literal_byte (b_head);
             LZ77_emits_DL_code (distance, length - 1);  --  Recursion here!
             return;
@@ -1117,7 +1278,7 @@ package body LZMA.Encoding is
         end if;
       end if;
       --  At this point, we go for sending the plain DL
-      --  code as instructed by the LZ77 algorithm.
+      --  code as instructed by the LZ77 algorithm (when recursion level is 0).
       Encode_Bit (probs.switch.match (state, pos_state), DL_code_choice);
       for i in rep_dist'Range loop
         if dist_ip = rep_dist (i) then
