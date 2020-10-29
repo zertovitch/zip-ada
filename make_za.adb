@@ -46,7 +46,7 @@ begin
     when Nixux   =>
       null;
     when Windoze =>
-      gprbuild_options := gprbuild_options & " -largs -Xlinker --stack=0x4000000,0x40000";
+      gprbuild_options := gprbuild_options & " -largs -Xlinker --stack=0x2000000,0x20000";
   end case;
 
   --  For Windows binary distribution with icons and Set_Modification_Time in UnZipAda:
