@@ -674,7 +674,7 @@ package body LZMA.Encoding is
       )
       is
         dist_ip : constant UInt32 := UInt32 (distance - 1);
-        found_repeat : Integer := sim.rep_dist'First - 1;
+        found_repeat : Integer := Repeat_Stack'First - 1;
         dlc : constant MProb := Simulate_bit (probs.switch.match (sim.state, sim.pos_state), DL_code_choice);
         sma : constant MProb := Simple_Match (dist_ip, Unsigned (length), sim);
         rma : MProb;
@@ -687,13 +687,13 @@ package body LZMA.Encoding is
           sim.prev_byte := Text_Buf ((sim.R - 1) and Text_Buf_Mask);
         end Update_pos_related_stuff;
       begin
-        for i in sim.rep_dist'Range loop
+        for i in Repeat_Stack'Range loop
           if dist_ip = sim.rep_dist (i) then
             found_repeat := i;
             exit;
           end if;
         end loop;
-        if found_repeat >= sim.rep_dist'First then
+        if found_repeat >= Repeat_Stack'First then
           rma := Repeat_Match (found_repeat, Unsigned (length), sim);
           if rma >= sma * Malus_simple_match_vs_rep  then
             --  Repeat match case:
@@ -1241,13 +1241,13 @@ package body LZMA.Encoding is
       --  At this point, we go for sending the plain DL
       --  code as instructed by the LZ77 algorithm (when recursion level is 0).
       Encode_Bit (probs.switch.match (ES.state, ES.pos_state), DL_code_choice);
-      for i in ES.rep_dist'Range loop
+      for i in Repeat_Stack'Range loop
         if dist_ip = ES.rep_dist (i) then
           found_repeat := i;
           exit;
         end if;
       end loop;
-      if found_repeat >= ES.rep_dist'First
+      if found_repeat >= Repeat_Stack'First
         and then
           (compare_variants = None
              or else
