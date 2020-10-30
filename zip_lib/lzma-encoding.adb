@@ -270,8 +270,8 @@ package body LZMA.Encoding is
     subtype Text_Buffer_Index is UInt32 range 0 .. UInt32 (String_buffer_size (level) - 1);
     type Text_Buffer is array (Text_Buffer_Index) of Byte;
     Text_Buf_Mask : constant UInt32 := UInt32 (String_buffer_size (level) - 1);
-    --  NB: heap allocation used only for convenience because of
-    --      small default stack sizes on some compilers.
+    --  NB: heap allocation (and then, the only pointer in this package) is used
+    --      only for convenience because of small default stack sizes on some compilers.
     type p_Text_Buffer is access Text_Buffer;
     procedure Dispose is new Ada.Unchecked_Deallocation (Text_Buffer, p_Text_Buffer);
     Text_Buf : p_Text_Buffer := new Text_Buffer;
@@ -383,15 +383,13 @@ package body LZMA.Encoding is
           distance        :        UInt32;
           length          :        Match_length_range;
           sim             : in out Machine_State;
-          prob            : in out MProb;
-          recursion_limit : Natural
+          prob            : in out MProb
         );
         --
         function DL_code_then_Literal (
           distance        : UInt32;
           length          : Match_length_range;
-          sim             : Machine_State;
-          recursion_limit : Natural
+          sim             : Machine_State
         )
         return MProb;
         --  DL code for short lengths may be unnecessary and replaced by fully or partially expanded bytes.
@@ -787,8 +785,7 @@ package body LZMA.Encoding is
         distance        :        UInt32;
         length          :        Match_length_range;
         sim             : in out Machine_State;
-        prob            : in out MProb;
-        recursion_limit :        Natural
+        prob            : in out MProb
       );
 
       --  We simulate here Write_any_DL_code, including the variants!
@@ -798,8 +795,7 @@ package body LZMA.Encoding is
         distance        :        UInt32;
         length          :        Match_length_range;
         sim             : in out Machine_State;
-        prob            : in out MProb;
-        recursion_limit :        Natural
+        prob            : in out MProb
       )
       is
         Copy_start : constant UInt32 := (sim.R - distance) and Text_Buf_Mask;
@@ -819,10 +815,7 @@ package body LZMA.Encoding is
         end Compute_dlc_variants;
         --
       begin
-        if recursion_limit > 0
-          and then compare_variants >= Simple
-          and then length <= DL_Code_Erosion.Short_Length
-        then
+        if compare_variants >= Simple and then length <= DL_Code_Erosion.Short_Length then
           if length > Min_match_length then
             b_head   := Text_Buf (Copy_start and Text_Buf_Mask);
             head_lit := Any_literal (b_head, sim);
@@ -830,7 +823,7 @@ package body LZMA.Encoding is
             --  naive approach: we spot a super-probable literal.
             if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold (distance, length) then
               Any_literal (b_head, sim, prob);
-              Any_DL_code (distance, length - 1, sim, prob, recursion_limit - 1);
+              Any_DL_code (distance, length - 1, sim, prob);
               return;
             end if;
             Compute_dlc_variants;
@@ -846,15 +839,15 @@ package body LZMA.Encoding is
               > strict_or_expanded_dlc
             then
               Any_literal (b_head, sim, prob);
-              Any_DL_code (distance, length - 1, sim, prob, recursion_limit - 1);
+              Any_DL_code (distance, length - 1, sim, prob);
               return;
             end if;
             dl_then_lit :=
               DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
-              DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, recursion_limit - 1);
+              DL_Code_Erosion.DL_code_then_Literal (distance, length, sim);
             if dl_then_lit > strict_or_expanded_dlc then
               --  We've got a bBetter probability -> redo this variant for good (in the simulation).
-              DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, prob, recursion_limit - 1);
+              DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, prob);
               return;
             end if;
           end if;
@@ -875,14 +868,13 @@ package body LZMA.Encoding is
           distance        :        UInt32;
           length          :        Match_length_range;
           sim             : in out Machine_State;
-          prob            : in out MProb;
-          recursion_limit : Natural
+          prob            : in out MProb
         )
         is
           Malus_DL_code_then_Literal : constant := 0.995;
         begin
           prob := prob * Malus_DL_code_then_Literal;
-          Any_DL_code (distance, length - 1, sim, prob, recursion_limit);
+          Any_DL_code (distance, length - 1, sim, prob);
           --  In this scenario, the last byte of the match is always sent as a literal.
           Any_literal (Text_Buf ((sim.R - distance) and Text_Buf_Mask), sim, prob);
         end DL_code_then_Literal;
@@ -890,8 +882,7 @@ package body LZMA.Encoding is
         function DL_code_then_Literal (
           distance        : UInt32;
           length          : Match_length_range;
-          sim             : Machine_State;
-          recursion_limit : Natural
+          sim             : Machine_State
         )
         return MProb
         is
@@ -901,7 +892,7 @@ package body LZMA.Encoding is
           --
           prob : MProb := 1.0;
         begin
-          DL_code_then_Literal (distance, length, sim_var, prob, recursion_limit);
+          DL_code_then_Literal (distance, length, sim_var, prob);
           return prob;
         end DL_code_then_Literal;
         --
@@ -971,8 +962,6 @@ package body LZMA.Encoding is
        state      => 0,
        pos_state  => 0
       );
-
-    max_recursion : constant := 1;
 
     procedure Update_pos_state is
     pragma Inline (Update_pos_state);
@@ -1220,7 +1209,7 @@ package body LZMA.Encoding is
           --  We consider sending a shorter DL code, then a literal.
           dl_then_lit :=
             DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
-            DL_Code_Erosion.DL_code_then_Literal (distance, length, ES, max_recursion);
+            DL_Code_Erosion.DL_code_then_Literal (distance, length, ES);
           if dl_then_lit > strict_or_expanded_dlc then
             b_tail := Text_Buf ((Copy_start + UInt32 (length - 1)) and Text_Buf_Mask);
             Write_any_DL_code (distance, length - 1);  --  Recursion here!
