@@ -788,8 +788,11 @@ package body LZMA.Encoding is
       end Expanded_DL_code;
 
       --  We simulate here Write_any_DL_code, including the variants!
-      --  So it must be as close as possible to LZ77_emits_DL_code's algorithm,
+      --  So it must be as close as possible to Write_any_DL_code's algorithm,
       --  but without the actual Write's, and using sim_state instead of state, etc.
+      --
+      --  To do: Have a single *any_DL_code procedure using generics!
+      --
       procedure Any_DL_code (
         distance        :        UInt32;
         length          :        Match_length_range;
@@ -1170,15 +1173,45 @@ package body LZMA.Encoding is
       ES.state := Update_State_Rep (ES.state);
     end Write_Repeat_Match;
 
+    procedure Write_strict_DL_code (distance : UInt32; length : Match_length_range) is
+      dist_ip : constant UInt32 := UInt32 (distance - 1);
+      found_repeat : Integer := Repeat_Stack'First - 1;
+    begin
+      Encode_Bit (probs.switch.match (ES.state, ES.pos_state), DL_code_choice);
+      for i in Repeat_Stack'Range loop
+        if dist_ip = ES.rep_dist (i) then
+          found_repeat := i;
+          exit;
+        end if;
+      end loop;
+      if found_repeat >= Repeat_Stack'First
+        and then
+          (compare_variants = None
+             or else
+           Estimates.Repeat_Match (found_repeat, Unsigned (length), ES)
+           >=
+           Estimates.Simple_Match (dist_ip, Unsigned (length), ES) *
+           Estimates.Malus_simple_match_vs_rep
+          )
+      then
+        Write_Repeat_Match (found_repeat, Unsigned (length));
+      else
+        Write_Simple_Match (dist_ip, Unsigned (length));
+      end if;
+      ES.total_pos := ES.total_pos + Data_Bytes_Count (length);
+      Update_pos_state;
+      ES.R := ES.R + UInt32 (length) and Text_Buf_Mask;  --  This is mod String_buffer_size
+      ES.prev_byte := Text_Buf ((ES.R - 1) and Text_Buf_Mask);
+    end Write_strict_DL_code;
+
     procedure Write_any_DL_code (distance : UInt32; length : Match_length_range) is
       --  NB: All changes here should be reflected in the simulation: Any_DL_code.
       Copy_start : constant UInt32 := (ES.R - distance) and Text_Buf_Mask;
-      dist_ip : constant UInt32 := UInt32 (distance - 1);
-      found_repeat : Integer := Repeat_Stack'First - 1;
       use Estimates;
       strict_dlc, expanded_dlc, strict_or_expanded_dlc, dlc_after_lit, dl_then_lit, head_lit : MProb;
       b_head, b_tail : Byte;
       dlc_computed : Boolean := False;
+      sim_post_lit_pos_state : Pos_state_range;
       --
       procedure Compute_dlc_variants is
       begin
@@ -1190,7 +1223,6 @@ package body LZMA.Encoding is
         end if;
       end Compute_dlc_variants;
       --
-      sim_post_lit_pos_state : Pos_state_range;
     begin
       if compare_variants >= Simple then
         --  Distance-Length (DL) code has a small length.
@@ -1247,31 +1279,7 @@ package body LZMA.Encoding is
       end if;
       --  At this point, we go for sending the plain DL
       --  code as instructed by the LZ77 algorithm (when recursion level is 0).
-      Encode_Bit (probs.switch.match (ES.state, ES.pos_state), DL_code_choice);
-      for i in Repeat_Stack'Range loop
-        if dist_ip = ES.rep_dist (i) then
-          found_repeat := i;
-          exit;
-        end if;
-      end loop;
-      if found_repeat >= Repeat_Stack'First
-        and then
-          (compare_variants = None
-             or else
-           Estimates.Repeat_Match (found_repeat, Unsigned (length), ES)
-           >=
-           Estimates.Simple_Match (dist_ip, Unsigned (length), ES) *
-           Malus_simple_match_vs_rep
-          )
-      then
-        Write_Repeat_Match (found_repeat, Unsigned (length));
-      else
-        Write_Simple_Match (dist_ip, Unsigned (length));
-      end if;
-      ES.total_pos := ES.total_pos + Data_Bytes_Count (length);
-      Update_pos_state;
-      ES.R := ES.R + UInt32 (length) and Text_Buf_Mask;  --  This is mod String_buffer_size
-      ES.prev_byte := Text_Buf ((ES.R - 1) and Text_Buf_Mask);
+      Write_strict_DL_code (distance, length);
     end Write_any_DL_code;
 
     procedure LZ77_emits_DL_code (distance : Integer; length : Match_length_range) is
