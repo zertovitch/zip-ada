@@ -327,7 +327,7 @@ package body LZMA.Encoding is
       --
       --  Literals
       --
-      function Strict_Literal (
+      function Simple_Literal (
         b, b_match : Byte;
         prob       : CProb_array;
         sim        : Machine_State
@@ -336,7 +336,7 @@ package body LZMA.Encoding is
       --
       function Short_Rep_Match (sim : Machine_State) return MProb;
       --
-      function Any_literal (b : Byte; sim : Machine_State) return MProb;
+      function Literal_byte (b : Byte; sim : Machine_State) return MProb;
       --
       --  Matches
       --
@@ -410,7 +410,7 @@ package body LZMA.Encoding is
       --  and the other actually.
       --
       generic
-        with procedure Simulated_or_actual_Any_literal (
+        with procedure Simulated_or_actual_Literal_byte (
           b    :        Byte;
           sim  : in out Machine_State;
           prob : in out MProb);
@@ -455,7 +455,7 @@ package body LZMA.Encoding is
         --    end if;
       end Simulate_bit;
 
-      function Strict_Literal (
+      function Simple_Literal (
         b, b_match    : Byte;
         prob          : CProb_array;
         sim           : Machine_State
@@ -502,7 +502,7 @@ package body LZMA.Encoding is
           Simulate_Literal_Matched;
         end if;
         return prob_lit;
-      end Strict_Literal;
+      end Simple_Literal;
 
       function Short_Rep_Match (sim : Machine_State) return MProb is
       begin
@@ -514,7 +514,7 @@ package body LZMA.Encoding is
       end Short_Rep_Match;
 
       --  We simulate here LZ77_emits_literal_byte.
-      procedure Any_literal (b : Byte; sim : in out Machine_State; prob : in out MProb) is
+      procedure Literal_byte (b : Byte; sim : in out Machine_State; prob : in out MProb) is
         probs_lit_idx : constant Integer := Idx_for_Literal_prob (sim.total_pos, sim.prev_byte);
         ltr, srm : MProb;
         procedure Update_pos_related_stuff is
@@ -527,7 +527,7 @@ package body LZMA.Encoding is
         b_match : constant Byte := Text_Buf ((sim.R - sim.rep_dist (0) - 1) and Text_Buf_Mask);
       begin
         sim.pos_state := Pos_state_range (UInt32 (sim.total_pos) and pos_bits_mask);
-        ltr := Strict_Literal (b, b_match, probs.lit (probs_lit_idx .. probs.lit'Last), sim);
+        ltr := Simple_Literal (b, b_match, probs.lit (probs_lit_idx .. probs.lit'Last), sim);
         if b = b_match and then sim.total_pos > Data_Bytes_Count (sim.rep_dist (0) + 1) then
           srm := Short_Rep_Match (sim);
           if srm > ltr then
@@ -541,17 +541,17 @@ package body LZMA.Encoding is
         sim.state := Update_State_Literal (sim.state);
         prob := prob * ltr;
         Update_pos_related_stuff;
-      end Any_literal;
+      end Literal_byte;
 
-      function Any_literal (b : Byte; sim : Machine_State) return MProb is
+      function Literal_byte (b : Byte; sim : Machine_State) return MProb is
         --  The following variable is discarded after the simulation,
         --  since we only test the literal generation for getting its probability.
         sim_var : Machine_State := sim;
         prob : MProb := 1.0;
       begin
-        Any_literal (b, sim_var, prob);
+        Literal_byte (b, sim_var, prob);
         return prob;
-      end Any_literal;
+      end Literal_byte;
 
       function Simulate_Bit_Tree (prob : CProb_array; num_bits : Positive; symbol : Unsigned) return MProb is
         res : MProb := 1.0;
@@ -774,7 +774,7 @@ package body LZMA.Encoding is
       begin
         for x in 1 .. length loop
           b := Text_Buf ((Copy_start + UInt32 (x - 1)) and Text_Buf_Mask);
-          Any_literal (b, sim, expanded_string_prob);
+          Literal_byte (b, sim, expanded_string_prob);
           --  Probability is decreasing over the loop, so it is
           --  useless to continue under given threshold.
           if expanded_string_prob < give_up then
@@ -830,11 +830,11 @@ package body LZMA.Encoding is
           --
           if length > Min_match_length then
             b_head   := Text_Buf (Copy_start and Text_Buf_Mask);
-            head_lit := Any_literal (b_head, sim);
+            head_lit := Literal_byte (b_head, sim);
             --  One literal, then a shorter DL code, case #1:
             --  naive approach: we spot a super-probable literal.
-            if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold (distance, length) then
-              Simulated_or_actual_Any_literal (b_head, sim, prob);
+            if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold then
+              Simulated_or_actual_Literal_byte (b_head, sim, prob);
               Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
               return;
             end if;
@@ -851,7 +851,7 @@ package body LZMA.Encoding is
             if head_lit * dlc_after_lit * DL_Code_Erosion.Malus_lit_then_DL (distance, length)
               > strict_or_expanded_dlc
             then
-              Simulated_or_actual_Any_literal (b_head, sim, prob);
+              Simulated_or_actual_Literal_byte (b_head, sim, prob);
               Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
               return;
             end if;
@@ -861,7 +861,7 @@ package body LZMA.Encoding is
               --  We've got a better probability -> redo this variant (shorter DL code,
               --  then literal) for good.
               Generic_Any_DL_code (distance, length - 1, sim, prob, recursion_limit);
-              Simulated_or_actual_Any_literal (Text_Buf ((sim.R - distance) and Text_Buf_Mask), sim, prob);
+              Simulated_or_actual_Literal_byte (Text_Buf ((sim.R - distance) and Text_Buf_Mask), sim, prob);
               return;
             end if;
           end if;
@@ -869,7 +869,7 @@ package body LZMA.Encoding is
           if expanded_dlc > strict_dlc then
             --  Here we prefer a full expansion of DL code as literals.
             for x in 1 .. length loop
-              Simulated_or_actual_Any_literal (
+              Simulated_or_actual_Literal_byte (
                 Text_Buf ((Copy_start + UInt32 (x - 1)) and Text_Buf_Mask), sim, prob
               );
             end loop;
@@ -882,9 +882,9 @@ package body LZMA.Encoding is
 
       --  We simulate here Write_any_DL_code, including the variants!
       procedure Any_DL_code is new Generic_Any_DL_code
-        (Simulated_or_actual_Any_literal          => Any_literal,
-         Simulated_or_actual_Strict_DL_code       => Strict_DL_code,
-         I_am_a_simulation                        => True);
+        (Simulated_or_actual_Literal_byte   => Literal_byte,
+         Simulated_or_actual_Strict_DL_code => Strict_DL_code,
+         I_am_a_simulation                  => True);
 
       function Any_DL_code (
         distance        : UInt32;
@@ -924,7 +924,7 @@ package body LZMA.Encoding is
           prob : MProb := Malus_DL_then_lit;
         begin
           Any_DL_code (distance, length - 1, sim_var, prob, recursion_limit);
-          Any_literal (Text_Buf ((sim_var.R - distance) and Text_Buf_Mask), sim_var, prob);
+          Literal_byte (Text_Buf ((sim_var.R - distance) and Text_Buf_Mask), sim_var, prob);
           return prob;
         end DL_code_then_Literal;
         --
@@ -1001,7 +1001,7 @@ package body LZMA.Encoding is
           (compare_variants = None
              or else
            Estimates.Short_Rep_Match (ES) >
-           Estimates.Strict_Literal (b, b_match, probs.lit (pb_lit_idx .. probs.lit'Last), ES))
+           Estimates.Simple_Literal (b, b_match, probs.lit (pb_lit_idx .. probs.lit'Last), ES))
       then
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
         --  case, and its cost (4 bits) is more affordable than the literal's cost.
@@ -1219,12 +1219,11 @@ package body LZMA.Encoding is
       ES.prev_byte := Text_Buf ((ES.R - 1) and Text_Buf_Mask);
     end Write_strict_DL_code;
 
-    --
     --  All the smart things to optimize the probability model by breaking
     --  DL codes is done in the following procedure:
     --
     procedure Write_any_DL_code is new Estimates.Generic_Any_DL_code
-      (Simulated_or_actual_Any_literal    => Write_literal_byte,
+      (Simulated_or_actual_Literal_byte   => Write_literal_byte,
        Simulated_or_actual_Strict_DL_code => Write_strict_DL_code,
        I_am_a_simulation                  => False);
 
