@@ -442,6 +442,8 @@ package body LZMA.Encoding is
           sim           : in out Machine_State;
           prob          : in out MProb
         );
+        --
+        I_am_a_simulation : Boolean;
       procedure Generic_Any_DL_code (
         distance        :        UInt32;
         length          :        Match_length_range;
@@ -835,8 +837,14 @@ package body LZMA.Encoding is
         strict_dlc, expanded_dlc, strict_or_expanded_dlc, dlc_after_lit, head_lit : MProb;
         b_head : Byte;
         sim_post_lit_pos_state : Pos_state_range;
+        new_recursion_limit : Natural;
       begin
-        if recursion_limit > 0 and then compare_variants >= Simple then
+        if I_am_a_simulation then
+          new_recursion_limit := recursion_limit - 1;
+        else
+          new_recursion_limit := recursion_limit;  --  We do not limit in actual emission.
+        end if;
+        if new_recursion_limit >= 0 and then compare_variants >= Simple then
           strict_dlc             := Strict_DL_code (distance, length, sim);
           expanded_dlc           := Expanded_DL_code (distance, length, strict_dlc, sim);
           strict_or_expanded_dlc := MProb'Max (strict_dlc, expanded_dlc);
@@ -848,7 +856,7 @@ package body LZMA.Encoding is
             --  naive approach: we spot a super-probable literal.
             if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold (distance, length) then
               Simulated_or_actual_Any_literal (b_head, sim, prob);
-              Generic_Any_DL_code (distance, length - 1, sim, prob, recursion_limit - 1);
+              Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
               return;
             end if;
             --  One literal, then a shorter DL code, case #2:
@@ -859,20 +867,20 @@ package body LZMA.Encoding is
                 distance, length - 1,
                 (Update_State_Literal (sim.state), sim_post_lit_pos_state, b_head,
                  (sim.R + 1) and Text_Buf_Mask, sim.total_pos + 1, sim.rep_dist),
-                recursion_limit - 1
+                new_recursion_limit
             );
             if head_lit * dlc_after_lit * DL_Code_Erosion.Malus_lit_then_DL (distance, length)
               > strict_or_expanded_dlc
             then
               Simulated_or_actual_Any_literal (b_head, sim, prob);
-              Generic_Any_DL_code (distance, length - 1, sim, prob, recursion_limit - 1);
+              Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
               return;
             end if;
-            if DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, recursion_limit - 1)
+            if DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, new_recursion_limit)
               > strict_or_expanded_dlc
             then
               --  We've got a better probability -> redo this variant for good.
-              Simulated_or_actual_DL_code_then_Literal (distance, length, sim, prob, recursion_limit - 1);
+              Simulated_or_actual_DL_code_then_Literal (distance, length, sim, prob, new_recursion_limit);
               return;
             end if;
           end if;
@@ -892,7 +900,8 @@ package body LZMA.Encoding is
         (Simulated_or_actual_Any_literal          => Any_literal,
          Simulated_or_actual_Expand_DL_code       => Expand_DL_code,
          Simulated_or_actual_DL_code_then_Literal => DL_Code_Erosion.DL_code_then_Literal,
-         Simulated_or_actual_Strict_DL_code       => Strict_DL_code);
+         Simulated_or_actual_Strict_DL_code       => Strict_DL_code,
+         I_am_a_simulation                        => True);
 
       function Any_DL_code (
         distance        : UInt32;
@@ -1279,7 +1288,8 @@ package body LZMA.Encoding is
       (Simulated_or_actual_Any_literal          => Write_literal_byte,
        Simulated_or_actual_Expand_DL_code       => Write_expanded_DL_code,
        Simulated_or_actual_DL_code_then_Literal => Write_DL_code_then_Literal,
-       Simulated_or_actual_Strict_DL_code       => Write_strict_DL_code);
+       Simulated_or_actual_Strict_DL_code       => Write_strict_DL_code,
+       I_am_a_simulation                        => False);
 
     procedure Write_DL_code_then_Literal (
       distance        :        UInt32;
