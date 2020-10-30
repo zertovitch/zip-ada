@@ -389,6 +389,13 @@ package body LZMA.Encoding is
       Malus_simple_match_vs_rep : constant := 0.55;
 
       package DL_Code_Erosion is
+        --  It is sometimes better to split a DL code as a very frequent literal,
+        --  then a very frequent DL code with length-1.
+        function Lit_then_DL_threshold (distance : UInt32; length : Match_length_range) return MProb;
+        pragma Inline (Lit_then_DL_threshold);
+        --
+        function Malus_lit_then_DL (distance : UInt32; length : Match_length_range) return MProb;
+        pragma Inline (Malus_lit_then_DL);
         --  Case of DL code split into a shorter DL code, then a literal.
         procedure DL_code_then_Literal (
           distance        :        UInt32;
@@ -405,20 +412,6 @@ package body LZMA.Encoding is
           recursion_limit : Natural
         )
         return MProb;
-        --  DL code for short lengths may be unnecessary and replaced by fully or partially expanded bytes.
-        Short_Length : constant := 79;
-        --  ^ value 79 instead of 18 improves the 8 benchmarks in
-        --    doc/za_work.xls; optimal for silesia.
-        --    !! Ideally we should get rid of that limit.
-        --  It is better to split a DL code as a very frequent literal, then a DL code with length-1.
-        --  Naive approach: literal's probability only is considered:
-        function Lit_then_DL_threshold (distance : UInt32; length : Match_length_range) return MProb;
-        pragma Inline (Lit_then_DL_threshold);
-        function Malus_lit_then_DL (distance : UInt32; length : Match_length_range) return MProb;
-        pragma Inline (Malus_lit_then_DL);
-        --
-        function Malus_DL_then_lit (distance : UInt32; length : Match_length_range) return MProb;
-        pragma Inline (Malus_DL_then_lit);
       end DL_Code_Erosion;
 
     end Estimates;
@@ -822,10 +815,7 @@ package body LZMA.Encoding is
         end Compute_dlc_variants;
         --
       begin
-        if recursion_limit > 0
-          and then compare_variants >= Simple
-          and then length <= DL_Code_Erosion.Short_Length
-        then
+        if recursion_limit > 0 and then compare_variants >= Simple then
           if length > Min_match_length then
             b_head   := Text_Buf (Copy_start and Text_Buf_Mask);
             head_lit := Any_literal (b_head, sim);
@@ -854,10 +844,9 @@ package body LZMA.Encoding is
               return;
             end if;
             dl_then_lit :=
-              DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
               DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, recursion_limit - 1);
             if dl_then_lit > strict_or_expanded_dlc then
-              --  We've got a bBetter probability -> redo this variant for good (in the simulation).
+              --  We've got a better probability -> redo this variant for good (in the simulation).
               DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, prob, recursion_limit - 1);
               return;
             end if;
@@ -920,8 +909,11 @@ package body LZMA.Encoding is
           --  The following variable is discarded after the simulation,
           --  since we only test this variant for getting its probability.
           sim_var : Machine_State := sim;
+          --  This "DL erosion" technique empirically works better for shorter distances and lengths.
+          Malus_DL_then_lit : constant MProb :=
+            MProb'Max (0.0, 0.135 - MProb_Float (distance) * 1.0e-8 - MProb_Float (length) * 1.0e-4);
           --
-          prob : MProb := 1.0;
+          prob : MProb := Malus_DL_then_lit;
         begin
           DL_code_then_Literal (distance, length, sim_var, prob, recursion_limit);
           return prob;
@@ -939,11 +931,6 @@ package body LZMA.Encoding is
           return MProb'Max (0.0, 0.064 - MProb_Float (distance) * 1.0e-9 - MProb_Float (length) * 3.0e-5);
         end Malus_lit_then_DL;
         --
-        function Malus_DL_then_lit (distance : UInt32; length : Match_length_range) return MProb is
-        begin
-          --  This "DL erosion" technique empirically works better for shorter distances and lengths.
-          return MProb'Max (0.0, 0.135 - MProb_Float (distance) * 1.0e-8 - MProb_Float (length) * 1.0e-4);
-        end Malus_DL_then_lit;
       end DL_Code_Erosion;
 
     end Estimates;
@@ -1205,9 +1192,7 @@ package body LZMA.Encoding is
       --
       sim_post_lit_pos_state : Pos_state_range;
     begin
-      if compare_variants >= Simple
-        and then length <= DL_Code_Erosion.Short_Length
-      then
+      if compare_variants >= Simple then
         --  Distance-Length (DL) code has a small length.
         --  It may be better just to expand it as plain literals, fully or partially.
         --  We consider shortening the DL code's length.
@@ -1242,7 +1227,6 @@ package body LZMA.Encoding is
           end if;
           --  We consider sending a shorter DL code, then a literal.
           dl_then_lit :=
-            DL_Code_Erosion.Malus_DL_then_lit (distance, length) *
             DL_Code_Erosion.DL_code_then_Literal (distance, length, ES, max_recursion);
           if dl_then_lit > strict_or_expanded_dlc then
             b_tail := Text_Buf ((Copy_start + UInt32 (length - 1)) and Text_Buf_Mask);
