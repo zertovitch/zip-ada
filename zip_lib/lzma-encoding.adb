@@ -288,8 +288,9 @@ package body LZMA.Encoding is
 
     type Variants_Comparison_Choice is
       (
-        None,    --  "Mechanical" encoding, straight from the LZ77 algorithm.
-        Simple   --  Compare alternative encodings and choose the most probable.
+        None,      --  "Mechanical" encoding, straight from the LZ77 algorithm.
+        Simple,    --  Compare simple alternative encodings and choose the most probable.
+        Splitting  --  More advanced search for alternatives.
       );
 
     compare_variants : Variants_Comparison_Choice;
@@ -381,7 +382,7 @@ package body LZMA.Encoding is
       )
       return MProb;
 
-      --  Constants appearing hereafter are empirical, tuned, magic numbers.
+      --  Constants like 0.1234 appearing hereafter are empirical, tuned, magic numbers.
       --  To do: tune them with Machine Learning.
 
       --  Over the long run, it's better to let repeat matches happen.
@@ -405,9 +406,9 @@ package body LZMA.Encoding is
       end DL_Code_Erosion;
 
       --  Here we define a generic DL code emission that is the same
-      --  for simulation and actual writes. So, we don't to synchronize
-      --  two pieces of code doing the same thing, but one in simulation
-      --  and the other actually.
+      --  for simulation and actual writes. This way, we don't need to
+      --  synchronize two pieces of Ada code doing the same operation,
+      --  one in simulation and the other in real.
       --
       generic
         with procedure Simulated_or_actual_Literal_byte (
@@ -803,7 +804,17 @@ package body LZMA.Encoding is
         Expand_DL_code (distance, length, give_up, sim_var, prob);
         return prob;
       end Expanded_DL_code;
-      --
+
+      --  Case of a DL code split into two shorter DL codes.
+      procedure Test_Split_DL (
+        distance        :     UInt32;
+        length          :     Match_length_range;
+        sim             :     Machine_State;
+        recursion_limit :     Natural;
+        best_prob       : out MProb;
+        best_cut        : out Match_length_range
+      );
+
       procedure Generic_Any_DL_code (
         distance        :        UInt32;
         length          :        Match_length_range;
@@ -816,6 +827,8 @@ package body LZMA.Encoding is
         strict_dlc, expanded_dlc, strict_or_expanded_dlc, dlc_after_lit, head_lit : MProb;
         b_head : Byte;
         sim_post_lit_pos_state : Pos_state_range;
+        best_prob : MProb;
+        best_cut  : Match_length_range;
         new_recursion_limit : Integer;
       begin
         if I_am_a_simulation then
@@ -823,7 +836,11 @@ package body LZMA.Encoding is
         else
           new_recursion_limit := recursion_limit;  --  We do not limit in actual emission.
         end if;
-        if new_recursion_limit >= 0 and then compare_variants >= Simple then
+        if new_recursion_limit < 0 then
+          Simulated_or_actual_Strict_DL_code (distance, length, sim, prob);
+          return;
+        end if;
+        if compare_variants >= Simple then
           strict_dlc             := Strict_DL_code (distance, length, sim);
           expanded_dlc           := Expanded_DL_code (distance, length, strict_dlc, sim);
           strict_or_expanded_dlc := MProb'Max (strict_dlc, expanded_dlc);
@@ -858,9 +875,9 @@ package body LZMA.Encoding is
             if DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, new_recursion_limit)
               > strict_or_expanded_dlc
             then
-              --  We've got a better probability -> redo this variant (shorter DL code,
-              --  then literal) for good.
-              Generic_Any_DL_code (distance, length - 1, sim, prob, recursion_limit);
+              --  We've got a better probability -> redo this variant
+              --  (shorter DL code, then literal) for good.
+              Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
               Simulated_or_actual_Literal_byte (Text_Buf ((sim.R - distance) and Text_Buf_Mask), sim, prob);
               return;
             end if;
@@ -873,6 +890,14 @@ package body LZMA.Encoding is
                 Text_Buf ((Copy_start + UInt32 (x - 1)) and Text_Buf_Mask), sim, prob
               );
             end loop;
+            return;
+          end if;
+        end if;
+        if compare_variants >= Splitting then
+          Test_Split_DL (distance, length, sim, new_recursion_limit, best_prob, best_cut);
+          if best_prob > strict_or_expanded_dlc then
+            Generic_Any_DL_code (distance, best_cut,          sim, prob, new_recursion_limit);
+            Generic_Any_DL_code (distance, length - best_cut, sim, prob, new_recursion_limit);
             return;
           end if;
         end if;
@@ -935,6 +960,35 @@ package body LZMA.Encoding is
         end Malus_lit_then_DL;
         --
       end DL_Code_Erosion;
+
+      procedure Test_Split_DL (
+        distance        :     UInt32;
+        length          :     Match_length_range;
+        sim             :     Machine_State;
+        recursion_limit :     Natural;
+        best_prob       : out MProb;
+        best_cut        : out Match_length_range
+      )
+      is
+        sim_var : Machine_State := sim;
+        Malus : constant MProb :=
+          MProb'Max (0.0, 1.0 - MProb_Float (distance) * 0.0 - MProb_Float (length) * 0.0);
+        prob : MProb;
+      begin
+        best_prob := 0.0;
+        best_cut  := Match_length_range'First;
+        for cut in 2 .. length - 2 loop  --  If length < 4 this loop is skipped.
+          prob := 1.0;
+          sim_var := sim;  --  Restart simulation state.
+          Any_DL_code (distance, cut,          sim_var, prob, recursion_limit);
+          Any_DL_code (distance, length - cut, sim_var, prob, recursion_limit);
+          if prob > best_prob then
+            best_prob := prob;
+            best_cut := cut;
+          end if;
+        end loop;
+        best_prob := best_prob * Malus;
+      end Test_Split_DL;
 
     end Estimates;
 
