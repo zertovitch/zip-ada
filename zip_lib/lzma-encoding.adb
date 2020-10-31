@@ -810,6 +810,7 @@ package body LZMA.Encoding is
         distance        :     UInt32;
         length          :     Match_length_range;
         sim             :     Machine_State;
+        hurdle          :     MProb;
         recursion_limit :     Natural;
         best_prob       : out MProb;
         best_cut        : out Match_length_range
@@ -894,7 +895,11 @@ package body LZMA.Encoding is
           end if;
         end if;
         if compare_variants >= Splitting then
-          Test_Split_DL (distance, length, sim, new_recursion_limit, best_prob, best_cut);
+          Test_Split_DL (
+            distance, length,
+            sim, strict_or_expanded_dlc, new_recursion_limit,
+            best_prob, best_cut
+          );
           if best_prob > strict_or_expanded_dlc then
             Generic_Any_DL_code (distance, best_cut,          sim, prob, new_recursion_limit);
             Generic_Any_DL_code (distance, length - best_cut, sim, prob, new_recursion_limit);
@@ -961,33 +966,54 @@ package body LZMA.Encoding is
         --
       end DL_Code_Erosion;
 
+      splits_considered : constant array (Match_length_range) of Boolean :=
+        ( 4 .. 9 => True,
+          others => False
+        );
+
       procedure Test_Split_DL (
         distance        :     UInt32;
         length          :     Match_length_range;
         sim             :     Machine_State;
+        hurdle          :     MProb;
         recursion_limit :     Natural;
         best_prob       : out MProb;
         best_cut        : out Match_length_range
       )
       is
         sim_var : Machine_State := sim;
+        --  For long distances, the DL split technique degrades compression and makes
+        --  the compression time explode.
         Malus : constant MProb :=
-          MProb'Max (0.0, 1.0 - MProb_Float (distance) * 0.0 - MProb_Float (length) * 0.0);
+          MProb'Max (0.0, 0.27 - MProb_Float (distance) * 2.0e-6 - MProb_Float (length) * 0.0);
         prob : MProb;
+        lowered_recursion_limit : constant INteger := recursion_limit - 1;
       begin
         best_prob := 0.0;
         best_cut  := Match_length_range'First;
+        if Malus < hurdle then
+          return;
+        end if;
         for cut in 2 .. length - 2 loop  --  If length < 4 this loop is skipped.
-          prob := 1.0;
-          sim_var := sim;  --  Restart simulation state.
-          Any_DL_code (distance, cut,          sim_var, prob, recursion_limit);
-          Any_DL_code (distance, length - cut, sim_var, prob, recursion_limit);
-          if prob > best_prob then
-            best_prob := prob;
-            best_cut := cut;
+          if splits_considered (cut) or else splits_considered (length - cut) then
+            --  If we test all lengths the compression becomes too slow
+            --  (huge number of combinations since recursion is involved).
+            prob := Malus;
+            sim_var := sim;  --  Restart simulation state.
+            Any_DL_code (distance, cut, sim_var, prob, lowered_recursion_limit);
+            if prob <= hurdle then
+              null;
+              --  Give up this iteration, since the probability is
+              --  already below the level required.
+            else
+              Any_DL_code (distance, length - cut, sim_var, prob, lowered_recursion_limit);
+              if prob > best_prob then
+                best_prob := prob;
+                best_cut := cut;
+              end if;
+            end if;
           end if;
         end loop;
-        best_prob := best_prob * Malus;
       end Test_Split_DL;
 
     end Estimates;
@@ -1336,8 +1362,10 @@ package body LZMA.Encoding is
     case level is
       when Level_0 | Level_1 =>
         compare_variants := None;
-      when Level_2 | Level_3 =>
+      when Level_2  =>
         compare_variants := Simple;
+      when Level_3 =>
+        compare_variants := Splitting;
     end case;
     Write_LZMA_header;
     My_LZ77;

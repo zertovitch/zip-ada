@@ -61,10 +61,10 @@ rem   ### LZMA, external
 
 rem   ### LZMA (Zip.Compress.LZMA_E)
 ..\..\zipada -el1 ../bench_%1_lzma_1 *
+..\..\zipada -el2 ../bench_%1_lzma_2 *
 
 :skip
 rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
-..\..\zipada -el2 ../bench_%1_lzma_2 *
 ..\..\zipada -el3 ../bench_%1_lzma_3 *
 ..\..\zipada -eps ../bench_%1_presel *
 
