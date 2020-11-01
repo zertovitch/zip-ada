@@ -323,8 +323,7 @@ package body LZMA.Encoding is
     --  probabilities of the former will be increased instead of the latter.
 
     package Estimates is
-      type MProb_Float is digits 15;
-      subtype MProb is MProb_Float range 0.0 .. 1.0;
+      type MProb is digits 15 range 0.0 .. 1.0;
       --
       --  Literals
       --
@@ -941,7 +940,7 @@ package body LZMA.Encoding is
           sim_var : Machine_State := sim;
           --  This "DL erosion" technique empirically works better for shorter distances and lengths.
           Malus_DL_then_lit : constant MProb :=
-            MProb'Max (0.0, 0.135 - MProb_Float (distance) * 1.0e-8 - MProb_Float (length) * 1.0e-4);
+            MProb'Max (0.0, 0.135 - MProb'Base (distance) * 1.0e-8 - MProb'Base (length) * 1.0e-4);
           --
           prob : MProb := Malus_DL_then_lit;
         begin
@@ -953,7 +952,7 @@ package body LZMA.Encoding is
         function Malus_lit_then_DL (distance : UInt32; length : Match_length_range) return MProb is
         begin
           --  This "DL erosion" technique empirically works better for shorter distances and lengths.
-          return MProb'Max (0.0, 0.064 - MProb_Float (distance) * 1.0e-9 - MProb_Float (length) * 3.0e-5);
+          return MProb'Max (0.0, 0.064 - MProb'Base (distance) * 1.0e-9 - MProb'Base (length) * 3.0e-5);
         end Malus_lit_then_DL;
         --
       end DL_Code_Erosion;
@@ -974,7 +973,7 @@ package body LZMA.Encoding is
         --  For long distances, the DL split technique degrades compression and makes
         --  the compression time explode.
         Malus : constant MProb :=
-          MProb'Max (0.0, 0.27 - MProb_Float (distance) * 2.0e-6);
+          MProb'Max (0.0, 0.27 - MProb'Base (distance) * 2.0e-6);
         prob : MProb;
         lowered_recursion_limit : constant Integer := recursion_limit - 1;
       begin
