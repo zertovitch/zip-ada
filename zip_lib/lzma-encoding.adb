@@ -328,53 +328,39 @@ package body LZMA.Encoding is
       --
       --  Literals
       --
-      function Simple_Literal (
+      function Test_Simple_Literal (
         b, b_match : Byte;
         prob       : CProb_array;
         sim        : Machine_State
       )
       return MProb;
       --
-      function Short_Rep_Match (sim : Machine_State) return MProb;
+      function Test_Short_Rep_Match (sim : Machine_State) return MProb;
       --
-      function Literal_byte (b : Byte; sim : Machine_State) return MProb;
+      function Test_Literal_Byte (b : Byte; sim : Machine_State) return MProb;
       --
       --  Matches
       --
-      function Repeat_Match (
+      function Test_Repeat_Match (
         index_rm : Repeat_stack_range;
         length   : Unsigned;
         sim      : Machine_State
       )
       return MProb;
       --
-      function Simple_Match (
+      function Test_Simple_Match (
         distance : UInt32;
         length   : Unsigned;
         sim      : Machine_State
       )
       return MProb;
-      --  Strict_DL_code is either a Simple_Match or a Repeat_Match.
-      function Strict_DL_code (
-        distance : UInt32;
-        length   : Match_length_range;
-        sim      : Machine_State
-      )
-      return MProb;
-      --  Expanded_DL_code is a DL code expanded as a string of literals.
-      function Expanded_DL_code (
-        distance : UInt32;
-        length   : Match_length_range;
-        give_up  : MProb;
-        sim      : Machine_State
-      )
-      return MProb;
+
       --  End of the obvious cases. Now things get tougher...
 
       --  Here we get the probability of a general DL code
       --  as Write_any_DL_code would generate it, including variants.
 
-      function Any_DL_code (
+      function Test_any_DL_Code (
         distance        : UInt32;
         length          : Match_length_range;
         sim             : Machine_State;
@@ -411,12 +397,12 @@ package body LZMA.Encoding is
       --  one in simulation and the other in real.
       --
       generic
-        with procedure Simulated_or_actual_Literal_byte (
+        with procedure Simulated_or_actual_Literal_Byte (
           b    :        Byte;
           sim  : in out Machine_State;
           prob : in out MProb);
         --
-        with procedure Simulated_or_actual_Strict_DL_code (
+        with procedure Simulated_or_actual_Strict_DL_Code (
           distance :        UInt32;
           length   :        Match_length_range;
           sim      : in out Machine_State;
@@ -424,7 +410,7 @@ package body LZMA.Encoding is
         );
         --
         I_am_a_simulation : Boolean;
-      procedure Generic_Any_DL_code (
+      procedure Generic_any_DL_Code (
         distance        :        UInt32;
         length          :        Match_length_range;
         sim             : in out Machine_State;
@@ -443,9 +429,9 @@ package body LZMA.Encoding is
         return MProb'Base (cp) * To_Prob_Factor;
       end To_Math;
 
-      function Simulate_bit (prob_bit : CProb; bit : Unsigned) return MProb is
-      pragma Inline (Simulate_bit);
-        b : constant MProb'Base := MProb'Base (bit);  --  b = 0.0 or 1.0
+      function Test_Bit_Encoding (prob_bit : CProb; symbol : Unsigned) return MProb is
+      pragma Inline (Test_Bit_Encoding);
+        b : constant MProb'Base := MProb'Base (symbol);  --  b = 0.0 or 1.0
       begin
         return b + (1.0 - 2.0 * b) * To_Math (prob_bit);
         --  Branch-less equivalent of:
@@ -454,24 +440,24 @@ package body LZMA.Encoding is
         --    else
         --      return 1.0 - prob_bit;
         --    end if;
-      end Simulate_bit;
+      end Test_Bit_Encoding;
 
-      function Simple_Literal (
+      function Test_Simple_Literal (
         b, b_match    : Byte;
         prob          : CProb_array;
         sim           : Machine_State
       ) return MProb
       is
-        prob_lit : MProb := Simulate_bit (probs.switch.match (sim.state, sim.pos_state), Literal_choice);
+        prob_lit : MProb := Test_Bit_Encoding (probs.switch.match (sim.state, sim.pos_state), Literal_choice);
         symb : UInt32 := UInt32 (b) or 16#100#;
         --
         procedure Simulate_Literal is
         begin
           loop
             prob_lit := prob_lit *
-              Simulate_bit (
+              Test_Bit_Encoding (
                 prob_bit => prob (Integer (Shift_Right (symb, 8)) + prob'First),
-                bit      => Unsigned (Shift_Right (symb, 7)) and 1
+                symbol   => Unsigned (Shift_Right (symb, 7)) and 1
               );
             symb := Shift_Left (symb, 1);
             exit when symb >= 16#10000#;
@@ -485,10 +471,10 @@ package body LZMA.Encoding is
           loop
             match := Shift_Left (match, 1);
             prob_lit := prob_lit *
-              Simulate_bit (
+              Test_Bit_Encoding (
                 prob_bit => prob (Integer (offs + (match and offs) +
                                                  Shift_Right (symb, 8)) + prob'First),
-                bit      => Unsigned (Shift_Right (symb, 7)) and 1
+                symbol   => Unsigned (Shift_Right (symb, 7)) and 1
               );
             symb := Shift_Left (symb, 1);
             offs := offs and not (match xor symb);
@@ -503,19 +489,19 @@ package body LZMA.Encoding is
           Simulate_Literal_Matched;
         end if;
         return prob_lit;
-      end Simple_Literal;
+      end Test_Simple_Literal;
 
-      function Short_Rep_Match (sim : Machine_State) return MProb is
+      function Test_Short_Rep_Match (sim : Machine_State) return MProb is
       begin
         return
-          Simulate_bit (probs.switch.match (sim.state, sim.pos_state), DL_code_choice) *
-          Simulate_bit (probs.switch.rep (sim.state), Rep_match_choice) *
-          Simulate_bit (probs.switch.rep_g0 (sim.state), The_distance_is_rep0_choice) *
-          Simulate_bit (probs.switch.rep0_long (sim.state, sim.pos_state), The_length_is_1_choice);
-      end Short_Rep_Match;
+          Test_Bit_Encoding (probs.switch.match (sim.state, sim.pos_state), DL_code_choice) *
+          Test_Bit_Encoding (probs.switch.rep (sim.state), Rep_match_choice) *
+          Test_Bit_Encoding (probs.switch.rep_g0 (sim.state), The_distance_is_rep0_choice) *
+          Test_Bit_Encoding (probs.switch.rep0_long (sim.state, sim.pos_state), The_length_is_1_choice);
+      end Test_Short_Rep_Match;
 
       --  We simulate here LZ77_emits_literal_byte.
-      procedure Literal_byte (b : Byte; sim : in out Machine_State; prob : in out MProb) is
+      procedure Simulate_Literal_Byte (b : Byte; sim : in out Machine_State; prob : in out MProb) is
         probs_lit_idx : constant Integer := Idx_for_Literal_prob (sim.total_pos, sim.prev_byte);
         ltr, srm : MProb;
         procedure Update_pos_related_stuff is
@@ -528,9 +514,9 @@ package body LZMA.Encoding is
         b_match : constant Byte := Text_Buf ((sim.R - sim.rep_dist (0) - 1) and Text_Buf_Mask);
       begin
         sim.pos_state := Pos_state_range (UInt32 (sim.total_pos) and pos_bits_mask);
-        ltr := Simple_Literal (b, b_match, probs.lit (probs_lit_idx .. probs.lit'Last), sim);
+        ltr := Test_Simple_Literal (b, b_match, probs.lit (probs_lit_idx .. probs.lit'Last), sim);
         if b = b_match and then sim.total_pos > Data_Bytes_Count (sim.rep_dist (0) + 1) then
-          srm := Short_Rep_Match (sim);
+          srm := Test_Short_Rep_Match (sim);
           if srm > ltr then
             --  Short Rep would be preferred.
             sim.state := Update_State_ShortRep (sim.state);
@@ -542,17 +528,17 @@ package body LZMA.Encoding is
         sim.state := Update_State_Literal (sim.state);
         prob := prob * ltr;
         Update_pos_related_stuff;
-      end Literal_byte;
+      end Simulate_Literal_Byte;
 
-      function Literal_byte (b : Byte; sim : Machine_State) return MProb is
+      function Test_Literal_Byte (b : Byte; sim : Machine_State) return MProb is
         --  The following variable is discarded after the simulation,
         --  since we only test the literal generation for getting its probability.
         sim_var : Machine_State := sim;
         prob : MProb := 1.0;
       begin
-        Literal_byte (b, sim_var, prob);
+        Simulate_Literal_Byte (b, sim_var, prob);
         return prob;
-      end Literal_byte;
+      end Test_Literal_Byte;
 
       function Simulate_Bit_Tree (prob : CProb_array; num_bits : Positive; symbol : Unsigned) return MProb is
         res : MProb := 1.0;
@@ -561,13 +547,13 @@ package body LZMA.Encoding is
         m := 1;
         for i in reverse 0 .. num_bits - 1 loop
           bit := Unsigned (Shift_Right (UInt32 (symbol), i)) and 1;
-          res := res * Simulate_bit (prob (Integer (m) + prob'First), bit);
+          res := res * Test_Bit_Encoding (prob (Integer (m) + prob'First), bit);
           m := m + m + bit;
         end loop;
         return res;
       end Simulate_Bit_Tree;
 
-      function Simulate_Length (
+      function Test_Length (
         probs_len     : Probs_for_LZ_Lengths;
         length        : Unsigned;
         sim_pos_state : Pos_state_range
@@ -578,52 +564,52 @@ package body LZMA.Encoding is
         res : MProb;
       begin
         if len < Len_low_symbols then
-          res := Simulate_bit (probs_len.choice_1, 0) *
+          res := Test_Bit_Encoding (probs_len.choice_1, 0) *
                  Simulate_Bit_Tree (probs_len.low_coder (sim_pos_state), Len_low_bits, len);
         else
-          res := Simulate_bit (probs_len.choice_1, 1);
+          res := Test_Bit_Encoding (probs_len.choice_1, 1);
           len := len - Len_low_symbols;
           if len < Len_mid_symbols then
-            res := res * Simulate_bit (probs_len.choice_2, 0)
+            res := res * Test_Bit_Encoding (probs_len.choice_2, 0)
                        * Simulate_Bit_Tree (probs_len.mid_coder (sim_pos_state), Len_mid_bits, len);
           else
-            res := res * Simulate_bit (probs_len.choice_2, 1);
+            res := res * Test_Bit_Encoding (probs_len.choice_2, 1);
             len := len - Len_mid_symbols;
             res := res * Simulate_Bit_Tree (probs_len.high_coder, Len_high_bits, len);
           end if;
         end if;
         return res;
-      end Simulate_Length;
+      end Test_Length;
 
-      function Repeat_Match (
-        index_rm      : Repeat_stack_range;
-        length        : Unsigned;
-        sim           : Machine_State
+      function Test_Repeat_Match (
+        index_rm : Repeat_stack_range;
+        length   : Unsigned;
+        sim      : Machine_State
       )
       return MProb
       is
-        res : MProb := Simulate_bit (probs.switch.rep (sim.state), Rep_match_choice);
+        res : MProb := Test_Bit_Encoding (probs.switch.rep (sim.state), Rep_match_choice);
       begin
         case index_rm is
           when 0 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (sim.state), The_distance_is_rep0_choice)
-                       * Simulate_bit (probs.switch.rep0_long (sim.state, sim.pos_state), The_length_is_not_1_choice);
+            res := res * Test_Bit_Encoding (probs.switch.rep_g0 (sim.state), The_distance_is_rep0_choice)
+                       * Test_Bit_Encoding (probs.switch.rep0_long (sim.state, sim.pos_state), The_length_is_not_1_choice);
           when 1 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (sim.state), The_distance_is_not_rep0_choice)
-                       * Simulate_bit (probs.switch.rep_g1 (sim.state), The_distance_is_rep1_choice);
+            res := res * Test_Bit_Encoding (probs.switch.rep_g0 (sim.state), The_distance_is_not_rep0_choice)
+                       * Test_Bit_Encoding (probs.switch.rep_g1 (sim.state), The_distance_is_rep1_choice);
           when 2 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (sim.state), The_distance_is_not_rep0_choice)
-                       * Simulate_bit (probs.switch.rep_g1 (sim.state), The_distance_is_not_rep1_choice)
-                       * Simulate_bit (probs.switch.rep_g2 (sim.state), The_distance_is_rep2_choice);
+            res := res * Test_Bit_Encoding (probs.switch.rep_g0 (sim.state), The_distance_is_not_rep0_choice)
+                       * Test_Bit_Encoding (probs.switch.rep_g1 (sim.state), The_distance_is_not_rep1_choice)
+                       * Test_Bit_Encoding (probs.switch.rep_g2 (sim.state), The_distance_is_rep2_choice);
           when 3 =>
-            res := res * Simulate_bit (probs.switch.rep_g0 (sim.state), The_distance_is_not_rep0_choice)
-                       * Simulate_bit (probs.switch.rep_g1 (sim.state), The_distance_is_not_rep1_choice)
-                       * Simulate_bit (probs.switch.rep_g2 (sim.state), The_distance_is_not_rep2_choice);
+            res := res * Test_Bit_Encoding (probs.switch.rep_g0 (sim.state), The_distance_is_not_rep0_choice)
+                       * Test_Bit_Encoding (probs.switch.rep_g1 (sim.state), The_distance_is_not_rep1_choice)
+                       * Test_Bit_Encoding (probs.switch.rep_g2 (sim.state), The_distance_is_not_rep2_choice);
         end case;
-        return res * Simulate_Length (probs.rep_len, length, sim.pos_state);
-      end Repeat_Match;
+        return res * Test_Length (probs.rep_len, length, sim.pos_state);
+      end Test_Repeat_Match;
 
-      function Simple_Match (
+      function Test_Simple_Match (
         distance      : UInt32;
         length        : Unsigned;
         sim           : Machine_State
@@ -641,14 +627,14 @@ package body LZMA.Encoding is
         begin
           for count_bits in reverse 1 .. num_bits loop
             bit := Unsigned (symb) and 1;
-            res := res * Simulate_bit (prob (Integer (m) + prob'First), bit);
+            res := res * Test_Bit_Encoding (prob (Integer (m) + prob'First), bit);
             m := m + m + bit;
             symb := Shift_Right (symb, 1);
           end loop;
           return res;
         end Simulate_Bit_Tree_Reverse;
         --
-        function Simulate_Distance return MProb is
+        function Test_Distance return MProb is
           len_state : constant Unsigned := Unsigned'Min (length - 2, Len_to_pos_states - 1);
           dist_slot : constant Unsigned := Get_dist_slot (distance);
           base, dist_reduced : UInt32;
@@ -678,27 +664,28 @@ package body LZMA.Encoding is
             end if;
           end if;
           return res;
-        end Simulate_Distance;
+        end Test_Distance;
       begin
         return
-          Simulate_bit (probs.switch.rep (sim.state), Simple_match_choice) *
-          Simulate_Length (probs.len, length, sim.pos_state) *
-          Simulate_Distance;
-      end Simple_Match;
+          Test_Bit_Encoding (probs.switch.rep (sim.state), Simple_match_choice) *
+          Test_Length (probs.len, length, sim.pos_state) *
+          Test_Distance;
+      end Test_Simple_Match;
 
       --  We simulate here a Distance-Length code
       --  sent straight to the encoder (no variants).
-      procedure Strict_DL_code (
+      procedure Simulate_Strict_DL_Code (
         distance      :        UInt32;
         length        :        Match_length_range;
         sim           : in out Machine_State;
         prob          : in out MProb
       )
       is
+      pragma Inline (Simulate_Strict_DL_Code);
         dist_ip : constant UInt32 := UInt32 (distance - 1);
         found_repeat : Integer := Repeat_Stack'First - 1;
-        dlc : constant MProb := Simulate_bit (probs.switch.match (sim.state, sim.pos_state), DL_code_choice);
-        sma : constant MProb := Simple_Match (dist_ip, Unsigned (length), sim);
+        dlc : constant MProb := Test_Bit_Encoding (probs.switch.match (sim.state, sim.pos_state), DL_code_choice);
+        sma : constant MProb := Test_Simple_Match (dist_ip, Unsigned (length), sim);
         rma : MProb;
         aux : UInt32;
         procedure Update_pos_related_stuff is
@@ -716,7 +703,7 @@ package body LZMA.Encoding is
           end if;
         end loop;
         if found_repeat >= Repeat_Stack'First then
-          rma := Repeat_Match (found_repeat, Unsigned (length), sim);
+          rma := Test_Repeat_Match (found_repeat, Unsigned (length), sim);
           if rma >= sma * Malus_simple_match_vs_rep  then
             --  Repeat match case:
             prob := prob * dlc * rma;
@@ -740,26 +727,28 @@ package body LZMA.Encoding is
         sim.rep_dist (0) := distance;
         sim.state := Update_State_Match (sim.state);
         Update_pos_related_stuff;
-      end Strict_DL_code;
+      end Simulate_Strict_DL_Code;
 
-      function Strict_DL_code (
+      function Test_Strict_DL_Code (
         distance      : UInt32;
         length        : Match_length_range;
         sim           : Machine_State
       )
       return MProb
       is
+      pragma Inline (Test_Strict_DL_Code);
         --  The following variable is discarded after the simulation,
         --  since we only test strict DL code for getting its probability.
         sim_var : Machine_State := sim;
         --
         prob : MProb := 1.0;
       begin
-        Strict_DL_code (distance, length, sim_var, prob);
+        Simulate_Strict_DL_Code (distance, length, sim_var, prob);
         return prob;
-      end Strict_DL_code;
+      end Test_Strict_DL_Code;
 
-      procedure Expand_DL_code (
+      --  Expand fully a DL code as a string of literals.
+      procedure Simulate_Expand_DL_code (
         distance      :        UInt32;
         length        :        Match_length_range;
         give_up       :        MProb;
@@ -767,6 +756,7 @@ package body LZMA.Encoding is
         prob          : in out MProb
       )
       is
+      pragma Inline (Simulate_Expand_DL_code);
         b : Byte;
         --
         sim_mem : constant Machine_State := sim;
@@ -775,7 +765,7 @@ package body LZMA.Encoding is
       begin
         for x in 1 .. length loop
           b := Text_Buf ((Copy_start + UInt32 (x - 1)) and Text_Buf_Mask);
-          Literal_byte (b, sim, expanded_string_prob);
+          Simulate_Literal_Byte (b, sim, expanded_string_prob);
           --  Probability is decreasing over the loop, so it is
           --  useless to continue under given threshold.
           if expanded_string_prob < give_up then
@@ -785,9 +775,9 @@ package body LZMA.Encoding is
           sim.prev_byte := b;
         end loop;
         prob := prob * expanded_string_prob;
-      end Expand_DL_code;
+      end Simulate_Expand_DL_code;
 
-      function Expanded_DL_code (
+      function Test_Expanded_DL_Code (
         distance      : UInt32;
         length        : Match_length_range;
         give_up       : MProb;
@@ -795,15 +785,16 @@ package body LZMA.Encoding is
       )
       return MProb
       is
+        pragma Inline (Test_Expanded_DL_Code);
         --  The following variable is discarded after the simulation,
         --  since we only test the DL code expansion for getting its probability.
         sim_var : Machine_State := sim;
         --
         prob : MProb := 1.0;
       begin
-        Expand_DL_code (distance, length, give_up, sim_var, prob);
+        Simulate_Expand_DL_code (distance, length, give_up, sim_var, prob);
         return prob;
-      end Expanded_DL_code;
+      end Test_Expanded_DL_Code;
 
       --  Case of a DL code split into two shorter DL codes.
       procedure Test_Split_DL (
@@ -815,8 +806,9 @@ package body LZMA.Encoding is
         best_prob       : out MProb;
         best_cut        : out Match_length_range
       );
+      pragma Inline (Test_Split_DL);
 
-      procedure Generic_Any_DL_code (
+      procedure Generic_any_DL_Code (
         distance        :        UInt32;
         length          :        Match_length_range;
         sim             : in out Machine_State;
@@ -838,29 +830,29 @@ package body LZMA.Encoding is
           new_recursion_limit := recursion_limit;  --  We do not limit in actual emission.
         end if;
         if new_recursion_limit < 0 then
-          Simulated_or_actual_Strict_DL_code (distance, length, sim, prob);
+          Simulated_or_actual_Strict_DL_Code (distance, length, sim, prob);
           return;
         end if;
         if compare_variants >= Simple then
-          strict_dlc             := Strict_DL_code (distance, length, sim);
-          expanded_dlc           := Expanded_DL_code (distance, length, strict_dlc, sim);
+          strict_dlc             := Test_Strict_DL_Code (distance, length, sim);
+          expanded_dlc           := Test_Expanded_DL_Code (distance, length, strict_dlc, sim);
           strict_or_expanded_dlc := MProb'Max (strict_dlc, expanded_dlc);
           --
           if length > Min_match_length then
             b_head   := Text_Buf (Copy_start and Text_Buf_Mask);
-            head_lit := Literal_byte (b_head, sim);
+            head_lit := Test_Literal_Byte (b_head, sim);
             --  One literal, then a shorter DL code, case #1:
             --  naive approach: we spot a super-probable literal.
             if head_lit >= DL_Code_Erosion.Lit_then_DL_threshold then
-              Simulated_or_actual_Literal_byte (b_head, sim, prob);
-              Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
+              Simulated_or_actual_Literal_Byte (b_head, sim, prob);
+              Generic_any_DL_Code (distance, length - 1, sim, prob, new_recursion_limit);
               return;
             end if;
             --  One literal, then a shorter DL code, case #2:
             --  we estimate the shorter DL code's probability.
             sim_post_lit_pos_state := Pos_state_range (UInt32 (sim.total_pos + 1) and pos_bits_mask);
             dlc_after_lit :=
-              Any_DL_code (
+              Test_any_DL_Code (
                 distance, length - 1,
                 (Update_State_Literal (sim.state), sim_post_lit_pos_state, b_head,
                  (sim.R + 1) and Text_Buf_Mask, sim.total_pos + 1, sim.rep_dist),
@@ -869,8 +861,8 @@ package body LZMA.Encoding is
             if head_lit * dlc_after_lit * DL_Code_Erosion.Malus_lit_then_DL (distance, length)
               > strict_or_expanded_dlc
             then
-              Simulated_or_actual_Literal_byte (b_head, sim, prob);
-              Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
+              Simulated_or_actual_Literal_Byte (b_head, sim, prob);
+              Generic_any_DL_Code (distance, length - 1, sim, prob, new_recursion_limit);
               return;
             end if;
             if DL_Code_Erosion.DL_code_then_Literal (distance, length, sim, new_recursion_limit)
@@ -878,8 +870,8 @@ package body LZMA.Encoding is
             then
               --  We've got a better probability -> redo this variant
               --  (shorter DL code, then literal) for good.
-              Generic_Any_DL_code (distance, length - 1, sim, prob, new_recursion_limit);
-              Simulated_or_actual_Literal_byte (Text_Buf ((sim.R - distance) and Text_Buf_Mask), sim, prob);
+              Generic_any_DL_Code (distance, length - 1, sim, prob, new_recursion_limit);
+              Simulated_or_actual_Literal_Byte (Text_Buf ((sim.R - distance) and Text_Buf_Mask), sim, prob);
               return;
             end if;
           end if;
@@ -887,7 +879,7 @@ package body LZMA.Encoding is
           if expanded_dlc > strict_dlc then
             --  Here we prefer a full expansion of DL code as literals.
             for x in 1 .. length loop
-              Simulated_or_actual_Literal_byte (
+              Simulated_or_actual_Literal_Byte (
                 Text_Buf ((Copy_start + UInt32 (x - 1)) and Text_Buf_Mask), sim, prob
               );
             end loop;
@@ -901,22 +893,22 @@ package body LZMA.Encoding is
             best_prob, best_cut
           );
           if best_prob > strict_or_expanded_dlc then
-            Generic_Any_DL_code (distance, best_cut,          sim, prob, new_recursion_limit);
-            Generic_Any_DL_code (distance, length - best_cut, sim, prob, new_recursion_limit);
+            Generic_any_DL_Code (distance, best_cut,          sim, prob, new_recursion_limit);
+            Generic_any_DL_Code (distance, length - best_cut, sim, prob, new_recursion_limit);
             return;
           end if;
         end if;
-        --  At this point, we go for simulating or sending the plain DL code.
-        Simulated_or_actual_Strict_DL_code (distance, length, sim, prob);
-      end Generic_Any_DL_code;
+        --  At this point, we go for simulating or writing the plain DL code.
+        Simulated_or_actual_Strict_DL_Code (distance, length, sim, prob);
+      end Generic_any_DL_Code;
 
       --  We simulate here Write_any_DL_code, including the variants!
-      procedure Any_DL_code is new Generic_Any_DL_code
-        (Simulated_or_actual_Literal_byte   => Literal_byte,
-         Simulated_or_actual_Strict_DL_code => Strict_DL_code,
+      procedure Simulate_any_DL_Code is new Generic_any_DL_Code
+        (Simulated_or_actual_Literal_Byte   => Simulate_Literal_Byte,
+         Simulated_or_actual_Strict_DL_Code => Simulate_Strict_DL_Code,
          I_am_a_simulation                  => True);
 
-      function Any_DL_code (
+      function Test_any_DL_Code (
         distance        : UInt32;
         length          : Match_length_range;
         sim             : Machine_State;
@@ -930,9 +922,9 @@ package body LZMA.Encoding is
         --
         prob : MProb := 1.0;
       begin
-        Any_DL_code (distance, length, sim_var, prob, recursion_limit);
+        Simulate_any_DL_Code (distance, length, sim_var, prob, recursion_limit);
         return prob;
-      end Any_DL_code;
+      end Test_any_DL_Code;
 
       package body DL_Code_Erosion is
         --
@@ -953,8 +945,8 @@ package body LZMA.Encoding is
           --
           prob : MProb := Malus_DL_then_lit;
         begin
-          Any_DL_code (distance, length - 1, sim_var, prob, recursion_limit);
-          Literal_byte (Text_Buf ((sim_var.R - distance) and Text_Buf_Mask), sim_var, prob);
+          Simulate_any_DL_Code (distance, length - 1, sim_var, prob, recursion_limit);
+          Simulate_Literal_Byte (Text_Buf ((sim_var.R - distance) and Text_Buf_Mask), sim_var, prob);
           return prob;
         end DL_code_then_Literal;
         --
@@ -966,10 +958,7 @@ package body LZMA.Encoding is
         --
       end DL_Code_Erosion;
 
-      splits_considered : constant array (Match_length_range) of Boolean :=
-        ( 4 .. 9 => True,
-          others => False
-        );
+      subtype Splits_considered is Match_length_range range 4 .. 9;
 
       procedure Test_Split_DL (
         distance        :     UInt32;
@@ -985,9 +974,9 @@ package body LZMA.Encoding is
         --  For long distances, the DL split technique degrades compression and makes
         --  the compression time explode.
         Malus : constant MProb :=
-          MProb'Max (0.0, 0.27 - MProb_Float (distance) * 2.0e-6 - MProb_Float (length) * 0.0);
+          MProb'Max (0.0, 0.27 - MProb_Float (distance) * 2.0e-6);
         prob : MProb;
-        lowered_recursion_limit : constant INteger := recursion_limit - 1;
+        lowered_recursion_limit : constant Integer := recursion_limit - 1;
       begin
         best_prob := 0.0;
         best_cut  := Match_length_range'First;
@@ -995,18 +984,18 @@ package body LZMA.Encoding is
           return;
         end if;
         for cut in 2 .. length - 2 loop  --  If length < 4 this loop is skipped.
-          if splits_considered (cut) or else splits_considered (length - cut) then
+          if cut in Splits_considered or else length - cut in Splits_considered then
             --  If we test all lengths the compression becomes too slow
             --  (huge number of combinations since recursion is involved).
             prob := Malus;
-            sim_var := sim;  --  Restart simulation state.
-            Any_DL_code (distance, cut, sim_var, prob, lowered_recursion_limit);
+            sim_var := sim;  --  Set or reset simulation state.
+            Simulate_any_DL_Code (distance, cut, sim_var, prob, lowered_recursion_limit);
             if prob <= hurdle then
               null;
-              --  Give up this iteration, since the probability is
-              --  already below the level required.
+              --  Give up this iteration, since the probability is already below the required
+              --  level -> would be even lower after simulating the second DL code.
             else
-              Any_DL_code (distance, length - cut, sim_var, prob, lowered_recursion_limit);
+              Simulate_any_DL_Code (distance, length - cut, sim_var, prob, lowered_recursion_limit);
               if prob > best_prob then
                 best_prob := prob;
                 best_cut := cut;
@@ -1023,6 +1012,7 @@ package body LZMA.Encoding is
     -----------------------------------------------------------------------------------
 
     procedure Write_Literal (prob : in out CProb_array; symbol : in UInt32) is
+    pragma Inline (Write_Literal);
       symb : UInt32 := symbol or 16#100#;
     begin
       loop
@@ -1036,6 +1026,7 @@ package body LZMA.Encoding is
     end Write_Literal;
 
     procedure Write_Literal_Matched (prob : in out CProb_array; symbol, matched : in UInt32) is
+    pragma Inline (Write_Literal_Matched);
       symb  : UInt32 := symbol or 16#100#;
       offs  : UInt32 := 16#100#;
       match : UInt32 := matched;
@@ -1080,8 +1071,8 @@ package body LZMA.Encoding is
         and then
           (compare_variants = None
              or else
-           Estimates.Short_Rep_Match (ES) >
-           Estimates.Simple_Literal (b, b_match, probs.lit (pb_lit_idx .. probs.lit'Last), ES))
+           Estimates.Test_Short_Rep_Match (ES) >
+           Estimates.Test_Simple_Literal (b, b_match, probs.lit (pb_lit_idx .. probs.lit'Last), ES))
       then
         --  We are lucky: both bytes are the same. No literal to encode, "Short Rep Match"
         --  case, and its cost (4 bits) is more affordable than the literal's cost.
@@ -1106,14 +1097,14 @@ package body LZMA.Encoding is
       ES.R := (ES.R + 1) and Text_Buf_Mask;  --  This is mod String_buffer_size
     end LZ77_emits_literal_byte;
 
-    procedure Write_literal_byte (
+    procedure Write_Literal_Byte (
       b          :        Byte;
       dummy_sim  : in out Machine_State;
       dummy_prob : in out Estimates.MProb)
     is
     begin
       LZ77_emits_literal_byte (b);
-    end Write_literal_byte;
+    end Write_Literal_Byte;
 
     ---------------------------------------------------------------------------------
     --  This part processes the case where LZ77 sends a Distance-Length (DL) code  --
@@ -1262,7 +1253,7 @@ package body LZMA.Encoding is
       ES.state := Update_State_Rep (ES.state);
     end Write_Repeat_Match;
 
-    procedure Write_strict_DL_code (
+    procedure Write_Strict_DL_Code (
       distance   :        UInt32;
       length     :        Match_length_range;
       dummy_sim  : in out Machine_State;
@@ -1283,9 +1274,9 @@ package body LZMA.Encoding is
         and then
           (compare_variants = None
              or else
-           Estimates.Repeat_Match (found_repeat, Unsigned (length), ES)
+           Estimates.Test_Repeat_Match (found_repeat, Unsigned (length), ES)
            >=
-           Estimates.Simple_Match (dist_ip, Unsigned (length), ES) *
+           Estimates.Test_Simple_Match (dist_ip, Unsigned (length), ES) *
            Estimates.Malus_simple_match_vs_rep
           )
       then
@@ -1297,14 +1288,14 @@ package body LZMA.Encoding is
       Update_pos_state;
       ES.R := ES.R + UInt32 (length) and Text_Buf_Mask;  --  This is mod String_buffer_size
       ES.prev_byte := Text_Buf ((ES.R - 1) and Text_Buf_Mask);
-    end Write_strict_DL_code;
+    end Write_Strict_DL_Code;
 
     --  All the smart things to optimize the probability model by breaking
     --  DL codes is done in the following procedure:
     --
-    procedure Write_any_DL_code is new Estimates.Generic_Any_DL_code
-      (Simulated_or_actual_Literal_byte   => Write_literal_byte,
-       Simulated_or_actual_Strict_DL_code => Write_strict_DL_code,
+    procedure Write_any_DL_code is new Estimates.Generic_any_DL_Code
+      (Simulated_or_actual_Literal_Byte   => Write_Literal_Byte,
+       Simulated_or_actual_Strict_DL_Code => Write_Strict_DL_Code,
        I_am_a_simulation                  => False);
 
     procedure LZ77_emits_DL_code (distance : Integer; length : Match_length_range) is
