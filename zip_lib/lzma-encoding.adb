@@ -975,7 +975,7 @@ package body LZMA.Encoding is
         Malus : constant MProb :=
           MProb'Max (0.0, 0.27 - MProb'Base (distance) * 2.0e-6);
         prob : MProb;
-        lowered_recursion_limit : constant Integer := recursion_limit - 1;
+        lowered_recursion_limit : constant Natural := Integer'Max (0, recursion_limit - 1);
       begin
         best_prob := 0.0;
         best_cut  := Match_length_range'First;

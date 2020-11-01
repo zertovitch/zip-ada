@@ -1083,11 +1083,16 @@ package body LZ77 is
       Nice_Length : constant Integer := Integer'Min (162, Look_Ahead);  --  const. was 64
       Depth_Limit : constant := 48;  --  Alternatively: 16 + Nice_Length / 2
 
-      --  !! nicer: 1-based arrays.
+      type Length_Distance_Pair is record
+        length : Integer;
+        distance : Integer;
+      end record;
+
+      type LDP_array is array (Natural range <>) of Length_Distance_Pair;
+
       type Any_Matches_type (Count_Max : Integer) is record
         count : Integer := 0;
-        len   : Int_array (0 .. Count_Max);
-        dist  : Int_array (0 .. Count_Max);
+        ld    : LDP_array (1 .. Count_Max);
       end record;
 
       --  Subtracting 1 because the shortest match that this match
@@ -1251,9 +1256,8 @@ package body LZ77 is
           if delta2 < max_dist and then buf (readPos - delta2) = buf (readPos) then
             --  Match of length 2 found and checked.
             lenBest := 2;
-            matches.len (0) := 2;
-            matches.dist (0) := delta2 - 1;
             matches.count := 1;
+            matches.ld (matches.count) := (length => 2, distance => delta2 - 1);
           end if;
           --  See if the hash from the first three bytes found a match that
           --  is different from the match possibly found by the two-byte hash.
@@ -1265,7 +1269,7 @@ package body LZ77 is
             --  Match of length 3 found and checked.
             lenBest := 3;
             matches.count := matches.count + 1;
-            matches.dist (matches.count - 1) := delta3 - 1;
+            matches.ld (matches.count).distance := delta3 - 1;
             delta2 := delta3;
           end if;
           --  If a match was found, see how long it is.
@@ -1275,7 +1279,7 @@ package body LZ77 is
             loop
               lenBest := lenBest + 1;
             end loop;
-            matches.len (matches.count - 1) := lenBest;
+            matches.ld (matches.count).length := lenBest;
             --  Return if it is long enough (niceLen or reached the end of the dictionary).
             if lenBest >= niceLenLimit then
               skip_update_tree (niceLenLimit, currentMatch);
@@ -1320,9 +1324,8 @@ package body LZ77 is
               end loop;
               if len > lenBest then
                 lenBest := len;
-                matches.len (matches.count) := len;
-                matches.dist (matches.count) := delta0 - 1;
                 matches.count := matches.count + 1;
+                matches.ld (matches.count) := (length => len, distance => delta0 - 1);
                 if len >= niceLenLimit then
                   tree (ptr1) := tree (pair);
                   tree (ptr0) := tree (pair + 1);
@@ -1443,7 +1446,8 @@ package body LZ77 is
       rep_dist : array (Repeat_stack_range) of Natural := (others => 0);
 
       procedure Get_Next_Symbol is
-        avail, mainLen, mainDist, newLen, newDist, limit : Integer;
+        avail, limit : Integer;
+        new_ld, main : Length_Distance_Pair;
 
         function changePair (smallDist, bigDist : Integer) return Boolean is
         pragma Inline (changePair);
@@ -1459,8 +1463,8 @@ package body LZ77 is
           paranoid : constant Boolean := True;
         begin
           if paranoid then
-            for i in reverse -1 + shift .. mainLen - 2 + shift loop
-              if buf (readPos - (mainDist + 1) + i) /= buf (readPos + i) then
+            for i in reverse -1 + shift .. main.length - 2 + shift loop
+              if buf (readPos - (main.distance + 1) + i) /= buf (readPos + i) then
                 return False;  --  Should not occur (check with code coverage)
               end if;
             end loop;
@@ -1575,16 +1579,14 @@ package body LZ77 is
           end loop;
         end if;
 
-        mainLen := 0;
-        mainDist := 0;
+        main := (length => 0, distance => 0);
         if matches.count > 0 then
-          mainLen  := matches.len (matches.count - 1);
-          mainDist := matches.dist (matches.count - 1);
-          if mainLen >= Nice_Length then
+          main := matches.ld (matches.count);
+          if main.length >= Nice_Length then
             if Is_match_correct (1) then
-              Skip (mainLen - 1);
+              Skip (main.length - 1);
               --  Put_Line("[DL A]" & mainDist'Img & mainLen'Img);
-              Send_DL_code (mainDist, mainLen);
+              Send_DL_code (main.distance, main.length);
               return;
             else
               --  Put_Line("Wrong match [A]! pos=" & Integer'Image(lzPos - cyclicSize));
@@ -1592,22 +1594,21 @@ package body LZ77 is
               return;
             end if;
           end if;
-          while matches.count > 1 and then mainLen = matches.len (matches.count - 2) + 1 loop
-            exit when not changePair (matches.dist (matches.count - 2), mainDist);
+          while matches.count > 1 and then main.length = matches.ld (matches.count - 1).length + 1 loop
+            exit when not changePair (matches.ld (matches.count - 1).distance, main.distance);
             matches.count := matches.count - 1;
-            mainLen  := matches.len (matches.count - 1);
-            mainDist := matches.dist (matches.count - 1);
+            main := matches.ld (matches.count);
           end loop;
-          if mainLen = MATCH_LEN_MIN and then mainDist >= 128 then
-            mainLen := 1;
+          if main.length = MATCH_LEN_MIN and then main.distance >= 128 then
+            main.length := 1;
           end if;
         end if;
 
         if LZMA_friendly
              and then bestRepLen >= MATCH_LEN_MIN
-             and then (bestRepLen + 1 >= mainLen
-                        or else (bestRepLen + 2 >= mainLen and then mainDist >= 2 ** 9)
-                        or else (bestRepLen + 3 >= mainLen and then mainDist >= 2 ** 15))
+             and then (bestRepLen + 1 >= main.length
+                        or else (bestRepLen + 2 >= main.length and then main.distance >= 2 ** 9)
+                        or else (bestRepLen + 3 >= main.length and then main.distance >= 2 ** 15))
         then
           Skip (bestRepLen - 1);
           --  Put_Line("[DL RB]");
@@ -1615,7 +1616,7 @@ package body LZ77 is
           return;
         end if;
 
-        if mainLen < MATCH_LEN_MIN or else avail <= MATCH_LEN_MIN then
+        if main.length < MATCH_LEN_MIN or else avail <= MATCH_LEN_MIN then
           --  Put("[b]");
           Send_first_literal_of_match;
           return;
@@ -1626,15 +1627,14 @@ package body LZ77 is
         matches := Get_Matches;
         --
         if matches.count > 0 then
-          newLen  := matches.len (matches.count - 1);
-          newDist := matches.dist (matches.count - 1);
-          if (newLen >= mainLen and then newDist < mainDist)
-                  or else (newLen = mainLen + 1
-                      and then not changePair (mainDist, newDist))
-                  or else newLen > mainLen + 1
-                  or else (newLen + 1 >= mainLen
-                      and then mainLen >= MATCH_LEN_MIN + 1
-                      and then changePair (newDist, mainDist))
+          new_ld := matches.ld (matches.count);
+          if (new_ld.length >= main.length and then new_ld.distance < main.distance)
+                  or else (new_ld.length = main.length + 1
+                      and then not changePair (main.distance, new_ld.distance))
+                  or else new_ld.length > main.length + 1
+                  or else (new_ld.length + 1 >= main.length
+                      and then main.length >= MATCH_LEN_MIN + 1
+                      and then changePair (new_ld.distance, main.distance))
           then
             --  Put("[c]");
             --  Put(Character'Val(cur_literal));
@@ -1643,7 +1643,7 @@ package body LZ77 is
           end if;
         end if;
 
-        limit := Integer'Max (mainLen - 1, MATCH_LEN_MIN);
+        limit := Integer'Max (main.length - 1, MATCH_LEN_MIN);
         for rep in rep_dist'Range loop
           if Compute_Match_Length (rep_dist (rep), limit) = limit then
             Send_first_literal_of_match;
@@ -1652,9 +1652,9 @@ package body LZ77 is
         end loop;
 
         if Is_match_correct (0) then
-          Skip (mainLen - 2);
+          Skip (main.length - 2);
           --  Put_Line("[DL B]" & mainDist'Img & mainLen'Img);
-          Send_DL_code (mainDist, mainLen);
+          Send_DL_code (main.distance, main.length);
         else
           --  Put_Line("Wrong match [B]!");
           Send_first_literal_of_match;
