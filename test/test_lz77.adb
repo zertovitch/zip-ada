@@ -88,6 +88,11 @@ procedure Test_LZ77 is
     end loop;
   end Emit_DL_code;
 
+  function Dummy_Estimate_DL_Code (distance, length : Integer) return LZ77.Scoring_Type is
+  begin
+    return Scoring_Type (distance) * Scoring_Type (length);
+  end Dummy_Estimate_DL_Code;
+
   type Method_Set is array (Method_Type) of Boolean;
 
   --  consider: constant Method_Set:= (others => True);
@@ -118,7 +123,8 @@ begin
             String_buffer_size, Look_Ahead_Test, Threshold,
             m,
             Read_byte, More_bytes,
-            Emit_literal, Emit_DL_code
+            Emit_literal, Emit_DL_code,
+            False, Dummy_Estimate_DL_Code
           );
       begin
         if Argument_Count < 1 then

@@ -1624,6 +1624,12 @@ is
       Put_or_delay_literal_byte (b);
     end LZ77_emits_literal_byte;
 
+    function Dummy_Estimate_DL_Code (distance, length : Integer) return LZ77.Scoring_Type is
+      use LZ77;
+    begin
+      return Scoring_Type (distance) * Scoring_Type (length);
+    end Dummy_Estimate_DL_Code;
+
     LZ77_choice : constant array (Deflation_Method) of LZ77.Method_Type :=
       (Deflate_Fixed  => LZ77.IZ_4,
        Deflate_0      => LZ77.No_LZ77,
@@ -1638,10 +1644,11 @@ is
           Look_Ahead         => Look_Ahead_LZ77,
           Threshold          => 2,  --  From a string match length > 2, a DL code is sent
           Method             => LZ77_choice (method),
-          Read_byte          => Read_byte,
-          More_bytes         => More_bytes,
-          Write_literal      => LZ77_emits_literal_byte,
-          Write_DL_code      => LZ77_emits_DL_code
+          Read_Byte          => Read_byte,
+          More_Bytes         => More_bytes,
+          Write_Literal      => LZ77_emits_literal_byte,
+          Write_DL_Code      => LZ77_emits_DL_code,
+          Estimate_DL_Code   => Dummy_Estimate_DL_Code
         );
 
     --  The following is for research purposes: compare different LZ77 variants and see

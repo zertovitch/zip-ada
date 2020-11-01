@@ -553,6 +553,12 @@ is
       end if;
     end Write_DL_code;
 
+    function Dummy_Estimate_DL_Code (distance, length : Integer) return LZ77.Scoring_Type is
+      use LZ77;
+    begin
+      return Scoring_Type (distance) * Scoring_Type (length);
+    end Dummy_Estimate_DL_Code;
+
     procedure My_LZ77 is
       new LZ77.Encode
                (String_buffer_size => String_buffer_size,
@@ -561,10 +567,11 @@ is
                 Method             => LZ77.LZHuf,
                 --  NB: Method IZ_9 needs exactly the same set of LZ77 parameters as in
                 --      Deflate. Then the compression is worse, though much faster.
-                Read_byte          => Read_byte,
-                More_bytes         => More_bytes,
-                Write_literal      => Write_normal_byte,
-                Write_DL_code      => Write_DL_code);
+                Read_Byte          => Read_byte,
+                More_Bytes         => More_bytes,
+                Write_Literal      => Write_normal_byte,
+                Write_DL_Code      => Write_DL_code,
+                Estimate_DL_Code   => Dummy_Estimate_DL_Code);
 
     procedure Finish_Cache is
       i : LZ_buffer_range := LZ_buffer_range (lz77_pos mod LZ_cache_size);

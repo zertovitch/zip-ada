@@ -354,7 +354,7 @@ package body LZ77 is
       Len : Integer;
       C : Byte;
     begin
-      if not More_bytes then
+      if not More_Bytes then
         return;
       end if;
       Huffman_E.Start;
@@ -362,8 +362,8 @@ package body LZ77 is
       S := 0;
       R := String_buffer_size - Look_Ahead;
       Len := 0;
-      while Len < Look_Ahead and More_bytes loop
-        Text_Buf (R + Len) := Read_byte;
+      while Len < Look_Ahead and More_Bytes loop
+        Text_Buf (R + Len) := Read_Byte;
         Len := Len + 1;
       end loop;
 
@@ -382,16 +382,16 @@ package body LZ77 is
         if Match_Length <= Threshold then
           Match_Length := 1;
           Huffman_E.Update_Freq_Tree (Natural (Text_Buf (R)));
-          Write_literal (Text_Buf (R));
+          Write_Literal (Text_Buf (R));
         else
-          Write_DL_code (Match_Position + 1, Match_Length);
+          Write_DL_Code (Match_Position + 1, Match_Length);
         end if;
         Last_Match_Length := Match_Length;
         I := 0;
-        while I < Last_Match_Length and More_bytes loop
+        while I < Last_Match_Length and More_Bytes loop
           I := I + 1;
           Delete_Node (S);
-          C := Read_byte;
+          C := Read_Byte;
           Text_Buf (S) := C;
           if  S < Look_Ahead - 1 then
             Text_Buf (S + String_buffer_size) := C;
@@ -565,8 +565,8 @@ package body LZ77 is
       begin
         --  put_line("Read buffer: from:" & from'img & ";  amount:" & amount'img);
         actual := 0;
-        while need > 0 and then More_bytes loop
-          window (from + actual) := Read_byte;
+        while need > 0 and then More_Bytes loop
+          window (from + actual) := Read_Byte;
           actual := actual + 1;
           need := need - 1;
         end loop;
@@ -860,7 +860,7 @@ package body LZ77 is
             ------------------------------------
             --  Output a Distance-Length code --
             ------------------------------------
-            Write_DL_code (Positive (strstart - 1 - prev_match), Positive (prev_length));
+            Write_DL_Code (Positive (strstart - 1 - prev_match), Positive (prev_length));
             --  Insert in hash table all strings up to the end of the match.
             --  strstart-1 and strstart are already inserted.
             lookahead := lookahead - (prev_length - 1);
@@ -886,7 +886,7 @@ package body LZ77 is
             ------------------------
             --  Output a literal  --
             ------------------------
-            Write_literal (window (strstart - 1));
+            Write_Literal (window (strstart - 1));
             strstart := strstart + 1;
             lookahead := lookahead - 1;
           else
@@ -909,7 +909,7 @@ package body LZ77 is
         --  Output last literal, if any  --
         -----------------------------------
         if match_available then
-          Write_literal (window (strstart - 1));
+          Write_Literal (window (strstart - 1));
         end if;
       end LZ77_part_of_IZ_Deflate;
 
@@ -1084,7 +1084,7 @@ package body LZ77 is
       Depth_Limit : constant := 48;  --  Alternatively: 16 + Nice_Length / 2
 
       type Length_Distance_Pair is record
-        length : Integer;
+        length   : Integer;
         distance : Integer;
       end record;
 
@@ -1095,10 +1095,7 @@ package body LZ77 is
         ld    : LDP_array (1 .. Count_Max);
       end record;
 
-      --  Subtracting 1 because the shortest match that this match
-      --  finder can find is 2 bytes, so there's no need to reserve
-      --  space for one-byte matches.
-      subtype Matches_type is Any_Matches_type (Nice_Length - 1);
+      subtype Matches_type is Any_Matches_type (Nice_Length);
 
       cyclicSize : constant Integer := String_buffer_size;  --  Had: + 1;
       cyclicPos  : Integer := -1;
@@ -1405,8 +1402,8 @@ package body LZ77 is
           len := buf'Length - writePos;
         end if;
 
-        while len > 0 and then More_bytes loop
-          buf (writePos) := Read_byte;
+        while len > 0 and then More_Bytes loop
+          buf (writePos) := Read_Byte;
           writePos := writePos + 1;
           len := len - 1;
           actual_len := actual_len + 1;
@@ -1494,7 +1491,7 @@ package body LZ77 is
 
         procedure Send_first_literal_of_match is
         begin
-          Write_literal (cur_literal);
+          Write_Literal (cur_literal);
           readAhead := readAhead - 1;
         end Send_first_literal_of_match;
 
@@ -1502,7 +1499,7 @@ package body LZ77 is
           found_repeat : Integer := rep_dist'First - 1;
           aux : Integer;
         begin
-          Write_DL_code (distance + 1, length);
+          Write_DL_Code (distance + 1, length);
           readAhead := readAhead - length;
           if LZMA_friendly then
             --
@@ -1533,6 +1530,9 @@ package body LZ77 is
         end Send_DL_code;
 
         bestRepLen, bestRepIndex, len : Integer;
+        score : array (1 .. Nice_Length) of Scoring_Type;
+        max_score : Scoring_Type;
+        index_max_score : Positive;
 
       begin
         --  Get the matches for the next byte unless readAhead indicates
@@ -1583,6 +1583,7 @@ package body LZ77 is
         if matches.count > 0 then
           main := matches.ld (matches.count);
           if main.length >= Nice_Length then
+            --  We have a nice match: go for it!
             if Is_match_correct (1) then
               Skip (main.length - 1);
               --  Put_Line("[DL A]" & mainDist'Img & mainLen'Img);
@@ -1594,11 +1595,36 @@ package body LZ77 is
               return;
             end if;
           end if;
+          --  Reduce the list of matches with consecutive lengths.
           while matches.count > 1 and then main.length = matches.ld (matches.count - 1).length + 1 loop
             exit when not changePair (matches.ld (matches.count - 1).distance, main.distance);
             matches.count := matches.count - 1;
             main := matches.ld (matches.count);
           end loop;
+          --
+          --  Get scores. For instance, the "MA" probabilities with LZMA.
+          --
+          max_score := 0.0;
+          for i in 1 .. matches.count loop
+            score (i) := Estimate_DL_Code (matches.ld (i).distance + 1, matches.ld (i).length);
+            if score (i) > max_score then
+              max_score := score (i);
+              index_max_score := i;
+            end if;
+          end loop;
+          if index_max_score /= matches.count then
+            --  Ada.Text_IO.Put_Line ("------ Matches: " & Integer'Image (matches.count));
+            --  for i in 1 .. matches.count loop
+            --    Ada.Text_IO.Put_Line (
+            --      "  Distance:" & Integer'Image (matches.ld (i).distance + 1) &
+            --      ";  Length:" & Integer'Image (matches.ld (i).length) &
+            --      ";  Score:" & Scoring_Type'Image (score (i))
+            --    );
+            --  end loop;
+            --
+            main := matches.ld (index_max_score);
+          end if;
+          --
           if main.length = MATCH_LEN_MIN and then main.distance >= 128 then
             main.length := 1;
           end if;
@@ -1766,8 +1792,8 @@ package body LZ77 is
       procedure Load_Dict (dictpos : Integer_M32; actually_read : out Integer_M32) is
         i : Integer_M32 := 0;
       begin
-        while More_bytes loop
-          dict (dictpos + i) := Read_byte;
+        while More_Bytes loop
+          dict (dictpos + i) := Read_Byte;
           i := i + 1;
           exit when i = SECTORLEN;
         end loop;
@@ -1896,7 +1922,7 @@ package body LZ77 is
         procedure Write_literal_pos_i is
         pragma Inline (Write_literal_pos_i);
         begin
-          Write_literal (dict (i));
+          Write_Literal (dict (i));
           i := i + 1;
           j := j - 1;
         end Write_literal_pos_i;
@@ -1929,7 +1955,7 @@ package body LZ77 is
                     end if;
                   end if;
 
-                  Write_DL_code (
+                  Write_DL_Code (
                     length   => Integer (matchlen1),
                     --  [The subtraction happens modulo 2**n, needs to be cleaned modulo 2**DICTSIZE]
                     distance => Integer ((Unsigned_32 (i) - Unsigned_32 (matchpos1)) and (DICTSIZE - 1))
@@ -1957,7 +1983,7 @@ package body LZ77 is
             end if;
 
             if matchlength > THRESHOLD_Rich then  --  Valid match?
-              Write_DL_code (
+              Write_DL_Code (
                 length   => Integer (matchlength),
                 --  [The subtraction happens modulo 2**n, needs to be cleaned modulo 2**DICTSIZE]
                 distance => Integer ((Unsigned_32 (i) - Unsigned_32 (matchpos)) and (DICTSIZE - 1))
@@ -2018,8 +2044,8 @@ package body LZ77 is
       when Rich =>
         LZ77_by_Rich;
       when No_LZ77 =>
-        while More_bytes loop
-          Write_literal (Read_byte);
+        while More_Bytes loop
+          Write_Literal (Read_Byte);
         end loop;
     end case;
   end Encode;

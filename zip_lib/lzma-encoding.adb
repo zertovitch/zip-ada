@@ -1297,10 +1297,9 @@ package body LZMA.Encoding is
        Simulated_or_actual_Strict_DL_Code => Write_Strict_DL_Code,
        I_am_a_simulation                  => False);
 
-    procedure LZ77_emits_DL_code (distance : Integer; length : Match_length_range) is
+    procedure Expand_DL_Code_to_Buffer (distance : Integer; length : Match_length_range) is
       Rx : UInt32 := ES.R;
       Copy_start : constant UInt32 := (ES.R - UInt32 (distance)) and Text_Buf_Mask;
-      dummy_prob : Estimates.MProb := 0.0;
     begin
       --  Expand early into the circular "text" buffer to have it up to date
       --  and available to simulations.
@@ -1308,8 +1307,32 @@ package body LZMA.Encoding is
         Text_Buf (Rx) := Text_Buf ((Copy_start + K) and Text_Buf_Mask);
         Rx := (Rx + 1) and Text_Buf_Mask;  --  This is mod String_buffer_size
       end loop;
+    end Expand_DL_Code_to_Buffer;
+
+    procedure LZ77_emits_DL_code (distance : Integer; length : Match_length_range) is
+      dummy_prob : Estimates.MProb := 0.0;
+    begin
+      Expand_DL_Code_to_Buffer (distance, length);
       Write_any_DL_code (UInt32 (distance), length, ES, dummy_prob, max_recursion);
     end LZ77_emits_DL_code;
+
+    function Estimate_DL_Code_for_LZ77 (distance, length : Integer) return LZ77.Scoring_Type is
+      use LZ77;
+      s : Scoring_Type;
+      --  Bonus for not having to send literals. VERY Rough estimate... !!
+      --  To do: encode real extra literals, taken from the longest match.
+      Bonus_Length : constant Scoring_Type := 128.0 ** length;
+      --  Score for longest match only (no simulation) is: Scoring_Type (length)
+      recursion_for_scoring : constant := 0;
+    begin
+      Expand_DL_Code_to_Buffer (distance, length);
+      s := Scoring_Type (
+        Estimates.Test_any_DL_Code (UInt32 (distance), length, ES, recursion_for_scoring)
+      );
+      --
+      s := s * Bonus_Length;
+      return s;
+    end Estimate_DL_Code_for_LZ77;
 
     procedure My_LZ77 is
       new LZ77.Encode
@@ -1317,10 +1340,11 @@ package body LZMA.Encoding is
           Look_Ahead         => Max_length (level),
           Threshold          => Min_length (level) - 1,
           Method             => LZ77_choice (level),
-          Read_byte          => Read_Byte,
-          More_bytes         => More_Bytes,
-          Write_literal      => LZ77_emits_literal_byte,
-          Write_DL_code      => LZ77_emits_DL_code
+          Read_Byte          => Read_Byte,
+          More_Bytes         => More_Bytes,
+          Write_Literal      => LZ77_emits_literal_byte,
+          Write_DL_Code      => LZ77_emits_DL_code,
+          Estimate_DL_Code   => Estimate_DL_Code_for_LZ77
         );
 
     procedure Write_LZMA_header is

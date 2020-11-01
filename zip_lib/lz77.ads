@@ -58,6 +58,8 @@ package LZ77 is
 
   subtype Byte is Interfaces.Unsigned_8;
 
+  type Scoring_Type is digits 15;
+
   generic
     ----- LZSS Parameters -----
     String_buffer_size : Integer := 2**12;  --  Default values.
@@ -67,13 +69,19 @@ package LZ77 is
     Method : Method_Type;
     --
     --  Input of data:
-    with function  Read_byte return Byte;
-    with function  More_bytes return Boolean;
+    with function  Read_Byte return Byte;
+    with function  More_Bytes return Boolean;
     --  Output of LZ-compressed data:
-    with procedure Write_literal (b : Byte);
-    with procedure Write_DL_code (distance, length : Integer);
+    with procedure Write_Literal (b : Byte);
+    with procedure Write_DL_Code (distance, length : Integer);
     --
     LZMA_friendly : Boolean := True;  --  Up to 4 recent distances may be preferred
+    --
+    --  Scoring of potential DL code emission by the entropy encoder.
+    --  This helps choosing between various matches at a given point.
+    --  The highest the value, the better.
+    --  This function is only used by BT4.
+    with function Estimate_DL_Code (distance, length : Integer) return Scoring_Type;
   procedure Encode;
 
 end LZ77;
