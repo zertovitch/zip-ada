@@ -1321,7 +1321,8 @@ package body LZMA.Encoding is
       s : Scoring_Type;
       --  Bonus for not having to send literals. VERY Rough estimate... !!
       --  To do: encode real extra literals, taken from the longest match.
-      Bonus_Length : constant Scoring_Type := 128.0 ** length;
+      --  Better: score the whole list of matches, with submatches.
+      Bonus_Length : constant Scoring_Type := 128.0 ** Integer'Min (length, 120);
       --  Score for longest match only (no simulation) is: Scoring_Type (length)
       recursion_for_scoring : constant := 0;
     begin
