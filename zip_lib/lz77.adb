@@ -1446,11 +1446,11 @@ package body LZ77 is
         avail, limit : Integer;
         new_ld, main : Length_Distance_Pair;
 
-        function changePair (smallDist, bigDist : Integer) return Boolean is
-        pragma Inline (changePair);
+        function Has_much_smaller_Distance (smallDist, bigDist : Integer) return Boolean is
+        pragma Inline (Has_much_smaller_Distance);
         begin
           return smallDist < bigDist / 128;
-        end changePair;
+        end Has_much_smaller_Distance;
 
         --  This function is for debugging. The matches stored in the 'tree' array
         --  may be wrong if the variables cyclicPos, lzPos and readPos are not in sync.
@@ -1529,7 +1529,7 @@ package body LZ77 is
           end if;
         end Send_DL_code;
 
-        bestRepLen, bestRepIndex, len : Integer;
+        best_length_for_repeated_distance, best_repeated_distance_index, len : Integer;
         score : array (1 .. Nice_Length) of Scoring_Type;
         max_score : Scoring_Type;
         index_max_score : Positive;
@@ -1558,8 +1558,8 @@ package body LZ77 is
 
         if LZMA_friendly then
           --  Look for a match from the previous four different match distances.
-          bestRepLen := 0;
-          bestRepIndex := 0;
+          best_length_for_repeated_distance := 0;
+          best_repeated_distance_index := 0;
           for rep in Repeat_stack_range loop
             len := Compute_Match_Length (rep_dist (rep), avail);
             if len >= MATCH_LEN_MIN then
@@ -1571,9 +1571,9 @@ package body LZ77 is
                 return;
               end if;
               --  Remember the index and length of the best repeated match.
-              if len > bestRepLen then
-                bestRepIndex := rep;
-                bestRepLen := len;
+              if len > best_length_for_repeated_distance then
+                best_repeated_distance_index      := rep;
+                best_length_for_repeated_distance := len;
               end if;
             end if;
           end loop;
@@ -1597,7 +1597,7 @@ package body LZ77 is
           end if;
           --  Reduce the list of matches with consecutive lengths.
           while matches.count > 1 and then main.length = matches.ld (matches.count - 1).length + 1 loop
-            exit when not changePair (matches.ld (matches.count - 1).distance, main.distance);
+            exit when not Has_much_smaller_Distance (matches.ld (matches.count - 1).distance, main.distance);
             matches.count := matches.count - 1;
             main := matches.ld (matches.count);
           end loop;
@@ -1631,14 +1631,14 @@ package body LZ77 is
         end if;
 
         if LZMA_friendly
-             and then bestRepLen >= MATCH_LEN_MIN
-             and then (bestRepLen + 1 >= main.length
-                        or else (bestRepLen + 2 >= main.length and then main.distance >= 2 ** 9)
-                        or else (bestRepLen + 3 >= main.length and then main.distance >= 2 ** 15))
+             and then best_length_for_repeated_distance >= MATCH_LEN_MIN
+             and then (best_length_for_repeated_distance + 1 >= main.length
+                        or else (best_length_for_repeated_distance + 2 >= main.length and then main.distance >= 2 ** 9)
+                        or else (best_length_for_repeated_distance + 3 >= main.length and then main.distance >= 2 ** 15))
         then
-          Skip (bestRepLen - 1);
+          Skip (best_length_for_repeated_distance - 1);
           --  Put_Line("[DL RB]");
-          Send_DL_code (rep_dist (bestRepIndex), bestRepLen);
+          Send_DL_code (rep_dist (best_repeated_distance_index), best_length_for_repeated_distance);
           return;
         end if;
 
@@ -1654,13 +1654,12 @@ package body LZ77 is
         --
         if matches.count > 0 then
           new_ld := matches.ld (matches.count);
-          if (new_ld.length >= main.length and then new_ld.distance < main.distance)
-                  or else (new_ld.length = main.length + 1
-                      and then not changePair (main.distance, new_ld.distance))
-                  or else new_ld.length > main.length + 1
-                  or else (new_ld.length + 1 >= main.length
-                      and then main.length >= MATCH_LEN_MIN + 1
-                      and then changePair (new_ld.distance, main.distance))
+          if        (new_ld.length >= main.length     and then new_ld.distance < main.distance)
+            or else (new_ld.length =  main.length + 1 and then not Has_much_smaller_Distance (main.distance, new_ld.distance))
+            or else  new_ld.length >  main.length + 1
+            or else (new_ld.length >= main.length - 1
+                and then main.length >= MATCH_LEN_MIN + 1
+                and then Has_much_smaller_Distance (new_ld.distance, main.distance))
           then
             --  Put("[c]");
             --  Put(Character'Val(cur_literal));
@@ -1669,13 +1668,17 @@ package body LZ77 is
           end if;
         end if;
 
-        limit := Integer'Max (main.length - 1, MATCH_LEN_MIN);
-        for rep in rep_dist'Range loop
-          if Compute_Match_Length (rep_dist (rep), limit) = limit then
-            Send_first_literal_of_match;
-            return;
-          end if;
-        end loop;
+        if LZMA_friendly then
+          limit := Integer'Max (main.length - 1, MATCH_LEN_MIN);
+          for rep in rep_dist'Range loop
+            if Compute_Match_Length (rep_dist (rep), limit) = limit then
+              --  A "literal then DL_Code (some distance, main.length - 1)" match
+              --  is verified and could use the stack of last distances -> got for it!
+              Send_first_literal_of_match;
+              return;
+            end if;
+          end loop;
+        end if;
 
         if Is_match_correct (0) then
           Skip (main.length - 2);
