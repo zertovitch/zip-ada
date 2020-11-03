@@ -60,6 +60,20 @@ package LZ77 is
 
   type Scoring_Type is digits 15;
 
+  subtype Distance_Type is Integer;
+
+  type Distance_Length_Pair is record
+    distance : Distance_Type;
+    length   : Integer;
+  end record;
+
+  type DLP_array is array (Positive range <>) of Distance_Length_Pair;
+
+  type Any_Matches_type (Count_Max : Integer) is record
+    count : Integer := 0;
+    ld    : DLP_array (1 .. Count_Max);
+  end record;
+
   generic
     ----- LZSS Parameters -----
     String_buffer_size : Integer := 2**12;  --  Default values.
@@ -81,7 +95,12 @@ package LZ77 is
     --  This helps choosing between various matches at a given point.
     --  The highest the value, the better.
     --  This function is only used by BT4.
-    with function Estimate_DL_Code (distance, length : Integer) return Scoring_Type;
+    with procedure Estimate_DL_Codes (
+      DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+      best_score_index : out Positive;
+      is_index_in_new  : out Boolean;
+      head_literal_new : in  Byte  --  Literal preceding the new set of matches.
+    );
   procedure Encode;
 
 end LZ77;

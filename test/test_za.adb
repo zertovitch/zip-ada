@@ -188,5 +188,5 @@ begin
   Put_Line (+"   " & successes & " successes");
   Put_Line (+"   " & fails & " failures");
   New_Line;
-  Put_Line (+"" & zipada_used & " different methods of ZipAda tested.");
+  Put_Line (+"" & zipada_used & " different methods of the Zip-Ada library tested.");
 end Test_ZA;

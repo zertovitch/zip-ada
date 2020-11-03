@@ -54,6 +54,7 @@
 --  NB: this is the MIT License, as found 21-Aug-2016 on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
+with Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
 with Interfaces; use Interfaces;
 with System;
@@ -1083,18 +1084,6 @@ package body LZ77 is
       Nice_Length : constant Integer := Integer'Min (162, Look_Ahead);  --  const. was 64
       Depth_Limit : constant := 48;  --  Alternatively: 16 + Nice_Length / 2
 
-      type Length_Distance_Pair is record
-        length   : Integer;
-        distance : Integer;
-      end record;
-
-      type LDP_array is array (Natural range <>) of Length_Distance_Pair;
-
-      type Any_Matches_type (Count_Max : Integer) is record
-        count : Integer := 0;
-        ld    : LDP_array (1 .. Count_Max);
-      end record;
-
       subtype Matches_type is Any_Matches_type (Nice_Length);
 
       cyclicSize : constant Integer := String_buffer_size;  --  Had: + 1;
@@ -1422,14 +1411,13 @@ package body LZ77 is
         return actual_len;
       end fillWindow;
 
-      matches : Matches_type;
-      readAhead : Integer := -1;  -- LZMAEncoder.java
+      readAhead : Integer := -1;  --  LZMAEncoder.java
 
-      function Get_Matches return Matches_type is
+      function Read_One_and_Get_Matches return Matches_type is
       begin
         readAhead := readAhead + 1;
         return BT4_Algo.Get_Matches;
-      end Get_Matches;
+      end Read_One_and_Get_Matches;
 
       procedure Skip (len : Natural) is
       pragma Inline (Skip);
@@ -1438,19 +1426,51 @@ package body LZ77 is
         BT4_Algo.Skip (len);
       end Skip;
 
+      function Has_much_smaller_Distance (smallDist, bigDist : Distance_Type) return Boolean is
+      pragma Inline (Has_much_smaller_Distance);
+      begin
+        return smallDist < bigDist / 128;
+      end Has_much_smaller_Distance;
+
+      procedure Reduce_consecutive_max_lengths (
+        m       : in out Matches_type;
+        new_top : in out Distance_Length_Pair)
+      is
+      --  Sometimes BT4 return such a long list. Bug?
+      --  This reduction is found in the Java version.
+      begin
+        while m.count > 1 and then m.ld (m.count).length = m.ld (m.count - 1).length + 1 loop
+          exit when not
+            Has_much_smaller_Distance (m.ld (m.count - 1).distance, m.ld (m.count).distance);
+          m.count := m.count - 1;
+          new_top := m.ld (m.count);
+        end loop;
+      end Reduce_consecutive_max_lengths;
+
       --  Small stack of recent distances used for LZ.
       subtype Repeat_stack_range is Integer range 0 .. 3;
       rep_dist : array (Repeat_stack_range) of Natural := (others => 0);
 
+      procedure Show_Matches (m : Matches_type; phase : String) is
+      begin
+        Ada.Text_IO.Put_Line (
+          phase & " --- Matches: " & Integer'Image (m.count)
+        );
+        for i in 1 .. m.count loop
+          Ada.Text_IO.Put_Line (
+            "  Distance:" & Integer'Image (m.ld (i).distance + 1) &
+            ";  Length:" & Integer'Image (m.ld (i).length)
+          );
+        end loop;
+      end Show_Matches;
+      pragma Unreferenced (Show_Matches);
+
+      matches, old_matches : Matches_type;
+
       procedure Get_Next_Symbol is
         avail, limit : Integer;
-        new_ld, main : Length_Distance_Pair;
-
-        function Has_much_smaller_Distance (smallDist, bigDist : Integer) return Boolean is
-        pragma Inline (Has_much_smaller_Distance);
-        begin
-          return smallDist < bigDist / 128;
-        end Has_much_smaller_Distance;
+        new_ld, main : Distance_Length_Pair;
+        hurdle : constant := 1;
 
         --  This function is for debugging. The matches stored in the 'tree' array
         --  may be wrong if the variables cyclicPos, lzPos and readPos are not in sync.
@@ -1530,16 +1550,14 @@ package body LZ77 is
         end Send_DL_code;
 
         best_length_for_repeated_distance, best_repeated_distance_index, len : Integer;
-        score : array (1 .. Nice_Length) of Scoring_Type;
-        max_score : Scoring_Type;
         index_max_score : Positive;
-
+        is_index_in_new : Boolean;
       begin
         --  Get the matches for the next byte unless readAhead indicates
         --  that we already got the new matches during the previous call
         --  to this procedure.
         if readAhead = -1 then
-          matches := Get_Matches;
+          matches := Read_One_and_Get_Matches;
         end if;
         --  @ if readPos not in buf.all'Range then
         --  @   Put("**** " & buf'Last'Img & keepSizeAfter'Img & readPos'Img & writePos'Img);
@@ -1595,35 +1613,7 @@ package body LZ77 is
               return;
             end if;
           end if;
-          --  Reduce the list of matches with consecutive lengths.
-          while matches.count > 1 and then main.length = matches.ld (matches.count - 1).length + 1 loop
-            exit when not Has_much_smaller_Distance (matches.ld (matches.count - 1).distance, main.distance);
-            matches.count := matches.count - 1;
-            main := matches.ld (matches.count);
-          end loop;
-          --
-          --  Get scores. For instance, the "MA" probabilities with LZMA.
-          --
-          max_score := 0.0;
-          for i in 1 .. matches.count loop
-            score (i) := Estimate_DL_Code (matches.ld (i).distance + 1, matches.ld (i).length);
-            if score (i) > max_score then
-              max_score := score (i);
-              index_max_score := i;
-            end if;
-          end loop;
-          if index_max_score /= matches.count then
-            --  Ada.Text_IO.Put_Line ("------ Matches: " & Integer'Image (matches.count));
-            --  for i in 1 .. matches.count loop
-            --    Ada.Text_IO.Put_Line (
-            --      "  Distance:" & Integer'Image (matches.ld (i).distance + 1) &
-            --      ";  Length:" & Integer'Image (matches.ld (i).length) &
-            --      ";  Score:" & Scoring_Type'Image (score (i))
-            --    );
-            --  end loop;
-            --
-            main := matches.ld (index_max_score);
-          end if;
+          Reduce_consecutive_max_lengths (matches, main);
           --
           if main.length = MATCH_LEN_MIN and then main.distance >= 128 then
             main.length := 1;
@@ -1650,21 +1640,44 @@ package body LZ77 is
 
         --  Get the next match. Test if it is better than the current match.
         --  If so, encode the current byte as a literal.
-        matches := Get_Matches;
+        old_matches := matches;
+        matches := Read_One_and_Get_Matches;
+        --  Show_Matches (old_matches, "------ Old");
+        --  Show_Matches (matches,     "       New");
         --
         if matches.count > 0 then
-          new_ld := matches.ld (matches.count);
-          if        (new_ld.length >= main.length     and then new_ld.distance < main.distance)
-            or else (new_ld.length =  main.length + 1 and then not Has_much_smaller_Distance (main.distance, new_ld.distance))
-            or else  new_ld.length >  main.length + 1
-            or else (new_ld.length >= main.length - 1
+          new_ld := matches.ld (matches.count);  --  Longest new match
+          if        (new_ld.length >= main.length + hurdle     and then new_ld.distance < main.distance)
+            or else (new_ld.length =  main.length + hurdle + 1 and then not Has_much_smaller_Distance (main.distance, new_ld.distance))
+            or else  new_ld.length >  main.length + hurdle + 1
+            or else (new_ld.length >= main.length + hurdle - 1
                 and then main.length >= MATCH_LEN_MIN + 1
                 and then Has_much_smaller_Distance (new_ld.distance, main.distance))
           then
-            --  Put("[c]");
-            --  Put(Character'Val(cur_literal));
+            --  We prefer literal, then the new match (or even better!)
             Send_first_literal_of_match;
             return;
+          end if;
+        end if;
+
+        if matches.count > 0 then
+          --
+          --  Here we compare the scores of both match sets.
+          --
+          Reduce_consecutive_max_lengths (matches, new_ld);
+          Estimate_DL_Codes (
+            old_matches.ld (1 .. old_matches.count),
+            matches.ld (1 .. matches.count),
+            index_max_score,
+            is_index_in_new,
+            cur_literal
+          );
+          if is_index_in_new then
+            --  We prefer literal, then the new match (or even better!)
+            Send_first_literal_of_match;
+            return;
+          else
+            main := old_matches.ld (index_max_score);
           end if;
         end if;
 

@@ -553,11 +553,13 @@ is
       end if;
     end Write_DL_code;
 
-    function Dummy_Estimate_DL_Code (distance, length : Integer) return LZ77.Scoring_Type is
-      use LZ77;
-    begin
-      return Scoring_Type (distance) * Scoring_Type (length);
-    end Dummy_Estimate_DL_Code;
+    procedure Dummy_Estimate_DL_Codes (
+      DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+      best_score_index : out Positive;
+      is_index_in_new  : out Boolean;
+      head_literal_new : in  Byte  --  Literal preceding the new set of matches.
+    )
+    is null;
 
     procedure My_LZ77 is
       new LZ77.Encode
@@ -571,7 +573,7 @@ is
                 More_Bytes         => More_bytes,
                 Write_Literal      => Write_normal_byte,
                 Write_DL_Code      => Write_DL_code,
-                Estimate_DL_Code   => Dummy_Estimate_DL_Code);
+                Estimate_DL_Codes  => Dummy_Estimate_DL_Codes);
 
     procedure Finish_Cache is
       i : LZ_buffer_range := LZ_buffer_range (lz77_pos mod LZ_cache_size);

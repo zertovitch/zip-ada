@@ -1624,11 +1624,13 @@ is
       Put_or_delay_literal_byte (b);
     end LZ77_emits_literal_byte;
 
-    function Dummy_Estimate_DL_Code (distance, length : Integer) return LZ77.Scoring_Type is
-      use LZ77;
-    begin
-      return Scoring_Type (distance) * Scoring_Type (length);
-    end Dummy_Estimate_DL_Code;
+    procedure Dummy_Estimate_DL_Codes (
+      DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+      best_score_index : out Positive;
+      is_index_in_new  : out Boolean;
+      head_literal_new : in  Byte  --  Literal preceding the new set of matches.
+    )
+    is null;
 
     LZ77_choice : constant array (Deflation_Method) of LZ77.Method_Type :=
       (Deflate_Fixed  => LZ77.IZ_4,
@@ -1648,7 +1650,7 @@ is
           More_Bytes         => More_bytes,
           Write_Literal      => LZ77_emits_literal_byte,
           Write_DL_Code      => LZ77_emits_DL_code,
-          Estimate_DL_Code   => Dummy_Estimate_DL_Code
+          Estimate_DL_Codes  => Dummy_Estimate_DL_Codes
         );
 
     --  The following is for research purposes: compare different LZ77 variants and see

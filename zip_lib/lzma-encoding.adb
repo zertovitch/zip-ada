@@ -327,6 +327,8 @@ package body LZMA.Encoding is
       --
       --  Literals
       --
+      procedure Simulate_Literal_Byte (b : Byte; sim : in out Machine_State; prob : in out MProb);
+      --
       function Test_Simple_Literal (
         b, b_match : Byte;
         prob       : CProb_array;
@@ -358,6 +360,14 @@ package body LZMA.Encoding is
 
       --  Here we get the probability of a general DL code
       --  as Write_any_DL_code would generate it, including variants.
+
+      procedure Simulate_any_DL_Code (
+        distance        :        UInt32;
+        length          :        Match_length_range;
+        sim             : in out Machine_State;
+        prob            : in out MProb;
+        recursion_limit :        Natural
+      );
 
       function Test_any_DL_Code (
         distance        : UInt32;
@@ -902,10 +912,19 @@ package body LZMA.Encoding is
       end Generic_any_DL_Code;
 
       --  We simulate here Write_any_DL_code, including the variants!
-      procedure Simulate_any_DL_Code is new Generic_any_DL_Code
+      procedure Simulate_any_DL_Code_Instance is new Generic_any_DL_Code
         (Simulated_or_actual_Literal_Byte   => Simulate_Literal_Byte,
          Simulated_or_actual_Strict_DL_Code => Simulate_Strict_DL_Code,
          I_am_a_simulation                  => True);
+
+      procedure Simulate_any_DL_Code (
+        distance        :        UInt32;
+        length          :        Match_length_range;
+        sim             : in out Machine_State;
+        prob            : in out MProb;
+        recursion_limit :        Natural
+      )
+      renames Simulate_any_DL_Code_Instance;
 
       function Test_any_DL_Code (
         distance        : UInt32;
@@ -1297,9 +1316,14 @@ package body LZMA.Encoding is
        Simulated_or_actual_Strict_DL_Code => Write_Strict_DL_Code,
        I_am_a_simulation                  => False);
 
-    procedure Expand_DL_Code_to_Buffer (distance : Integer; length : Match_length_range) is
-      Rx : UInt32 := ES.R;
-      Copy_start : constant UInt32 := (ES.R - UInt32 (distance)) and Text_Buf_Mask;
+    procedure Expand_DL_Code_to_Buffer (
+      sim      : Machine_State;
+      distance : Integer;
+      length   : Match_length_range
+    )
+    is
+      Rx : UInt32 := sim.R;
+      Copy_start : constant UInt32 := (sim.R - UInt32 (distance)) and Text_Buf_Mask;
     begin
       --  Expand early into the circular "text" buffer to have it up to date
       --  and available to simulations.
@@ -1312,28 +1336,144 @@ package body LZMA.Encoding is
     procedure LZ77_emits_DL_code (distance : Integer; length : Match_length_range) is
       dummy_prob : Estimates.MProb := 0.0;
     begin
-      Expand_DL_Code_to_Buffer (distance, length);
+      Expand_DL_Code_to_Buffer (ES, distance, length);
       Write_any_DL_code (UInt32 (distance), length, ES, dummy_prob, max_recursion);
     end LZ77_emits_DL_code;
 
-    function Estimate_DL_Code_for_LZ77 (distance, length : Integer) return LZ77.Scoring_Type is
-      use LZ77;
-      s : Scoring_Type;
-      --  Bonus for not having to send literals. VERY Rough estimate... !!
-      --  To do: encode real extra literals, taken from the longest match.
-      --  Better: score the whole list of matches, with submatches.
-      Bonus_Length : constant Scoring_Type := 128.0 ** Integer'Min (length, 120);
-      --  Score for longest match only (no simulation) is: Scoring_Type (length)
-      recursion_for_scoring : constant := 0;
-    begin
-      Expand_DL_Code_to_Buffer (distance, length);
-      s := Scoring_Type (
-        Estimates.Test_any_DL_Code (UInt32 (distance), length, ES, recursion_for_scoring)
-      );
+    procedure Estimate_DL_Codes_for_LZ77 (
+      DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+      best_score_index : out Positive;
+      is_index_in_new  : out Boolean;
+      head_literal_new : in  Byte  --  Literal preceding the new set of matches.
+    )
+    is
+      use LZ77, Estimates;
+      DL : DLP_array (1 .. DL_old'Length + DL_new'Length);
+      last_pos_any_DL : Natural := 0;
+      sim_new : Machine_State := ES;
+      offset_new_match_set : constant array (Boolean) of Natural := (0, 1);
+      head_lit_prob : MProb;
       --
-      s := s * Bonus_Length;
-      return s;
-    end Estimate_DL_Code_for_LZ77;
+      procedure Scoring (
+        state           :     Machine_State;
+        start           :     Positive;
+        recursion_level :     Positive;
+        prob            : out MProb;
+        index           : out Positive
+      )
+      is
+        --  We compute the probability of the message sent for the bytes
+        --  at position 'start' to the position 'longest' and find the
+        --  optimal combination using the matches in the DL array.
+        prob_i, tail_prob : MProb;
+        test_state : Machine_State;
+        length_trunc, some_index : Positive;
+        dist_trunc, last_pos_i : Integer;
+      begin
+        prob := 0.0;
+        if recursion_level > 3 then
+          index := 1;
+          --  Abandon insane recursion levels: level = number of DL codes chained!
+          return;
+        end if;
+        for i in DL'Range loop
+          last_pos_i := DL (i).length + offset_new_match_set (i > DL_old'Length);
+          if last_pos_i >= start then
+            if i > DL_old'Length and then start = 1 then
+              test_state := sim_new;  --  Shortcut to avoid resimulating the head literal.
+              prob_i := head_lit_prob;
+            else
+              test_state := state;  --  Clone the current state (general case including recursion).
+              prob_i := 1.0;
+            end if;
+            --
+            --  'length_trunc' is what remains of the DL code, DL (i), to be consumed.
+            --
+            if i <= DL_old'Length then
+              --  Easy case: we execute one of the "old" matches.
+              dist_trunc   := DL (i).distance + start - 1;
+              length_trunc := DL (i).length   - start + 1; --  always >= 1
+            elsif start = 1 then
+              --  We execute the full new DL code after the head literal.
+              dist_trunc   := DL (i).distance;
+              length_trunc := DL (i).length;
+            else  --  start >= 2. (2: full DL, 3: truncate by 1, etc.)
+              dist_trunc   := DL (i).distance + start - 2;
+              length_trunc := DL (i).length   - start + 2;  --  always >= 1
+            end if;
+            --
+            if length_trunc = 1 then
+              Simulate_Literal_Byte (
+                Text_Buf ((ES.R + UInt32 (start - 1)) and Text_Buf_Mask),
+                test_state,
+                prob_i);
+            else  --  Here, length_trunc >= 2
+              Simulate_any_DL_Code (
+                distance        => UInt32 (dist_trunc),
+                length          => length_trunc,
+                sim             => test_state,
+                prob            => prob_i,
+                recursion_limit => 1);
+            end if;
+            if last_pos_i < last_pos_any_DL then
+              Scoring (test_state, last_pos_i + 1, recursion_level + 1, tail_prob, some_index);
+              prob_i := prob_i * tail_prob;
+            end if;
+            if prob_i > prob then
+              prob  := prob_i;
+              index := i;
+            end if;
+          end if;
+        end loop;
+      end Scoring;
+      --
+      best_prob : MProb;
+      new_wins : Boolean;
+      total : Natural := 0;
+      last_pos_single_DL : Natural;
+      match_for_max_last_pos : Distance_Length_Pair;
+      sim_expand : Machine_State := ES;
+      sim_old : constant Machine_State := ES;
+    begin
+      for i in DL_old'Range loop
+        total := total + 1;
+        DL (total) := DL_old (i);
+      end loop;
+      for i in DL_new'Range loop
+        total := total + 1;
+        DL (total) := DL_new (i);
+      end loop;
+      for i in DL'Range loop
+        DL (i).distance := DL (i).distance + 1;  --  BT4 offset
+      end loop;
+      for i in DL'Range loop
+        last_pos_single_DL := DL (i).length + offset_new_match_set (i > DL_old'Length);
+        if last_pos_single_DL > last_pos_any_DL then
+          last_pos_any_DL := last_pos_single_DL;
+          match_for_max_last_pos := DL (i);
+          new_wins := i > DL_old'Length;
+        end if;
+      end loop;
+      if new_wins then  --  Copy the literal to the buffer.
+        Text_Buf (sim_expand.R) := head_literal_new;
+        sim_expand.R := (sim_expand.R + 1) and Text_Buf_Mask;
+      end if;
+      Expand_DL_Code_to_Buffer (sim_expand, match_for_max_last_pos.distance, match_for_max_last_pos.length);
+      --
+      head_lit_prob := 1.0;
+      Simulate_Literal_Byte (head_literal_new, sim_new, head_lit_prob);
+      --
+      --  Compare different ways of sending DL codes starting with
+      --  DL (i), with a total length 'longest', in order to
+      --  compare sequences of the same length.
+      --
+      Scoring (sim_old, 1, 1, best_prob, best_score_index);
+      --
+      is_index_in_new := best_score_index > DL_old'Length;
+      if is_index_in_new then
+        best_score_index := best_score_index - DL_old'Length;
+      end if;
+    end Estimate_DL_Codes_for_LZ77;
 
     procedure My_LZ77 is
       new LZ77.Encode
@@ -1345,7 +1485,7 @@ package body LZMA.Encoding is
           More_Bytes         => More_Bytes,
           Write_Literal      => LZ77_emits_literal_byte,
           Write_DL_Code      => LZ77_emits_DL_code,
-          Estimate_DL_Code   => Estimate_DL_Code_for_LZ77
+          Estimate_DL_Codes  => Estimate_DL_Codes_for_LZ77
         );
 
     procedure Write_LZMA_header is
