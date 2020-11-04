@@ -1471,9 +1471,7 @@ package body LZ77 is
       matches, old_matches : Matches_type;
 
       procedure Get_Next_Symbol is
-        avail, limit : Integer;
         new_ld, main : Distance_Length_Pair;
-        hurdle : constant := 1;
 
         --  This function is for debugging. The matches stored in the 'tree' array
         --  may be wrong if the variables cyclicPos, lzPos and readPos are not in sync.
@@ -1552,9 +1550,11 @@ package body LZ77 is
           end if;
         end Send_DL_code;
 
+        avail, limit : Integer;
         best_length_for_repeated_distance, best_repeated_distance_index, len : Integer;
         index_max_score : Positive;
         is_index_in_new : Boolean;
+        hurdle : constant := 40;
       begin
         --  Get the matches for the next byte unless readAhead indicates
         --  that we already got the new matches during the previous call

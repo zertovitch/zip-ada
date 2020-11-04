@@ -68,99 +68,6 @@ package body LZMA.Encoding is
   )
   is
 
-    -------------------------------------
-    --  Range encoding of single bits. --
-    -------------------------------------
-
-    type Range_Encoder is record
-      width      : UInt32  := 16#FFFF_FFFF#;  --  (*)
-      low        : UInt64  := 0;  --  The current range is [low, low+width[
-      cache      : Byte    := 0;
-      cache_size : UInt64  := 1;
-    end record;
-    --  (*) "width" is called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
-    --      article about range encoding.
-
-    range_enc : Range_Encoder;
-    encoded_uncompressed_bytes : UInt64 := 0;
-
-    procedure Shift_low is
-      --  Top 32 bits of the lower range bound.
-      lb_top32    : constant UInt64 := Shift_Right (range_enc.low, 32);
-      --  Bottom 32 bits of the lower range bound.
-      lb_bottom32 : constant UInt32 := UInt32 (range_enc.low and 16#FFFF_FFFF#);
-      temp, lb_bits_33_40 : Byte;
-    begin
-      if lb_bottom32 < 16#FF00_0000# or else lb_top32 /= 0 then
-        --  Flush range_enc.cache_size bytes, based on only
-        --  2 byte values: range_enc.cache and lb_bits_33_40.
-        --  The mechanism is a bit obscure (seems to be a carry)...
-        temp := range_enc.cache;
-        lb_bits_33_40 := Byte (lb_top32 and 16#FF#);
-        loop
-          Write_Byte (temp + lb_bits_33_40);  --  Finally a byte is output sometimes!
-          temp := 16#FF#;
-          range_enc.cache_size := range_enc.cache_size - 1;
-          exit when range_enc.cache_size = 0;
-        end loop;
-        range_enc.cache := Byte (Shift_Right (lb_bottom32, 24) and 16#FF#);  --  bits 25 to 32
-      end if;
-      range_enc.cache_size := range_enc.cache_size + 1;
-      --  Bits 25 to 32 are erased and the trailing zeroes are added.
-      range_enc.low := UInt64 (Shift_Left (lb_bottom32, 8));
-    end Shift_low;
-
-    procedure Flush_range_encoder is
-    begin
-      for i in 1 .. 5 loop
-        Shift_low;
-      end loop;
-    end Flush_range_encoder;
-
-    --  Normalize corresponds to G.N.N. Martin's revised algorithm's adding
-    --  of trailing digits (zeroes). The leftmost digits of the range don't
-    --  change anymore and can be output.
-    --
-    procedure Normalize is
-    pragma Inline (Normalize);
-    begin
-      if range_enc.width < width_threshold then
-        range_enc.width := Shift_Left (range_enc.width, 8);  --  Trailing zeroes are added to width.
-        Shift_low;
-      end if;
-    end Normalize;
-
-    procedure Encode_Bit (prob : in out CProb; symbol : in Unsigned) is
-    pragma Inline (Encode_Bit);
-      cur_prob : constant CProb := prob;  --  Local copy
-      --  The current interval is [low, high=low+width[ .
-      --  The bound is between 0 and width, closer to 0 if prob
-      --  is small, closer to width if prob is large.
-      bound : constant UInt32 := Shift_Right (range_enc.width, Probability_model_bits) * UInt32 (cur_prob);
-    begin
-      if symbol = 0 then
-        --  Left sub-interval, for symbol 0: [low, low+bound[ .
-        --  Set new range. low is unchanged, high is new.
-        range_enc.width := bound;
-        Normalize;
-        --  Increase probability.
-        --  The truncation ensures that prob <= Probability_model_count - (2**m - 1). See note (*).
-        prob := cur_prob + Shift_Right (Probability_model_count - cur_prob, Probability_change_bits);
-      else
-        --  Right sub-interval, for symbol 1: [low+bound, high=low+width[ .
-        --  Set new range. low is new, high is unchanged.
-        range_enc.low := range_enc.low + UInt64 (bound);
-        range_enc.width := range_enc.width - bound;
-        Normalize;
-        --  Decrease probability: prob:= prob - {prob / 2**m}, approx. equal to prob * (1 - 2**m).
-        --  The truncation represented by {} ensures that prob >= 2**m - 1. See note (*).
-        prob := cur_prob - Shift_Right (cur_prob, Probability_change_bits);
-      end if;
-      --  (*) It can be checked exhaustively that it is always the case.
-      --      A too low prob could cause the width to be too small or even zero.
-      --      Same for "too high". See LZMA sheet in za_work.xls.
-    end Encode_Bit;
-
     --  Gets an integer [0, 63] matching the highest two bits of an integer.
     --  It is a log2 function with one "decimal".
     --
@@ -223,6 +130,8 @@ package body LZMA.Encoding is
       (Level_1 | Level_2  => 258,   --  Deflate's maximum value
        others             => 273);  --  LZMA's maximum value
 
+    extra_size : constant := 275;  --  Extra space is used for DL codes scoring.
+
     --  String_buffer_size: the actual dictionary size used.
     String_buffer_size : constant array (Compression_level) of Positive :=
       (Level_0            => 16,       --  Fake: actually we don't use any LZ77 for level 0
@@ -232,8 +141,8 @@ package body LZMA.Encoding is
            Min_dictionary_size,                --  minimum:  4 KiB
            Integer'Min (
              --    dictionary_size is specified; default is 32 KiB
-             Ceiling_power_of_2 (dictionary_size),
-             2 ** 25                           --  maximum: 32 MiB
+             Ceiling_power_of_2 (dictionary_size + extra_size),
+             2 ** 28                          --  maximum: 256 MiB
            )
          )
       );
@@ -1025,6 +934,99 @@ package body LZMA.Encoding is
       end Test_Split_DL;
 
     end Estimates;
+
+    -------------------------------------
+    --  Range encoding of single bits. --
+    -------------------------------------
+
+    type Range_Encoder is record
+      width      : UInt32  := 16#FFFF_FFFF#;  --  (*)
+      low        : UInt64  := 0;  --  The current range is [low, low+width[
+      cache      : Byte    := 0;
+      cache_size : UInt64  := 1;
+    end record;
+    --  (*) "width" is called "range" in LZMA spec and "remaining width" in G.N.N. Martin's
+    --      article about range encoding.
+
+    range_enc : Range_Encoder;
+    encoded_uncompressed_bytes : UInt64 := 0;
+
+    procedure Shift_low is
+      --  Top 32 bits of the lower range bound.
+      lb_top32    : constant UInt64 := Shift_Right (range_enc.low, 32);
+      --  Bottom 32 bits of the lower range bound.
+      lb_bottom32 : constant UInt32 := UInt32 (range_enc.low and 16#FFFF_FFFF#);
+      temp, lb_bits_33_40 : Byte;
+    begin
+      if lb_bottom32 < 16#FF00_0000# or else lb_top32 /= 0 then
+        --  Flush range_enc.cache_size bytes, based on only
+        --  2 byte values: range_enc.cache and lb_bits_33_40.
+        --  The mechanism is a bit obscure (seems to be a carry)...
+        temp := range_enc.cache;
+        lb_bits_33_40 := Byte (lb_top32 and 16#FF#);
+        loop
+          Write_Byte (temp + lb_bits_33_40);  --  Finally a byte is output sometimes!
+          temp := 16#FF#;
+          range_enc.cache_size := range_enc.cache_size - 1;
+          exit when range_enc.cache_size = 0;
+        end loop;
+        range_enc.cache := Byte (Shift_Right (lb_bottom32, 24) and 16#FF#);  --  bits 25 to 32
+      end if;
+      range_enc.cache_size := range_enc.cache_size + 1;
+      --  Bits 25 to 32 are erased and the trailing zeroes are added.
+      range_enc.low := UInt64 (Shift_Left (lb_bottom32, 8));
+    end Shift_low;
+
+    procedure Flush_range_encoder is
+    begin
+      for i in 1 .. 5 loop
+        Shift_low;
+      end loop;
+    end Flush_range_encoder;
+
+    --  Normalize corresponds to G.N.N. Martin's revised algorithm's adding
+    --  of trailing digits (zeroes). The leftmost digits of the range don't
+    --  change anymore and can be output.
+    --
+    procedure Normalize is
+    pragma Inline (Normalize);
+    begin
+      if range_enc.width < width_threshold then
+        range_enc.width := Shift_Left (range_enc.width, 8);  --  Trailing zeroes are added to width.
+        Shift_low;
+      end if;
+    end Normalize;
+
+    procedure Encode_Bit (prob : in out CProb; symbol : in Unsigned) is
+    pragma Inline (Encode_Bit);
+      cur_prob : constant CProb := prob;  --  Local copy
+      --  The current interval is [low, high=low+width[ .
+      --  The bound is between 0 and width, closer to 0 if prob
+      --  is small, closer to width if prob is large.
+      bound : constant UInt32 := Shift_Right (range_enc.width, Probability_model_bits) * UInt32 (cur_prob);
+    begin
+      if symbol = 0 then
+        --  Left sub-interval, for symbol 0: [low, low+bound[ .
+        --  Set new range. low is unchanged, high is new.
+        range_enc.width := bound;
+        Normalize;
+        --  Increase probability.
+        --  The truncation ensures that prob <= Probability_model_count - (2**m - 1). See note (*).
+        prob := cur_prob + Shift_Right (Probability_model_count - cur_prob, Probability_change_bits);
+      else
+        --  Right sub-interval, for symbol 1: [low+bound, high=low+width[ .
+        --  Set new range. low is new, high is unchanged.
+        range_enc.low := range_enc.low + UInt64 (bound);
+        range_enc.width := range_enc.width - bound;
+        Normalize;
+        --  Decrease probability: prob:= prob - {prob / 2**m}, approx. equal to prob * (1 - 2**m).
+        --  The truncation represented by {} ensures that prob >= 2**m - 1. See note (*).
+        prob := cur_prob - Shift_Right (cur_prob, Probability_change_bits);
+      end if;
+      --  (*) It can be checked exhaustively that it is always the case.
+      --      A too low prob could cause the width to be too small or even zero.
+      --      Same for "too high". See LZMA sheet in za_work.xls.
+    end Encode_Bit;
 
     -----------------------------------------------------------------------------------
     --  This part processes the case where LZ77 sends a literal (a plain text byte)  --
