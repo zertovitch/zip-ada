@@ -290,7 +290,10 @@ package body LZMA.Encoding is
       --  Constants like 0.1234 appearing hereafter are empirical, tuned, magic numbers.
       --  To do: tune them with Machine Learning.
 
-      --  Over the long run, it's better to let repeat matches happen.
+      --  Sometimes, a longer path like sending a simple match
+      --  instead of a repeat match has a lower modelled probability.
+      --  To avoid underusing repeat matches by letting their probabilities
+      --  being adapted lower over time, we penalize the simple match alternative.
       Malus_simple_match_vs_rep : constant := 0.55;
 
       package DL_Code_Erosion is
@@ -1352,7 +1355,6 @@ package body LZMA.Encoding is
     procedure Estimate_DL_Codes_for_LZ77 (
       DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
       best_score_index : out Positive;
-      is_index_in_new  : out Boolean;
       head_literal_new : in  Byte  --  Literal preceding the new set of matches.
     )
     is
@@ -1487,11 +1489,6 @@ package body LZMA.Encoding is
       Simulate_Literal_Byte (head_literal_new, sim_new, head_lit_prob);
       --
       Scoring (sim_old, 1, 1, best_prob, best_score_index);
-      --
-      is_index_in_new := best_score_index > DL_old'Length;
-      if is_index_in_new then
-        best_score_index := best_score_index - DL_old'Length;
-      end if;
     end Estimate_DL_Codes_for_LZ77;
 
     procedure My_LZ77 is

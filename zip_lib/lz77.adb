@@ -1553,7 +1553,6 @@ package body LZ77 is
         avail, limit : Integer;
         best_length_for_repeated_distance, best_repeated_distance_index, len : Integer;
         index_max_score : Positive;
-        is_index_in_new : Boolean;
         hurdle : constant := 40;
       begin
         --  Get the matches for the next byte unless readAhead indicates
@@ -1672,15 +1671,14 @@ package body LZ77 is
             old_matches.ld (1 .. old_matches.count),
             matches.ld (1 .. matches.count),
             index_max_score,
-            is_index_in_new,
             cur_literal
           );
-          if is_index_in_new then
-            --  We prefer literal, then the new match (or even better!)
+          if index_max_score <= old_matches.count then
+            main := old_matches.ld (index_max_score);
+          else
+            --  We prefer at least a literal, then a new, better match.
             Send_first_literal_of_match;
             return;
-          else
-            main := old_matches.ld (index_max_score);
           end if;
         end if;
 

@@ -98,7 +98,6 @@ package LZ77 is
     with procedure Estimate_DL_Codes (
       DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
       best_score_index : out Positive;
-      is_index_in_new  : out Boolean;
       head_literal_new : in  Byte  --  Literal preceding the new set of matches.
     );
   procedure Encode;
