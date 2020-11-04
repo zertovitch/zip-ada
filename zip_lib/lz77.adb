@@ -1090,7 +1090,10 @@ package body LZ77 is
       cyclicPos  : Integer := -1;
       lzPos      : Integer := cyclicSize;
 
-      max_dist : constant Integer := cyclicSize;
+      max_dist : constant Integer := cyclicSize - (Look_Ahead + 2);
+      --  NB: 2020-11-04: added "- (Look_Ahead + 2)" to prevent corruption of
+      --  the expansion buffer in LZMA.Encoding when DL codes are tested in front
+      --  of the actual writes, before actual entropy compression (since rev. #850).
 
       package BT4_Algo is
         procedure Skip (len : Natural);

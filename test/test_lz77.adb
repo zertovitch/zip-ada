@@ -88,10 +88,13 @@ procedure Test_LZ77 is
     end loop;
   end Emit_DL_code;
 
-  function Dummy_Estimate_DL_Code (distance, length : Integer) return LZ77.Scoring_Type is
-  begin
-    return Scoring_Type (distance) * Scoring_Type (length);
-  end Dummy_Estimate_DL_Code;
+  procedure Dummy_Estimate_DL_Codes (
+    DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+    best_score_index : out Positive;
+    is_index_in_new  : out Boolean;
+    head_literal_new : in  Byte  --  Literal preceding the new set of matches.
+  )
+  is null;
 
   type Method_Set is array (Method_Type) of Boolean;
 
@@ -124,7 +127,7 @@ begin
             m,
             Read_byte, More_bytes,
             Emit_literal, Emit_DL_code,
-            False, Dummy_Estimate_DL_Code
+            False, Dummy_Estimate_DL_Codes
           );
       begin
         if Argument_Count < 1 then
