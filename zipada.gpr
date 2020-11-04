@@ -77,6 +77,7 @@ project ZipAda is
    Debug_Options  := (
      "-gnatVa",  --  Turn on all validity checking options
      "-gnato",   --  Enable overflow checking in STRICT (-gnato1) mode
+     "-gnata",   --  Assertions enabled. Pragma Assert and pragma Debug to be activated.
      "-g", 
      "-fno-inline", "-fstack-check",
      "-gnatec=" & project'Project_Dir & "debug.pra"

@@ -82,6 +82,7 @@ package body LZMA.Encoding is
     --      article about range encoding.
 
     range_enc : Range_Encoder;
+    encoded_uncompressed_bytes : UInt64 := 0;
 
     procedure Shift_low is
       --  Top 32 bits of the lower range bound.
@@ -97,7 +98,7 @@ package body LZMA.Encoding is
         temp := range_enc.cache;
         lb_bits_33_40 := Byte (lb_top32 and 16#FF#);
         loop
-          Write_Byte (temp + lb_bits_33_40);
+          Write_Byte (temp + lb_bits_33_40);  --  Finally a byte is output sometimes!
           temp := 16#FF#;
           range_enc.cache_size := range_enc.cache_size - 1;
           exit when range_enc.cache_size = 0;
@@ -1113,6 +1114,7 @@ package body LZMA.Encoding is
       ES.prev_byte := b;
       Text_Buf (ES.R) := b;
       ES.R := (ES.R + 1) and Text_Buf_Mask;  --  This is mod String_buffer_size
+      encoded_uncompressed_bytes := encoded_uncompressed_bytes + 1;
     end LZ77_emits_literal_byte;
 
     procedure Write_Literal_Byte (
@@ -1281,6 +1283,10 @@ package body LZMA.Encoding is
       dist_ip : constant UInt32 := UInt32 (distance - 1);
       found_repeat : Integer := Repeat_Stack'First - 1;
     begin
+      pragma Assert (
+        UInt64 (distance) <= encoded_uncompressed_bytes,
+        "distance goes before input stream's begin"
+      );
       Encode_Bit (probs.switch.match (ES.state, ES.pos_state), DL_code_choice);
       for i in Repeat_Stack'Range loop
         if dist_ip = ES.rep_dist (i) then
@@ -1337,6 +1343,7 @@ package body LZMA.Encoding is
       dummy_prob : Estimates.MProb := 0.0;
     begin
       Expand_DL_Code_to_Buffer (ES, distance, length);
+      encoded_uncompressed_bytes := encoded_uncompressed_bytes + UInt64 (length);
       Write_any_DL_code (UInt32 (distance), length, ES, dummy_prob, max_recursion);
     end LZ77_emits_DL_code;
 
@@ -1354,6 +1361,12 @@ package body LZMA.Encoding is
       offset_new_match_set : constant array (Boolean) of Natural := (0, 1);
       head_lit_prob : MProb;
       --
+      --  Compare different ways of sending DL codes starting with
+      --  DL (i), with a total length 'last_pos_any_DL', in order to
+      --  compare sequences of the same length starting with the different
+      --  matches in DL_old and DL_new. The matches in DL_new are preceded
+      --  by the literal 'head_literal_new'.
+      --
       procedure Scoring (
         state           :     Machine_State;
         start           :     Positive;
@@ -1363,12 +1376,12 @@ package body LZMA.Encoding is
       )
       is
         --  We compute the probability of the message sent for the bytes
-        --  at position 'start' to the position 'longest' and find the
+        --  at position 'start' to the position 'last_pos_any_DL' and find the
         --  optimal combination using the matches in the DL array.
         prob_i, tail_prob : MProb;
         test_state : Machine_State;
         length_trunc, some_index : Positive;
-        dist_trunc, last_pos_i : Integer;
+        last_pos_i : Integer;
       begin
         prob := 0.0;
         if recursion_level > 3 then
@@ -1391,25 +1404,33 @@ package body LZMA.Encoding is
             --
             if i <= DL_old'Length then
               --  Easy case: we execute one of the "old" matches.
-              dist_trunc   := DL (i).distance + start - 1;
               length_trunc := DL (i).length   - start + 1; --  always >= 1
             elsif start = 1 then
               --  We execute the full new DL code after the head literal.
-              dist_trunc   := DL (i).distance;
               length_trunc := DL (i).length;
             else  --  start >= 2. (2: full DL, 3: truncate by 1, etc.)
-              dist_trunc   := DL (i).distance + start - 2;
               length_trunc := DL (i).length   - start + 2;  --  always >= 1
             end if;
+            pragma Assert (length_trunc >= 1);
             --
             if length_trunc = 1 then
+              --  Just simulate the literal we are sitting on: the buffer
+              --  has been already filled via Expand_DL_Code_to_Buffer.
+              --  It is a shortcut for and should be equivalent to the position checked below.
+              pragma Assert (
+                Text_Buf (state.R) =
+                Text_Buf ((state.R - UInt32 (DL (i).distance)) and Text_Buf_Mask),
+                "Bytes of simulated copy do not match; start =" & Integer'Image (start) &
+                "; DL code distance="  & Distance_Type'Image (DL (i).distance) &
+                "; DL_new match set="  & Boolean'Image (i > DL_old'Length)
+              );
               Simulate_Literal_Byte (
-                Text_Buf ((ES.R + UInt32 (start - 1)) and Text_Buf_Mask),
+                Text_Buf (state.R),
                 test_state,
                 prob_i);
             else  --  Here, length_trunc >= 2
               Simulate_any_DL_Code (
-                distance        => UInt32 (dist_trunc),
+                distance        => UInt32 (DL (i).distance),
                 length          => length_trunc,
                 sim             => test_state,
                 prob            => prob_i,
@@ -1462,10 +1483,6 @@ package body LZMA.Encoding is
       --
       head_lit_prob := 1.0;
       Simulate_Literal_Byte (head_literal_new, sim_new, head_lit_prob);
-      --
-      --  Compare different ways of sending DL codes starting with
-      --  DL (i), with a total length 'longest', in order to
-      --  compare sequences of the same length.
       --
       Scoring (sim_old, 1, 1, best_prob, best_score_index);
       --

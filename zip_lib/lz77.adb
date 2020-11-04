@@ -636,7 +636,7 @@ package body LZ77 is
           --  Otherwise, window_size == 2*WSIZE so more >= 2.
           --  If there was sliding, more >= WSIZE. So in all cases, more >= 2.
           --
-          --  Assert(more >= 2, "more < 2");
+          pragma Assert (more >= 2, "more < 2");
           --
           Read_buf (strstart + lookahead, more, n);
           if n = 0 then
@@ -722,9 +722,9 @@ package body LZ77 is
         if prev_length >= good_match then
           chain_length := chain_length / 4;
         end if;
-        --  Assert(strstart <= window_size-MIN_LOOKAHEAD, "insufficient lookahead");
+        pragma Assert (strstart <= Integer_M32 (window_size) - MIN_LOOKAHEAD, "insufficient lookahead");
         loop
-          --  Assert(current_match < strstart, "no future");
+          pragma Assert (current_match < strstart, "no future");
           match := current_match;
           --  Skip to next match if the match length cannot increase
           --  or if the match length is less than 2:
@@ -788,7 +788,7 @@ package body LZ77 is
                 exit when window (scan) /= window (match) or else scan >= strend;
               end loop;
             end if;
-            --  Assert(scan <= window+(unsigned)(window_size-1), "wild scan");
+            --  Assert(scan <= window+(unsigned)(window_size-1), "wild scan");  ??
             len := MAX_MATCH - (strend - scan);
             scan := strend - MAX_MATCH;
             if len > best_len then
@@ -980,7 +980,7 @@ package body LZ77 is
       function movePos (requiredForFlushing, requiredForFinishing : Integer) return Integer is
         avail : Integer;
       begin
-        --  assert requiredForFlushing >= requiredForFinishing;
+        pragma Assert (requiredForFlushing >= requiredForFinishing);
         readPos := readPos + 1;
         avail   := Get_Available;
         if avail < requiredForFlushing then
