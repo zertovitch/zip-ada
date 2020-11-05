@@ -929,7 +929,8 @@ package body LZ77 is
     --          the leading 2 to 4 bytes of each possible match.       --
     ---------------------------------------------------------------------
 
-    --  Based on BT4.java by Lasse Collin, itself based on LzFind.c by Igor Pavlov.
+    --  Based on BT4.java and LZMAEncoderFast.java by Lasse Collin,
+    --  itself based on LzFind.c by Igor Pavlov.
 
     procedure LZ77_using_BT4 is
       MATCH_LEN_MIN : constant Integer := Threshold + 1;
@@ -977,7 +978,8 @@ package body LZ77 is
         return writePos - readPos - 1;
       end Get_Available;
 
-      function movePos (requiredForFlushing, requiredForFinishing : Integer) return Integer is
+      function Move_Pos (requiredForFlushing, requiredForFinishing : Integer) return Integer is
+        --  Java name: movePos.
         avail : Integer;
       begin
         pragma Assert (requiredForFlushing >= requiredForFinishing);
@@ -987,13 +989,13 @@ package body LZ77 is
           if avail < requiredForFinishing or else not finishing
           then
             pendingSize := pendingSize + 1;
-            --  GdM: this causes cyclicPos and lzpos not being in sync with readPos,
-            --       the pendingSize value is there for catching up.
+            --  GdM: This causes cyclicPos and lzpos not being in sync with readPos.
+            --       The pendingSize value is there for catching up.
             avail := 0;
           end if;
         end if;
         return avail;
-      end movePos;
+      end Move_Pos;
 
       function getHash4Size return Integer is
         h : Unsigned_32 := Unsigned_32 (String_buffer_size - 1);
@@ -1106,11 +1108,14 @@ package body LZ77 is
 
       package body BT4_Algo is
 
-        function movePos return Integer is
-          avail : constant Integer := movePos (requiredForFlushing => Nice_Length, requiredForFinishing => 4);
+        function Move_Pos_in_BT4 return Integer is
+          --  Java name: movePos.
+          avail : constant Integer :=
+            Move_Pos (requiredForFlushing  => Nice_Length,
+                      requiredForFinishing => 4);
           normalizationOffset : Integer;
         begin
-          --  Put_Line("BT4_movePos");
+          --  Put_Line ("BT4_Algo.Move_Pos_in_BT4");
           if avail /= 0 then
             lzPos := lzPos + 1;
             if lzPos = Integer'Last then
@@ -1126,14 +1131,14 @@ package body LZ77 is
             end if;
           end if;
           return avail;
-        end movePos;
+        end Move_Pos_in_BT4;
 
         Null_position : constant := -1;  --  LzFind.c: kEmptyHashValue, 0
 
-        procedure skip_update_tree (niceLenLimit : Integer; currentMatch : in out Integer) is
+        procedure Skip_and_Update_Tree (niceLenLimit : Integer; currentMatch : in out Integer) is
           delta0, depth, ptr0, ptr1, pair, len, len0, len1 : Integer;
         begin
-          --  Put("BT4.skip_update_tree... ");
+          --  Put("BT4_Algo.Skip_and_Update_Tree... ");
           depth := Depth_Limit;
           ptr0  := cyclicPos * 2 + 1;
           ptr1  := cyclicPos * 2;
@@ -1182,7 +1187,7 @@ package body LZ77 is
               len0 := len;
             end if;
           end loop;
-        end skip_update_tree;
+        end Skip_and_Update_Tree;
 
         procedure Skip (len : Natural) is
           --
@@ -1191,7 +1196,7 @@ package body LZ77 is
             niceLenLimit, avail, currentMatch : Integer;
           begin
             niceLenLimit := Nice_Length;
-            avail := movePos;
+            avail := Move_Pos_in_BT4;
             if avail < niceLenLimit then
               if avail = 0 then
                 return;
@@ -1201,7 +1206,7 @@ package body LZ77 is
             Hash234.calcHashes (buf.all, readPos);
             currentMatch := Hash234.hash4Table (Integer (Hash234.hash4Value));
             Hash234.updateTables (lzPos);
-            skip_update_tree (niceLenLimit, currentMatch);
+            Skip_and_Update_Tree (niceLenLimit, currentMatch);
           end Skip_one;
           --
         begin
@@ -1218,9 +1223,9 @@ package body LZ77 is
           delta0, delta2, delta3, currentMatch,
           lenBest, depth, ptr0, ptr1, pair, len, len0, len1 : Integer;
         begin
-          --  Put("BT4.Get_Matches... ");
+          --  Put("BT4_Algo.Get_Matches... ");
           matches.count := 0;
-          avail := movePos;
+          avail := Move_Pos_in_BT4;
           if avail < matchLenLimit then
             if avail = 0 then
               return matches;
@@ -1271,7 +1276,7 @@ package body LZ77 is
             matches.ld (matches.count).length := lenBest;
             --  Return if it is long enough (niceLen or reached the end of the dictionary).
             if lenBest >= niceLenLimit then
-              skip_update_tree (niceLenLimit, currentMatch);
+              Skip_and_Update_Tree (niceLenLimit, currentMatch);
               return matches;
             end if;
           end if;
@@ -1349,7 +1354,8 @@ package body LZ77 is
       --  Moves data from the end of the buffer to the beginning, discarding
       --  old data and making space for new input.
 
-      procedure moveWindow is
+      procedure Move_Window is
+        --  Java name: moveWindow.
         --  Align the move to a multiple of 16 bytes (LZMA-friendly, see pos_bits)
         moveOffset : constant Integer := ((readPos + 1 - keepSizeBefore) / 16) * 16;
         moveSize   : constant Integer := writePos - moveOffset;
@@ -1359,10 +1365,11 @@ package body LZ77 is
         readPos   := readPos   - moveOffset;
         readLimit := readLimit - moveOffset;
         writePos  := writePos  - moveOffset;
-      end moveWindow;
+      end Move_Window;
 
      --  Copies new data into the buffer.
-     function fillWindow (len_initial : Integer) return Integer is
+     function Fill_Window (len_initial : Integer) return Integer is
+     --  Java name: fillWindow
 
        --  Process pending data that hasn't been ran through the match finder yet.
        --  Run it through the match finder now if there is enough new data
@@ -1386,7 +1393,7 @@ package body LZ77 is
         --  Put_Line("Fill window - start");
         --  Move the sliding window if needed.
         if readPos >= buf'Length - keepSizeAfter then
-          moveWindow;
+          Move_Window;
         end if;
 
         --  Try to fill the dictionary buffer up to its boundary.
@@ -1412,7 +1419,7 @@ package body LZ77 is
         --  Put_Line("Fill window, requested=" & len_initial'Img & " actual=" & actual_len'Img);
         --  Tell the caller how much input we actually copied into the dictionary.
         return actual_len;
-      end fillWindow;
+      end Fill_Window;
 
       readAhead : Integer := -1;  --  LZMAEncoder.java
 
@@ -1714,15 +1721,16 @@ package body LZ77 is
       actual_written, avail : Integer;
     begin
       --  NB: heap allocation used only for convenience because of
-      --      small default stack sizes on some compilers.
+      --      the small default stack sizes on some compilers.
       buf := new Byte_array (0 .. getBufSize);
-      actual_written := fillWindow (String_buffer_size);
+      --
+      actual_written := Fill_Window (String_buffer_size);
       if actual_written > 0 then
         loop
           Get_Next_Symbol;
           avail := Get_Available;
           if avail = 0 then
-            actual_written := fillWindow (String_buffer_size);
+            actual_written := Fill_Window (String_buffer_size);
             exit when actual_written = 0;
           end if;
         end loop;

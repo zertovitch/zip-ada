@@ -56,8 +56,13 @@ rem   ### BZip2
 zip -9 -Z bzip2 ../bench_%1_bzip2_9 *
 
 rem   ### LZMA, external
-7z a -tzip -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma_bt3 *
-7z a -tzip -mm=LZMA -mx9                        ../bench_%1_7zip_lzma_mx9 *
+7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma_bt3 *
+7z a -tzip -mmt1 -mm=LZMA -mx9                        ../bench_%1_7zip_lzma_mx9 *
+7z a       -mmt1          -mx9                        ../bench_%1_7zip_lzma_mx9 *
+
+tar -c -f ../bench_%1_7zip_lzma_mx9.tar *
+lzma e -mt1 ../bench_%1_7zip_lzma_mx9.tar ../bench_%1_7zip_lzma_mx9.tar.lzma
+..\..\zipada -el3 ../bench_%1_lzma_3.tar.zip ../bench_%1_7zip_lzma_mx9.tar
 
 rem   ### LZMA (Zip.Compress.LZMA_E)
 ..\..\zipada -el1 ../bench_%1_lzma_1 *
@@ -70,7 +75,7 @@ rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
 
 cd ..
 
-dir /OS- bench_%1_*.zip
+dir /OS- bench_%1_*.*
 
 rem Wrapping it all - update archive with all archives 
 rem Funnily, upon zipping bench_matrix_*.zip, level 1-8 stores everything, but level 9 deflates to 26% !
