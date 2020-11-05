@@ -1251,7 +1251,8 @@ package body LZ77 is
             --  Match of length 2 found and checked.
             lenBest := 2;
             matches.count := 1;
-            matches.ld (matches.count) := (length => 2, distance => delta2 - 1);
+            matches.ld (matches.count).length := 2;
+            matches.ld (matches.count).distance := delta2 - 1;
           end if;
           --  See if the hash from the first three bytes found a match that
           --  is different from the match possibly found by the two-byte hash.
@@ -1319,7 +1320,8 @@ package body LZ77 is
               if len > lenBest then
                 lenBest := len;
                 matches.count := matches.count + 1;
-                matches.ld (matches.count) := (length => len, distance => delta0 - 1);
+                matches.ld (matches.count).length := len;
+                matches.ld (matches.count).distance := delta0 - 1;
                 if len >= niceLenLimit then
                   tree (ptr1) := tree (pair);
                   tree (ptr0) := tree (pair + 1);
@@ -1446,7 +1448,8 @@ package body LZ77 is
         m       : in out Matches_type;
         new_top : in out Distance_Length_Pair)
       is
-      --  Sometimes BT4 return such a long list. Bug?
+      --  Sometimes the BT4 algo returns a long list with consecutive lengths,
+      --  ending with the max length. Bug?
       --  This reduction is found in the Java version.
       begin
         while m.count > 1 and then m.ld (m.count).length = m.ld (m.count - 1).length + 1 loop
@@ -1483,8 +1486,9 @@ package body LZ77 is
         --  This function is for debugging. The matches stored in the 'tree' array
         --  may be wrong if the variables cyclicPos, lzPos and readPos are not in sync.
         --  The issue seems to have been solved now (rev. 489).
+        --
+        --  !! Wrap calls to this with an assert !!
         function Is_match_correct (shift : Natural) return Boolean is
-        pragma Inline (Is_match_correct);
           paranoid : constant Boolean := True;
         begin
           if paranoid then
@@ -1606,7 +1610,7 @@ package body LZ77 is
           end loop;
         end if;
 
-        main := (length => 0, distance => 0);
+        main := (length => 1, distance => 0);
         if matches.count > 0 then
           main := matches.ld (matches.count);
           if main.length >= Nice_Length then
@@ -1649,7 +1653,7 @@ package body LZ77 is
 
         --  Get the next match. Test if it is better than the current match.
         --  If so, encode the current byte as a literal.
-        old_matches := matches;
+        old_matches := matches;  --  Remove this copy !!
         matches := Read_One_and_Get_Matches;
         --  Show_Matches (old_matches, "------ Old");
         --  Show_Matches (matches,     "       New");

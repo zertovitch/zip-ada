@@ -130,7 +130,9 @@ package body LZMA.Encoding is
       (Level_1 | Level_2  => 258,   --  Deflate's maximum value
        others             => 273);  --  LZMA's maximum value
 
-    extra_size : constant := 275;  --  Extra space is used for DL codes scoring.
+    extra_size : constant := 273 + 1 + LZ77.BT4_max_prefetch_positions;
+    --  Extra space is used for DL codes scoring before being
+    --  sent for real to the encoder.
 
     --  String_buffer_size: the actual dictionary size used.
     String_buffer_size : constant array (Compression_level) of Positive :=
@@ -1353,13 +1355,13 @@ package body LZMA.Encoding is
     end LZ77_emits_DL_code;
 
     procedure Estimate_DL_Codes_for_LZ77 (
-      DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+      DL_old, DL_new   : in  LZ77.DLP_Array;  --  Caution: distance - 1 convention in BT4 !!
       best_score_index : out Positive;
       head_literal_new : in  Byte  --  Literal preceding the new set of matches.
     )
     is
       use LZ77, Estimates;
-      DL : DLP_array (1 .. DL_old'Length + DL_new'Length);
+      DL : DLP_Array (1 .. DL_old'Length + DL_new'Length);
       last_pos_any_DL : Natural := 0;
       sim_new : Machine_State := ES;
       offset_new_match_set : constant array (Boolean) of Natural := (0, 1);

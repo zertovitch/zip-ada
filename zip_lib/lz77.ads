@@ -58,21 +58,21 @@ package LZ77 is
 
   subtype Byte is Interfaces.Unsigned_8;
 
-  type Scoring_Type is digits 15;
-
   subtype Distance_Type is Integer;
 
   type Distance_Length_Pair is record
     distance : Distance_Type;
-    length   : Integer;
+    length   : Positive;
   end record;
 
-  type DLP_array is array (Positive range <>) of Distance_Length_Pair;
+  type DLP_Array is array (Positive range <>) of Distance_Length_Pair;
 
   type Any_Matches_type (Count_Max : Integer) is record
     count : Integer := 0;
-    ld    : DLP_array (1 .. Count_Max);
+    ld    : DLP_Array (1 .. Count_Max);
   end record;
+
+  BT4_max_prefetch_positions : constant := 7;
 
   generic
     ----- LZSS Parameters -----
@@ -87,7 +87,7 @@ package LZ77 is
     with function  More_Bytes return Boolean;
     --  Output of LZ-compressed data:
     with procedure Write_Literal (b : Byte);
-    with procedure Write_DL_Code (distance, length : Integer);
+    with procedure Write_DL_Code (distance : Distance_Type; length : Integer);
     --
     LZMA_friendly : Boolean := True;  --  Up to 4 recent distances may be preferred
     --
@@ -96,7 +96,7 @@ package LZ77 is
     --  The highest the value, the better.
     --  This function is only used by BT4.
     with procedure Estimate_DL_Codes (
-      DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+      DL_old, DL_new   : in  DLP_Array;  --  Caution: distance - 1 convention in BT4 !!
       best_score_index : out Positive;
       head_literal_new : in  Byte  --  Literal preceding the new set of matches.
     );

@@ -554,7 +554,7 @@ is
     end Write_DL_code;
 
     procedure Dummy_Estimate_DL_Codes (
-      DL_old, DL_new   : in  LZ77.DLP_array;  --  Caution: distance - 1 convention in BT4 !!
+      DL_old, DL_new   : in  LZ77.DLP_Array;  --  Caution: distance - 1 convention in BT4 !!
       best_score_index : out Positive;
       head_literal_new : in  Byte  --  Literal preceding the new set of matches.
     )
