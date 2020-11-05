@@ -1100,7 +1100,7 @@ package body LZ77 is
       package BT4_Algo is
         procedure Skip (len : Natural);
         pragma Inline (Skip);
-        function Get_Matches return Matches_type;
+        function Read_One_and_Get_Matches return Matches_type;
       end BT4_Algo;
 
       buf : p_Byte_array;
@@ -1215,7 +1215,7 @@ package body LZ77 is
           end loop;
         end Skip;
 
-        function Get_Matches return Matches_type is
+        function Read_One_and_Get_Matches return Matches_type is
           matches : Matches_type;
           matchLenLimit : Integer := Look_Ahead;
           niceLenLimit  : Integer := Nice_Length;
@@ -1225,7 +1225,7 @@ package body LZ77 is
         begin
           --  Put("BT4_Algo.Get_Matches... ");
           matches.count := 0;
-          avail := Move_Pos_in_BT4;
+          avail := Move_Pos_in_BT4;  --  A new literal is fetched there.
           if avail < matchLenLimit then
             if avail = 0 then
               return matches;
@@ -1281,7 +1281,8 @@ package body LZ77 is
               return matches;
             end if;
           end if;
-          --  Long enough match wasn't found so easily. Look for better matches from the binary tree.
+          --  A long enough match wasn't found so easily.
+          --  Look for better matches from the binary tree.
           if lenBest < 3 then
             lenBest := 3;
           end if;
@@ -1342,7 +1343,7 @@ package body LZ77 is
               len0 := len;
             end if;
           end loop;
-        end Get_Matches;
+        end Read_One_and_Get_Matches;
 
       begin
         --  NB: heap allocation used only for convenience because of
@@ -1428,7 +1429,7 @@ package body LZ77 is
       function Read_One_and_Get_Matches return Matches_type is
       begin
         readAhead := readAhead + 1;
-        return BT4_Algo.Get_Matches;
+        return BT4_Algo.Read_One_and_Get_Matches;
       end Read_One_and_Get_Matches;
 
       procedure Skip (len : Natural) is
@@ -1486,18 +1487,13 @@ package body LZ77 is
         --  This function is for debugging. The matches stored in the 'tree' array
         --  may be wrong if the variables cyclicPos, lzPos and readPos are not in sync.
         --  The issue seems to have been solved now (rev. 489).
-        --
-        --  !! Wrap calls to this with an assert !!
         function Is_match_correct (shift : Natural) return Boolean is
-          paranoid : constant Boolean := True;
         begin
-          if paranoid then
-            for i in reverse -1 + shift .. main.length - 2 + shift loop
-              if buf (readPos - (main.distance + 1) + i) /= buf (readPos + i) then
-                return False;  --  Should not occur (check with code coverage)
-              end if;
-            end loop;
-          end if;
+          for i in reverse -1 + shift .. main.length - 2 + shift loop
+            if buf (readPos - (main.distance + 1) + i) /= buf (readPos + i) then
+              return False;  --  Should not occur.
+            end if;
+          end loop;
           return True;
         end Is_match_correct;
 
@@ -1614,17 +1610,11 @@ package body LZ77 is
         if matches.count > 0 then
           main := matches.ld (matches.count);
           if main.length >= Nice_Length then
-            --  We have a nice match: go for it!
-            if Is_match_correct (1) then
-              Skip (main.length - 1);
-              --  Put_Line("[DL A]" & mainDist'Img & mainLen'Img);
-              Send_DL_code (main.distance, main.length);
-              return;
-            else
-              --  Put_Line("Wrong match [A]! pos=" & Integer'Image(lzPos - cyclicSize));
-              Send_first_literal_of_match;
-              return;
-            end if;
+            pragma Assert (Is_match_correct (1));
+            Skip (main.length - 1);
+            --  Put_Line("[DL A]" & mainDist'Img & mainLen'Img);
+            Send_DL_code (main.distance, main.length);
+            return;
           end if;
           Reduce_consecutive_max_lengths (matches, main);
           --
@@ -1651,10 +1641,13 @@ package body LZ77 is
           return;
         end if;
 
-        --  Get the next match. Test if it is better than the current match.
-        --  If so, encode the current byte as a literal.
+        -------------------------------------------------------------------------
+        --  Get the next match. Test if it is better than the current match.   --
+        --  If so, encode the current byte as a literal.                       --
+        -------------------------------------------------------------------------
         old_matches := matches;  --  Remove this copy !!
         matches := Read_One_and_Get_Matches;
+        --
         --  Show_Matches (old_matches, "------ Old");
         --  Show_Matches (matches,     "       New");
         --
@@ -1705,14 +1698,10 @@ package body LZ77 is
           end loop;
         end if;
 
-        if Is_match_correct (0) then
-          Skip (main.length - 2);
-          --  Put_Line("[DL B]" & mainDist'Img & mainLen'Img);
-          Send_DL_code (main.distance, main.length);
-        else
-          --  Put_Line("Wrong match [B]!");
-          Send_first_literal_of_match;
-        end if;
+        pragma Assert (Is_match_correct (0));
+        Skip (main.length - 2);
+        --  Put_Line("[DL B]" & mainDist'Img & mainLen'Img);
+        Send_DL_code (main.distance, main.length);
       end Get_Next_Symbol;
 
       procedure Deallocation is
