@@ -1355,13 +1355,16 @@ package body LZMA.Encoding is
     end LZ77_emits_DL_code;
 
     procedure Estimate_DL_Codes_for_LZ77 (
-      DL_old, DL_new   : in  LZ77.DLP_Array;  --  Caution: distance - 1 convention in BT4 !!
+      matches          : in  LZ77.Matches_Array;
+      old_match_index  : in  Natural;
+      prefixes         : in  LZ77.Byte_Array;
       best_score_index : out Positive;
-      head_literal_new : in  Byte  --  Literal preceding the new set of matches.
+      best_score_set   : out LZ77.Prefetch_Index_Type;
+      match_trace      : out LZ77.Matches_Type
     )
     is
+    pragma Unreferenced (match_trace);
       use LZ77, Estimates;
-      DL : DLP_Array (1 .. DL_old'Length + DL_new'Length);
       last_pos_any_DL : Natural := 0;
       sim_new : Machine_State := ES;
       offset_new_match_set : constant array (Boolean) of Natural := (0, 1);
@@ -1378,7 +1381,8 @@ package body LZMA.Encoding is
         start           :     Positive;
         recursion_level :     Positive;
         prob            : out MProb;
-        index           : out Positive
+        index           : out Positive;
+        match_set       : out Prefetch_Index_Type
       )
       is
         --  We compute the probability of the message sent for the bytes
@@ -1387,110 +1391,105 @@ package body LZMA.Encoding is
         prob_i, tail_prob : MProb;
         test_state : Machine_State;
         length_trunc, some_index : Positive;
+        some_match_set : Prefetch_Index_Type;
         last_pos_i : Integer;
       begin
         prob := 0.0;
         if recursion_level > 3 then
-          index := 1;
+          index := 1;      --  Dummy value.
+          match_set := 0;  --  Dummy value.
           --  Abandon insane recursion levels: level = number of DL codes chained!
           return;
         end if;
-        for i in DL'Range loop
-          last_pos_i := DL (i).length + offset_new_match_set (i > DL_old'Length);
-          if last_pos_i >= start then
-            if i > DL_old'Length and then start = 1 then
-              test_state := sim_new;  --  Shortcut to avoid resimulating the head literal.
-              prob_i := head_lit_prob;
-            else
-              test_state := state;  --  Clone the current state (general case including recursion).
-              prob_i := 1.0;
+        for m in matches'Range loop
+          for i in 1 .. matches (m).count loop
+            last_pos_i := matches (m).ld (i).length + offset_new_match_set (m /= old_match_index);
+            if last_pos_i >= start then
+              if m /= old_match_index and then start = 1 then
+                test_state := sim_new;  --  Shortcut to avoid resimulating the head literal.
+                prob_i := head_lit_prob;
+              else
+                test_state := state;  --  Clone the current state (general case including recursion).
+                prob_i := 1.0;
+              end if;
+              --
+              --  'length_trunc' is what remains of the DL code, DL (i), to be consumed.
+              --
+              if m = old_match_index then
+                --  Easy case: we execute one of the "old" matches.
+                length_trunc := matches (m).ld (i).length   - start + 1; --  always >= 1
+              elsif start = 1 then
+                --  We execute the full new DL code after the head literal.
+                length_trunc := matches (m).ld (i).length;
+              else  --  start >= 2. (2: full DL, 3: truncate by 1, etc.)
+                length_trunc := matches (m).ld (i).length   - start + 2;  --  always >= 1
+              end if;
+              pragma Assert (length_trunc >= 1);
+              --
+              if length_trunc = 1 then
+                --  Just simulate the literal we are sitting on: the buffer
+                --  has been already filled via Expand_DL_Code_to_Buffer.
+                --  It is a shortcut for and should be equivalent to the position checked below.
+                pragma Assert (
+                  Text_Buf (state.R) =
+                  Text_Buf ((state.R - UInt32 (matches (m).ld (i).distance)) and Text_Buf_Mask),
+                  "Bytes of simulated copy do not match; start =" & Integer'Image (start) &
+                  "; DL code distance="  & Distance_Type'Image (matches (m).ld (i).distance) &
+                  "; new match set="  & Boolean'Image (m /= old_match_index)
+                );
+                Simulate_Literal_Byte (
+                  Text_Buf (state.R),
+                  test_state,
+                  prob_i);
+              else  --  Here, length_trunc >= 2
+                Simulate_any_DL_Code (
+                  distance        => UInt32 (matches (m).ld (i).distance),
+                  length          => length_trunc,
+                  sim             => test_state,
+                  prob            => prob_i,
+                  recursion_limit => 1);
+              end if;
+              if last_pos_i < last_pos_any_DL then
+                Scoring (test_state, last_pos_i + 1, recursion_level + 1, tail_prob, some_index, some_match_set);
+                prob_i := prob_i * tail_prob;
+              end if;
+              if prob_i > prob then
+                prob      := prob_i;
+                index     := i;
+                match_set := m;
+              end if;
             end if;
-            --
-            --  'length_trunc' is what remains of the DL code, DL (i), to be consumed.
-            --
-            if i <= DL_old'Length then
-              --  Easy case: we execute one of the "old" matches.
-              length_trunc := DL (i).length   - start + 1; --  always >= 1
-            elsif start = 1 then
-              --  We execute the full new DL code after the head literal.
-              length_trunc := DL (i).length;
-            else  --  start >= 2. (2: full DL, 3: truncate by 1, etc.)
-              length_trunc := DL (i).length   - start + 2;  --  always >= 1
-            end if;
-            pragma Assert (length_trunc >= 1);
-            --
-            if length_trunc = 1 then
-              --  Just simulate the literal we are sitting on: the buffer
-              --  has been already filled via Expand_DL_Code_to_Buffer.
-              --  It is a shortcut for and should be equivalent to the position checked below.
-              pragma Assert (
-                Text_Buf (state.R) =
-                Text_Buf ((state.R - UInt32 (DL (i).distance)) and Text_Buf_Mask),
-                "Bytes of simulated copy do not match; start =" & Integer'Image (start) &
-                "; DL code distance="  & Distance_Type'Image (DL (i).distance) &
-                "; DL_new match set="  & Boolean'Image (i > DL_old'Length)
-              );
-              Simulate_Literal_Byte (
-                Text_Buf (state.R),
-                test_state,
-                prob_i);
-            else  --  Here, length_trunc >= 2
-              Simulate_any_DL_Code (
-                distance        => UInt32 (DL (i).distance),
-                length          => length_trunc,
-                sim             => test_state,
-                prob            => prob_i,
-                recursion_limit => 1);
-            end if;
-            if last_pos_i < last_pos_any_DL then
-              Scoring (test_state, last_pos_i + 1, recursion_level + 1, tail_prob, some_index);
-              prob_i := prob_i * tail_prob;
-            end if;
-            if prob_i > prob then
-              prob  := prob_i;
-              index := i;
-            end if;
-          end if;
+          end loop;
         end loop;
       end Scoring;
       --
       best_prob : MProb;
       new_wins : Boolean;
-      total : Natural := 0;
       last_pos_single_DL : Natural;
       match_for_max_last_pos : Distance_Length_Pair;
       sim_expand : Machine_State := ES;
       sim_old : constant Machine_State := ES;
     begin
-      for i in DL_old'Range loop
-        total := total + 1;
-        DL (total) := DL_old (i);
-      end loop;
-      for i in DL_new'Range loop
-        total := total + 1;
-        DL (total) := DL_new (i);
-      end loop;
-      for i in DL'Range loop
-        DL (i).distance := DL (i).distance + 1;  --  BT4 offset
-      end loop;
-      for i in DL'Range loop
-        last_pos_single_DL := DL (i).length + offset_new_match_set (i > DL_old'Length);
-        if last_pos_single_DL > last_pos_any_DL then
-          last_pos_any_DL := last_pos_single_DL;
-          match_for_max_last_pos := DL (i);
-          new_wins := i > DL_old'Length;
-        end if;
+      for m in matches'Range loop
+        for i in 1 .. matches (m).count loop
+          last_pos_single_DL := matches (m).ld (i).length + offset_new_match_set (m /= old_match_index);
+          if last_pos_single_DL > last_pos_any_DL then
+            last_pos_any_DL := last_pos_single_DL;
+            match_for_max_last_pos := matches (m).ld (i);
+            new_wins := m /= old_match_index;
+          end if;
+        end loop;
       end loop;
       if new_wins then  --  Copy the literal to the buffer.
-        Text_Buf (sim_expand.R) := head_literal_new;
+        Text_Buf (sim_expand.R) := prefixes (1);
         sim_expand.R := (sim_expand.R + 1) and Text_Buf_Mask;
       end if;
       Expand_DL_Code_to_Buffer (sim_expand, match_for_max_last_pos.distance, match_for_max_last_pos.length);
       --
       head_lit_prob := 1.0;
-      Simulate_Literal_Byte (head_literal_new, sim_new, head_lit_prob);
+      Simulate_Literal_Byte (prefixes (1), sim_new, head_lit_prob);
       --
-      Scoring (sim_old, 1, 1, best_prob, best_score_index);
+      Scoring (sim_old, 1, 1, best_prob, best_score_index, best_score_set);
     end Estimate_DL_Codes_for_LZ77;
 
     procedure My_LZ77 is

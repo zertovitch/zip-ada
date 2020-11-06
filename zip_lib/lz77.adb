@@ -1012,9 +1012,8 @@ package body LZ77 is
         return Integer (h + 1);
       end getHash4Size;
 
-      type Byte_array is array (Natural range <>) of Byte;
-      type p_Byte_array is access Byte_array;
-      procedure Dispose is new Ada.Unchecked_Deallocation (Byte_array, p_Byte_array);
+      type p_Byte_Array is access Byte_Array;
+      procedure Dispose is new Ada.Unchecked_Deallocation (Byte_Array, p_Byte_Array);
 
       package Hash234 is
         HASH_2_SIZE : constant := 2 ** 10;
@@ -1030,7 +1029,7 @@ package body LZ77 is
         --
         hash2Value, hash3Value, hash4Value : Unsigned_32 := 0;
         --
-        procedure calcHashes (buf : Byte_array; off : Integer);
+        procedure calcHashes (buf : Byte_Array; off : Integer);
         procedure updateTables (pos : Integer);
         procedure Normalize (normalizeOffset : Integer);
       end Hash234;
@@ -1040,7 +1039,7 @@ package body LZ77 is
         crcTable : array (Byte) of Unsigned_32;
         CRC32_POLY : constant := 16#EDB8_8320#;
 
-        procedure calcHashes (buf : Byte_array; off : Integer) is
+        procedure calcHashes (buf : Byte_Array; off : Integer) is
           temp : Unsigned_32 := crcTable (buf (off)) xor Unsigned_32 (buf (off + 1));
         begin
           hash2Value := temp and HASH_2_MASK;
@@ -1086,8 +1085,6 @@ package body LZ77 is
       Nice_Length : constant Integer := Integer'Min (162, Look_Ahead);  --  const. was 64
       Depth_Limit : constant := 48;  --  Alternatively: 16 + Nice_Length / 2
 
-      subtype Matches_type is Any_Matches_type (Nice_Length);
-
       cyclicSize : constant Integer := String_buffer_size;  --  Had: + 1;
       cyclicPos  : Integer := -1;
       lzPos      : Integer := cyclicSize;
@@ -1100,10 +1097,10 @@ package body LZ77 is
       package BT4_Algo is
         procedure Skip (len : Natural);
         pragma Inline (Skip);
-        function Read_One_and_Get_Matches return Matches_type;
+        procedure Read_One_and_Get_Matches (matches : out Matches_Type);
       end BT4_Algo;
 
-      buf : p_Byte_array;
+      buf : p_Byte_Array;
       tree : p_Int_array;
 
       package body BT4_Algo is
@@ -1215,8 +1212,7 @@ package body LZ77 is
           end loop;
         end Skip;
 
-        function Read_One_and_Get_Matches return Matches_type is
-          matches : Matches_type;
+        procedure Read_One_and_Get_Matches (matches : out Matches_Type) is
           matchLenLimit : Integer := Look_Ahead;
           niceLenLimit  : Integer := Nice_Length;
           avail : Integer;
@@ -1228,7 +1224,7 @@ package body LZ77 is
           avail := Move_Pos_in_BT4;  --  A new literal is fetched there.
           if avail < matchLenLimit then
             if avail = 0 then
-              return matches;
+              return;
             end if;
             matchLenLimit := avail;
             if niceLenLimit > avail then
@@ -1252,7 +1248,7 @@ package body LZ77 is
             lenBest := 2;
             matches.count := 1;
             matches.ld (matches.count).length := 2;
-            matches.ld (matches.count).distance := delta2 - 1;
+            matches.ld (matches.count).distance := delta2;
           end if;
           --  See if the hash from the first three bytes found a match that
           --  is different from the match possibly found by the two-byte hash.
@@ -1264,7 +1260,7 @@ package body LZ77 is
             --  Match of length 3 found and checked.
             lenBest := 3;
             matches.count := matches.count + 1;
-            matches.ld (matches.count).distance := delta3 - 1;
+            matches.ld (matches.count).distance := delta3;
             delta2 := delta3;
           end if;
           --  If a match was found, see how long it is.
@@ -1278,7 +1274,7 @@ package body LZ77 is
             --  Return if it is long enough (niceLen or reached the end of the dictionary).
             if lenBest >= niceLenLimit then
               Skip_and_Update_Tree (niceLenLimit, currentMatch);
-              return matches;
+              return;
             end if;
           end if;
           --  A long enough match wasn't found so easily.
@@ -1300,7 +1296,7 @@ package body LZ77 is
             if depth = 0 or else delta0 >= max_dist then
               tree (ptr0) := Null_position;
               tree (ptr1) := Null_position;
-              return matches;
+              return;
             end if;
             depth := depth - 1;
             --
@@ -1322,11 +1318,11 @@ package body LZ77 is
                 lenBest := len;
                 matches.count := matches.count + 1;
                 matches.ld (matches.count).length := len;
-                matches.ld (matches.count).distance := delta0 - 1;
+                matches.ld (matches.count).distance := delta0;
                 if len >= niceLenLimit then
                   tree (ptr1) := tree (pair);
                   tree (ptr0) := tree (pair + 1);
-                  return matches;
+                  return;
                 end if;
               end if;
             end if;
@@ -1426,10 +1422,10 @@ package body LZ77 is
 
       readAhead : Integer := -1;  --  LZMAEncoder.java
 
-      function Read_One_and_Get_Matches return Matches_type is
+      procedure Read_One_and_Get_Matches (matches : out Matches_Type) is
       begin
         readAhead := readAhead + 1;
-        return BT4_Algo.Read_One_and_Get_Matches;
+        BT4_Algo.Read_One_and_Get_Matches (matches);
       end Read_One_and_Get_Matches;
 
       procedure Skip (len : Natural) is
@@ -1442,11 +1438,11 @@ package body LZ77 is
       function Has_much_smaller_Distance (smallDist, bigDist : Distance_Type) return Boolean is
       pragma Inline (Has_much_smaller_Distance);
       begin
-        return smallDist < bigDist / 128;
+        return (smallDist - 1) < (bigDist - 1) / 128;
       end Has_much_smaller_Distance;
 
       procedure Reduce_consecutive_max_lengths (
-        m       : in out Matches_type;
+        m       : in out Matches_Type;
         new_top : in out Distance_Length_Pair)
       is
       --  Sometimes the BT4 algo returns a long list with consecutive lengths,
@@ -1463,23 +1459,25 @@ package body LZ77 is
 
       --  Small stack of recent distances used for LZ.
       subtype Repeat_stack_range is Integer range 0 .. 3;
-      rep_dist : array (Repeat_stack_range) of Natural := (others => 0);
+      rep_dist : array (Repeat_stack_range) of Distance_Type := (others => 0);
 
-      procedure Show_Matches (m : Matches_type; phase : String) is
+      procedure Show_Matches (m : Matches_Type; phase : String) is
       begin
         Ada.Text_IO.Put_Line (
           phase & " --- Matches: " & Integer'Image (m.count)
         );
         for i in 1 .. m.count loop
           Ada.Text_IO.Put_Line (
-            "  Distance:" & Integer'Image (m.ld (i).distance + 1) &
+            "  Distance:" & Integer'Image (m.ld (i).distance) &
             ";  Length:" & Integer'Image (m.ld (i).length)
           );
         end loop;
       end Show_Matches;
       pragma Unreferenced (Show_Matches);
 
-      matches, old_matches : Matches_type;
+      matches : Matches_Array (0 .. 1);
+      current_match_index : Prefetch_Index_Type := 0;
+      match_trace : Matches_Type;
 
       procedure Get_Next_Symbol is
         new_ld, main : Distance_Length_Pair;
@@ -1490,7 +1488,7 @@ package body LZ77 is
         function Is_match_correct (shift : Natural) return Boolean is
         begin
           for i in reverse -1 + shift .. main.length - 2 + shift loop
-            if buf (readPos - (main.distance + 1) + i) /= buf (readPos + i) then
+            if buf (readPos - (main.distance) + i) /= buf (readPos + i) then
               return False;  --  Should not occur.
             end if;
           end loop;
@@ -1499,10 +1497,11 @@ package body LZ77 is
 
         function Compute_Match_Length (dist, lenLimit : Integer) return Natural is
         pragma Inline (Compute_Match_Length);
-          backPos : constant Integer := readPos - dist - 1;
+          dist_ip : constant Integer := dist - 1;
+          backPos : constant Integer := readPos - dist_ip - 1;
           len : Integer := 0;
         begin
-          if dist < 1 then
+          if dist_ip < 1 then
             return 0;
           end if;
           --  @ if readPos+len not in buf.all'Range then
@@ -1527,7 +1526,7 @@ package body LZ77 is
           found_repeat : Integer := rep_dist'First - 1;
           aux : Integer;
         begin
-          Write_DL_Code (distance + 1, length);
+          Write_DL_Code (distance, length);
           readAhead := readAhead - length;
           if LZMA_friendly then
             --
@@ -1560,13 +1559,14 @@ package body LZ77 is
         avail, limit : Integer;
         best_length_for_repeated_distance, best_repeated_distance_index, len : Integer;
         index_max_score : Positive;
+        set_max_score : Prefetch_Index_Type;
         hurdle : constant := 40;
       begin
         --  Get the matches for the next byte unless readAhead indicates
         --  that we already got the new matches during the previous call
         --  to this procedure.
         if readAhead = -1 then
-          matches := Read_One_and_Get_Matches;
+          Read_One_and_Get_Matches (matches (current_match_index));
         end if;
         --  @ if readPos not in buf.all'Range then
         --  @   Put("**** " & buf'Last'Img & keepSizeAfter'Img & readPos'Img & writePos'Img);
@@ -1606,9 +1606,9 @@ package body LZ77 is
           end loop;
         end if;
 
-        main := (length => 1, distance => 0);
-        if matches.count > 0 then
-          main := matches.ld (matches.count);
+        main := (length => 1, distance => 1);
+        if matches (current_match_index).count > 0 then
+          main := matches (current_match_index).ld (matches (current_match_index).count);
           if main.length >= Nice_Length then
             pragma Assert (Is_match_correct (1));
             Skip (main.length - 1);
@@ -1616,9 +1616,9 @@ package body LZ77 is
             Send_DL_code (main.distance, main.length);
             return;
           end if;
-          Reduce_consecutive_max_lengths (matches, main);
+          Reduce_consecutive_max_lengths (matches (current_match_index), main);
           --
-          if main.length = MATCH_LEN_MIN and then main.distance >= 128 then
+          if main.length = MATCH_LEN_MIN and then main.distance > 128 then
             main.length := 1;
           end if;
         end if;
@@ -1626,8 +1626,8 @@ package body LZ77 is
         if LZMA_friendly
              and then best_length_for_repeated_distance >= MATCH_LEN_MIN
              and then (best_length_for_repeated_distance + 1 >= main.length
-                        or else (best_length_for_repeated_distance + 2 >= main.length and then main.distance >= 2 ** 9)
-                        or else (best_length_for_repeated_distance + 3 >= main.length and then main.distance >= 2 ** 15))
+                        or else (best_length_for_repeated_distance + 2 >= main.length and then main.distance > 2 ** 9)
+                        or else (best_length_for_repeated_distance + 3 >= main.length and then main.distance > 2 ** 15))
         then
           Skip (best_length_for_repeated_distance - 1);
           --  Put_Line("[DL RB]");
@@ -1645,14 +1645,14 @@ package body LZ77 is
         --  Get the next match. Test if it is better than the current match.   --
         --  If so, encode the current byte as a literal.                       --
         -------------------------------------------------------------------------
-        old_matches := matches;  --  Remove this copy !!
-        matches := Read_One_and_Get_Matches;
+        current_match_index := 1 - current_match_index;
+        Read_One_and_Get_Matches (matches (current_match_index));
         --
-        --  Show_Matches (old_matches, "------ Old");
-        --  Show_Matches (matches,     "       New");
+        --  Show_Matches (matches (1 - current_match_index), "------ Old");
+        --  Show_Matches (matches (current_match_index),     "       New");
         --
-        if matches.count > 0 then
-          new_ld := matches.ld (matches.count);  --  Longest new match
+        if matches (current_match_index).count > 0 then
+          new_ld := matches (current_match_index).ld (matches (current_match_index).count);  --  Longest new match
           if        (new_ld.length >= main.length + hurdle     and then new_ld.distance < main.distance)
             or else (new_ld.length =  main.length + hurdle + 1 and then not Has_much_smaller_Distance (main.distance, new_ld.distance))
             or else  new_ld.length >  main.length + hurdle + 1
@@ -1664,21 +1664,17 @@ package body LZ77 is
             Send_first_literal_of_match;
             return;
           end if;
-        end if;
-
-        if matches.count > 0 then
           --
           --  Here we compare the scores of both match sets.
           --
-          Reduce_consecutive_max_lengths (matches, new_ld);
+          Reduce_consecutive_max_lengths (matches (current_match_index), new_ld);
           Estimate_DL_Codes (
-            old_matches.ld (1 .. old_matches.count),
-            matches.ld (1 .. matches.count),
-            index_max_score,
-            cur_literal
+            matches, 1 - current_match_index, (1 => cur_literal),
+            index_max_score, set_max_score, match_trace
           );
-          if index_max_score <= old_matches.count then
-            main := old_matches.ld (index_max_score);
+          if set_max_score = 1 - current_match_index then
+            --  Old match is seems better.
+            main :=  matches (set_max_score).ld (index_max_score);
           else
             --  We prefer at least a literal, then a new, better match.
             Send_first_literal_of_match;
@@ -1715,7 +1711,7 @@ package body LZ77 is
     begin
       --  NB: heap allocation used only for convenience because of
       --      the small default stack sizes on some compilers.
-      buf := new Byte_array (0 .. getBufSize);
+      buf := new Byte_Array (0 .. getBufSize);
       --
       actual_written := Fill_Window (String_buffer_size);
       if actual_written > 0 then

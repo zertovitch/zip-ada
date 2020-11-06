@@ -52,7 +52,7 @@ kzip        ../bench_%1_kzip      *
 7z a -tzip -mm=deflate -mfb=258 -mpass=15 -mmc=10000 ../bench_%1_7zip_deflate *
 advzip -a -4 ../bench_%1_zopfli.zip *
 
-rem   ### BZip2
+rem   ### BZip2, external
 zip -9 -Z bzip2 ../bench_%1_bzip2_9 *
 
 rem   ### LZMA, external
@@ -60,9 +60,10 @@ rem   ### LZMA, external
 7z a -tzip -mmt1 -mm=LZMA -mx9                        ../bench_%1_7zip_lzma_mx9 *
 7z a       -mmt1          -mx9                        ../bench_%1_7zip_lzma_mx9 *
 
-tar -c -f ../bench_%1_7zip_lzma_mx9.tar *
-lzma e -mt1 ../bench_%1_7zip_lzma_mx9.tar ../bench_%1_7zip_lzma_mx9.tar.lzma
-..\..\zipada -el3 ../bench_%1_lzma_3.tar.zip ../bench_%1_7zip_lzma_mx9.tar
+rem   ### Tar + LZMA, external & internal
+tar -c -f ../bench_%1.tar *
+lzma e -mt1 ../bench_%1.tar ../bench_%1_7zip_lzma_mx9.tar.lzma
+..\..\lzma_enc ../bench_%1.tar ../bench_%1_lzma_3.tar
 
 rem   ### LZMA (Zip.Compress.LZMA_E)
 ..\..\zipada -el1 ../bench_%1_lzma_1 *

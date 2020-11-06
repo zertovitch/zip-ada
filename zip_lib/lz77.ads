@@ -67,12 +67,20 @@ package LZ77 is
 
   type DLP_Array is array (Positive range <>) of Distance_Length_Pair;
 
-  type Any_Matches_type (Count_Max : Integer) is record
+  Max_Length_any_Algo : constant := 2**9;  --  Practically it is 273 with LZMA.
+
+  type Matches_Type is record
     count : Integer := 0;
-    ld    : DLP_Array (1 .. Count_Max);
+    ld    : DLP_Array (1 .. Max_Length_any_Algo);
   end record;
 
+  type Byte_Array is array (Natural range <>) of Byte;
+
   BT4_max_prefetch_positions : constant := 7;
+
+  subtype Prefetch_Index_Type is Natural range 0 .. BT4_max_prefetch_positions;
+
+  type Matches_Array is array (Prefetch_Index_Type range <>) of Matches_Type;
 
   generic
     ----- LZSS Parameters -----
@@ -96,9 +104,12 @@ package LZ77 is
     --  The highest the value, the better.
     --  This function is only used by BT4.
     with procedure Estimate_DL_Codes (
-      DL_old, DL_new   : in  DLP_Array;  --  Caution: distance - 1 convention in BT4 !!
+      matches          : in  Matches_Array;
+      old_match_index  : in  Natural;
+      prefixes         : in  Byte_Array;
       best_score_index : out Positive;
-      head_literal_new : in  Byte  --  Literal preceding the new set of matches.
+      best_score_set   : out Prefetch_Index_Type;
+      match_trace      : out Matches_Type
     );
   procedure Encode;
 
