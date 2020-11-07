@@ -1403,7 +1403,7 @@ package body LZMA.Encoding is
         end if;
         for m in matches'Range loop
           for i in 1 .. matches (m).count loop
-            last_pos_i := matches (m).ld (i).length + offset_new_match_set (m /= old_match_index);
+            last_pos_i := matches (m).dl (i).length + offset_new_match_set (m /= old_match_index);
             if last_pos_i >= start then
               if m /= old_match_index and then start = 1 then
                 test_state := sim_new;  --  Shortcut to avoid resimulating the head literal.
@@ -1417,12 +1417,12 @@ package body LZMA.Encoding is
               --
               if m = old_match_index then
                 --  Easy case: we execute one of the "old" matches.
-                length_trunc := matches (m).ld (i).length   - start + 1; --  always >= 1
+                length_trunc := matches (m).dl (i).length   - start + 1; --  always >= 1
               elsif start = 1 then
                 --  We execute the full new DL code after the head literal.
-                length_trunc := matches (m).ld (i).length;
+                length_trunc := matches (m).dl (i).length;
               else  --  start >= 2. (2: full DL, 3: truncate by 1, etc.)
-                length_trunc := matches (m).ld (i).length   - start + 2;  --  always >= 1
+                length_trunc := matches (m).dl (i).length   - start + 2;  --  always >= 1
               end if;
               pragma Assert (length_trunc >= 1);
               --
@@ -1432,9 +1432,9 @@ package body LZMA.Encoding is
                 --  It is a shortcut for and should be equivalent to the position checked below.
                 pragma Assert (
                   Text_Buf (state.R) =
-                  Text_Buf ((state.R - UInt32 (matches (m).ld (i).distance)) and Text_Buf_Mask),
+                  Text_Buf ((state.R - UInt32 (matches (m).dl (i).distance)) and Text_Buf_Mask),
                   "Bytes of simulated copy do not match; start =" & Integer'Image (start) &
-                  "; DL code distance="  & Distance_Type'Image (matches (m).ld (i).distance) &
+                  "; DL code distance="  & Distance_Type'Image (matches (m).dl (i).distance) &
                   "; new match set="  & Boolean'Image (m /= old_match_index)
                 );
                 Simulate_Literal_Byte (
@@ -1443,7 +1443,7 @@ package body LZMA.Encoding is
                   prob_i);
               else  --  Here, length_trunc >= 2
                 Simulate_any_DL_Code (
-                  distance        => UInt32 (matches (m).ld (i).distance),
+                  distance        => UInt32 (matches (m).dl (i).distance),
                   length          => length_trunc,
                   sim             => test_state,
                   prob            => prob_i,
@@ -1472,10 +1472,10 @@ package body LZMA.Encoding is
     begin
       for m in matches'Range loop
         for i in 1 .. matches (m).count loop
-          last_pos_single_DL := matches (m).ld (i).length + offset_new_match_set (m /= old_match_index);
+          last_pos_single_DL := matches (m).dl (i).length + offset_new_match_set (m /= old_match_index);
           if last_pos_single_DL > last_pos_any_DL then
             last_pos_any_DL := last_pos_single_DL;
-            match_for_max_last_pos := matches (m).ld (i);
+            match_for_max_last_pos := matches (m).dl (i);
             new_wins := m /= old_match_index;
           end if;
         end loop;

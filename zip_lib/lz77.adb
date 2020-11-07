@@ -1252,8 +1252,8 @@ package body LZ77 is
             --  Match of length 2 found and checked.
             lenBest := 2;
             matches.count := 1;
-            matches.ld (matches.count).length := 2;
-            matches.ld (matches.count).distance := delta2;
+            matches.dl (matches.count).length := 2;
+            matches.dl (matches.count).distance := delta2;
           end if;
           --  See if the hash from the first three bytes found a match that
           --  is different from the match possibly found by the two-byte hash.
@@ -1265,7 +1265,7 @@ package body LZ77 is
             --  Match of length 3 found and checked.
             lenBest := 3;
             matches.count := matches.count + 1;
-            matches.ld (matches.count).distance := delta3;
+            matches.dl (matches.count).distance := delta3;
             delta2 := delta3;
           end if;
           --  If a match was found, see how long it is.
@@ -1275,7 +1275,7 @@ package body LZ77 is
             loop
               lenBest := lenBest + 1;
             end loop;
-            matches.ld (matches.count).length := lenBest;
+            matches.dl (matches.count).length := lenBest;
             --  Return if it is long enough (niceLen or reached the end of the dictionary).
             if lenBest >= niceLenLimit then
               Skip_and_Update_Tree (niceLenLimit, currentMatch);
@@ -1322,8 +1322,8 @@ package body LZ77 is
               if len > lenBest then
                 lenBest := len;
                 matches.count := matches.count + 1;
-                matches.ld (matches.count).length := len;
-                matches.ld (matches.count).distance := delta0;
+                matches.dl (matches.count).length := len;
+                matches.dl (matches.count).distance := delta0;
                 if len >= niceLenLimit then
                   tree (ptr1) := tree (pair);
                   tree (ptr0) := tree (pair + 1);
@@ -1470,15 +1470,15 @@ package body LZ77 is
         m       : in out Matches_Type;
         new_top : in out Distance_Length_Pair)
       is
-      --  Sometimes the BT4 algo returns a long list with consecutive lengths,
-      --  ending with the max length. Bug?
-      --  This reduction is found in the Java version.
+      --  Sometimes the BT4 algo returns a long list with consecutive lengths.
+      --  We try to reduce it if there is a clear advantage with distances.
       begin
-        while m.count > 1 and then m.ld (m.count).length = m.ld (m.count - 1).length + 1 loop
-          exit when not
-            Has_much_smaller_Distance (m.ld (m.count - 1).distance, m.ld (m.count).distance);
+        while m.count > 1
+          and then m.dl (m.count).length = m.dl (m.count - 1).length + 1
+          and then Has_much_smaller_Distance (m.dl (m.count - 1).distance, m.dl (m.count).distance)
+        loop
           m.count := m.count - 1;
-          new_top := m.ld (m.count);
+          new_top := m.dl (m.count);
         end loop;
       end Reduce_consecutive_max_lengths;
 
@@ -1493,8 +1493,8 @@ package body LZ77 is
         );
         for i in 1 .. m.count loop
           Ada.Text_IO.Put_Line (
-            "  Distance:" & Integer'Image (m.ld (i).distance) &
-            ";  Length:" & Integer'Image (m.ld (i).length)
+            "  Distance:" & Integer'Image (m.dl (i).distance) &
+            ";  Length:" & Integer'Image (m.dl (i).length)
           );
         end loop;
       end Show_Matches;
@@ -1612,7 +1612,7 @@ package body LZ77 is
 
         main := (length => 1, distance => 1);
         if matches (current_match_index).count > 0 then
-          main := matches (current_match_index).ld (matches (current_match_index).count);
+          main := matches (current_match_index).dl (matches (current_match_index).count);
           if main.length >= Nice_Length then
             pragma Assert (Is_match_correct (1));
             Skip (main.length - 1);
@@ -1656,7 +1656,7 @@ package body LZ77 is
         --  Show_Matches (matches (current_match_index),     "       New");
         --
         if matches (current_match_index).count > 0 then
-          new_ld := matches (current_match_index).ld (matches (current_match_index).count);  --  Longest new match
+          new_ld := matches (current_match_index).dl (matches (current_match_index).count);  --  Longest new match
           if        (new_ld.length >= main.length + hurdle     and then new_ld.distance < main.distance)
             or else (new_ld.length =  main.length + hurdle + 1 and then not Has_much_smaller_Distance (main.distance, new_ld.distance))
             or else  new_ld.length >  main.length + hurdle + 1
@@ -1678,7 +1678,7 @@ package body LZ77 is
           );
           if set_max_score = 1 - current_match_index then
             --  Old match is seems better.
-            main :=  matches (set_max_score).ld (index_max_score);
+            main :=  matches (set_max_score).dl (index_max_score);
           else
             --  We prefer at least a literal, then a new, better match.
             Send_first_literal_of_match;

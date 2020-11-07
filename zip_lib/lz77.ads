@@ -71,7 +71,7 @@ package LZ77 is
 
   type Matches_Type is record
     count : Integer := 0;
-    ld    : DLP_Array (1 .. Max_Length_any_Algo);
+    dl    : DLP_Array (1 .. Max_Length_any_Algo);
   end record;
 
   type Byte_Array is array (Natural range <>) of Byte;
