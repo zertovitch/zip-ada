@@ -1425,6 +1425,26 @@ package body LZ77 is
         return actual_len;
       end Fill_Window;
 
+      function Compute_Match_Length (distance, length_limit : Integer) return Natural is
+      pragma Inline (Compute_Match_Length);
+        back_pos : constant Integer := readPos - distance;
+        len : Integer := 0;
+      begin
+        if distance < 2 then
+          return 0;
+        end if;
+        --  @ if readPos+len not in buf.all'Range then
+        --  @   Put("**** readpos " & buf'Last'Img & readPos'Img);
+        --  @ end if;
+        --  @ if backPos+len not in buf.all'Range then
+        --  @   Put("**** backpos " & buf'Last'Img & back_pos'Img);
+        --  @ end if;
+        while len < length_limit and then buf (readPos + len) = buf (back_pos + len) loop
+          len := len + 1;
+        end loop;
+        return len;
+      end Compute_Match_Length;
+
       readAhead : Integer := -1;  --  LZMAEncoder.java
 
       procedure Read_One_and_Get_Matches (matches : out Matches_Type) is
@@ -1499,27 +1519,6 @@ package body LZ77 is
           end loop;
           return True;
         end Is_match_correct;
-
-        function Compute_Match_Length (dist, lenLimit : Integer) return Natural is
-        pragma Inline (Compute_Match_Length);
-          dist_ip : constant Integer := dist - 1;
-          backPos : constant Integer := readPos - dist_ip - 1;
-          len : Integer := 0;
-        begin
-          if dist_ip < 1 then
-            return 0;
-          end if;
-          --  @ if readPos+len not in buf.all'Range then
-          --  @   Put("**** readpos " & buf'Last'Img & readPos'Img);
-          --  @ end if;
-          --  @ if backPos+len not in buf.all'Range then
-          --  @   Put("**** backpos " & buf'Last'Img & backPos'Img);
-          --  @ end if;
-          while len < lenLimit and then buf (readPos + len) = buf (backPos + len) loop
-            len := len + 1;
-          end loop;
-          return len;
-        end Compute_Match_Length;
 
         procedure Send_first_literal_of_match is
         begin
