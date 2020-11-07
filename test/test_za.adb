@@ -13,7 +13,7 @@ procedure Test_ZA is
 
   fails, successes, zipada_used : Natural := 0;
 
-  files : constant VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.bin *.pdf *.xls *.au";
+  files : constant VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.jpg *.bin *.pdf *.xls *.au";
 
   procedure Process_Archive (command, archive : VString; action : Action_Type) is
     full_name : constant VString := archive & ".zip";

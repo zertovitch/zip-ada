@@ -722,9 +722,14 @@ package body LZ77 is
         if prev_length >= good_match then
           chain_length := chain_length / 4;
         end if;
-        pragma Assert (strstart <= Integer_M32 (window_size) - MIN_LOOKAHEAD, "insufficient lookahead");
+        pragma Assert (strstart <= Integer_M32 (window_size) - MIN_LOOKAHEAD, "insufficient lookahead");  --  In deflate.c
         loop
-          pragma Assert (current_match < strstart, "no future");
+          if current_match < strstart then
+            --  Added 2020-11-07. The file test/sample.jpg bombs the assertion a few lines later.
+            longest := MIN_MATCH - 1;
+            return;
+          end if;
+          --  pragma Assert (current_match < strstart, "no future");  --  In deflate.c
           match := current_match;
           --  Skip to next match if the match length cannot increase
           --  or if the match length is less than 2:
