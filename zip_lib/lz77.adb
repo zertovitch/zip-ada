@@ -979,7 +979,8 @@ package body LZ77 is
       function Get_Available return Integer is
       pragma Inline (Get_Available);
       begin
-         --  !! - 1 added for getting readPos in buf'Range upon: cur_literal:= buf(readPos);
+         --  Compared to the Java version: - 1 shift for getting readPos
+         --  in buf'Range upon: cur_literal := buf (readPos);
         return writePos - readPos - 1;
       end Get_Available;
 
@@ -1446,11 +1447,24 @@ package body LZ77 is
       end Compute_Match_Length;
 
       readAhead : Integer := -1;  --  LZMAEncoder.java
+      --  Small stack of recent distances used for LZMA.
+      subtype Repeat_stack_range is Integer range 0 .. 3;
+      rep_dist : array (Repeat_stack_range) of Distance_Type := (others => 0);
+      len_rep_dist : array (Repeat_stack_range) of Natural := (others => 0);
 
       procedure Read_One_and_Get_Matches (matches : out Matches_Type) is
+        avail : Integer;
       begin
         readAhead := readAhead + 1;
         BT4_Algo.Read_One_and_Get_Matches (matches);
+        if LZMA_friendly then
+          avail := Integer'Min (Get_Available, Look_Ahead);
+          if avail >= MATCH_LEN_MIN then
+            for rep in Repeat_stack_range loop
+              len_rep_dist (rep) := Compute_Match_Length (rep_dist (rep), avail);
+            end loop;
+          end if;
+        end if;
       end Read_One_and_Get_Matches;
 
       procedure Skip (len : Natural) is
@@ -1481,10 +1495,6 @@ package body LZ77 is
           new_top := m.dl (m.count);
         end loop;
       end Reduce_consecutive_max_lengths;
-
-      --  Small stack of recent distances used for LZ.
-      subtype Repeat_stack_range is Integer range 0 .. 3;
-      rep_dist : array (Repeat_stack_range) of Distance_Type := (others => 0);
 
       procedure Show_Matches (m : Matches_Type; phase : String) is
       begin
@@ -1592,7 +1602,7 @@ package body LZ77 is
           best_length_for_repeated_distance := 0;
           best_repeated_distance_index := 0;
           for rep in Repeat_stack_range loop
-            len := Compute_Match_Length (rep_dist (rep), avail);
+            len := len_rep_dist (rep);
             if len >= MATCH_LEN_MIN then
               --  If it is long enough, return it.
               if len >= Nice_Length then
