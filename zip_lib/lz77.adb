@@ -1452,11 +1452,19 @@ package body LZ77 is
       rep_dist : array (Repeat_stack_range) of Distance_Type := (others => 0);
       len_rep_dist : array (Repeat_stack_range) of Natural := (others => 0);
 
+      function Has_much_smaller_Distance (smallDist, bigDist : Distance_Type) return Boolean is
+      pragma Inline (Has_much_smaller_Distance);
+      begin
+        return (smallDist - 1) < (bigDist - 1) / 128;
+      end Has_much_smaller_Distance;
+
       procedure Read_One_and_Get_Matches (matches : out Matches_Type) is
         avail : Integer;
       begin
         readAhead := readAhead + 1;
+        --
         BT4_Algo.Read_One_and_Get_Matches (matches);
+        --
         if LZMA_friendly then
           avail := Integer'Min (Get_Available, Look_Ahead);
           if avail >= MATCH_LEN_MIN then
@@ -1467,6 +1475,47 @@ package body LZ77 is
         end if;
       end Read_One_and_Get_Matches;
 
+      procedure Get_supplemental_Matches_from_Repeat_Matches (matches : in out Matches_Type) is
+        len, ins : Integer;
+      begin
+        for rep in Repeat_stack_range loop
+          ins := 0;
+          len := len_rep_dist (rep);
+          for i in reverse 1 .. matches.count loop
+            if len = matches.dl (i).length then
+              if rep_dist (rep) = matches.dl (i).distance then
+                null;  --  Identical match
+              else
+                --  Tie: insert the repeat match of same length into the list.
+                --  If the longest match strategy is applied, the second item is preferred.
+                if Has_much_smaller_Distance (matches.dl (i).distance, rep_dist (rep)) then
+                  ins := i;      --  Insert before
+                else
+                  ins := i + 1;  --  Insert after
+                end if;
+                --  Ada.Text_IO.Put_Line ("Tie");
+              end if;
+            elsif i < matches.count then
+              if len > matches.dl (i).length and then len < matches.dl (i + 1).length then
+                ins := i;
+              end if;
+            elsif len > matches.dl (i).length then  --  i = matches.count in this case.
+              ins := i;
+            end if;
+            --  We can insert this repeat match at position 'ins'.
+            if ins > 0 then
+              for j in reverse ins .. matches.count loop  --  Empty if ins > count.
+                matches.dl (j + 1) := matches.dl (j);
+              end loop;
+              matches.dl (ins).distance := rep_dist (rep);
+              matches.dl (ins).length   := len;
+              matches.count := matches.count + 1;
+              exit;
+            end if;
+          end loop;
+        end loop;
+      end Get_supplemental_Matches_from_Repeat_Matches;
+
       procedure Skip (len : Natural) is
       pragma Inline (Skip);
       begin
@@ -1474,25 +1523,15 @@ package body LZ77 is
         BT4_Algo.Skip (len);
       end Skip;
 
-      function Has_much_smaller_Distance (smallDist, bigDist : Distance_Type) return Boolean is
-      pragma Inline (Has_much_smaller_Distance);
-      begin
-        return (smallDist - 1) < (bigDist - 1) / 128;
-      end Has_much_smaller_Distance;
-
-      procedure Reduce_consecutive_max_lengths (
-        m       : in out Matches_Type;
-        new_top : in out Distance_Length_Pair)
-      is
+      procedure Reduce_consecutive_max_lengths (m : in out Matches_Type) is
       --  Sometimes the BT4 algo returns a long list with consecutive lengths.
-      --  We try to reduce it if there is a clear advantage with distances.
+      --  We try to reduce it, if there is a clear advantage with distances.
       begin
         while m.count > 1
           and then m.dl (m.count).length = m.dl (m.count - 1).length + 1
           and then Has_much_smaller_Distance (m.dl (m.count - 1).distance, m.dl (m.count).distance)
         loop
           m.count := m.count - 1;
-          new_top := m.dl (m.count);
         end loop;
       end Reduce_consecutive_max_lengths;
 
@@ -1630,7 +1669,11 @@ package body LZ77 is
             Send_DL_code (main.distance, main.length);
             return;
           end if;
-          Reduce_consecutive_max_lengths (matches (current_match_index), main);
+          Reduce_consecutive_max_lengths (matches (current_match_index));
+          if LZMA_friendly then
+            Get_supplemental_Matches_from_Repeat_Matches (matches (current_match_index));
+          end if;
+          main := matches (current_match_index).dl (matches (current_match_index).count);
           --
           if main.length = MATCH_LEN_MIN and then main.distance > 128 then
             main.length := 1;
@@ -1681,7 +1724,10 @@ package body LZ77 is
           --
           --  Here we compare the scores of both match sets.
           --
-          Reduce_consecutive_max_lengths (matches (current_match_index), new_ld);
+          Reduce_consecutive_max_lengths (matches (current_match_index));
+          if LZMA_friendly then
+            Get_supplemental_Matches_from_Repeat_Matches (matches (current_match_index));
+          end if;
           Estimate_DL_Codes (
             matches, 1 - current_match_index, (1 => cur_literal),
             index_max_score, set_max_score, match_trace
