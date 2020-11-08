@@ -1681,11 +1681,12 @@ package body LZ77 is
         end if;
 
         if LZMA_friendly
-             and then best_length_for_repeated_distance >= MATCH_LEN_MIN
-             and then (best_length_for_repeated_distance + 1 >= main.length
+             and then best_length_for_repeated_distance > MATCH_LEN_MIN
+             and then           (best_length_for_repeated_distance + 1 >= main.length
                         or else (best_length_for_repeated_distance + 2 >= main.length and then main.distance > 2 ** 9)
                         or else (best_length_for_repeated_distance + 3 >= main.length and then main.distance > 2 ** 15))
         then
+          --  Shortcut: we choose the longest repeat match.
           Skip (best_length_for_repeated_distance - 1);
           --  Put_Line("[DL RB]");
           Send_DL_code (rep_dist (best_repeated_distance_index), best_length_for_repeated_distance);
