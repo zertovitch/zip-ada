@@ -627,6 +627,7 @@ package body LZMA.Encoding is
           if dist_ip = sim.rep_dist (i) then
             found_repeat := i;
             exit;
+            --  NB: it's possible to pick the most probable duplicate instead, but without clear gain
           end if;
         end loop;
         if found_repeat >= Repeat_Stack'First then
@@ -1302,6 +1303,7 @@ package body LZMA.Encoding is
         if dist_ip = ES.rep_dist (i) then
           found_repeat := i;
           exit;
+          --  NB: it's possible to pick the most probable duplicate instead, but without clear gain
         end if;
       end loop;
       if found_repeat >= Repeat_Stack'First
