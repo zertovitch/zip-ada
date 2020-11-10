@@ -1471,48 +1471,77 @@ package body LZ77 is
             for rep in Repeat_stack_range loop
               len_rep_dist (rep) := Compute_Match_Length (rep_dist (rep), avail);
             end loop;
+          else
+            for rep in Repeat_stack_range loop
+              len_rep_dist (rep) := 0;  --  No match possible in any case.
+            end loop;
           end if;
         end if;
       end Read_One_and_Get_Matches;
 
       procedure Get_supplemental_Matches_from_Repeat_Matches (matches : in out Matches_Type) is
-        len, ins : Integer;
+        longest, dist_longest, len, ins : Integer;
       begin
-        for rep in Repeat_stack_range loop
-          ins := 0;
-          len := len_rep_dist (rep);
-          for i in reverse 1 .. matches.count loop
-            if len = matches.dl (i).length then
-              if rep_dist (rep) = matches.dl (i).distance then
-                null;  --  Identical match
-              else
-                --  Tie: insert the repeat match of same length into the list.
-                --  If the longest match strategy is applied, the second item is preferred.
-                if Has_much_smaller_Distance (matches.dl (i).distance, rep_dist (rep)) then
-                  ins := i;      --  Insert before
-                else
-                  ins := i + 1;  --  Insert after
-                end if;
-                --  Ada.Text_IO.Put_Line ("Tie");
-              end if;
-            elsif i < matches.count then
-              if len > matches.dl (i).length and then len < matches.dl (i + 1).length then
-                ins := i;
-              end if;
-            elsif len > matches.dl (i).length then  --  i = matches.count in this case.
-              ins := i;
-            end if;
-            --  We can insert this repeat match at position 'ins'.
-            if ins > 0 then
-              for j in reverse ins .. matches.count loop  --  Empty if ins > count.
-                matches.dl (j + 1) := matches.dl (j);
-              end loop;
-              matches.dl (ins).distance := rep_dist (rep);
-              matches.dl (ins).length   := len;
-              matches.count := matches.count + 1;
-              exit;
+        if matches.count = 0 then
+          longest := 0;
+          for rep in Repeat_stack_range loop
+            if len_rep_dist (rep) > longest then
+              longest := len_rep_dist (rep);
+              dist_longest := rep_dist (rep);
             end if;
           end loop;
+          if longest >= MATCH_LEN_MIN then
+            matches.dl (1).distance := dist_longest;
+            matches.dl (1).length   := longest;
+            matches.count := 1;
+          end if;
+        end if;
+        for rep in Repeat_stack_range loop
+          len := len_rep_dist (rep);
+          if len >= MATCH_LEN_MIN then
+            ins := 0;
+            for i in reverse 1 .. matches.count loop
+              if len = matches.dl (i).length then
+                if rep_dist (rep) = matches.dl (i).distance then
+                  null;  --  Identical match
+                else
+                  --  Tie: insert the repeat match of same length into the list.
+                  --  If the longest match strategy is applied, the second item is preferred.
+                  if Has_much_smaller_Distance (matches.dl (i).distance, rep_dist (rep)) then
+                    ins := i;      --  Insert before
+                  else
+                    ins := i + 1;  --  Insert after
+                  end if;
+                  --  Ada.Text_IO.Put_Line ("Tie");
+                end if;
+              elsif i < matches.count then
+                if len > matches.dl (i).length and then len < matches.dl (i + 1).length then
+                  --  Insert between existing lengths
+                  ins := i;
+                --  We don't add len as the shortest length (worsens compression).
+                ------
+                --  elsif i = 1
+                --    and then len >= MATCH_LEN_MIN
+                --    and then len >= matches.dl (1).length - 1  --  Some reluctance...
+                --  then
+                --    ins := 1;
+                end if;
+              elsif len > matches.dl (i).length then
+                --  i = matches.count in this case: add as longest.
+                ins := i;
+              end if;
+              --  We can insert this repeat match at position 'ins'.
+              if ins > 0 then
+                for j in reverse ins .. matches.count loop  --  Empty if ins > count.
+                  matches.dl (j + 1) := matches.dl (j);
+                end loop;
+                matches.dl (ins).distance := rep_dist (rep);
+                matches.dl (ins).length   := len;
+                matches.count := matches.count + 1;
+                exit;
+              end if;
+            end loop;
+          end if;
         end loop;
       end Get_supplemental_Matches_from_Repeat_Matches;
 

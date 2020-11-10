@@ -171,6 +171,9 @@ package body LZMA.Encoding is
     params : LZMA_Params_Info;
 
     --  Small stack of recent distances used for LZ. Required: initialized with zero values.
+    --  lzma-specification.txt: "That set of 4 variables contains zero-based match
+    --  distances and these variables are initialized with zero values"
+    --
     subtype Repeat_stack_range is Integer range 0 .. 3;
     type Repeat_Stack is array (Repeat_stack_range) of UInt32;
     --
@@ -606,7 +609,7 @@ package body LZMA.Encoding is
       )
       is
       pragma Inline (Simulate_Strict_DL_Code);
-        dist_ip : constant UInt32 := UInt32 (distance - 1);
+        dist_ip : constant UInt32 := UInt32 (distance - 1);  --  7-Zip distance convention (minus 1)
         found_repeat : Integer := Repeat_Stack'First - 1;
         dlc : constant MProb := Test_Bit_Encoding (probs.switch.match (sim.state, sim.pos_state), DL_code_choice);
         sma : constant MProb := Test_Simple_Match (dist_ip, Unsigned (length), sim);
@@ -648,7 +651,7 @@ package body LZMA.Encoding is
         for i in reverse 1 .. Repeat_stack_range'Last loop
           sim.rep_dist (i) := sim.rep_dist (i - 1);
         end loop;
-        sim.rep_dist (0) := distance;
+        sim.rep_dist (0) := dist_ip;  --  0-based distance.
         sim.state := Update_State_Match (sim.state);
         Update_pos_related_stuff;
       end Simulate_Strict_DL_Code;
@@ -1175,7 +1178,7 @@ package body LZMA.Encoding is
       end if;
     end Encode_Length;
 
-    procedure Write_Simple_Match (distance : UInt32; length : Unsigned) is
+    procedure Write_Simple_Match (dist_ip : UInt32; length : Unsigned) is
       --
       procedure Bit_Tree_Reverse_Encode (
         prob     : in out CProb_array;
@@ -1211,7 +1214,7 @@ package body LZMA.Encoding is
       --
       procedure Encode_Distance is
         len_state : constant Unsigned := Unsigned'Min (length - 2, Len_to_pos_states - 1);
-        dist_slot : constant Unsigned := Get_dist_slot (distance);
+        dist_slot : constant Unsigned := Get_dist_slot (dist_ip);
         base, dist_reduced : UInt32;
         footerBits : Natural;
       begin
@@ -1219,7 +1222,7 @@ package body LZMA.Encoding is
         if dist_slot >= Start_dist_model_index then
           footerBits := Natural (Shift_Right (UInt32 (dist_slot), 1)) - 1;
           base := Shift_Left (UInt32 (2 or (dist_slot and 1)), footerBits);
-          dist_reduced := distance - base;
+          dist_reduced := dist_ip - base;
           if dist_slot < End_dist_model_index then
             Bit_Tree_Reverse_Encode (
               probs.dist.pos_coder (Integer (base) - Integer (dist_slot) - 1 .. Pos_coder_range'Last),
@@ -1246,7 +1249,7 @@ package body LZMA.Encoding is
       for i in reverse 1 .. Repeat_stack_range'Last loop
         ES.rep_dist (i) := ES.rep_dist (i - 1);
       end loop;
-      ES.rep_dist (0) := distance;
+      ES.rep_dist (0) := dist_ip;
     end Write_Simple_Match;
 
     procedure Write_Repeat_Match (index_rm : Repeat_stack_range; length : Unsigned) is
@@ -1287,7 +1290,7 @@ package body LZMA.Encoding is
       dummy_prob : in out Estimates.MProb
     )
     is
-      dist_ip : constant UInt32 := UInt32 (distance - 1);
+      dist_ip : constant UInt32 := UInt32 (distance - 1);  --  7-Zip distance convention (minus 1)
       found_repeat : Integer := Repeat_Stack'First - 1;
     begin
       pragma Assert (
@@ -1545,8 +1548,8 @@ package body LZMA.Encoding is
       --  The end-of-stream marker is a fake "Simple Match" with a special distance.
       Encode_Bit (probs.switch.match (ES.state, ES.pos_state), DL_code_choice);
       Write_Simple_Match (
-        distance => end_of_stream_magic_distance,
-        length   => Min_match_length
+        dist_ip => end_of_stream_magic_distance,
+        length  => Min_match_length
       );
     end if;
     Flush_range_encoder;
