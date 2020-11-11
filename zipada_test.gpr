@@ -3,6 +3,7 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
    for Source_Dirs use ("test");
 
    for Main use (
+     --  Tests
      "fuzzip.adb",
      "lz77_stats.adb",     --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
      "random_data.adb",    --  Produces n bytes of pseudo-random data
@@ -21,7 +22,20 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
      "test_unz_streams.adb",
      "ziptest.adb", 
      "zip_with_many_files.adb",
-     "zip_with_big_files.adb"
+     "zip_with_big_files.adb",
+     --  Other tools
+     "find_zip.adb",
+     "zip_dir_list.adb",
+     --  Demos
+     "demo_csv_into_zip.adb", 
+     "demo_zip.adb",
+     "demo_unzip.adb",
+     --  Miscellaneous, non-Zip or experimental stuff
+     "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
+     "lzhuf",    --  A simple LZ-Huffman coder/decoder
+     "bwt_demo", --  Burrows-Wheeler precompression demo
+     "bwt_enc",  --  Burrows-Wheeler file encoder
+     "bwt_dec"   --  Burrows-Wheeler file decoder
    );
 
    case Zip_Build_Mode is
