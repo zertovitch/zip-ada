@@ -25,6 +25,7 @@ with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Ada.Directories;                   use Ada.Directories;
 with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
+with Ada.IO_Exceptions;
 with Ada.Numerics.Discrete_Random;
 with Ada.Numerics.Elementary_Functions;
 with Ada.Numerics.Float_Random;
@@ -139,6 +140,7 @@ package body Rezip_lib is
     randomized_stable  : Positive       := 1;
     log_file           : String         := "";
     html_report        : String         := "";
+    alt_tmp_file_radix : String         := "";           --  e.g. "X:\temp\rz_"
     internal_only      : Boolean        := False         --  Zip-Ada algorithms only, no ext. call
   )
   is
@@ -240,6 +242,15 @@ package body Rezip_lib is
       info : Packer_info_array;
     end record;
 
+    function Radix return String is
+    begin
+      if alt_tmp_file_radix = "" then
+        return Flexible_temp_files.Radix;
+      else
+        return alt_tmp_file_radix;
+      end if;
+    end Radix;
+
     function Temp_name (
       is_compressed : Boolean;
       appr          : Approach
@@ -249,7 +260,7 @@ package body Rezip_lib is
       initial : constant array (Boolean) of Character := ('u', 'c');
     begin
       return
-        Flexible_temp_files.Radix &
+        Radix &
         "_!" & initial (is_compressed) &
         '!' & Trim (Integer'Image (Approach'Pos (appr)), Left) &
         "!_.tmp";
@@ -431,6 +442,21 @@ package body Rezip_lib is
       Call_external (packer, S (expand) & ' ' & other_args);
     end Call_external_expanded;
 
+    function Temp_Zip_Name return String is
+    begin
+      return Simple_Name (Radix) & "_$temp$.zip";
+    end Temp_Zip_Name;
+
+    procedure Try_deleting_Temp_Zip_File is
+    begin
+      if Exists (Temp_Zip_Name) then
+        Delete_File (Temp_Zip_Name);
+      end if;
+    exception
+      when Ada.IO_Exceptions.Use_Error =>
+        null;
+    end Try_deleting_Temp_Zip_File;
+
     procedure Process_External (
       packer     : String;
       options    : String;
@@ -440,8 +466,7 @@ package body Rezip_lib is
       info       : out Packer_info
     )
     is
-      temp_zip    : constant String := Simple_Name (Flexible_temp_files.Radix) & "_$temp$.zip";
-      rand_winner : constant String := Simple_Name (Flexible_temp_files.Radix) & "_$rand$.tmp";
+      rand_winner : constant String := Simple_Name (Radix) & "_$rand$.tmp";
       options_winner : Unbounded_String;
       data_name : constant String := Simple_Name (Temp_name (False, original));
       header : Zip.Headers.Local_File_Header;
@@ -456,27 +481,25 @@ package body Rezip_lib is
     begin
       --  We jump into the TEMP directory, to avoid putting pathes into the
       --  temporary zip file.
-      Set_Directory (Containing_Directory (Flexible_temp_files.Radix));
+      Set_Directory (Containing_Directory (Radix));
       loop
-        if Exists (temp_zip) then  --  remove (eventually broken) zip
-          Delete_File (temp_zip);
-        end if;
+        Try_deleting_Temp_Zip_File;  --  remove (eventually broken) zip
         Call_external_expanded (
           packer,
           options,
-          temp_zip & ' ' & data_name,
+          Temp_Zip_Name & ' ' & data_name,
           info.expanded_options
         );
-        if (not Exists (temp_zip)) and then Ada.Directories.Size (data_name) = 0 then
+        if (not Exists (Temp_Zip_Name)) and then Ada.Directories.Size (data_name) = 0 then
           --  ADVZip 1.19 doesn't create a zip file for a 0-size entry; we call Zip instead...
-          Call_external_expanded ("zip", "", temp_zip & ' ' & data_name, dummy_exp_opt);
+          Call_external_expanded ("zip", "", Temp_Zip_Name & ' ' & data_name, dummy_exp_opt);
         end if;
         if is_deflate then
           --  Post processing of "deflated" entry with DeflOpt:
-          Call_external (S (defl_opt.name), temp_zip);
+          Call_external (S (defl_opt.name), Temp_Zip_Name);
         end if;
         --  Now, rip
-        Set_Name (MyStream, temp_zip);
+        Set_Name (MyStream, Temp_Zip_Name);
         Open (MyStream, In_File);
         Zip.Load (zi_ext, MyStream, True);
         Rip_data (
@@ -488,7 +511,7 @@ package body Rezip_lib is
           header       => header
         );
         Close (MyStream);
-        Delete_File (temp_zip);
+        Try_deleting_Temp_Zip_File;
         --
         if randomized_stable = 1 or not is_rand then  --  normal behaviour (1 attempt)
           current_size := header.dd.compressed_size;
@@ -582,22 +605,21 @@ package body Rezip_lib is
     procedure Process_Internal_as_Zip (a : Approach; e : in out Dir_entry) is
       zip_file : aliased File_Zipstream;
       archive : Zip_Create_Info;
-      temp_zip : constant String := Simple_Name (Flexible_temp_files.Radix) & "_$temp$.zip";
       data_name : constant String := Simple_Name (Temp_name (False, original));
       zi_ext : Zip.Zip_info;
       header : Zip.Headers.Local_File_Header;
       MyStream   : aliased File_Zipstream;
       cur_dir : constant String := Current_Directory;
     begin
-      Set_Directory (Containing_Directory (Flexible_temp_files.Radix));
-      Create_Archive (archive, zip_file'Unchecked_Access, temp_zip);
+      Set_Directory (Containing_Directory (Radix));
+      Create_Archive (archive, zip_file'Unchecked_Access, Temp_Zip_Name);
       Set (archive, Approach_to_Method (a));
       Add_File (archive, data_name);
       Finish (archive);
       --  Post processing of "deflated" entry with DeflOpt:
-      Call_external (S (defl_opt.name), temp_zip);
+      Call_external (S (defl_opt.name), Temp_Zip_Name);
       --  Now, rip
-      Set_Name (MyStream, temp_zip);
+      Set_Name (MyStream, Temp_Zip_Name);
       Open (MyStream, In_File);
       Zip.Load (zi_ext, MyStream, True);
       Rip_data (
@@ -613,7 +635,7 @@ package body Rezip_lib is
       e.info (a).LZMA_EOS :=
         (header.zip_type = 14) and (header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
       Close (MyStream);
-      Delete_File (temp_zip);
+      Try_deleting_Temp_Zip_File;
       Set_Directory (cur_dir);
     end Process_Internal_as_Zip;
 
@@ -1236,11 +1258,15 @@ package body Rezip_lib is
   begin
     Rnd_seed.Reset (gen_seed);  --  1x clock-based randomization
     seed_iterator := Rnd_seed.Random (gen_seed);
-    Flexible_temp_files.Initialize;
+    if alt_tmp_file_radix = "" then
+      Flexible_temp_files.Initialize;
+    end if;
     Dual_IO.Create_Log (log_file);
     Repack_contents (from_zip_file, to_zip_file, html_report);
     Dual_IO.Close_Log;
-    Flexible_temp_files.Finalize;
+    if alt_tmp_file_radix = "" then
+      Flexible_temp_files.Finalize;
+    end if;
   end Rezip;
 
   procedure Show_external_packer_list is

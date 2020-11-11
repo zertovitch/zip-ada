@@ -31,6 +31,7 @@ package Rezip_lib is
     randomized_stable  : Positive       := 1;
     log_file           : String         := "";
     html_report        : String         := "";
+    alt_tmp_file_radix : String         := "";           --  e.g. "X:\temp\rz_"
     internal_only      : Boolean        := False         --  Zip-Ada algorithms only, no ext. call
   );
     --  On randomized approaches, stop when minimized size is stable

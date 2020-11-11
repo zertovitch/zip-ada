@@ -60,6 +60,9 @@ rem   ### LZMA, external
 7z a -tzip -mmt1 -mm=LZMA -mx9                        ../bench_%1_7zip_lzma_mx9 *
 7z a       -mmt1          -mx9                        ../bench_%1_7zip_lzma_mx9 *
 
+rem   ### PPMd, external
+7z a -tzip -mmt1 -mm=PPMd -mx9                        ../bench_%1_7zip_ppmd_mx9 *
+
 rem   ### Tar + LZMA, external & internal
 tar -c -f ../bench_%1.tar *
 lzma e -mt1 ../bench_%1.tar ../bench_%1_7zip_lzma_mx9.tar.lzma
