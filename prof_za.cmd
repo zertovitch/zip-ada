@@ -13,6 +13,6 @@ rem  The HAX command-line tool can be built from the project HAC @
 rem    https://hacadacompiler.sourceforge.io/ ,
 rem    https://github.com/zertovitch/hac
 
-hax make_za.adb Profiling
+hax make_za.adb Profiling %1
 
 echo run unzipada, then type "gprof unzipada.exe".

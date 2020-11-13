@@ -13,4 +13,4 @@ rem  The HAX command-line tool can be built from the project HAC @
 rem    https://hacadacompiler.sourceforge.io/ ,
 rem    https://github.com/zertovitch/hac
 
-hax make_za.adb Debug
+hax make_za.adb Debug %1

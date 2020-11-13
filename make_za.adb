@@ -4,7 +4,7 @@
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 --
---  Usage: hax make_za.adb [build mode]
+--  Usage: hax make_za.adb [build mode] [full]
 --
 --    Build mode can be Debug, Fast, Small, ...
 
@@ -30,23 +30,23 @@ procedure Make_ZA is
     r := Shell_Execute ("gprbuild -P " & gpr_name & gprbuild_options);
   end Build_with_nice_title;
 
-  type OS_Kind is (Nixux, Windoze);
+  type OS_Kind is (Any, Windoze);
   k : OS_Kind;
 
 begin
   if Index (Get_Env ("OS"), "Windows") > 0 then
     k := Windoze;
   else
-    k := Nixux;
+    k := Any;
   end if;
   if Argument_Count > 0 then
     gprbuild_options := " -XZip_Build_Mode=" & Argument (1);
   end if;
   case k is
-    when Nixux   =>
-      null;
     when Windoze =>
-      gprbuild_options := gprbuild_options & " -largs -Xlinker --stack=0x2000000,0x20000";
+      gprbuild_options := gprbuild_options & " -XZip_OS=Win64 -largs -Xlinker --stack=0x2000000,0x20000";
+    when others =>
+      null;
   end case;
 
   --  For Windows binary distribution with icons and Set_Modification_Time in UnZipAda:
@@ -54,7 +54,10 @@ begin
   --  -largs extras/zip_icons.rbj
   --  copy /b extras\lib*.a obj_[mode]
 
-  Build_with_nice_title (+"zipada",      +"Command-line Tools and Demos");
-  Build_with_nice_title (+"zipada_test", +"Tests");
+  Build_with_nice_title (+"zipada", +"Command-line Tools and Demos");
+  
+  if Argument_Count >1 then
+    Build_with_nice_title (+"zipada_test", +"Tests and other Tools");
+  end if;
 
 end Make_ZA;
