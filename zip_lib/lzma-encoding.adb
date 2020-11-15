@@ -1404,63 +1404,63 @@ package body LZMA.Encoding is
           for i in 1 .. matches (m).count loop
             last_pos_i := matches (m).dl (i).length + offset_new_match_set (m /= old_match_index);
             if last_pos_i >= start then
-              if m /= old_match_index and then start = 1 then
-                test_state := sim_new;  --  Shortcut to avoid resimulating the head literal.
-                prob_i := head_lit_prob;
+              if last_pos_i < last_pos_any_DL and recursion_level >= 2 then
+                --  Skip case requiring insane recursion level: level = number of DL codes chained!
+                null;
               else
-                test_state := state;  --  Clone the current state (general case including recursion).
-                prob_i := 1.0;
-              end if;
-              --
-              --  'length_trunc' is what remains of the DL code, DL (i), to be consumed.
-              --
-              if m = old_match_index then
-                --  Easy case: we execute one of the "old" matches.
-                length_trunc := matches (m).dl (i).length   - start + 1; --  always >= 1
-              elsif start = 1 then
-                --  We execute the full new DL code after the head literal.
-                length_trunc := matches (m).dl (i).length;
-              else  --  start >= 2. (2: full DL, 3: truncate by 1, etc.)
-                length_trunc := matches (m).dl (i).length   - start + 2;  --  always >= 1
-              end if;
-              pragma Assert (length_trunc >= 1);
-              --
-              if length_trunc = 1 then
-                --  Just simulate the literal we are sitting on: the buffer
-                --  has been already filled via Expand_DL_Code_to_Buffer.
-                --  It is a shortcut for and should be equivalent to the position checked below.
-                pragma Assert (
-                  Text_Buf (state.R) =
-                  Text_Buf ((state.R - UInt32 (matches (m).dl (i).distance)) and Text_Buf_Mask),
-                  "Bytes of simulated copy do not match; start =" & Integer'Image (start) &
-                  "; DL code distance="  & Distance_Type'Image (matches (m).dl (i).distance) &
-                  "; new match set="  & Boolean'Image (m /= old_match_index)
-                );
-                Simulate_Literal_Byte (
-                  Text_Buf (state.R),
-                  test_state,
-                  prob_i);
-              else  --  Here, length_trunc >= 2
-                Simulate_any_DL_Code (
-                  distance        => UInt32 (matches (m).dl (i).distance),
-                  length          => length_trunc,
-                  sim             => test_state,
-                  prob            => prob_i,
-                  recursion_limit => 1);
-              end if;
-              if last_pos_i < last_pos_any_DL then
-                if recursion_level >= 2 then
-                  --  Abandon insane recursion levels: level = number of DL codes chained!
-                  prob_i := 0.0;
+                if m /= old_match_index and then start = 1 then
+                  test_state := sim_new;  --  Shortcut to avoid resimulating the head literal.
+                  prob_i := head_lit_prob;
                 else
+                  test_state := state;  --  Clone the current state (general case including recursion).
+                  prob_i := 1.0;
+                end if;
+                --
+                --  'length_trunc' is what remains of the DL code, DL (i), to be consumed.
+                --
+                if m = old_match_index then
+                  --  Easy case: we execute one of the "old" matches.
+                  length_trunc := matches (m).dl (i).length   - start + 1; --  always >= 1
+                elsif start = 1 then
+                  --  We execute the full new DL code after the head literal.
+                  length_trunc := matches (m).dl (i).length;
+                else  --  start >= 2. (2: full DL, 3: truncate by 1, etc.)
+                  length_trunc := matches (m).dl (i).length   - start + 2;  --  always >= 1
+                end if;
+                pragma Assert (length_trunc >= 1);
+                --
+                if length_trunc = 1 then
+                  --  Just simulate the literal we are sitting on: the buffer
+                  --  has been already filled via Expand_DL_Code_to_Buffer.
+                  --  It is a shortcut for and should be equivalent to the position checked below.
+                  pragma Assert (
+                    Text_Buf (state.R) =
+                    Text_Buf ((state.R - UInt32 (matches (m).dl (i).distance)) and Text_Buf_Mask),
+                    "Bytes of simulated copy do not match; start =" & Integer'Image (start) &
+                    "; DL code distance="  & Distance_Type'Image (matches (m).dl (i).distance) &
+                    "; new match set="  & Boolean'Image (m /= old_match_index)
+                  );
+                  Simulate_Literal_Byte (
+                    Text_Buf (state.R),
+                    test_state,
+                    prob_i);
+                else  --  Here, length_trunc >= 2
+                  Simulate_any_DL_Code (
+                    distance        => UInt32 (matches (m).dl (i).distance),
+                    length          => length_trunc,
+                    sim             => test_state,
+                    prob            => prob_i,
+                    recursion_limit => 1);
+                end if;
+                if last_pos_i < last_pos_any_DL then
                   Scoring (test_state, last_pos_i + 1, recursion_level + 1, tail_prob, some_index, some_match_set);
                   prob_i := prob_i * tail_prob;
                 end if;
-              end if;
-              if prob_i > prob then
-                prob      := prob_i;
-                index     := i;
-                match_set := m;
+                if prob_i > prob then
+                  prob      := prob_i;
+                  index     := i;
+                  match_set := m;
+                end if;
               end if;
             end if;
           end loop;
