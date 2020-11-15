@@ -1580,7 +1580,7 @@ package body LZ77 is
 
       matches : Matches_Array (0 .. 1);
       current_match_index : Prefetch_Index_Type := 0;
-      match_trace : Matches_Type;
+      match_trace : DLP_Array (1 .. Max_Length_any_Algo);
 
       procedure Get_Next_Symbol is
         new_ld, main : Distance_Length_Pair;

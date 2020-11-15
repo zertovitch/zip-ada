@@ -1360,12 +1360,12 @@ package body LZMA.Encoding is
     end LZ77_emits_DL_code;
 
     procedure Estimate_DL_Codes_for_LZ77 (
-      matches          : in  LZ77.Matches_Array;
-      old_match_index  : in  Natural;
-      prefixes         : in  LZ77.Byte_Array;
-      best_score_index : out Positive;
-      best_score_set   : out LZ77.Prefetch_Index_Type;
-      match_trace      : out LZ77.Matches_Type
+      matches          : in out LZ77.Matches_Array;
+      old_match_index  : in     Natural;
+      prefixes         : in     LZ77.Byte_Array;
+      best_score_index :    out Positive;
+      best_score_set   :    out LZ77.Prefetch_Index_Type;
+      match_trace      :    out LZ77.DLP_Array
     )
     is
     pragma Unreferenced (match_trace);
@@ -1400,12 +1400,6 @@ package body LZMA.Encoding is
         last_pos_i : Integer;
       begin
         prob := 0.0;
-        if recursion_level > 3 then
-          index := 1;      --  Dummy value.
-          match_set := 0;  --  Dummy value.
-          --  Abandon insane recursion levels: level = number of DL codes chained!
-          return;
-        end if;
         for m in matches'Range loop
           for i in 1 .. matches (m).count loop
             last_pos_i := matches (m).dl (i).length + offset_new_match_set (m /= old_match_index);
@@ -1455,8 +1449,13 @@ package body LZMA.Encoding is
                   recursion_limit => 1);
               end if;
               if last_pos_i < last_pos_any_DL then
-                Scoring (test_state, last_pos_i + 1, recursion_level + 1, tail_prob, some_index, some_match_set);
-                prob_i := prob_i * tail_prob;
+                if recursion_level >= 2 then
+                  --  Abandon insane recursion levels: level = number of DL codes chained!
+                  prob_i := 0.0;
+                else
+                  Scoring (test_state, last_pos_i + 1, recursion_level + 1, tail_prob, some_index, some_match_set);
+                  prob_i := prob_i * tail_prob;
+                end if;
               end if;
               if prob_i > prob then
                 prob      := prob_i;

@@ -76,7 +76,7 @@ package LZ77 is
 
   type Byte_Array is array (Natural range <>) of Byte;
 
-  BT4_max_prefetch_positions : constant := 7;
+  BT4_max_prefetch_positions : constant := 64;
 
   subtype Prefetch_Index_Type is Natural range 0 .. BT4_max_prefetch_positions;
 
@@ -104,12 +104,12 @@ package LZ77 is
     --  The highest the value, the better.
     --  This function is only used by BT4.
     with procedure Estimate_DL_Codes (
-      matches          : in  Matches_Array;
-      old_match_index  : in  Natural;
-      prefixes         : in  Byte_Array;
-      best_score_index : out Positive;
-      best_score_set   : out Prefetch_Index_Type;
-      match_trace      : out Matches_Type
+      matches          : in out Matches_Array;
+      old_match_index  : in     Natural;
+      prefixes         : in     Byte_Array;
+      best_score_index :    out Positive;
+      best_score_set   :    out Prefetch_Index_Type;
+      match_trace      :    out DLP_Array
     );
   procedure Encode;
 
