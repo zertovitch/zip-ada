@@ -1458,18 +1458,27 @@ package body LZ77 is
         return (smallDist - 1) < (bigDist - 1) / 128;
       end Has_much_smaller_Distance;
 
+      best_length_for_rep_dist, best_rep_dist_index : Integer;
+
       procedure Read_One_and_Get_Matches (matches : out Matches_Type) is
-        avail : Integer;
+        avail, len : Integer;
       begin
         readAhead := readAhead + 1;
         --
         BT4_Algo.Read_One_and_Get_Matches (matches);
         --
         if LZMA_friendly then
+          best_length_for_rep_dist := 0;
           avail := Integer'Min (Get_Available, Look_Ahead);
           if avail >= MATCH_LEN_MIN then
             for rep in Repeat_stack_range loop
-              len_rep_dist (rep) := Compute_Match_Length (rep_dist (rep), avail);
+              len := Compute_Match_Length (rep_dist (rep), avail);
+              len_rep_dist (rep) := len;
+              --  Remember the index and length of the best repeated match.
+              if len > best_length_for_rep_dist then
+                best_rep_dist_index      := rep;
+                best_length_for_rep_dist := len;
+              end if;
             end loop;
           else
             for rep in Repeat_stack_range loop
@@ -1480,19 +1489,12 @@ package body LZ77 is
       end Read_One_and_Get_Matches;
 
       procedure Get_supplemental_Matches_from_Repeat_Matches (matches : in out Matches_Type) is
-        longest, dist_longest, len, ins : Integer;
+        len, ins : Integer;
       begin
         if matches.count = 0 then
-          longest := 0;
-          for rep in Repeat_stack_range loop
-            if len_rep_dist (rep) > longest then
-              longest := len_rep_dist (rep);
-              dist_longest := rep_dist (rep);
-            end if;
-          end loop;
-          if longest >= MATCH_LEN_MIN then
-            matches.dl (1).distance := dist_longest;
-            matches.dl (1).length   := longest;
+          if best_length_for_rep_dist >= MATCH_LEN_MIN then
+            matches.dl (1).distance := rep_dist (best_rep_dist_index);
+            matches.dl (1).length   := best_length_for_rep_dist;
             matches.count := 1;
           end if;
         end if;
@@ -1639,7 +1641,6 @@ package body LZ77 is
         end Send_DL_code;
 
         avail, limit : Integer;
-        best_length_for_repeated_distance, best_repeated_distance_index, len : Integer;
         index_max_score : Positive;
         set_max_score : Prefetch_Index_Type;
         hurdle : constant := 40;
@@ -1665,27 +1666,11 @@ package body LZ77 is
           return;
         end if;
 
-        if LZMA_friendly then
-          --  Look for a match from the previous four different match distances.
-          best_length_for_repeated_distance := 0;
-          best_repeated_distance_index := 0;
-          for rep in Repeat_stack_range loop
-            len := len_rep_dist (rep);
-            if len >= MATCH_LEN_MIN then
-              --  If it is long enough, return it.
-              if len >= Nice_Length then
-                Skip (len - 1);
-                --  Put_Line("[DL RA]");
-                Send_DL_code (rep_dist (rep), len);
-                return;
-              end if;
-              --  Remember the index and length of the best repeated match.
-              if len > best_length_for_repeated_distance then
-                best_repeated_distance_index      := rep;
-                best_length_for_repeated_distance := len;
-              end if;
-            end if;
-          end loop;
+        if LZMA_friendly and then best_length_for_rep_dist >= Nice_Length then
+          Skip (best_length_for_rep_dist - 1);
+          --  Put_Line("[DL RA]");
+          Send_DL_code (rep_dist (best_rep_dist_index), best_length_for_rep_dist);
+          return;
         end if;
 
         main := (length => 1, distance => 1);
@@ -1710,15 +1695,15 @@ package body LZ77 is
         end if;
 
         if LZMA_friendly
-             and then best_length_for_repeated_distance > MATCH_LEN_MIN
-             and then           (best_length_for_repeated_distance + 1 >= main.length
-                        or else (best_length_for_repeated_distance + 2 >= main.length and then main.distance > 2 ** 9)
-                        or else (best_length_for_repeated_distance + 3 >= main.length and then main.distance > 2 ** 15))
+             and then best_length_for_rep_dist > MATCH_LEN_MIN
+             and then           (best_length_for_rep_dist + 1 >= main.length
+                        or else (best_length_for_rep_dist + 2 >= main.length and then main.distance > 2 ** 9)
+                        or else (best_length_for_rep_dist + 3 >= main.length and then main.distance > 2 ** 15))
         then
           --  Shortcut: we choose the longest repeat match.
-          Skip (best_length_for_repeated_distance - 1);
+          Skip (best_length_for_rep_dist - 1);
           --  Put_Line("[DL RB]");
-          Send_DL_code (rep_dist (best_repeated_distance_index), best_length_for_repeated_distance);
+          Send_DL_code (rep_dist (best_rep_dist_index), best_length_for_rep_dist);
           return;
         end if;
 
