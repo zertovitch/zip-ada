@@ -64,7 +64,6 @@ with Zip_Streams;
 
 with Length_limited_Huffman_code_lengths;
 
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
 
@@ -86,7 +85,6 @@ is
   --  Options for testing.
   --  All should be on False for normal use of this procedure.
 
-  bypass_LZ77         : constant Boolean := False;  --  Use LZ data encoded by another program
   deactivate_scanning : constant Boolean := False;  --  Impact analysis of the scanning method
   trace               : constant Boolean := False;  --  Log file with details
   trace_descriptors   : constant Boolean := False;  --  Additional logging of Huffman descriptors
@@ -1655,39 +1653,6 @@ is
           Estimate_DL_Codes  => Dummy_Estimate_DL_Codes
         );
 
-    --  The following is for research purposes: compare different LZ77 variants and see
-    --  how well they combine with the rest of our Deflate algorithm above.
-
-    procedure Read_LZ77_codes is
-      LZ77_dump : File_Type;
-      tag : String (1 .. 3);
-      wrong_LZ77_tag : exception;
-      a, b : Integer;
-      dummy : Byte;
-    begin
-      --  Pretend we compress given file (compute CRC, consume entire stream).
-      while More_bytes loop
-        dummy := Read_byte;
-      end loop;
-      --  Now deflate using dumped LZ77 data.
-      Open (LZ77_dump, In_File, "dump.lz77");  --  File from UnZip.Decompress, some_trace mode
-      while not End_Of_File (LZ77_dump) loop
-        Get (LZ77_dump, tag);
-        if tag = "Lit" then
-          Get (LZ77_dump, a);
-          LZ77_emits_literal_byte (Byte (a));
-        elsif tag = "DLE" then
-          Get (LZ77_dump, a);
-          Get (LZ77_dump, b);
-          LZ77_emits_DL_code (a, b);
-        else
-          raise wrong_LZ77_tag;
-        end if;
-        Skip_Line (LZ77_dump);
-      end loop;
-      Close (LZ77_dump);
-    end Read_LZ77_codes;
-
   begin  --  Encode
     Read_Block (IO_buffers, input);
     R := Text_buffer_index (String_buffer_size - Look_Ahead_LZ77);
@@ -1702,14 +1667,10 @@ is
       when Taillaule_Deflation_Method =>
         null;  --  No start data sent, all is delayed
     end case;
-    if bypass_LZ77 then
-      Read_LZ77_codes;  --  Apply our scanning algo on a LZ77 stream made by a third-party tool.
-    else
-      ----------------------------------------------------------------
-      --  The whole compression is happening in the following line: --
-      ----------------------------------------------------------------
-      My_LZ77;
-    end if;
+    ----------------------------------------------------------------
+    --  The whole compression is happening in the following line: --
+    ----------------------------------------------------------------
+    My_LZ77;
     --  Done. Send the code signaling the end of compressed data block:
     case method is
       when Deflate_Fixed =>

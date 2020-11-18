@@ -54,7 +54,7 @@
 --  NB: this is the MIT License, as found 21-Aug-2016 on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-with Ada.Text_IO;
+with Ada.Text_IO, Ada.Integer_Text_IO;
 with Ada.Unchecked_Deallocation;
 with Interfaces; use Interfaces;
 with System;
@@ -2122,6 +2122,42 @@ package body LZ77 is
       Encode_Rich;
     end LZ77_by_Rich;
 
+    --  The following is for research purposes: compare different LZ77
+    --  algorithms applied to entropy encoders (Deflate, LZMA, ...).
+
+    procedure LZ77_from_Dump_File is
+      use Ada.Text_IO, Ada.Integer_Text_IO;
+      LZ77_Dump : File_Type;
+      tag : String (1 .. 3);
+      Wrong_LZ77_tag : exception;
+      a, b : Integer;
+      dummy : Byte;
+    begin
+      --  Pretend we compress the given stream.
+      --  Entire stream is consumed here.
+      while More_Bytes loop
+        dummy := Read_Byte;
+      end loop;
+      --  Now send dumped LZ77 data further.
+      Open (LZ77_Dump, In_File, "dump.lz77");
+      --  File from UnZip.Decompress, or LZMA.Decoding, some_trace = True mode
+      while not End_Of_File (LZ77_Dump) loop
+        Get (LZ77_Dump, tag);
+        if tag = "Lit" then
+          Get (LZ77_Dump, a);
+          Write_Literal (Byte (a));
+        elsif tag = "DLE" then
+          Get (LZ77_Dump, a);
+          Get (LZ77_Dump, b);
+          Write_DL_Code (a, b);
+        else
+          raise Wrong_LZ77_tag;
+        end if;
+        Skip_Line (LZ77_Dump);
+      end loop;
+      Close (LZ77_Dump);
+    end LZ77_from_Dump_File;
+
   begin
     case Method is
       when LZHuf =>
@@ -2136,6 +2172,8 @@ package body LZ77 is
         while More_Bytes loop
           Write_Literal (Read_Byte);
         end loop;
+      when Read_LZ77_Codes =>
+        LZ77_from_Dump_File;
     end case;
   end Encode;
 

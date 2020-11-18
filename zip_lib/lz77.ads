@@ -8,7 +8,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2016 .. 2020 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -53,7 +53,9 @@ package LZ77 is
     Rich,
     --  Just send literals (plain bytes), no LZ77 compression at all.
     --  It is better with LZMA on some rare image formats for instance.
-    No_LZ77
+    No_LZ77,
+    --  Read LZ77 codes from a text files (for research purposes)
+    Read_LZ77_Codes
   );
 
   subtype Byte is Interfaces.Unsigned_8;
@@ -101,7 +103,6 @@ package LZ77 is
     --
     --  Scoring of potential DL code emission by the entropy encoder.
     --  This helps choosing between various matches at a given point.
-    --  The highest the value, the better.
     --  This function is only used by BT4.
     with procedure Estimate_DL_Codes (
       matches          : in out Matches_Array;
