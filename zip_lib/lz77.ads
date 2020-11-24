@@ -60,7 +60,7 @@ package LZ77 is
 
   subtype Byte is Interfaces.Unsigned_8;
 
-  subtype Distance_Type is Integer;
+  subtype Distance_Type is Positive;  --  TBD: use Positive_M32
 
   type Distance_Length_Pair is record
     distance : Distance_Type;
@@ -75,6 +75,8 @@ package LZ77 is
     count : Integer := 0;
     dl    : DLP_Array (1 .. Max_Length_any_Algo);
   end record;
+
+  function Are_Matches_Sorted (m : Matches_Type) return Boolean;
 
   type Byte_Array is array (Natural range <>) of Byte;
 

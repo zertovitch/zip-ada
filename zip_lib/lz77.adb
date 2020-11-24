@@ -75,9 +75,20 @@ package body LZ77 is
   --
   type Integer_M32 is range -2**(min_bits_32 - 1) .. 2**(min_bits_32 - 1) - 1;
   subtype Natural_M32  is Integer_M32 range 0 .. Integer_M32'Last;
+  --  subtype Positive_M32 is Integer_M32 range 1 .. Integer_M32'Last;
 
   type Unsigned_M16 is mod 2**min_bits_16;
   type Unsigned_M32 is mod 2**min_bits_32;
+
+  function Are_Matches_Sorted (m : Matches_Type) return Boolean is
+  begin
+    for i in 2 .. m.count loop
+      if m.dl (i).length < m.dl (i - 1).length then
+        return False;
+      end if;
+    end loop;
+    return True;
+  end Are_Matches_Sorted;
 
   procedure Encode is
 
@@ -1449,7 +1460,8 @@ package body LZ77 is
       readAhead : Integer := -1;  --  LZMAEncoder.java
       --  Small stack of recent distances used for LZMA.
       subtype Repeat_stack_range is Integer range 0 .. 3;
-      rep_dist : array (Repeat_stack_range) of Distance_Type := (others => 0);
+      --  1-based distances.
+      rep_dist : array (Repeat_stack_range) of Distance_Type := (others => 1);
       len_rep_dist : array (Repeat_stack_range) of Natural := (others => 0);
 
       function Has_much_smaller_Distance (smallDist, bigDist : Distance_Type) return Boolean is
@@ -1514,12 +1526,14 @@ package body LZ77 is
                   else
                     ins := i + 1;  --  Insert after
                   end if;
+                  exit;
                   --  Ada.Text_IO.Put_Line ("Tie");
                 end if;
               elsif i < matches.count then
                 if len > matches.dl (i).length and then len < matches.dl (i + 1).length then
                   --  Insert between existing lengths
-                  ins := i;
+                  ins := i + 1;
+                  exit;
                 --  We don't add len as the shortest length (worsens compression).
                 ------
                 --  elsif i = 1
@@ -1530,21 +1544,23 @@ package body LZ77 is
                 end if;
               elsif len > matches.dl (i).length then
                 --  i = matches.count in this case: add as longest.
-                ins := i;
-              end if;
-              --  We can insert this repeat match at position 'ins'.
-              if ins > 0 then
-                for j in reverse ins .. matches.count loop  --  Empty if ins > count.
-                  matches.dl (j + 1) := matches.dl (j);
-                end loop;
-                matches.dl (ins).distance := rep_dist (rep);
-                matches.dl (ins).length   := len;
-                matches.count := matches.count + 1;
+                ins := i + 1;
                 exit;
               end if;
             end loop;
+            --  We can insert this repeat match at position 'ins'.
+            if ins > 0 then
+              for i in reverse ins .. matches.count loop  --  Empty if ins > count.
+                matches.dl (i + 1) := matches.dl (i);
+              end loop;
+              matches.dl (ins).distance := rep_dist (rep);
+              matches.dl (ins).length   := len;
+              matches.count := matches.count + 1;
+              exit;
+            end if;
           end if;
         end loop;
+        pragma Assert (Are_Matches_Sorted (matches));
       end Get_supplemental_Matches_from_Repeat_Matches;
 
       procedure Skip (len : Natural) is
@@ -1695,10 +1711,10 @@ package body LZ77 is
         end if;
 
         if LZMA_friendly
-             and then best_length_for_rep_dist > MATCH_LEN_MIN
-             and then           (best_length_for_rep_dist + 1 >= main.length
-                        or else (best_length_for_rep_dist + 2 >= main.length and then main.distance > 2 ** 9)
-                        or else (best_length_for_rep_dist + 3 >= main.length and then main.distance > 2 ** 15))
+          and then best_length_for_rep_dist > MATCH_LEN_MIN
+          and then ( best_length_for_rep_dist >= main.length
+            or else (best_length_for_rep_dist >= main.length - 2 and then main.distance > 2 ** 9)
+            or else (best_length_for_rep_dist >= main.length - 3 and then main.distance > 2 ** 15))
         then
           --  Shortcut: we choose the longest repeat match.
           Skip (best_length_for_rep_dist - 1);

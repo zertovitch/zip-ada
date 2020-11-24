@@ -44,6 +44,8 @@ begin
   end if;
   case k is
     when Windoze =>
+      --  Currently Win32 and Win64 options are common. We also hope to find a way
+      --  to pass the following linker options to the .gpr file.
       gprbuild_options := gprbuild_options & " -XZip_OS=Win64 -largs -Xlinker --stack=0x2000000,0x20000";
     when others =>
       null;

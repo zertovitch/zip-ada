@@ -147,6 +147,15 @@ project ZipAda is
 
    Common_Linker_Options := ("-g");
 
+   --  case Zip_OS is
+   --    when "Win32" | "Win64" =>
+   --      Common_Linker_Options :=
+   --        Common_Linker_Options & ("-Wl,--stack=0x2000000");
+   --        --  Ideally: -Xlinker --stack=0x2000000,0x20000
+   --    when others =>
+   --      null;
+   --  end case;
+
    package Linker is
       case Zip_Build_Mode is
          when "Fast"      => for Default_Switches ("ada") use ("-Wl,--gc-sections")       & Common_Linker_Options;
