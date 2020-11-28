@@ -20,7 +20,7 @@ set nice_date=%year%-%month%-%day%
 
 rem --------------------------
 
-call clean_za
+rem call clean_za
 cd ..
 cd ..
 

@@ -9,8 +9,8 @@ copy /b extras\lib*.a obj_dbg
 
 :skip_md
 
-rem  The HAX command-line tool can be built from the project HAC @
+rem  The HAC command-line tool can be built from the project HAC @
 rem    https://hacadacompiler.sourceforge.io/ ,
 rem    https://github.com/zertovitch/hac
 
-hax make_za.adb Debug %1
+hac make_za.adb Debug %1

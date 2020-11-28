@@ -1,6 +1,6 @@
 --  This is a HAC script *and* an Ada program (your choice).
 --
---  The HAX command-line tool can be built from the project HAC @
+--  The HAC command-line tool can be built from the project HAC @
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 

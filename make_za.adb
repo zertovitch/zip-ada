@@ -1,10 +1,10 @@
 --  This is a HAC script *and* an Ada program (your choice).
 --
---  The HAX command-line tool can be built from the project HAC @
+--  The HAC command-line tool can be built from the project HAC @
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 --
---  Usage: hax make_za.adb [build mode] [full]
+--  Usage: hac make_za.adb [build mode] [full]
 --
 --    Build mode can be Debug, Fast, Small, ...
 
