@@ -15,7 +15,6 @@ procedure Make_ZA is
   gprbuild_options : VString;
 
   procedure Build_with_nice_title (gpr_name, topic : VString) is
-    r : Integer;
   begin
     Put_Line (" ________  ___   ______       ______      ___");
     Put_Line ("/___..._/  I.I   I.___.\     /. __ .\   __I.I   ____");
@@ -27,7 +26,7 @@ procedure Make_ZA is
     Put_Line ("   Build in progress: " & topic & "...");
     Put_Line ("\=====================================================/");
     New_Line;
-    r := Shell_Execute ("gprbuild -P " & gpr_name & gprbuild_options);
+    Shell_Execute ("gprbuild -P " & gpr_name & gprbuild_options);
   end Build_with_nice_title;
 
   type OS_Kind is (Any, Windoze);

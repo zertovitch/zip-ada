@@ -26,14 +26,14 @@ procedure Test_ZA is
         if Exists (full_name) then
           Delete_File (full_name);
         end if;
-        r := Shell_Execute (command & ' ' & full_name & ' ' & files);
+        Shell_Execute (command & ' ' & full_name & ' ' & files);
         if Index (command, "zipada") > 0 then
           zipada_used := zipada_used + 1;
         end if;
       when Compare =>
         if archive /= ref_archive then
-          r := Shell_Execute (+".." & Directory_Separator &
-                              "comp_zip " & ref_archive & " " & archive & " -q3");
+          Shell_Execute (+".." & Directory_Separator &
+                         "comp_zip " & ref_archive & " " & archive & " -q3", r);
           if r = 0 then
             successes := successes + 1;
           else
@@ -86,24 +86,22 @@ procedure Test_ZA is
   procedure Create_List is
     log_name : constant VString := "test_za_" & Nice_Date (True) & ".log";
     all_zips : constant VString := +"$mth_*";
-    r : Integer;
   begin
     if Index (Get_Env ("OS"), "Windows") > 0 then
-      r := Shell_Execute (+"dir /OS " & all_zips & " |find ""$mth"" >" & log_name);
+      Shell_Execute (+"dir /OS " & all_zips & " |find ""$mth"" >" & log_name);
     else
-      r := Shell_Execute (+"ls -lrS " & all_zips & '>' & log_name);
+      Shell_Execute (+"ls -lrS " & all_zips & '>' & log_name);
     end if;
   end Create_List;
 
   slow, full : Boolean := False;
-  r : Integer;
 
 begin
   Put_Line ("Testing the ZipAda tool.");
   New_Line;
   Put_Line ("Calls to Comp_Zip are done to compare archives.");
   New_Line;
-  Put_Line ("Usage: hax test_za.adb [option]");
+  Put_Line ("Usage:  hac test_za.adb [option]");
   New_Line;
   Put_Line ("  Options: slow : test some exotic / slow formats in Zip-Ada");
   Put_Line ("           full : all zippers, including very slow ones");
@@ -115,19 +113,19 @@ begin
   --  Have badly compressible files
   if not Exists ("$rnd_0.bin") then
     for i in 0 .. 10 loop
-      r := Shell_Execute (+".." & Directory_Separator & "random_data " & i*10 & " $rnd_" & i*10 & ".bin");
+      Shell_Execute (+".." & Directory_Separator & "random_data " & i*10 & " $rnd_" & i*10 & ".bin");
     end loop;
     for i in 1 .. 9 loop
-      r := Shell_Execute (+".." & Directory_Separator & "random_data " & i & " $rnd_" & i & ".bin");
+      Shell_Execute (+".." & Directory_Separator & "random_data " & i & " $rnd_" & i & ".bin");
     end loop;
   end if;
   --  We generate a "large" random file with restricted literal range ('A' .. 'Z').
   if not Exists ("$rand_alpha.txt") then
-    r := Shell_Execute (+".." & Directory_Separator & "random_data 77777 $rand_alpha.txt 65 90");
+    Shell_Execute (+".." & Directory_Separator & "random_data 77777 $rand_alpha.txt 65 90");
   end if;
   --  We generate a "large" random file (will take more than 1 Deflate block in random_and_text.mix)
   if not Exists ("$random.bin") then
-    r := Shell_Execute (+".." & Directory_Separator & "random_data 66666 $random.bin");
+    Shell_Execute (+".." & Directory_Separator & "random_data 66666 $random.bin");
   end if;
   --  if not exist random_and_text.mix copy /b random.bin+*.txt+..\doc\*.txt random_and_text.mix
   --
@@ -179,7 +177,7 @@ begin
       if Exists ("$mth_7z_l.7z") then
         Delete_File ("$mth_7z_l.7z");
       end if;
-      r := Shell_Execute  (+"7z a -mx=9 $mth_7z_l.7z " & files);
+      Shell_Execute  (+"7z a -mx=9 $mth_7z_l.7z " & files);
     end if;
     New_Line;
   end loop;
