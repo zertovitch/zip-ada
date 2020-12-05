@@ -19,7 +19,7 @@ with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
 with Ada.Strings.UTF_Encoding.Conversions;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
-with Ada.Strings.Wide_Fixed;            use Ada.Strings.Wide_Fixed;
+with Ada.Strings.Wide_Fixed;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
 with Interfaces;
 
@@ -69,6 +69,7 @@ procedure ZipAda is
       Unicode_name : constant Wide_String :=
         Ada.Strings.UTF_Encoding.Conversions.Convert (Get_Name (Stream));
       cut : constant Wide_String := Cut_name (Unicode_name, maxlen);
+      use Ada.Strings.Wide_Fixed;
     begin
       Ada.Wide_Text_IO.Put (cut & (1 + maxlen - cut'Length) * ' ');
     end;

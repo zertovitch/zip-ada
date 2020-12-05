@@ -1468,7 +1468,7 @@ package body LZMA.Encoding is
       end Scoring;
       --
       best_prob : MProb;
-      new_wins : Boolean;
+      new_wins : Boolean := False;
       last_pos_single_DL : Natural;
       match_for_max_last_pos : Distance_Length_Pair;
       sim_expand : Machine_State := ES;

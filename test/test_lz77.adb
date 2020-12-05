@@ -89,12 +89,12 @@ procedure Test_LZ77 is
   end Emit_DL_code;
 
   procedure Dummy_Estimate_DL_Codes (
-    matches          : in  LZ77.Matches_Array;
-    old_match_index  : in  Natural;
-    prefixes         : in  LZ77.Byte_Array;
-    best_score_index : out Positive;
-    best_score_set   : out LZ77.Prefetch_Index_Type;
-    match_trace      : out LZ77.Matches_Type
+    matches          : in out LZ77.Matches_Array;
+    old_match_index  : in     Natural;
+    prefixes         : in     LZ77.Byte_Array;
+    best_score_index :    out Positive;
+    best_score_set   :    out LZ77.Prefetch_Index_Type;
+    match_trace      :    out LZ77.DLP_Array
   )
   is null;
 

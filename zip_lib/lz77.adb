@@ -1712,7 +1712,7 @@ package body LZ77 is
 
         if LZMA_friendly
           and then best_length_for_rep_dist > MATCH_LEN_MIN
-          and then ( best_length_for_rep_dist >= main.length
+          and then (best_length_for_rep_dist >= main.length
             or else (best_length_for_rep_dist >= main.length - 2 and then main.distance > 2 ** 9)
             or else (best_length_for_rep_dist >= main.length - 3 and then main.distance > 2 ** 15))
         then
