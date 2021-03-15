@@ -8,8 +8,8 @@
 --
 --    Build mode can be Debug, Fast, Small, ...
 
-with HAC_Pack;  use HAC_Pack;
---  NB: the "full Ada" package for HAC_Pack is in /src in the HAC project
+with HAL;  use HAL;
+--  NB: the "full Ada" package for HAL is in /src in the HAC project
 
 procedure Make_ZA is
   gprbuild_options : VString;

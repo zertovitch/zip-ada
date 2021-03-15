@@ -70,26 +70,31 @@ Contents
     - LZ77: a standalone generic streaming LZ77 encoder
     - LZMA[.*]: standalone generic streaming ZMA encoder and decoder
 
-* In the "demo" subdirectory, you have the following command-line demo
-  procedures for testing Zip-Ada:
+*  In the "demo" subdirectory, you have the following command-line demo
+     procedures for testing Zip-Ada:
 
-  - Demo_Zip.adb         : tiny demo for Zip.Create
-  - Demo_UnZip.adb       : tiny demo for UnZip and UnZip.Streams
-  - Demo_csv_into_zip.adb: demo showing how to produce many files directly
+  - demo_zip.adb         : tiny demo for Zip.Create
+  - demo_unzip.adb       : tiny demo for UnZip and UnZip.Streams
+  - demo_csv_into_zip.adb: demo showing how to produce many files directly
                              into a Zip file, with only 1 temp file
 
-* In the "tools" subdirectory, you have the following command-line tools
-  using the Zip-Ada library:
-  - ZipAda.adb           : minimal standalone zipping tool
-  - UnZipAda.adb         : minimal standalone unzipping tool
-  - Comp_Zip.adb         : tool for comparing two Zip archives
-  - Find_Zip.adb         : tool for searching a string across an archive (contents + names)
-  - ReZip.adb            : tool for recompressing Zip archives and make them smaller
+*  In the "tools" subdirectory, you have the following command-line tools
+     using the Zip-Ada library:
+
+  - zipada.adb           : ZipAda, a minimal standalone zipping tool
+  - unzipada.adb         : UnZipAda, a minimal standalone unzipping tool
+  - comp_zip.adb         : Comp_Zip, a tool for comparing two Zip archives
+  - find_zip.adb         : Find_Zip, a tool for searching a string across an archive (contents + names)
+  - rezip.adb            : ReZip, a tool for recompressing Zip archives and make them smaller
   
 *  In the "test" subdirectory, there is, among others:
-  - ZipTest.adb              : test for Zip archive creation with various stream types
-  - Zip_with_many_files.adb  : test archive with a large number of entries - and test limits
-  - Zip_with_big_files.adb   : test archive with large entries - and test limits
+  - ziptest.adb              : test for Zip archive creation with various stream types
+  - zip_with_many_files.adb  : test archive with a large number of entries - and test limits
+  - zip_with_big_files.adb   : test archive with large entries - and test limits
+  
+*  There are also in "test" the following HAC scripts (or Ada programs, your choice):
+  - test_za.adb  : test the ZipAda tool with all supported compression formats, plus Zip and 7Z
+  - test_rz.adb  : test the ReZip recompression tool
 
 *  In the "trained" subdirectory, there is trained compression package with examples.
      Trained compression consists in training both sides (encoder, decoder) with
@@ -99,9 +104,9 @@ Contents
 *  In the "doc" subdirectory you'll find documentation, and research data in za_work.xls .
 
 *  In the "extras" subdirectory, there is
-  - bunzip               : a standalone decompressor for BZip2 files (.bz2)
-  - lzma_dec             : a standalone decompressor for LZMA files (.lzma)
-  - lzma_enc             : a standalone compressor for LZMA files (.lzma)
+  - bunzip    : a standalone decompressor for BZip2 files (.bz2)
+  - lzma_dec  : a standalone decompressor for LZMA files (.lzma)
+  - lzma_enc  : a standalone compressor for LZMA files (.lzma)
 
   These demos can be built as main programs. 
 

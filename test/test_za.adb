@@ -4,8 +4,8 @@
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 
-with HAC_Pack;  use HAC_Pack;
---  NB: the "full Ada" package for HAC_Pack is in /src in the HAC project
+with HAL;  use HAL;
+--  NB: the "full Ada" package for HAL is in /src in the HAC project
 
 procedure Test_ZA is
 
