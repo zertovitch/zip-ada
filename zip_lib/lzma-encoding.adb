@@ -348,7 +348,8 @@ package body LZMA.Encoding is
     end Estimates;
 
     package body Estimates is
-      To_Prob_Factor : constant MProb := 1.0 / MProb'Base (Probability_model_count);
+      To_Prob_Factor : constant  --  We compute the division (more expensive) at compile-time.
+        MProb := 1.0 / MProb'Base (Probability_model_count);
 
       function To_Math (cp : CProb) return MProb is
       pragma Inline (To_Math);
