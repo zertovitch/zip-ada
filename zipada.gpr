@@ -24,6 +24,7 @@ project ZipAda is
        --  The demos, tools and tests may use some Ada 2012+ features.
        "Check_2005"
       );
+
    Zip_Build_Mode : Zip_Build_Mode_Type := external ("Zip_Build_Mode", "Fast");
    for Exec_Dir use ".";
    for Create_Missing_Dirs use "True";  --  Flips by default the "-p" switch
@@ -69,8 +70,7 @@ project ZipAda is
        "-gnatVa",  --  Turn on all validity checking options
        "-gnato",   --  Enable overflow checking in STRICT (-gnato1) mode
        "-gnata",   --  Assertions enabled. Pragma Assert and pragma Debug to be activated.
-       "-fno-inline", "-fstack-check",
-       "-gnatec=" & project'Project_Dir & "debug.pra"
+       "-fno-inline", "-fstack-check"
        );
 
    Fast_Options_Inlining_Neutral :=
@@ -80,8 +80,7 @@ project ZipAda is
        "-ftracer", "-fweb", "-frename-registers", 
        "-fpredictive-commoning", "-fgcse-after-reload",
        "-ftree-vectorize", "-fipa-cp-clone",
-       "-ffunction-sections", 
-       "-gnatec=" & project'Project_Dir & "za_elim.pra"
+       "-ffunction-sections"
      );
 
    Fast_Options :=
@@ -99,15 +98,17 @@ project ZipAda is
       case Zip_Build_Mode is
 
          when "Check_2005" =>
+            for Local_Configuration_Pragmas use project'Project_Dir & "restrictions.pra";
             for Default_Switches ("ada") use Common_Options & 
-              ( "-gnat05",
-                "-gnatec=" & project'Project_Dir & "restrictions.pra"
+              ( "-gnat05"
               );
 
          when "Debug" =>
+            for Local_Configuration_Pragmas use project'Project_Dir & "debug.pra";
             for Default_Switches ("ada") use Debug_Options ;
 
          when "Style_Checks" =>
+            for Local_Configuration_Pragmas use project'Project_Dir & "debug.pra";
             for Default_Switches ("ada") use
               Debug_Options & 
                 ( "-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
@@ -119,6 +120,7 @@ project ZipAda is
                 );
 
          when "Fast" =>
+            for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             case Zip_OS is
               when "Win32" | "Win64" =>
                 for Default_Switches ("ada") use
@@ -128,14 +130,15 @@ project ZipAda is
             end case;
 
          when "Small" =>
+            for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             for Default_Switches ("ada") use
               Common_Options & (
                 "-Os", "-gnatp",
-                "-ffunction-sections", 
-                "-gnatec=" & project'Project_Dir & "za_elim.pra"
+                "-ffunction-sections"
               );
 
          when "Profiling" =>
+            for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             for Default_Switches ("ada") use
               Fast_Options_Inlining_Neutral & ("-fno-inline", "-pg");
 

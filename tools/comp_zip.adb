@@ -46,8 +46,13 @@ begin
     Put_Line ("Options: -q1   : (quiet level 1): summary only");
     Put_Line ("         -q2   : (quiet level 2): shorter summary only");
     Put_Line ("         -q3   : (quiet level 3): 1 line per archive");
-    Put_Line ("         -q4   : (quiet level 4): no console output, only error code");
+    Put_Line ("         -q4   : (quiet level 4): no console output, only exit code");
     Put_Line ("         -pPwd : define a password for decryption (e.g. ""Pwd"")");
+    New_Line;
+    Put_Line ("The exit code is the number of mismatching entries:");
+    Put_Line ("  - entry name is in both archives, but contents are different (+1)");
+    Put_Line ("  - entry name is only in one archive but absent in the other one (+1)");
+    Put_Line ("The code 0 means that both archives have identical contents.");
     return;
   end if;
   for i in 1 .. 2 loop
