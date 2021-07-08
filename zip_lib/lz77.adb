@@ -1238,7 +1238,7 @@ package body LZ77 is
         begin
           --  Put("BT4_Algo.Get_Matches... ");
           matches.count := 0;
-          avail := Move_Pos_in_BT4;  --  A new literal is fetched there.
+          avail := Move_Pos_in_BT4;
           if avail < matchLenLimit then
             if avail = 0 then
               return;

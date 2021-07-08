@@ -214,7 +214,7 @@ package body LZMA.Decoding is
       if state < 7 then
         loop
           Decode_Bit (probs.lit (probs_idx + Integer (symbol)), bit_nomatch);
-          symbol := (symbol + symbol) or bit_nomatch;
+          symbol := (2 * symbol) or bit_nomatch;
           exit when symbol >= 16#100#;
         end loop;
       else
@@ -234,13 +234,13 @@ package body LZMA.Decoding is
             match_bit  := match_byte and 16#100#;
             prob_idx_match := Integer (16#100# + match_bit);
             Decode_Bit (probs.lit (probs_idx + prob_idx_match + Integer (symbol)), bit_a);
-            symbol := (symbol + symbol) or bit_a;
+            symbol := (2 * symbol) or bit_a;
             exit when symbol >= 16#100#;
             if match_bit /= Shift_Left (UInt32 (bit_a), 8) then
               --  No bit match, then give up byte match
               loop
                 Decode_Bit (probs.lit (probs_idx + Integer (symbol)), bit_b);
-                symbol := (symbol + symbol) or bit_b;
+                symbol := (2 * symbol) or bit_b;
                 exit when symbol >= 16#100#;
               end loop;
               exit;
@@ -278,7 +278,7 @@ package body LZMA.Decoding is
         m := 1;
         for count in reverse 1 .. num_bits loop
           Decode_Bit (prob (Integer (m) + prob'First), a_bit);
-          m := m + m + a_bit;
+          m := 2 * m + a_bit;
         end loop;
         m := m - 2**num_bits;
       end Bit_Tree_Decode;
@@ -378,7 +378,7 @@ package body LZMA.Decoding is
         begin
           for i in 0 .. num_bits - 1 loop
             Decode_Bit (prob (Integer (m) + prob'First), a_bit);
-            m := m + m + a_bit;
+            m := 2 * m + a_bit;
             dist := dist or Shift_Left (UInt32 (a_bit), i);
           end loop;
         end Bit_Tree_Reverse_Decode;

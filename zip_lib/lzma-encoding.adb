@@ -476,7 +476,7 @@ package body LZMA.Encoding is
         for i in reverse 0 .. num_bits - 1 loop
           bit := Unsigned (Shift_Right (UInt32 (symbol), i)) and 1;
           res := res * Test_Bit_Encoding (prob (Integer (m) + prob'First), bit);
-          m := m + m + bit;
+          m := 2 * m + bit;
         end loop;
         return res;
       end Simulate_Bit_Tree;
@@ -556,7 +556,7 @@ package body LZMA.Encoding is
           for count_bits in reverse 1 .. num_bits loop
             bit := Unsigned (symb) and 1;
             res := res * Test_Bit_Encoding (prob (Integer (m) + prob'First), bit);
-            m := m + m + bit;
+            m := 2 * m + bit;
             symb := Shift_Right (symb, 1);
           end loop;
           return res;
@@ -1153,7 +1153,7 @@ package body LZMA.Encoding is
       for i in reverse 0 .. num_bits - 1 loop
         bit := Unsigned (Shift_Right (UInt32 (symbol), i)) and 1;
         Encode_Bit (prob (Integer (m) + prob'First), bit);
-        m := m + m + bit;
+        m := 2 * m + bit;
       end loop;
     end Bit_Tree_Encode;
 
@@ -1195,7 +1195,7 @@ package body LZMA.Encoding is
         for count_bits in reverse 1 .. num_bits loop
           bit := Unsigned (symb) and 1;
           Encode_Bit (prob (Integer (m) + prob'First), bit);
-          m := m + m + bit;
+          m := 2 * m + bit;
           symb := Shift_Right (symb, 1);
         end loop;
       end Bit_Tree_Reverse_Encode;
