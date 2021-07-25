@@ -58,13 +58,15 @@ zip -9 -Z bzip2 ../bench_%1_bzip2_9 *
 rem   ### LZMA, external
 
 rem         LZMA, compare BT3 and BT4 with all other parameters equal.
-7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma_bt3 *
-7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=255:lc=7 ../bench_%1_7zip_lzma_bt4 *
-7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=255:lc=7 ../bench_%1_7zip_lzma_hc4 *
+7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_%1_7zip_lzma_bt3 *
+7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_%1_7zip_lzma_bt4 *
+7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_%1_7zip_lzma_bt5 *
+7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_%1_7zip_lzma_hc4 *
 
-7z a -tzip -mmt1 -mm=LZMA        -mx9                 ../bench_%1_7zip_lzma_mx9    *
-7z a -tzip -mmt1 -mm=LZMA:mf=bt3 -mx9                 ../bench_%1_7zip_lzma_bt3mx9 *
-7z a       -mmt1                 -mx9                 ../bench_%1_7zip_lzma_mx9    *
+7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt3 -mx9          ../bench_%1_7zip_lzma_bt3mx9 *
+7z a -tzip -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_%1_7zip_lzma_mx9    *
+7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_%1_7zip_lzma_bt5mx9 *
+7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_%1_7zip_lzma_mx9    *
 
 rem   ### PPMd, external
 7z a -tzip -mmt1 -mm=PPMd -mx9                        ../bench_%1_7zip_ppmd_mx9 *
