@@ -56,9 +56,15 @@ rem   ### BZip2, external
 zip -9 -Z bzip2 ../bench_%1_bzip2_9 *
 
 rem   ### LZMA, external
+
+rem         LZMA, compare BT3 and BT4 with all other parameters equal.
 7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=255:lc=7 ../bench_%1_7zip_lzma_bt3 *
-7z a -tzip -mmt1 -mm=LZMA -mx9                        ../bench_%1_7zip_lzma_mx9 *
-7z a       -mmt1          -mx9                        ../bench_%1_7zip_lzma_mx9 *
+7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=255:lc=7 ../bench_%1_7zip_lzma_bt4 *
+7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=255:lc=7 ../bench_%1_7zip_lzma_hc4 *
+
+7z a -tzip -mmt1 -mm=LZMA        -mx9                 ../bench_%1_7zip_lzma_mx9    *
+7z a -tzip -mmt1 -mm=LZMA:mf=bt3 -mx9                 ../bench_%1_7zip_lzma_bt3mx9 *
+7z a       -mmt1                 -mx9                 ../bench_%1_7zip_lzma_mx9    *
 
 rem   ### PPMd, external
 7z a -tzip -mmt1 -mm=PPMd -mx9                        ../bench_%1_7zip_ppmd_mx9 *
@@ -68,7 +74,7 @@ tar -c -f ../bench_%1.tar *
 lzma e -mt1 ../bench_%1.tar ../bench_%1_7zip_lzma_mx9.tar.lzma
 ..\..\lzma_enc ../bench_%1.tar ../bench_%1_lzma_3.tar
 
-rem   ### LZMA (Zip.Compress.LZMA_E)
+rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
 ..\..\zipada -el1 ../bench_%1_lzma_1 *
 ..\..\zipada -el2 ../bench_%1_lzma_2 *
 ..\..\zipada -ep2 ../bench_%1_prsl_2 *
