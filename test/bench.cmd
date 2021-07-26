@@ -1,91 +1,8 @@
 @echo off
 
-echo.
-echo Benchmark a corpus, stored in directory "%1", using various Zippers
-echo.
+hac bench.adb %1 %2 %3 %4 %5 %6 %7 %8 %9
 
-if "%1" == "" goto instr
-if exist "%1" goto installed
-
-if not exist bench_%1.zip echo Directory "%1" and archive "bench_%1.zip" do not exist - stopping benchmark.
-if not exist bench_%1.zip goto fin
-
-mkdir %1
-cd %1
-unzipada ..\bench_%1.zip
-cd ..
-
-:installed
-
-rem  Delete individual method-related archives
-if exist bench_%1_*.zip del bench_%1_*.zip
-
-cd %1
-
-if not "%2" == "full" goto skip
-
-rem   ### LZW
-call zipada -es  ../bench_%1_shrink    *
-
-rem   ### Reduce (LZ & Markov)
-call zipada -er4 ../bench_%1_reduce_4  *
-
-rem   ### Deflate (Zip.Compress.Deflate)
-if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-call zipada -edf ../bench_%1_deflate_f *
-if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-call zipada -ed1 ../bench_%1_deflate_1 *
-if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_1_%1.zcd
-if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-call zipada -ed2 ../bench_%1_deflate_2 *
-if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_2_%1.zcd
-if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-call zipada -ed3 ../bench_%1_deflate_3 *
-if exist Zip.Compress.Deflate.zcd copy Zip.Compress.Deflate.zcd ..\Zip.Compress.Deflate_3_%1.zcd
-if exist Zip.Compress.Deflate.zcd del Zip.Compress.Deflate.zcd
-
-rem   ### Deflate, external
-zip    -6   ../bench_%1_iz_6      *
-zip    -9   ../bench_%1_iz_9      *
-kzip        ../bench_%1_kzip      *
-7z a -tzip -mm=deflate -mx5  ../bench_%1_7zip_defl_5 *
-7z a -tzip -mm=deflate -mfb=258 -mpass=15 -mmc=10000 ../bench_%1_7zip_deflate *
-advzip -a -4 ../bench_%1_zopfli.zip *
-
-rem   ### BZip2, external
-zip -9 -Z bzip2 ../bench_%1_bzip2_9 *
-
-rem   ### LZMA, external
-
-rem         LZMA, compare BT3 and BT4 with all other parameters equal.
-7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_%1_7zip_lzma_bt3 *
-7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_%1_7zip_lzma_bt4 *
-7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_%1_7zip_lzma_bt5 *
-7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_%1_7zip_lzma_hc4 *
-
-7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt3 -mx9          ../bench_%1_7zip_lzma_bt3mx9 *
-7z a -tzip -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_%1_7zip_lzma_mx9    *
-7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_%1_7zip_lzma_bt5mx9 *
-7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_%1_7zip_lzma_mx9    *
-
-rem   ### PPMd, external
-7z a -tzip -mmt1 -mm=PPMd -mx9                        ../bench_%1_7zip_ppmd_mx9 *
-
-rem   ### Tar + LZMA, external & internal
-tar -c -f ../bench_%1.tar *
-lzma e -mt1 ../bench_%1.tar ../bench_%1_7zip_lzma_mx9.tar.lzma
-..\..\lzma_enc ../bench_%1.tar ../bench_%1_lzma_3.tar
-
-rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
-..\..\zipada -el1 ../bench_%1_lzma_1 *
-..\..\zipada -el2 ../bench_%1_lzma_2 *
-..\..\zipada -ep2 ../bench_%1_prsl_2 *
-
-:skip
-rem   ### LZMA (Zip.Compress.LZMA_E) and Preselection
-..\..\zipada -el3 ../bench_%1_lzma_3 *
-
-cd ..
+rem Post-benchmarking administration
 
 dir /OS- bench_%1_*.*
 
@@ -98,9 +15,9 @@ echo ***************************************************************
 echo ********** Test the archives, bench_%1_*.zip
 echo ***************************************************************
 echo.
-7z t bench_%1_*.zip | tail
+if exist bench_%1_*.zip 7z t bench_%1_*.zip | tail
 echo ***************************************************************
-dir /OS- bench_%1_*.zip
+if exist bench_%1_*.zip dir /OS- bench_%1_*.zip
 echo.>>bench_%1.log
 echo -- [%1] [%date% %time%] -- >>bench_%1.log
 
@@ -110,19 +27,9 @@ if exist bench_%1_*.lzma del bench_%1_*.lzma
 if exist bench_%1_*.7z   del bench_%1_*.7z
 if exist bench_%1.tar    del bench_%1.tar
 
-unzip -v all_bench_%1.zip | find ".zip" | find "%%" | sort
-unzip -v all_bench_%1.zip | find ".zip" | find "%%" | sort>>bench_%1.log
+unzip -v all_bench_%1.zip | find ".zip"  | find "%%" | sort >bench_%1_.log
+unzip -v all_bench_%1.zip | find ".7z"   | find "%%" | sort>>bench_%1_.log
+unzip -v all_bench_%1.zip | find ".lzma" | find "%%" | sort>>bench_%1_.log
 
-goto fin
-
-:instr
-echo Usage
-echo   bench directory_name [full]
-echo.
-echo When "full", redo all (including out-of-focus compression methods)
-echo Will produce bench_directory_name_... .zip for each method.
-echo.
-echo See benchs.cmd running a set of benchmarks in parallel.
-echo.
-pause
-:fin
+more bench_%1_.log | sort >>bench_%1.log
+del bench_%1_.log

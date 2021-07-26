@@ -1,17 +1,26 @@
---  This is a HAC script *and* an Ada program (your choice).
+--  This is a HAC script *and* an Ada program.
+--  How to run it is your choice.
 --
---  The HAC command-line tool can be built from the project HAC @
+--  Usage with the HAC command-line tool :
+--
+--    hac test_za.adb [option]
+--
+--  The HAC (HAC Ada Compiler) command-line tool can be found @
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 
-with HAL;  use HAL;
---  NB: the "full Ada" package for HAL is in /src in the HAC project
+with HAL;
+--  NB: in case you want to build this script into an executable with a
+--      "full Ada" compiler, the files for HAL (hal.ads, hal*.adb)
+--      is located in the /src directory, in the HAC project.
 
 procedure Test_ZA is
 
   type Action_Type is (Create, Compare);
 
   fails, successes, zipada_used : Natural := 0;
+
+  use HAL;
 
   files : constant VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.jpg *.bin *.pdf *.xls *.au";
 
