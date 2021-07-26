@@ -133,6 +133,7 @@ begin
     Shell_Execute (+"tar -c -f ../bench_" & bn & ".tar *");
     Shell_Execute (+"lzma e -mt1 ../bench_" & bn & ".tar ../bench_" & bn & "_7zip_lzma_mx9.tar.lzma");
     Shell_Execute (up2 & "lzma_enc ../bench_" & bn & ".tar ../bench_" & bn & "_lzma_3.tar");
+    Shell_Execute (+"zstd  --ultra -22 --single-thread ../bench_" & bn & ".tar -o ../bench_" & bn & "_ZStd.tar.zst");
   end if;
   if cat_set (Preselection) then
     Shell_Execute (za & " -el3 ../bench_" & bn & "_prsl_2 *");
