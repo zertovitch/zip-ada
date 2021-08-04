@@ -28,8 +28,12 @@ procedure Bench is
     New_Line;
     Put_Line ("Options:");
     Put_Line ("     full  : test everything (long!)");
-    Put_Line ("     7z    : test LZMA with various parameters");
+    Put_Line ("     ------:----------------------------------------");
+    Put_Line ("     7z    : test 7z's LZMA with various parameters");
+    Put_Line ("     lzma  : test Zip-Ada's LZMA level 1 to 3");
     Put_Line ("     lzma3 : test Zip-Ada's LZMA level 3 (default)");
+    Put_Line ("     ppmd  : test PPMd");
+    Put_Line ("     ps    : test Zip-Ada's Preselection");
     Put_Line ("     tar   : test tar + various one-file compressors");
   end Blurb;
 
@@ -40,6 +44,7 @@ procedure Bench is
     BZip2_External,
     PPMd_External,
     LZMA_7z,
+    LZMA_1_2,
     LZMA_3,
     TAR,
     Preselection
@@ -65,7 +70,14 @@ procedure Bench is
       elsif Argument (a) = "7z" then
         cat_set (LZMA_7z) := True;
       elsif Argument (a) = "lzma" then
+        cat_set (LZMA_1_2) := True;
         cat_set (LZMA_3) := True;
+      elsif Argument (a) = "lzma3" then
+        cat_set (LZMA_3) := True;
+      elsif Argument (a) = "ppmd" then
+        cat_set (PPMd_External) := True;
+      elsif Argument (a) = "ps" then
+        cat_set (Preselection) := True;
       end if;
     end loop;
   end Options;
@@ -126,6 +138,10 @@ begin
     Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_" & bn & "_7zip_lzma_bt5mx9 *");
     Shell_Execute (+"7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_mx9    *");
   end if;
+  if cat_set (LZMA_1_2) then
+    Shell_Execute (za & " -el1 ../bench_" & bn & "_lzma_1 *");
+    Shell_Execute (za & " -el2 ../bench_" & bn & "_lzma_2 *");
+  end if;
   if cat_set (LZMA_3) then
     Shell_Execute (za & " -el3 ../bench_" & bn & "_lzma_3 *");
   end if;
@@ -136,7 +152,7 @@ begin
     Shell_Execute (+"zstd  --ultra -22 --single-thread ../bench_" & bn & ".tar -o ../bench_" & bn & "_ZStd.tar.zst");
   end if;
   if cat_set (Preselection) then
-    Shell_Execute (za & " -el3 ../bench_" & bn & "_prsl_2 *");
+    Shell_Execute (za & " -ep2 ../bench_" & bn & "_prsl_2 *");
   end if;
   Set_Directory ("..");
 end Bench;

@@ -1,6 +1,8 @@
+hac bench.adb %1 %2 %3 %4 %5 %6 %7 %8 %9
+
 @echo off
 
-hac bench.adb %1 %2 %3 %4 %5 %6 %7 %8 %9
+if (%1)==() goto :eof
 
 rem Post-benchmarking administration
 
