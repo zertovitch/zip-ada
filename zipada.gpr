@@ -91,7 +91,7 @@ project ZipAda is
    type Zip_OS_Kind is
       ("Win32", "Win64", "Linux", "MacOSX", "Any");
 
-   Zip_OS : Zip_OS_Kind := external ("Zip_OS_Kind", "Any");
+   Zip_OS : Zip_OS_Kind := external ("Zip_OS", "Any");
 
    package Compiler is
 
