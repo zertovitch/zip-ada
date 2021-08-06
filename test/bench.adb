@@ -87,6 +87,15 @@ procedure Bench is
   bn : VString;  --  Short name for benchmark name.
   up2, za : VString;
 
+  procedure Timing (command : VString) is
+    T1, T2 : Time;
+  begin
+    T1 := Clock;
+    Shell_Execute (command);
+    T2 := Clock;
+    Put_Line ("Time elapsed" & Image (T2 - T1) & " second(s)");
+  end Timing;
+
 begin
   if Argument_Count = 0 then
     Blurb;
@@ -128,15 +137,15 @@ begin
     Shell_Execute (+"7z a -tzip -mmt1 -mm=PPMd -mx9 ../bench_" & bn & "_7zip_ppmd_mx9 *");
   end if;
   if cat_set (LZMA_7z) then
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt3 *");
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt4 *");
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt5 *");
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_hc4 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_bt3 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_bt4 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_bt5 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_hc4 *");
 
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt3 -mx9          ../bench_" & bn & "_7zip_lzma_bt3mx9 *");
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_mx9    *");
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_" & bn & "_7zip_lzma_bt5mx9 *");
-    Shell_Execute (+"7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_mx9    *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt3 -mx9          ../bench_" & bn & "_7zip_lzma_bt3_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_bt4_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_" & bn & "_7zip_lzma_bt5_mx9 *");
+    Timing (+"7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_bt4_mx9 *");
   end if;
   if cat_set (LZMA_1_2) then
     Shell_Execute (za & " -el1 ../bench_" & bn & "_lzma_1 *");
