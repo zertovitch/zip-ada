@@ -82,10 +82,10 @@ procedure Bench is
     end loop;
   end Options;
 
-  ds : Character := Directory_Separator;
+  ds : Character := Directory_Separator;  --  Portable *n*x / Windows
 
   bn : VString;  --  Short name for benchmark name.
-  up2, za : VString;
+  up, up2, za : VString;
 
   procedure Timing (command : VString) is
     T1, T2 : Time;
@@ -94,6 +94,7 @@ procedure Bench is
     Shell_Execute (command);
     T2 := Clock;
     Put_Line ("Time elapsed" & Image (T2 - T1) & " second(s)");
+    New_Line;
   end Timing;
 
 begin
@@ -110,7 +111,8 @@ begin
   end if;
   Set_Directory (bn);
   Options;
-  up2 := +".." & ds & ".." & ds;
+  up := +".." & ds;
+  up2 := up & up;
   za := up2 & "zipada";
   if cat_set (Reduce_Shrink) then
     Shell_Execute (za & " -es  ../bench_" & bn & "_shrink   *");
@@ -134,18 +136,18 @@ begin
     Shell_Execute (+"zip -9 -Z bzip2 ../bench_" & bn & "_bzip2_9 *");
   end if;
   if cat_set (PPMd_External) then
-    Shell_Execute (+"7z a -tzip -mmt1 -mm=PPMd -mx9 ../bench_" & bn & "_7zip_ppmd_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=PPMd -mx9 ../bench_" & bn & "_7zip_ppmd_mx9 *");
   end if;
   if cat_set (LZMA_7z) then
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_bt3 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_bt4 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_bt5 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_lc7_hc4 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt3_lc7 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt4_lc7 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt5_lc7 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_hc4_lc7 *");
 
     Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt3 -mx9          ../bench_" & bn & "_7zip_lzma_bt3_mx9 *");
     Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_bt4_mx9 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_" & bn & "_7zip_lzma_bt5_mx9 *");
     Timing (+"7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_bt4_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_" & bn & "_7zip_lzma_bt5_mx9 *");
   end if;
   if cat_set (LZMA_1_2) then
     Shell_Execute (za & " -el1 ../bench_" & bn & "_lzma_1 *");
@@ -154,14 +156,22 @@ begin
   if cat_set (LZMA_3) then
     Shell_Execute (za & " -el3 ../bench_" & bn & "_lzma_3 *");
   end if;
-  if cat_set (TAR) then
-    Shell_Execute (+"tar -c -f ../bench_" & bn & ".tar *");
-    Shell_Execute (+"lzma e -mt1 ../bench_" & bn & ".tar ../bench_" & bn & "_7zip_lzma_mx9.tar.lzma");
-    Shell_Execute (up2 & "lzma_enc ../bench_" & bn & ".tar ../bench_" & bn & "_lzma_3.tar");
-    Shell_Execute (+"zstd  --ultra -22 --single-thread ../bench_" & bn & ".tar -o ../bench_" & bn & "_ZStd.tar.zst");
-  end if;
   if cat_set (Preselection) then
     Shell_Execute (za & " -ep2 ../bench_" & bn & "_prsl_2 *");
   end if;
-  Set_Directory ("..");
+  --
+  --  Test block archive compression "by hand": TAR, then compress the .tar file.
+  --
+  if cat_set (TAR) then
+    Shell_Execute (+"tar -c -f ../bench_" & bn & ".tar *");
+    Set_Directory ("..");
+    --  Shell_Execute (+"lzma e -mt1 ../bench_" & bn & ".tar ../bench_" & bn & "_7zip_lzma_mx9.tar.lzma");  -- tar + lzma
+    --  Shell_Execute (up2 & "lzma_enc ../bench_" & bn & ".tar ../bench_" & bn & "_lzma_3.tar");            -- tar + lzma
+    Timing (+"7z a -mmt1 -mm=LZMA:fb=273 -mx9 bench_" & bn & "_7z_bt4_mx9.tar.zip bench_" & bn & ".tar");  -- tar + zip
+    Shell_Execute (up & "zipada -el3          bench_" & bn & "_lzma_3.tar.zip     bench_" & bn & ".tar");  -- tar + zip
+    --
+    Shell_Execute (+"zstd --ultra -22 --single-thread bench_" & bn & ".tar -o bench_" & bn & "_zstd.tar.zst");
+  else
+    Set_Directory ("..");
+  end if;
 end Bench;
