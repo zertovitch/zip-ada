@@ -80,7 +80,8 @@ package body Rezip_lib is
     presel_1, presel_2,
     external_1, external_2, external_3, external_4,
     external_5, external_6, external_7, external_8,
-    external_9, external_10, external_11, external_12
+    external_9, external_10, external_11, external_12,
+    external_13
   );
 
   subtype Internal is Approach
@@ -107,8 +108,11 @@ package body Rezip_lib is
       (U ("kzip"), U ("KZIP"), NN,
          U ("/rn /b#RAND_EXP#(1,2048)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       --  Zip 3.0 or later; BZip2:
-      (U ("zip"), U ("Zip"), U ("http://info-zip.org/"),
+      (U ("zip"), U ("Zip"), NN,
          U ("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
+      --  7z:
+      (U ("7z"), U ("7-Zip"), NN,
+         U ("a -tzip -mm=BZip2:d=#RAND#(1,9)00k:pass=7"), NN, 46, Zip.bzip2, 0, True),
       --  7-Zip 9.20 or later; LZMA:
       (U ("7z"), U ("7-Zip"), NN,
          U ("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma_meth, 0, False),
@@ -356,8 +360,8 @@ package body Rezip_lib is
       Dispose (list);
       if not ok then
         Dual_IO.Put_Line (
-          "Warning: cannot call " & packer &
-          ". Is it callable through the ""path"" ?"
+          "ReZip warning: cannot call " & packer &
+          ", or it has returned an error. Is it callable through the ""path"" ?"
         );
       end if;
     end Call_external;

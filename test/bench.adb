@@ -33,6 +33,7 @@ procedure Bench is
     Put_Line ("     lzma  : test Zip-Ada's LZMA level 1 to 3");
     Put_Line ("     lzma3 : test Zip-Ada's LZMA level 3 (default)");
     Put_Line ("     ppmd  : test PPMd");
+    Put_Line ("     bzip2 : test BZip2");
     Put_Line ("     ps    : test Zip-Ada's Preselection");
     Put_Line ("     tar   : test tar + various one-file compressors");
   end Blurb;
@@ -76,6 +77,8 @@ procedure Bench is
         cat_set (LZMA_3) := True;
       elsif Argument (a) = "ppmd" then
         cat_set (PPMd_External) := True;
+      elsif Argument (a) = "bzip2" then
+        cat_set (BZip2_External) := True;
       elsif Argument (a) = "ps" then
         cat_set (Preselection) := True;
       end if;
@@ -128,26 +131,27 @@ begin
     Shell_Execute (+"zip    -6   ../bench_" & bn & "_iz_6      *");
     Shell_Execute (+"zip    -9   ../bench_" & bn & "_iz_9      *");
     Shell_Execute (+"kzip        ../bench_" & bn & "_kzip      *");
-    Shell_Execute (+"7z a -tzip -mm=deflate -mx5  ../bench_" & bn & "_7zip_defl_5 *");
-    Shell_Execute (+"7z a -tzip -mm=deflate -mfb=258 -mpass=15 -mmc=10000 ../bench_" & bn & "_7zip_deflate *");
+    Shell_Execute (+"7z a -tzip -mm=deflate -mx5  ../bench_" & bn & "_7z_defl_5 *");
+    Shell_Execute (+"7z a -tzip -mm=deflate -mfb=258 -mpass=15 -mmc=10000 ../bench_" & bn & "_7z_deflate *");
     Shell_Execute (+"advzip -a -4 ../bench_" & bn & "_zopfli.zip *");
   end if;
   if cat_set (BZip2_External) then
-    Shell_Execute (+"zip -9 -Z bzip2 ../bench_" & bn & "_bzip2_9 *");
+    Timing (+"zip -9 -Z bzip2                    ../bench_" & bn & "_bzip2_9 *");
+    Timing (+"7z a -tzip -mm=BZip2:d=900k:pass=7 ../bench_" & bn & "_7z_bzip2_9 *");
   end if;
   if cat_set (PPMd_External) then
-    Timing (+"7z a -tzip -mmt1 -mm=PPMd -mx9 ../bench_" & bn & "_7zip_ppmd_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=PPMd -mx9 ../bench_" & bn & "_7z_ppmd_mx9 *");
   end if;
   if cat_set (LZMA_7z) then
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt3_lc7 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt4_lc7 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_bt5_lc7 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_" & bn & "_7zip_lzma_hc4_lc7 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt3:fb=273:lc=7 ../bench_" & bn & "_7z_lzma_bt3_lc7 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt4:fb=273:lc=7 ../bench_" & bn & "_7z_lzma_bt4_lc7 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=bt5:fb=273:lc=7 ../bench_" & bn & "_7z_lzma_bt5_lc7 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:a=2:d=25:mf=hc4:fb=273:lc=7 ../bench_" & bn & "_7z_lzma_hc4_lc7 *");
 
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt3 -mx9          ../bench_" & bn & "_7zip_lzma_bt3_mx9 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_bt4_mx9 *");
-    Timing (+"7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7zip_lzma_bt4_mx9 *");
-    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_" & bn & "_7zip_lzma_bt5_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt3 -mx9          ../bench_" & bn & "_7z_lzma_bt3_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7z_lzma_bt4_mx9 *");
+    Timing (+"7z a       -mmt1 -mm=LZMA:fb=273        -mx9          ../bench_" & bn & "_7z_lzma_bt4_mx9 *");
+    Timing (+"7z a -tzip -mmt1 -mm=LZMA:fb=273:mf=bt5 -mx9          ../bench_" & bn & "_7z_lzma_bt5_mx9 *");
   end if;
   if cat_set (LZMA_1_2) then
     Shell_Execute (za & " -el1 ../bench_" & bn & "_lzma_1 *");
@@ -165,10 +169,11 @@ begin
   if cat_set (TAR) then
     Shell_Execute (+"tar -c -f ../bench_" & bn & ".tar *");
     Set_Directory ("..");
-    --  Shell_Execute (+"lzma e -mt1 ../bench_" & bn & ".tar ../bench_" & bn & "_7zip_lzma_mx9.tar.lzma");  -- tar + lzma
+    --  Shell_Execute (+"lzma e -mt1 ../bench_" & bn & ".tar ../bench_" & bn & "_lzma_mx9.tar.lzma");  -- tar + lzma
     --  Shell_Execute (up2 & "lzma_enc ../bench_" & bn & ".tar ../bench_" & bn & "_lzma_3.tar");            -- tar + lzma
-    Timing (+"7z a -mmt1 -mm=LZMA:fb=273 -mx9 bench_" & bn & "_7z_bt4_mx9.tar.zip bench_" & bn & ".tar");  -- tar + zip
-    Shell_Execute (up & "zipada -el3          bench_" & bn & "_lzma_3.tar.zip     bench_" & bn & ".tar");  -- tar + zip
+    Timing (+"7z a -mmt1 -mm=LZMA:fb=273 -mx9 bench_" & bn & "_7z_lzma_bt4_mx9.tar.zip bench_" & bn & ".tar");  -- tar + zip
+    Timing (+"7z a -mmt1 -mm=PPMd        -mx9 bench_" & bn & "_7z_ppmd.tar.zip         bench_" & bn & ".tar");  -- tar + zip
+    Shell_Execute (up & "zipada -el3          bench_" & bn & "_lzma_3.tar.zip          bench_" & bn & ".tar");  -- tar + zip
     --
     Shell_Execute (+"zstd --ultra -22 --single-thread bench_" & bn & ".tar -o bench_" & bn & "_zstd.tar.zst");
   else
