@@ -318,47 +318,44 @@ package body Zip.Compress is
     if ext_3 = ".JPG" or else ext_4 = ".JPEG" then
       return JPEG;
     end if;
-    if ext_3 = ".ADA" or else ext_3 = ".ADS" or else ext_3 = ".ADB"
-      or else ext_1 = ".C" or else ext_1 = ".H"
-      or else ext_3 = ".CPP" or else ext_3 = ".HPP"
-      or else ext_3 = ".DEF" or else ext_3 = ".ASM"
+    if ext_3 in ".ADA" | ".ADS" | ".ADB"
+      or else ext_1 in ".C" | ".H"
+      or else ext_3 in ".CPP" | ".HPP" | ".DEF" | ".ASM"
       or else ext_4 = ".JAVA" or else ext_2 = ".CS"
-      or else ext_3 = ".PAS" or else ext_3 = ".INC" or else ext_2 = ".PP" or else ext_3 = ".LPR"
+      or else ext_3 in ".PAS" | ".INC" | ".LPR" or else ext_2 = ".PP"
       or else ext_3 = ".MAK" or else ext_2 = ".IN"
-      or else ext_2 = ".SH" or else ext_3 = ".BAT" or else ext_3 = ".CMD"
-      or else ext_3 = ".XML" or else ext_3 = ".XSL"
+      or else ext_2 = ".SH" or else ext_3 in ".BAT" | ".CMD"
+      or else ext_3 in ".XML" | ".XSL"
       or else ext_4 = ".SGML"
       or else ext_3 = ".AUP"  --  Audacity project (XML)
       or else ext_3 = ".HTM" or else ext_4 = ".HTML"
       or else ext_2 = ".JS" or else ext_3 = ".LSP"
-      or else ext_3 = ".CSV" or else ext_3 = ".SQL"
+      or else ext_3 in ".CSV" | ".SQL"
     then
       return Source_code;
     end if;
     --  Zip archives happen to be zipped...
     if ext_4 = ".EPUB"  --  EPUB: e-book reader format
-      or else ext_3 = ".JAR" or else ext_3 = ".ZIP"
-      or else ext_3 = ".ODB" or else ext_3 = ".ODS" or else ext_3 = ".ODT"
-      or else ext_3 = ".OTR" or else ext_3 = ".OTS" or else ext_3 = ".OTT"
-      or else ext_3 = ".CRX" or else ext_3 = ".NTH"
-      or else ext_4 = ".DOCX" or else ext_4 = ".PPTX"
-      or else ext_4 = ".XLSX" or else ext_4 = ".XLSB" or else ext_4 = ".XLSM"
+      or else ext_3 in ".ZIP" | ".JAR" |
+                       ".ODB" | ".ODS" | ".ODT" | ".OTR" | ".OTS" | ".OTT" |
+                       ".CRX" | ".NTH"
+      or else ext_4 in ".DOCX" | ".PPTX" | ".XLSX" | ".XLSB" | ".XLSM"
     then
       return Zip_in_Zip;
     end if;
     --  Some raw camera picture data
-    if ext_3 = ".ORF"          --  Raw Olympus
-      or else ext_3 = ".CR2"   --  Raw Canon
-      or else ext_3 = ".RAF"   --  Raw Fujifilm
-      or else ext_3 = ".SRW"   --  Raw Samsung
+    if ext_3 in ".ORF" |  --  Raw Olympus
+                ".CR2" |  --  Raw Canon
+                ".RAF" |  --  Raw Fujifilm
+                ".SRW"    --  Raw Samsung
     then
       return ORF_CR2;
     end if;
-    if ext_3 = ".ARW"          --  Raw Sony
-      or else ext_3 = ".RW2"   --  Raw Panasonic
-      or else ext_3 = ".NEF"   --  Raw Nikon
-      or else ext_3 = ".DNG"   --  Raw Leica, Pentax
-      or else ext_3 = ".X3F"   --  Raw Sigma
+    if ext_3 in ".ARW" |  --  Raw Sony
+                ".RW2" |  --  Raw Panasonic
+                ".NEF" |  --  Raw Nikon
+                ".DNG" |  --  Raw Leica, Pentax
+                ".X3F"    --  Raw Sigma
     then
       return ARW_RW2;
     end if;
@@ -371,7 +368,7 @@ package body Zip.Compress is
     if ext_3 = ".MP3" then
       return MP3;
     end if;
-    if ext_3 = ".MTS" or else ext_3 = ".MP4" or else ext_3 = ".M4A" or else ext_3 = ".M4P" then
+    if ext_3 in ".MTS" | ".MP4" | ".M4A" | ".M4P" then
       return MP4;
     end if;
     if ext_3 = ".PNG" then
@@ -380,7 +377,7 @@ package body Zip.Compress is
     if ext_3 = ".GIF" then
       return GIF;
     end if;
-    if ext_3 = ".WAV" or else ext_3 = ".UAX" then
+    if ext_3 in ".WAV" | ".UAX" then
       return WAV;
     end if;
     if ext_2 = ".AU" then  --  Audacity raw data

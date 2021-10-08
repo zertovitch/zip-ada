@@ -84,7 +84,7 @@ package body UnZip is
     begin
       if options (junk_directories) then
         for i in n'Range loop
-          if n (i) = '/' or n (i) = '\' then
+          if n (i) in '/' | '\' then
             idx := i;
           end if;
         end loop;
@@ -100,7 +100,7 @@ package body UnZip is
       first_in_name : Integer;
     begin
       for i in composed_name'Range loop
-        if composed_name (i) = '/' or composed_name (i) = '\' then
+        if composed_name (i) in '/' | '\' then
           idx := i;
         end if;
       end loop;
@@ -122,7 +122,7 @@ package body UnZip is
         begin
           --  Set the file separator recognized by the O.S.
           for i in path'Range loop
-            if path (i) = '\' or path (i) = '/' then
+            if path (i) in '/' | '\' then
               path (i) := Directory_Separator;
             end if;
           end loop;
@@ -317,10 +317,7 @@ package body UnZip is
           Zip_32_Data_Size_Type (local_header.dd.uncompressed_size)
         );
       end if;
-      if the_name_len = 0 or else
-        (the_name (the_name_len) = '/' or
-         the_name (the_name_len) = '\')
-      then
+      if the_name_len = 0 or else the_name (the_name_len) in '/' | '\' then
         --  This is a directory name (12-feb-2000)
         skip_this_file := True;
       elsif actual_mode in Write_to_file then
@@ -343,10 +340,7 @@ package body UnZip is
           Zip_32_Data_Size_Type (local_header.dd.uncompressed_size)
         );
       end if;
-      if out_name'Length = 0 or else
-        (out_name (out_name'Last) = '/' or
-         out_name (out_name'Last) = '\')
-      then
+      if out_name'Length = 0 or else out_name (out_name'Last) in '/' | '\' then
         --  This is a directory name, so do not write anything (30-Jan-2012).
         skip_this_file := True;
       elsif actual_mode in Write_to_file then

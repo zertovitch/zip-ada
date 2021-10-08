@@ -687,7 +687,7 @@ package body Zip is
       idx : Integer := n'First - 1;
     begin
       for i in n'Range loop
-        if n (i) = '/' or n (i) = '\' then
+        if n (i) in '/' | '\' then
           idx := i;
         end if;
       end loop;
