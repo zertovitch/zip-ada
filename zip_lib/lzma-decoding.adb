@@ -11,7 +11,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2014 .. 2020 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2014 .. 2021 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -336,7 +336,7 @@ package body LZMA.Decoding is
           end loop;
         end Modulo_case;
       begin
-        out_win.is_full := will_fill or else out_win.is_full;
+        out_win.is_full := out_win.is_full or will_fill;
         out_win.total_pos := out_win.total_pos + len;
         if dist <= out_win.pos and not will_fill then
           Easy_case;
