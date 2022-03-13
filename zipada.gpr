@@ -8,7 +8,9 @@
 --  Build me with "gprbuild -P zipada", or "gnatmake -P zipada",
 --  or open me with GNAT Studio.
 --
---  Important: for building tests, see the zipada_test.gpr project file.
+--  Important:
+--      For building tests, see the zipada_test.gpr project file.
+--      For building a shared library, see the zipada_lib.gpr project file.
 --
 project ZipAda is
 

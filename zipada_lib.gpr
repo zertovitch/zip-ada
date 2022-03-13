@@ -1,0 +1,103 @@
+--  This is a GNAT, GCC or GNAT Studio project file
+--  for the Zip-Ada library project:
+--
+--      home page:     http://unzip-ada.sf.net/
+--      project page:  http://sf.net/projects/unzip-ada/
+--      mirror:        https://github.com/zertovitch/zip-ada
+--
+--  Build me with "gprbuild -P zipada_lib", or "gnatmake -P zipada_lib",
+--  or open me with GNAT Studio.
+--
+--  Important:
+--      For building tests, see the zipada_test.gpr project file.
+--      For building standalone tools, see the zipada.gpr project file.
+--
+library project ZipAda_Lib is
+
+   for Source_Dirs use ("zip_lib");
+   for Object_Dir use "obj_lib";
+   for Create_Missing_Dirs use "true";  --  Flips by default the "-p" switch
+
+   for Library_Dir use "lib";
+   for Library_Name use "zipada";
+
+   for Library_Interface use
+      ("lz77",
+       "lzma", "lzma.decoding", "lzma.encoding",
+       "unzip", "unzip.streams",
+       "zip", "zip.crc_crypto", "zip.create", "zip.compress", "zip.headers",
+       "zip_streams"
+      );
+
+   for Library_Standalone use "standard";
+   for Library_Auto_Init use "true";
+   for Library_Symbol_Policy use "restricted";
+
+   type Library_Type is
+      ("static",
+       "static-pic",
+       "dynamic",
+       "relocatable"
+      );
+
+   Library_Mode : Library_Type := external ("Library_Mode", "dynamic");
+   for Library_Kind use Library_Mode;
+
+   Common_Options := (
+     "-gnatwa",                        --  Warnings switches (a:turn on all info/warnings marked with +)
+     "-gnatwh",                        --  Warnings switches (h:turn on warnings for hiding declarations)
+     "-gnatwcijkmopruvz.c.n.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
+     "-gnatf",  --  Full errors. Verbose details, all undefined references
+     "-gnatq",  --  Don't quit, try semantics, even if parse errors
+     "-gnatQ",  --  Don't quit, write ali/tree file even if compile errors
+     "-g"
+   );
+
+   Fast_Options_Inlining_Neutral :=
+     Common_Options & (
+       "-O2", "-gnatp",
+       "-funroll-loops", "-fpeel-loops", "-funswitch-loops",
+       "-ftracer", "-fweb", "-frename-registers", 
+       "-fpredictive-commoning", "-fgcse-after-reload",
+       "-ftree-vectorize", "-fipa-cp-clone",
+       "-ffunction-sections"
+     );
+
+   Fast_Options :=
+     Fast_Options_Inlining_Neutral & (
+       "-gnatn"  --  Cross-unit inlining
+     );
+
+   type Zip_OS_Kind is
+      ("Win32", "Win64", "Linux", "MacOSX", "Any");
+
+   Zip_OS : Zip_OS_Kind := external ("Zip_OS", "Any");
+
+   package Compiler is
+      for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
+      case Zip_OS is
+        when "Win32" | "Win64" =>
+          for Default_Switches ("ada") use
+            Fast_Options & ("-mfpmath=sse", "-msse3");
+        when others =>
+          for Default_Switches ("ada") use Fast_Options;
+      end case;
+   end Compiler;
+
+   package Binder is
+      --  -Es: Store tracebacks in exception occurrences, and enable symbolic tracebacks
+      for Default_Switches ("ada") use ("-Es");
+   end Binder;
+
+   package Builder is
+      --   "If -j0 is used, then the maximum number of simultaneous compilation
+      --    jobs is the number of core processors on the platform."
+      for Default_Switches ("ada") use ("-j0");
+   end Builder;
+
+   package Ide is
+      for Default_Switches ("adacontrol") use ("-f", "tools/verif.aru", "-r");
+      for Vcs_Kind use "Subversion";
+   end Ide;
+
+end ZipAda_Lib;
