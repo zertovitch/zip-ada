@@ -13,8 +13,9 @@ with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
 with Interfaces;                        use Interfaces;
 
 with Ada.Directories;  --  Ada 2005
---  Non-standard; Ada 20XX items absent in Ada 2012:
---  with Ada_Directories_Extensions;  --  This package's body is system-dependent
+
+--  Non-standard item absent from Ada.Directories
+with Set_Modification_Time_GNAT;  --  This procedure is system-dependent
 
 with Zip, UnZip;
 
@@ -31,7 +32,7 @@ procedure UnZipAda is
                                      To   : in Ada.Calendar.Time) is
   begin
     null;  --  If you want the time stamps, uncomment the following and the "with" above.
-    --  Ada_Directories_Extensions.Set_Modification_Time(Name, To);
+    --  Set_Modification_Time_GNAT (Name, To);
   exception
     when others =>
       null; -- !! utf-8 or ascii names with characters > pos 127 fail
