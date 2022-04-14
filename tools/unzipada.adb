@@ -15,7 +15,7 @@ with Interfaces;                        use Interfaces;
 with Ada.Directories;  --  Ada 2005
 
 --  Non-standard item absent from Ada.Directories
-with Set_Modification_Time_GNAT;  --  This procedure is system-dependent
+--  with Set_Modification_Time_GNAT;  --  This procedure is system-dependent
 
 with Zip, UnZip;
 
