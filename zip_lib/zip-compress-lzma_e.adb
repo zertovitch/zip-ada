@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2020 Gautier de Montmollin
+--  Copyright (c) 2016 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,12 +33,12 @@ procedure Zip.Compress.LZMA_E
  (input,
   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
   input_size_known : Boolean;
-  input_size       : Zip_32_Data_Size_Type;
+  input_size       : Zip_64_Data_Size_Type;
   feedback         : Feedback_proc;
   method           : LZMA_Method;
   CRC              : in out Interfaces.Unsigned_32; -- only updated here
   crypto           : in out Crypto_pack;
-  output_size      : out Zip_32_Data_Size_Type;
+  output_size      : out Zip_64_Data_Size_Type;
   compression_ok   : out Boolean -- indicates compressed < uncompressed
  )
 is

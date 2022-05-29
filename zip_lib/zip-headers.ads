@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2000 .. 2019 Gautier de Montmollin
+--  Copyright (c) 2000 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -68,6 +68,8 @@
 --  Change log:
 --  ==========
 --
+--  29-May-2022: GdM: Support for Zip64 extensions.
+--
 --  22-Nov-2012: GdM: End-of-central-directory loaded in a single stream Read
 --                      operation instead of up to ~1.4 million Read
 --                      operations (for a non Zip file with 65535 times
@@ -98,7 +100,9 @@ package Zip.Headers is
     --  PK78                           --  1 .. 4
     crc_32             : Unsigned_32;  --  5 .. 8
     compressed_size,
-    uncompressed_size  : Unsigned_32;
+    uncompressed_size  : Unsigned_64;
+    --  ^ Stricto sensu, the data descriptor is 32 bit, but the actual
+    --    size may be larger (complemented through a Zip64 extra field).
   end record;
 
   data_descriptor_length : constant := 16;
@@ -157,8 +161,50 @@ package Zip.Headers is
   bad_local_header : exception;
 
   procedure Write (
+    stream      : in out Root_Zipstream_Type'Class;
+    header      : in     Local_File_Header;
+    needs_zip64 : in     Boolean
+  );
+
+  ---------------------------------------------
+  -- PKZIP local file header Zip64 extension --
+  ---------------------------------------------
+
+  --  4.5.3 Zip64 Extended Information Extra Field
+
+  type Local_File_Header_Extension is record
+    tag               : Unsigned_16;
+    size              : Unsigned_16;
+    uncompressed_size : Unsigned_64;
+    compressed_size   : Unsigned_64;
+    offset            : Unsigned_64;
+    --  ^ Seems optional, used only for the central dir.
+    --    See local_header_extension_short_length below.
+  end record;
+
+  local_header_extension_length       : constant := 28;
+
+  --  Shorter length (witout the offset field) for the local header
+  --  extension is not properly documented in appnote.txt but is
+  --  required by WinZip and 7z (otherwise you get: WARNINGS: Headers Error).
+  --
+  --  Fortunately someone published a nice blog post with
+  --  a Zip64 example, as simple as possible...
+  --  https://blog.yaakov.online/zip64-go-big-or-go-home/
+  --
+  local_header_extension_short_length : constant := 20;
+
+  local_header_extension_tag    : constant := 1;
+
+  procedure Read_and_check (
     stream : in out Root_Zipstream_Type'Class;
-    header : in     Local_File_Header
+    header :    out Local_File_Header_Extension
+  );
+
+  procedure Write (
+    stream : in out Root_Zipstream_Type'Class;
+    header : in     Local_File_Header_Extension;
+    short  : in     Boolean
   );
 
   ---------------------------------------------------------
@@ -167,14 +213,13 @@ package Zip.Headers is
   --  NB: a central header contains a local header in the middle
 
   type Central_File_Header is record
-    --  PK12                                  --  1 ..  4
-    made_by_version     : Unsigned_16;        --  5 ..  6
-    short_info          : Local_File_Header;  --  7 .. 32
-    comment_length      : Unsigned_16;        -- 33 .. 34
+    made_by_version     : Unsigned_16;
+    short_info          : Local_File_Header;
+    comment_length      : Unsigned_16;
     disk_number_start   : Unsigned_16;
     internal_attributes : Unsigned_16;  --  internal properties of data
     external_attributes : Unsigned_32;  --  1st byte if MS-DOS: see below
-    local_header_offset : Unsigned_32;
+    local_header_offset : Unsigned_64;
   end record;
 
   --  MS-DOS external attributes:
@@ -200,18 +245,23 @@ package Zip.Headers is
     header : in     Central_File_Header
   );
 
+  function Needs_Local_Zip_64_Header_Extension
+    (header : Local_File_Header;
+     offset : Unsigned_64  --  Not part of the Zip32 header but of the Zip64 one...
+    )
+  return Boolean;
+
   -------------------------------------------
   -- PKZIP end-of-central-directory - PK56 --
   -------------------------------------------
 
   type End_of_Central_Dir is record
-    --  PK56                            --  1 .. 4
-    disknum             : Unsigned_16;  --  5 .. 6
-    disknum_with_start  : Unsigned_16;
-    disk_total_entries  : Unsigned_16;
-    total_entries       : Unsigned_16;
-    central_dir_size    : Unsigned_32;
-    central_dir_offset  : Unsigned_32;
+    disknum             : Unsigned_32;
+    disknum_with_start  : Unsigned_32;
+    disk_total_entries  : Unsigned_64;
+    total_entries       : Unsigned_64;
+    central_dir_size    : Unsigned_64;
+    central_dir_offset  : Unsigned_64;
     main_comment_length : Unsigned_16;
     --  The Zip archive may be appended to another file (for instance an
     --  executable for self-extracting purposes) of size N.
@@ -243,15 +293,72 @@ package Zip.Headers is
 
   bad_end : exception;
 
-  --  A bit more elaborated variant: find the End-of-Central-Dir and load it.
+  procedure Write (
+    stream  : in out Root_Zipstream_Type'Class;
+    the_end : in     End_of_Central_Dir
+  );
+
+  --  A bit more elaborated variant of Read:
+  --  find the End-of-Central-Dir and load it.
+  --  It includes the processing of an eventual Zip64
+  --  End-of-Central-Dir.
+
   procedure Load (
     stream  : in out Root_Zipstream_Type'Class;
     the_end :    out End_of_Central_Dir
   );
 
+  ------------------------------------------------------------
+  --  Zip64 extensions for end-of-central directory stuff.  --
+  ------------------------------------------------------------
+
+  --  References are from PKWare's appnote.txt.
+
+  --  The Zip64 flavor of the end-of-central directory structure appears in
+  --  the following order. The three records are read in reverse order.
+  --
+
+  --  4.3.14   Zip64 end of central directory record (variable size)
+  --  4.3.15   Zip64 end of central directory locator (fixed size)
+  --  4.3.16   End of central directory record with FFFF's (variable size)
+
+  type Zip64_End_of_Central_Dir is record
+    size                                                          : Unsigned_64;  --  Size of the remaining record
+    version_made_by                                               : Unsigned_16;
+    version_needed_to_extract                                     : Unsigned_16;
+    number_of_this_disk                                           : Unsigned_32;
+    number_of_the_disk_with_the_start_of_the_central_directory    : Unsigned_32;
+    total_number_of_entries_in_the_central_directory_on_this_disk : Unsigned_64;
+    total_number_of_entries_in_the_central_directory              : Unsigned_64;
+    size_of_the_central_directory                                 : Unsigned_64;
+    offset_of_start_of_central_directory                          : Unsigned_64;  --  with respect to the starting disk number
+    --  zip64_extensible_data_sector (variable_size)
+  end record;
+
+  procedure Read_and_check (
+    stream     : in out Root_Zipstream_Type'Class;
+    the_end_64 :    out Zip64_End_of_Central_Dir
+  );
+
   procedure Write (
-    stream  : in out Root_Zipstream_Type'Class;
-    the_end : in     End_of_Central_Dir
+    stream     : in out Root_Zipstream_Type'Class;
+    the_end_64 : in     Zip64_End_of_Central_Dir
+  );
+
+  type Zip64_End_of_Central_Dir_Locator is record
+    number_of_the_disk_with_the_start_of_the_zip64_end_of_central_dir : Unsigned_32;
+    relative_offset_of_the_zip64_end_of_central_dir_record            : Unsigned_64;
+    total_number_of_disks                                             : Unsigned_32;
+  end record;
+
+  procedure Read_and_check (
+    stream         : in out Root_Zipstream_Type'Class;
+    the_end_64_loc :    out Zip64_End_of_Central_Dir_Locator
+  );
+
+  procedure Write (
+    stream         : in out Root_Zipstream_Type'Class;
+    the_end_64_loc : in     Zip64_End_of_Central_Dir_Locator
   );
 
 end Zip.Headers;

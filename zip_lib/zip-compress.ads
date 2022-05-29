@@ -22,7 +22,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2020 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -146,13 +146,13 @@ package Zip.Compress is
     input,
     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
     input_size_known : Boolean;
-    input_size       : Zip_32_Data_Size_Type; -- ignored if input_size_known = False
+    input_size       : Zip_64_Data_Size_Type; -- ignored if input_size_known = False
     method           : Compression_Method;
     feedback         : Feedback_proc;
     password         : String;
     content_hint     : Data_content_type;
     CRC              : out Interfaces.Unsigned_32;
-    output_size      : out Zip_32_Data_Size_Type;
+    output_size      : out Zip_64_Data_Size_Type;
     zip_type         : out Interfaces.Unsigned_16
     --  ^ code corresponding to the compression method actually used
   );
@@ -193,7 +193,7 @@ private
   procedure Allocate_Buffers (
     b                : in out IO_Buffers_Type;
     input_size_known :        Boolean;
-    input_size       :        Zip_32_Data_Size_Type
+    input_size       :        Zip_64_Data_Size_Type
   );
 
   procedure Deallocate_Buffers (b : in out IO_Buffers_Type);
@@ -206,9 +206,9 @@ private
   procedure Write_Block (
     b                : in out IO_Buffers_Type;
     input_size_known :        Boolean;
-    input_size       :        Zip_32_Data_Size_Type;
+    input_size       :        Zip_64_Data_Size_Type;
     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    output_size      : in out Zip_32_Data_Size_Type;
+    output_size      : in out Zip_64_Data_Size_Type;
     crypto           : in out Zip.CRC_Crypto.Crypto_pack
   );
 

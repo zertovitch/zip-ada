@@ -45,6 +45,7 @@ project ZipAda is
            "find_zip.adb", 
            "rezip.adb",
            "touch2.adb",
+           "zip_dir_list.adb",
            --  Miscellaneous
            "lzma_dec", --  LZMA decoder
            "lzma_enc"  --  LZMA encoder

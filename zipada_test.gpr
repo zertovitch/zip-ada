@@ -23,9 +23,6 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
      "ziptest.adb", 
      "zip_with_many_files.adb",
      "zip_with_big_files.adb",
-     --  Other tools
-     "find_zip.adb",
-     "zip_dir_list.adb",
      --  Demos
      "demo_csv_into_zip.adb", 
      "demo_zip.adb",

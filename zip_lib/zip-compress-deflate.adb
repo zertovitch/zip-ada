@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2020 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -73,12 +73,12 @@ procedure Zip.Compress.Deflate
  (input,
   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
   input_size_known : Boolean;
-  input_size       : Zip_32_Data_Size_Type;
+  input_size       : Zip_64_Data_Size_Type;
   feedback         : Feedback_proc;
   method           : Deflation_Method;
   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
   crypto           : in out Crypto_pack;
-  output_size      : out Zip_32_Data_Size_Type;
+  output_size      : out Zip_64_Data_Size_Type;
   compression_ok   : out Boolean  --  indicates compressed < uncompressed
 )
 is
@@ -247,7 +247,7 @@ is
     return new_d;
   end Build_descriptors;
 
-  type Count_type is range 0 .. Zip_32_Data_Size_Type'Last / 2 - 1;
+  type Count_type is range 0 .. Zip_64_Data_Size_Type'Last / 2 - 1;
   type Stats_type is array (Natural range <>) of Count_type;
 
   --  The following is a translation of Zopfli's OptimizeHuffmanForRle (v. 11-May-2016).
@@ -1712,7 +1712,7 @@ begin
     end;
     Put (log, "New stream" & sep & sep & sep & sep & sep & sep & sep & sep);
     if input_size_known then
-      Put (log, sep & Zip_32_Data_Size_Type'Image (input_size) &
+      Put (log, sep & Zip_64_Data_Size_Type'Image (input_size) &
                sep & sep & sep & sep & sep & sep & "bytes input");
     end if;
     New_Line (log);

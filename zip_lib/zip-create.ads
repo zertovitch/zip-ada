@@ -6,7 +6,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintenance and further development)
+--  Copyright (c) 2008 .. 2022 Gautier de Montmollin (maintenance and further development)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,6 +34,7 @@
 --  Change log:
 --  ==========
 --
+--  29-May-2022: GdM: Support for Zip64 extensions.
 --  17-Aug-2020: GdM: Added Zip_Entry_Stream_Type.
 --  23-Mar-2016: GdM: Create with Duplicate_name_policy
 --  14-Feb-2015: GdM: Added "Is_Created" function
@@ -100,7 +101,7 @@ package Zip.Create is
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Feedback        : in     Feedback_proc;
                          Password        : in     String := "";
-                         Compressed_Size :    out Zip.Zip_32_Data_Size_Type;
+                         Compressed_Size :    out Zip.Zip_64_Data_Size_Type;
                          Final_Method    :    out Natural);
 
    default_time                  : Zip_Streams.Time renames Zip_Streams.default_time;
@@ -210,8 +211,9 @@ package Zip.Create is
    procedure Finish (Info : in out Zip_Create_Info);
 
    --  The following exception is raised on cases when the Zip archive
-   --  creation exceeds the Zip_32 format's capacity: 4 GiB total size,
-   --  65535 entries.
+   --  creation exceeds the Zip_64 format's capacity in our implementation:
+   --  * 2 EiB (Exbibytes) total size, which represents around 2.3 million Terabytes
+   --  * around 2 billion entries (archived files).
 
    Zip_Capacity_Exceeded : exception;
 
@@ -240,6 +242,8 @@ private
      Duplicates         : Duplicate_name_policy;
      --  We set up a name dictionary just for detecting duplicate entries:
      name_dictionary    : Name_mapping.Map;
+     --  The format is Zip_32 but is automatically promoted
+     --  to Zip_64 if needed.
      zip_archive_format : Zip_archive_format_type := Zip_32;
    end record;
 

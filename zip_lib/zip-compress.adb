@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2020 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -40,26 +40,28 @@ package body Zip.Compress is
   use Zip_Streams, Zip.CRC_Crypto;
 
   --  The following procedure's purpose is to detect size overflows
-  --  for Zip_32 data. Even when the input size is known, we can have
+  --  for Zip data. Even when the input size is known, we can have
   --  the situation where data is random and the compressed output size
-  --  overflows. Additionally, Zip_32_Data_Size_Type is modular (unsigned),
-  --  so an overflow cannot be detected, even with range checks on.
+  --  overflows.
 
   procedure Increment (
-    out_size : in out Zip_32_Data_Size_Type;
+    out_size : in out Zip_64_Data_Size_Type;
     by       : in     Natural
   )
   is
-    temp_size : constant ZS_Size_Type := ZS_Size_Type (out_size);
-    temp_by   : constant ZS_Size_Type := ZS_Size_Type (by);
-    max       : constant ZS_Size_Type := ZS_Size_Type (Zip_32_Data_Size_Type'Last);
-    use type Zip_32_Data_Size_Type, ZS_Size_Type;
+    temp_by : constant ZS_Size_Type := ZS_Size_Type (by);
+    --  We limit somewhat the real maximum size (16 EiB) in order
+    --  to catch issues with size before an integer overflow.
+    --  1 EiB = 1024 PiB (Pebibyte) = 1024*1024 TiB = 1,048,576 TiB (Tebibyte),
+    --  around 1,152,922 Terabytes.
+    max     : constant ZS_Size_Type := 16#1FFF_FFFF_FFFF_FFFF#;  --  2 EiB.
+    use type Zip_64_Data_Size_Type, ZS_Size_Type;
   begin
-    if temp_size + temp_by > max then
+    if temp_by > max then
       raise Zip.Create.Zip_Capacity_Exceeded with
-        "Compressed data too large (for Zip_32 archive format): size is 4 GiB or more.";
+        "Compressed data too large: size is 2 EiB (Exbibytes) or more.";
     end if;
-    out_size := out_size + Zip_32_Data_Size_Type (by);
+    out_size := out_size + Zip_64_Data_Size_Type (by);
   end Increment;
 
   default_byte_IO_buffer_size : constant := 1024 * 1024;  --  1 MiB
@@ -72,13 +74,13 @@ package body Zip.Compress is
    (input,
     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
     input_size_known : Boolean;
-    input_size       : Zip_32_Data_Size_Type;
+    input_size       : Zip_64_Data_Size_Type;
     method           : Compression_Method;
     feedback         : Feedback_proc;
     password         : String;
     content_hint     : Data_content_type;
     CRC              : out Interfaces.Unsigned_32;
-    output_size      : out Zip_32_Data_Size_Type;
+    output_size      : out Zip_64_Data_Size_Type;
     zip_type         : out Interfaces.Unsigned_16
    )
   is
@@ -101,7 +103,7 @@ package body Zip.Compress is
     procedure Store_data (do_write : Boolean) is
       Buffer      : Byte_Buffer (1 .. default_byte_IO_buffer_size);
       Last_Read   : Natural;
-      counted     : Zip_32_Data_Size_Type := 0;
+      counted     : Zip_64_Data_Size_Type := 0;
     begin
       zip_type := Compression_format_code.store_code;
       while not End_Of_Stream (input) loop
@@ -393,16 +395,16 @@ package body Zip.Compress is
   procedure Allocate_Buffers (
     b                : in out IO_Buffers_Type;
     input_size_known :        Boolean;
-    input_size       :        Zip_32_Data_Size_Type
+    input_size       :        Zip_64_Data_Size_Type
   )
   is
-    calibration : Zip_32_Data_Size_Type := default_byte_IO_buffer_size;
+    calibration : Zip_64_Data_Size_Type := default_byte_IO_buffer_size;
   begin
     if input_size_known then
       calibration :=
-        Zip_32_Data_Size_Type'Min (
+        Zip_64_Data_Size_Type'Min (
           default_byte_IO_buffer_size,
-          Zip_32_Data_Size_Type'Max (8, input_size)
+          Zip_64_Data_Size_Type'Max (8, input_size)
         );
     end if;
     b.InBuf  := new Byte_Buffer (1 .. Integer (calibration));
@@ -435,14 +437,14 @@ package body Zip.Compress is
   procedure Write_Block (
     b                : in out IO_Buffers_Type;
     input_size_known :        Boolean;
-    input_size       :        Zip_32_Data_Size_Type;
+    input_size       :        Zip_64_Data_Size_Type;
     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    output_size      : in out Zip_32_Data_Size_Type;
+    output_size      : in out Zip_64_Data_Size_Type;
     crypto           : in out Zip.CRC_Crypto.Crypto_pack
   )
   is
     amount : constant Integer := b.OutBufIdx - 1;
-    use type Zip_32_Data_Size_Type;
+    use type Zip_64_Data_Size_Type;
   begin
     Increment (output_size, Integer'Max (0, amount));
     if input_size_known and then output_size >= input_size then

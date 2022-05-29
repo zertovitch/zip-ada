@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2020 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,6 +27,7 @@
 with Zip.Headers;
 
 with Ada.Characters.Handling;
+with Ada.Exceptions;
 with Ada.Unchecked_Deallocation;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
@@ -183,7 +184,7 @@ package body Zip is
       file_name        : String;
       file_index       : Zip_Streams.ZS_Index_Type;
       comp_size,
-      uncomp_size      : Zip_32_Data_Size_Type;
+      uncomp_size      : Zip_64_Data_Size_Type;
       crc_32           : Unsigned_32;
       date_time        : Time;
       method           : PKZip_method;
@@ -268,12 +269,25 @@ package body Zip is
       declare
         this_name : String (1 .. Natural (header.short_info.filename_length));
         use Zip_Streams;
+        mem : ZS_Index_Type;
+        head_extra : Headers.Local_File_Header_Extension;
       begin
         String'Read (from'Access, this_name);
+        mem := Index (from);
+        if header.short_info.extra_field_length >= 4 then
+          Headers.Read_and_check (from, head_extra);
+          if header.local_header_offset = 16#FFFF_FFFF#
+            and then head_extra.tag = Headers.local_header_extension_tag
+          then
+            header.short_info.dd.uncompressed_size := head_extra.uncompressed_size;
+            header.short_info.dd.compressed_size   := head_extra.compressed_size;
+            header.local_header_offset             := head_extra.offset;
+          end if;
+        end if;
         --  Skip extra field and entry comment.
         Set_Index (
           from,
-          Index (from) +
+          mem +
           ZS_Size_Type (
             header.short_info.extra_field_length +
             header.comment_length
@@ -317,8 +331,9 @@ package body Zip is
     info.zip_file_comment   := main_comment;
     info.zip_archive_format := Zip_32;
   exception
-    when Zip.Headers.bad_end =>
-      raise Zip.Archive_corrupted with "Bad (or no) end-of-central-directory";
+    when E : Zip.Headers.bad_end =>
+      raise Zip.Archive_corrupted
+        with "Bad (or no) end-of-central-directory " & Ada.Exceptions.Exception_Message (E);
     when Zip.Headers.bad_central_header =>
       raise Zip.Archive_corrupted with "Bad central directory entry header";
   end Load;
@@ -544,8 +559,10 @@ package body Zip is
   is
     the_end    : Zip.Headers.End_of_Central_Dir;
     header     : Zip.Headers.Central_File_Header;
-    min_offset : Zip_32_Data_Size_Type;
+    min_offset : Zip_64_Data_Size_Type;
     use Zip_Streams;
+    mem : ZS_Index_Type;
+    head_extra : Headers.Local_File_Header_Extension;
   begin
     Zip.Headers.Load (file, the_end);
     Set_Index (
@@ -560,12 +577,23 @@ package body Zip is
     end if;
 
     for i in 1 .. the_end.total_entries loop
-      Zip.Headers.Read_and_check (file, header);
+      Headers.Read_and_check (file, header);
+      Set_Index (file, Index (file) + ZS_Size_Type (header.short_info.filename_length));
+      mem := Index (file);
+      if header.short_info.extra_field_length >= 4 then
+        Headers.Read_and_check (file, head_extra);
+        if header.local_header_offset = 16#FFFF_FFFF#
+          and then head_extra.tag = Headers.local_header_extension_tag
+        then
+          header.short_info.dd.uncompressed_size := head_extra.uncompressed_size;
+          header.short_info.dd.compressed_size   := head_extra.compressed_size;
+          header.local_header_offset             := head_extra.offset;
+        end if;
+      end if;
       Set_Index (file,
-        Index (file) +
+        mem +
         ZS_Size_Type
-              (header.short_info.filename_length +
-               header.short_info.extra_field_length +
+              (header.short_info.extra_field_length +
                header.comment_length
               )
       );
@@ -579,8 +607,12 @@ package body Zip is
     file_index := Zip_Streams.ZS_Index_Type (1 + min_offset) + the_end.offset_shifting;
 
   exception
-    when Zip.Headers.bad_end | Ada.IO_Exceptions.End_Error =>
-      raise Zip.Archive_corrupted with "Bad (or no) end-of-central-directory";
+    when E : Zip.Headers.bad_end =>
+      raise Zip.Archive_corrupted
+        with "Bad (or no) end-of-central-directory " & Ada.Exceptions.Exception_Message (E);
+    when Ada.IO_Exceptions.End_Error =>
+      raise Zip.Archive_corrupted
+        with "Bad (or no) end-of-central-directory (end of stream reached)";
     when Zip.Headers.bad_central_header =>
       raise Zip.Archive_corrupted with "Bad central directory entry header";
   end Find_first_offset;
@@ -593,14 +625,16 @@ package body Zip is
     name           : in     String;
     case_sensitive : in     Boolean;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type;
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   )
   is
     the_end : Zip.Headers.End_of_Central_Dir;
     header  : Zip.Headers.Central_File_Header;
     use Zip_Streams;
+    mem : ZS_Index_Type;
+    head_extra : Headers.Local_File_Header_Extension;
   begin
     Zip.Headers.Load (file, the_end);
     Set_Index (file, ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting);
@@ -610,8 +644,19 @@ package body Zip is
         this_name : String (1 .. Natural (header.short_info.filename_length));
       begin
         String'Read (file'Access, this_name);
+        mem := Index (file);
+        if header.short_info.extra_field_length >= 4 then
+          Headers.Read_and_check (file, head_extra);
+          if header.local_header_offset = 16#FFFF_FFFF#
+            and then head_extra.tag = Headers.local_header_extension_tag
+          then
+            header.short_info.dd.uncompressed_size := head_extra.uncompressed_size;
+            header.short_info.dd.compressed_size   := head_extra.compressed_size;
+            header.local_header_offset             := head_extra.offset;
+          end if;
+        end if;
         Set_Index (file,
-          Index (file) +
+          mem +
           ZS_Size_Type (
                   header.short_info.extra_field_length +
                   header.comment_length
@@ -623,8 +668,8 @@ package body Zip is
         then
           --  Name found in central directory !
           file_index  := Zip_Streams.ZS_Index_Type (1 + header.local_header_offset) + the_end.offset_shifting;
-          comp_size   := Zip_32_Data_Size_Type (header.short_info.dd.compressed_size);
-          uncomp_size := Zip_32_Data_Size_Type (header.short_info.dd.uncompressed_size);
+          comp_size   := Zip_64_Data_Size_Type (header.short_info.dd.compressed_size);
+          uncomp_size := Zip_64_Data_Size_Type (header.short_info.dd.uncompressed_size);
           crc_32      := header.short_info.dd.crc_32;
           return;
         end if;
@@ -645,8 +690,8 @@ package body Zip is
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type;
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   )
   is
@@ -678,8 +723,8 @@ package body Zip is
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type;
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   )
   is
@@ -702,8 +747,8 @@ package body Zip is
     procedure Check_entry (
       entry_name          : String; -- 'name' is compressed entry's name
       entry_index         : Zip_Streams.ZS_Index_Type;
-      entry_comp_size     : Zip_32_Data_Size_Type;
-      entry_uncomp_size   : Zip_32_Data_Size_Type;
+      entry_comp_size     : Zip_64_Data_Size_Type;
+      entry_uncomp_size   : Zip_64_Data_Size_Type;
       entry_crc_32        : Interfaces.Unsigned_32;
       date_time           : Time;
       method              : PKZip_method;
@@ -814,8 +859,8 @@ package body Zip is
   procedure Get_sizes (
     info           : in     Zip_info;
     name           : in     String;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type
   )
   is
     dummy_file_index : Zip_Streams.ZS_Index_Type;

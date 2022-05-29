@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2020 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -55,9 +55,9 @@ package body UnZip.Streams is
     out_stream_ptr  :        p_Stream;
     --  if not null, extract to out_stream_ptr, not to memory
     password        : in out Ada.Strings.Unbounded.Unbounded_String;
-    hint_comp_size  : in     Zip.Zip_32_Data_Size_Type; -- Added 2007 for .ODS files
+    hint_comp_size  : in     Zip.Zip_64_Data_Size_Type; -- Added 2007 for .ODS files
     hint_crc_32     : in     Unsigned_32;    -- Added 2012 for decryption
-    cat_uncomp_size : in     Zip.Zip_32_Data_Size_Type
+    cat_uncomp_size : in     Zip.Zip_64_Data_Size_Type
   )
   is
     work_index : Zip_Streams.ZS_Index_Type := header_index;
@@ -92,6 +92,24 @@ package body UnZip.Streams is
               local_header.extra_field_length +
               Zip.Headers.local_header_length
       );
+
+    --
+    --  Zip64 extension.
+    --
+    if local_header.dd.compressed_size = 16#FFFF_FFFF#
+      or local_header.dd.uncompressed_size = 16#FFFF_FFFF#
+    then
+      declare
+        mem : constant Zip_Streams.ZS_Index_Type := Zip_Streams.Index (zip_stream);
+        local_header_extension : Zip.Headers.Local_File_Header_Extension;
+      begin
+        Zip_Streams.Set_Index (zip_stream, mem + Zip_Streams.ZS_Index_Type (local_header.filename_length));
+        Zip.Headers.Read_and_check (zip_stream, local_header_extension);
+        Zip_Streams.Set_Index (zip_stream, mem);
+        local_header.dd.uncompressed_size := local_header_extension.uncompressed_size;
+        local_header.dd.compressed_size   := local_header_extension.compressed_size;
+      end;
+    end if;
 
     data_descriptor_after_data := (local_header.bit_flag and 8) /= 0;
 
@@ -168,8 +186,8 @@ package body UnZip.Streams is
                       )
   is
     header_index : Zip_Streams.ZS_Index_Type;
-    comp_size    : Zip.Zip_32_Data_Size_Type;
-    uncomp_size  : Zip.Zip_32_Data_Size_Type;
+    comp_size    : Zip.Zip_64_Data_Size_Type;
+    uncomp_size  : Zip.Zip_64_Data_Size_Type;
     crc_32 : Interfaces.Unsigned_32;
     work_password : Ada.Strings.Unbounded.Unbounded_String :=
       Ada.Strings.Unbounded.To_Unbounded_String (password);
@@ -383,8 +401,8 @@ package body UnZip.Streams is
   end Stream;
 
   function Size (File : in Zipped_File_Type) return Count is
-    comp_size   : Zip.Zip_32_Data_Size_Type;
-    uncomp_size : Zip.Zip_32_Data_Size_Type;
+    comp_size   : Zip.Zip_64_Data_Size_Type;
+    uncomp_size : Zip.Zip_64_Data_Size_Type;
   begin
     Zip.Get_sizes (File.archive_info, File.file_name.all, comp_size, uncomp_size);
     return Count (uncomp_size);

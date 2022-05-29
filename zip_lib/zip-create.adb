@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintenance and further development)
+--  Copyright (c) 2008 .. 2022 Gautier de Montmollin (maintenance and further development)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -107,6 +107,10 @@ package body Zip.Create is
         Info.Last_entry := 1;
         Resize (Info.Contains, 32);
       else
+        if Info.Last_entry = Natural'Last then
+          raise Zip_Capacity_Exceeded with
+             "Too many entries: more than 2,147,483,647.";
+        end if;
         Info.Last_entry := Info.Last_entry + 1;
         if Info.Last_entry > Info.Contains'Last then
           --  Info.Contains is full, time to resize it!
@@ -144,7 +148,7 @@ package body Zip.Create is
                          Stream   : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Password : in     String := "")
    is
-     Compressed_Size : Zip.Zip_32_Data_Size_Type;  --  dummy
+     Compressed_Size : Zip.Zip_64_Data_Size_Type;  --  dummy
      Final_Method    : Natural;             --  dummy
    begin
      Add_Stream (Info, Stream, null, Password, Compressed_Size, Final_Method);
@@ -152,21 +156,20 @@ package body Zip.Create is
 
    four_GiB : constant := 4 * (1024 ** 3);  --  = 2 ** 32
 
-   Zip_32_size_exceeded_message : constant String :=
-     "Zip file too large (for Zip_32 archive format): 4 GiB or more total compressed size.";
-
    use Zip.Compress;
 
    procedure Add_Stream (Info            : in out Zip_Create_Info;
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Feedback        : in     Feedback_proc;
                          Password        : in     String := "";
-                         Compressed_Size :    out Zip.Zip_32_Data_Size_Type;
+                         Compressed_Size :    out Zip.Zip_64_Data_Size_Type;
                          Final_Method    :    out Natural)
    is
       mem1, mem2 : ZS_Index_Type := 1;
       entry_name : String := Get_Name (Stream);
       Last : Positive;
+      needs_zip64 : Boolean;
+      fh_extra : Local_File_Header_Extension;
    begin
       --  Appnote.txt, V. J. :
       --    " All slashes should be forward slashes '/' as opposed to backwards slashes '\' "
@@ -196,26 +199,31 @@ package body Zip.Create is
           cfh.external_attributes := cfh.external_attributes or 1;
         end if;
         Info.Contains (Last).name := new String'(entry_name);
-        if Info.zip_archive_format = Zip_32
-          and then Size (Stream) >= four_GiB
-        then
+        if Info.zip_archive_format = Zip_32 and then Size (Stream) >= four_GiB then
+          --  Promote format to Zip64.
+          Info.zip_archive_format := Zip_64;
           raise Zip_Capacity_Exceeded with
-            "Entry data too large (for Zip_32 archive format): size is 4 GiB or more.";
-          --  NB: Theoretically we could relax this rule by setting the
-          --      uncompressed size to 4 GiB - 1 in the headers and hope
-          --      for some compression. TBD: check conventions around this.
+            "Entry data too large : size is 16 EiB (Exbibytes) or more.";
         end if;
         shi.file_timedate         := Get_Time (Stream);
-        shi.dd.uncompressed_size  := Unsigned_32 (Size (Stream));
+        shi.dd.uncompressed_size  := Unsigned_64 (Size (Stream));
+        shi.dd.compressed_size    := shi.dd.uncompressed_size;
         shi.filename_length       := entry_name'Length;
         shi.extra_field_length    := 0;
 
         mem1 := Index (Info.Stream.all);
-        cfh.local_header_offset := Unsigned_32 (mem1) - 1;
+        cfh.local_header_offset := Unsigned_64 (mem1) - 1;
+        needs_zip64 := Needs_Local_Zip_64_Header_Extension (shi, cfh.local_header_offset);
         --  Write the local header with incomplete informations
-        Zip.Headers.Write (Info.Stream.all, shi);
+        Zip.Headers.Write (Info.Stream.all, shi, needs_zip64);
 
         String'Write (Info.Stream, entry_name);
+        if needs_zip64 then
+          --  Partial garbage. The extra field is rewritten later.
+          fh_extra.tag  := 1;
+          fh_extra.size := local_header_extension_short_length - 4;
+          Zip.Headers.Write (Info.Stream.all, fh_extra, True);
+        end if;
 
         Zip.Compress.Compress_data
           (input            => Stream,
@@ -244,13 +252,17 @@ package body Zip.Create is
           shi.bit_flag := shi.bit_flag or LZMA_EOS_Flag_Bit;
         end if;
         mem2 := Index (Info.Stream.all);
-        if Info.zip_archive_format = Zip_32 and then mem2 >= four_GiB then
-          raise Zip_Capacity_Exceeded with Zip_32_size_exceeded_message;
-        end if;
         --  Go back to the local header to rewrite it with complete informations
         --  known after the compression: CRC value, compressed size, actual compression format.
         Set_Index (Info.Stream.all, mem1);
-        Zip.Headers.Write (Info.Stream.all, shi);
+        Zip.Headers.Write (Info.Stream.all, shi, needs_zip64);
+        if needs_zip64 then
+          String'Write (Info.Stream, entry_name);
+          fh_extra.uncompressed_size := shi.dd.uncompressed_size;
+          fh_extra.compressed_size   := shi.dd.compressed_size;
+          fh_extra.offset            := cfh.local_header_offset;
+          Zip.Headers.Write (Info.Stream.all, fh_extra, True);
+        end if;
         --  Return to momentaneous end of file
         Set_Index (Info.Stream.all, mem2);
         --
@@ -277,7 +289,7 @@ package body Zip.Create is
       temp_zip_stream : aliased File_Zipstream;
       use Ada.Text_IO;
       fd : File_Type;
-      Compressed_Size : Zip.Zip_32_Data_Size_Type; -- unused
+      Compressed_Size : Zip.Zip_64_Data_Size_Type; -- unused
       Final_Method    : Natural; -- unused
    begin
      --  Read the file
@@ -368,6 +380,7 @@ package body Zip.Create is
    is
       lh : Zip.Headers.Local_File_Header;
       data_descriptor_after_data : Boolean;
+      offset : Unsigned_64;
    begin
       Zip.Headers.Read_and_check (Stream, lh);
       data_descriptor_after_data := (lh.bit_flag and 8) /= 0;
@@ -383,12 +396,16 @@ package body Zip.Create is
           Insert_to_name_dictionary (name, Info.name_dictionary);
         end if;
         Add_catalogue_entry (Info);
-        Info.Contains (Info.Last_entry).head.local_header_offset :=
-          Unsigned_32 (Index (Info.Stream.all)) - 1;
+        offset := Unsigned_64 (Index (Info.Stream.all)) - 1;
+        Info.Contains (Info.Last_entry).head.local_header_offset := offset;
         Info.Contains (Info.Last_entry).name := new String'(name);
-        lh.extra_field_length := 0;  --  extra field is zeroed (causes problems if not)
-        Zip.Headers.Write (Info.Stream.all, lh);  --  Copy local header to new stream
-        String'Write (Info.Stream, name);         --  Copy entry name to new stream
+        --  Copy local header to new stream
+        --  (Zip64 extra field is copied anyway):
+        Zip.Headers.Write (Info.Stream.all, lh, needs_zip64 => False);
+        --  Copy entry name to new stream:
+        String'Write (Info.Stream, name);
+         --  Copy extra field to new stream, usually a Zip64 field:
+        String'Write (Info.Stream, extra);
       end;
       Zip.Copy_chunk (
         Stream,
@@ -604,49 +621,88 @@ package body Zip.Create is
         Info.name_dictionary.Clear;
       end Close_eventual_file_and_deallocate;
       --
-      procedure Get_index_and_check_Zip_32_limit is
-      begin
-        current_index := Index (Info.Stream.all);
-        if Info.zip_archive_format = Zip_32 and then current_index >= four_GiB then
-          Close_eventual_file_and_deallocate;
-          raise Zip_Capacity_Exceeded with Zip_32_size_exceeded_message;
-        end if;
-      end Get_index_and_check_Zip_32_limit;
+      needs_local_zip64 : Boolean;
+      fh_extra : Local_File_Header_Extension;
+      ed64l    : Zip64_End_of_Central_Dir_Locator;
+      ed64     : Zip64_End_of_Central_Dir;
    begin
       --
       --  2/ Almost done - write Central Directory:
       --
-      Get_index_and_check_Zip_32_limit;
-      ed.central_dir_offset := Unsigned_32 (current_index) - 1;
+      current_index := Index (Info.Stream.all);
+      ed.central_dir_offset := Unsigned_64 (current_index) - 1;
       ed.total_entries := 0;
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
       if Info.zip_archive_format = Zip_32
-        and then Info.Last_entry > Integer (Unsigned_16'Last)
+        and then Info.Last_entry >= Integer (Unsigned_16'Last)
       then
-        Close_eventual_file_and_deallocate;
-        raise Zip_Capacity_Exceeded with
-           "Too many entries (for Zip_32 archive format): more than 65535.";
+        --  Promote format to Zip64.
+        Info.zip_archive_format := Zip_64;
       end if;
       if Info.Contains /= null then
-        for e in 1 .. Info.Last_entry loop
+        for cat of Info.Contains (1 .. Info.Last_entry) loop
           ed.total_entries := ed.total_entries + 1;
-          Zip.Headers.Write (Info.Stream.all, Info.Contains (e).head);
-          String'Write (Info.Stream, Info.Contains (e).name.all);
-          --  The extra field here is assumed to be empty!
+          needs_local_zip64 :=
+            Needs_Local_Zip_64_Header_Extension
+              (cat.head.short_info, cat.head.local_header_offset);
+          if needs_local_zip64 then
+            cat.head.short_info.extra_field_length := local_header_extension_length;
+            fh_extra.tag  := 1;
+            fh_extra.size := local_header_extension_length - 4;
+            fh_extra.uncompressed_size := cat.head.short_info.dd.uncompressed_size;
+            fh_extra.compressed_size   := cat.head.short_info.dd.compressed_size;
+            fh_extra.offset            := cat.head.local_header_offset;
+            cat.head.short_info.dd.uncompressed_size := 16#FFFF_FFFF#;
+            cat.head.short_info.dd.compressed_size   := 16#FFFF_FFFF#;
+            cat.head.local_header_offset             := 16#FFFF_FFFF#;
+            --  Promote format to Zip64.
+            Info.zip_archive_format := Zip_64;
+          end if;
+          Write (Info.Stream.all, cat.head);
+          String'Write (Info.Stream, cat.name.all);
+          if needs_local_zip64 then
+            Write (Info.Stream.all, fh_extra, False);
+          end if;
           ed.central_dir_size :=
             ed.central_dir_size +
-              Zip.Headers.central_header_length +
-                Unsigned_32 (Info.Contains (e).head.short_info.filename_length);
-          Get_index_and_check_Zip_32_limit;
+              Headers.central_header_length +
+                Unsigned_64 (cat.head.short_info.filename_length) +
+                Unsigned_64 (cat.head.short_info.extra_field_length);
+          current_index := Index (Info.Stream.all);
         end loop;
       end if;
       ed.disknum := 0;
       ed.disknum_with_start := 0;
       ed.disk_total_entries := ed.total_entries;
-      Zip.Headers.Write (Info.Stream.all, ed);
       --
-      Get_index_and_check_Zip_32_limit;
+      if Info.zip_archive_format = Zip_64 then
+        ed64l.number_of_the_disk_with_the_start_of_the_zip64_end_of_central_dir := 0;
+        ed64l.relative_offset_of_the_zip64_end_of_central_dir_record :=
+          Unsigned_64 (Index (Info.Stream.all) - 1);
+        ed64l.total_number_of_disks := 1;
+        --
+        ed64.size := 44;
+        ed64.version_made_by           := 16#2D#;
+        ed64.version_needed_to_extract := 16#2D#;
+        ed64.number_of_this_disk                                        := ed.disknum;
+        ed64.number_of_the_disk_with_the_start_of_the_central_directory := ed.disknum_with_start;
+        ed64.total_number_of_entries_in_the_central_directory_on_this_disk := ed.disk_total_entries;
+        ed64.total_number_of_entries_in_the_central_directory              := ed.total_entries;
+        ed64.size_of_the_central_directory        := ed.central_dir_size;
+        ed64.offset_of_start_of_central_directory := ed.central_dir_offset;
+        Write (Info.Stream.all, ed64);
+        --
+        Write (Info.Stream.all, ed64l);
+        --
+        ed.disk_total_entries := 16#FFFF#;
+        ed.total_entries      := 16#FFFF#;
+        ed.central_dir_size   := 16#FFFF_FFFF#;
+        ed.central_dir_offset := 16#FFFF_FFFF#;
+      end if;
+      Write (Info.Stream.all, ed);
+      --
+      current_index := Index (Info.Stream.all);
       Close_eventual_file_and_deallocate;
    end Finish;
 

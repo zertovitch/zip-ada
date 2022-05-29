@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2020 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,12 +43,12 @@ procedure Zip.Compress.Reduce
  (input,
   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
   input_size_known : Boolean;
-  input_size       : Zip_32_Data_Size_Type;  --  ignored if unknown
+  input_size       : Zip_64_Data_Size_Type;  --  ignored if unknown
   feedback         : Feedback_proc;
   method           : Reduction_Method;
   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
   crypto           : in out Crypto_pack;
-  output_size      : out Zip_32_Data_Size_Type;
+  output_size      : out Zip_64_Data_Size_Type;
   compression_ok   : out Boolean  --  indicates when compressed <= uncompressed
 )
 is
@@ -368,7 +368,7 @@ is
   end record;
 
   LZ_cache : LZ_cache_type;
-  lz77_pos, lz77_size : Zip_32_Data_Size_Type := 0;
+  lz77_pos, lz77_size : Zip_64_Data_Size_Type := 0;
 
   --  Possible ranges for LZ distance and length encoding
   --  in the Zip-Reduce format:
@@ -447,12 +447,12 @@ is
     Look_redfac        : constant array (1 .. 4) of Integer := (31, 63, 255, 191);
     --  See za_work.xls, sheet Reduce, for the cooking of these numbers...
     Look_Ahead         : constant Integer := Look_redfac (reduction_factor);
-    String_buffer_size : constant := 2**12; -- 2**n optimizes "mod" to "and"
+    String_buffer_size : constant := 2**12;  --  2**n optimizes "mod" to "and"
     Threshold          : constant := 3;
 
-    --  if the DLE coding doesn't fit the format constraints, we
+    --  If the DLE coding doesn't fit the format constraints, we
     --  need to decode it as a simple sequence of literals
-    --  before the probabilistic reduction
+    --  before the probabilistic reduction.
 
     type Text_Buffer is array (0 .. String_buffer_size + Look_Ahead - 1) of Byte;
     Text_Buf : Text_Buffer;
@@ -476,7 +476,7 @@ is
           LZ_cache.cnt := Natural'Min (LZ_cache_size, LZ_cache.cnt + 1);
         when compress_for_real =>  --  Probabilistic reduction
           if Slen (last_b) = 0 then
-            --  follower set is empty for this character
+            --  Follower set is empty for this character.
             Put_code (b, 8);
           else
             follo := has_follower (last_b, curr_b);
@@ -493,7 +493,7 @@ is
       last_b := curr_b;
       if phase = compress_for_real and then
          using_LZ77 and then
-         (lz77_size - lz77_pos) < Zip_32_Data_Size_Type (LZ_cache.cnt)
+         (lz77_size - lz77_pos) < Zip_64_Data_Size_Type (LZ_cache.cnt)
         --  We have entered the zone covered by the cache, so no need
         --  to continue the LZ77 compression effort: the results are
         --  already stored.

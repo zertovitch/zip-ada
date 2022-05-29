@@ -9,13 +9,13 @@ with Ada.Text_IO;
 
 procedure My_tell_data
              (file_name          : String;
-              compressed_bytes   : Zip.Zip_32_Data_Size_Type;
-              uncompressed_bytes : Zip.Zip_32_Data_Size_Type;
+              compressed_bytes   : Zip.Zip_64_Data_Size_Type;
+              uncompressed_bytes : Zip.Zip_64_Data_Size_Type;
               method             : Zip.PKZip_method)
 is
   use Ada.Text_IO;
 
-  package MIO is new Modular_IO (Zip.Zip_32_Data_Size_Type);
+  package MIO is new Modular_IO (Zip.Zip_64_Data_Size_Type);
 
   function Cut_name (n : String; l : Natural) return String is
     dots : constant String := "...";
@@ -27,7 +27,7 @@ is
     end if;
   end Cut_name;
 
-  use type Zip.Zip_32_Data_Size_Type;
+  use type Zip.Zip_64_Data_Size_Type;
 
 begin
   New_Line;
@@ -53,7 +53,7 @@ begin
   else
     Put (" :");
     MIO.Put (
-      Zip.Zip_32_Data_Size_Type (
+      Zip.Zip_64_Data_Size_Type (
         (100.0 * Long_Float (compressed_bytes)) / Long_Float (uncompressed_bytes)
       ), 4);
     Put ("% of ");

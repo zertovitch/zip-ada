@@ -24,7 +24,7 @@ procedure Bench is
     Put_Line ("  Purpose: to benchmark various zippers on a corpus");
     Put_Line ("  of test files, stored in directory of the corpus's name.");
     New_Line;
-    Put_Line ("Usage:  hac bench.adb benchmark_name {option}");
+    Put_Line ("Usage:  hac bench.hac benchmark_name {option}");
     New_Line;
     Put_Line ("Options:");
     Put_Line ("     full  : test everything (long!)");

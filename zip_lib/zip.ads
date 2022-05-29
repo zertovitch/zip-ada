@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2020 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2022 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -112,9 +112,7 @@ package Zip is
 
   --  Data sizes in archive
   subtype Zip_32_Data_Size_Type is Interfaces.Unsigned_32;
-
-  subtype File_size_type is Zip_32_Data_Size_Type;
-  pragma Obsolescent (File_size_type, "Better use the name: Zip_32_Data_Size_Type");
+  subtype Zip_64_Data_Size_Type is Interfaces.Unsigned_64;
 
   ---------
 
@@ -197,8 +195,8 @@ package Zip is
     with procedure Action (
       name             : String;  --  'name' is compressed entry's name
       file_index       : Zip_Streams.ZS_Index_Type;
-      comp_size        : Zip_32_Data_Size_Type;
-      uncomp_size      : Zip_32_Data_Size_Type;
+      comp_size        : Zip_64_Data_Size_Type;
+      uncomp_size      : Zip_64_Data_Size_Type;
       crc_32           : Interfaces.Unsigned_32;
       date_time        : Time;
       method           : PKZip_method;
@@ -238,8 +236,8 @@ package Zip is
     name           : in     String;
     case_sensitive : in     Boolean;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type;
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   );
 
@@ -250,8 +248,8 @@ package Zip is
     name           : in     String;
     name_encoding  :    out Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type;
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   );
 
@@ -267,8 +265,8 @@ package Zip is
     name           : in     String;
     name_encoding  :    out Zip.Zip_name_encoding;
     file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type;
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type;
     crc_32         :    out Interfaces.Unsigned_32
   );
 
@@ -296,8 +294,8 @@ package Zip is
   procedure Get_sizes (
     info           : in     Zip_info;
     name           : in     String;
-    comp_size      :    out Zip_32_Data_Size_Type;
-    uncomp_size    :    out Zip_32_Data_Size_Type
+    comp_size      :    out Zip_64_Data_Size_Type;
+    uncomp_size    :    out Zip_64_Data_Size_Type
   );
 
   --  User-defined procedure for feedback occuring during
@@ -403,8 +401,8 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String := "58 preview 1";
-  reference : constant String := "15-Nov-2020";
+  version   : constant String := "58 preview 2";
+  reference : constant String := "29-May-2022";
   web       : constant String := "http://unzip-ada.sf.net/";
   --  Hopefully the latest version is at that URL...  --^
 
@@ -438,8 +436,8 @@ private
     dico_name        : String (1 .. name_len);  --  UPPER if case-insensitive search
     file_name        : String (1 .. name_len);
     file_index       : Zip_Streams.ZS_Index_Type;
-    comp_size        : Zip_32_Data_Size_Type;
-    uncomp_size      : Zip_32_Data_Size_Type;
+    comp_size        : Zip_64_Data_Size_Type;
+    uncomp_size      : Zip_64_Data_Size_Type;
     crc_32           : Interfaces.Unsigned_32;
     date_time        : Time;
     method           : PKZip_method;

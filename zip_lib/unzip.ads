@@ -24,7 +24,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2020 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 1999 .. 2022 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -194,16 +194,12 @@ package UnZip is
   type Get_password_proc is access
     procedure (password : out Ada.Strings.Unbounded.Unbounded_String);
 
-  --  Data sizes in archive
-  subtype File_size_type is Zip.Zip_32_Data_Size_Type;
-  pragma Obsolescent (File_size_type, "Better use the type: Zip.Zip_32_Data_Size_Type");
-
   --  Inform user about some archive data
 
   type Tell_data_proc is access
     procedure (name               : String;
-               compressed_bytes   : Zip.Zip_32_Data_Size_Type;
-               uncompressed_bytes : Zip.Zip_32_Data_Size_Type;
+               compressed_bytes   : Zip.Zip_64_Data_Size_Type;
+               uncompressed_bytes : Zip.Zip_64_Data_Size_Type;
                method             : PKZip_method);
 
   --  Extract all files from an archive (from)

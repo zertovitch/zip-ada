@@ -56,7 +56,7 @@ package body Rezip_lib is
     --  options with dynamically expanded tokens
     made_by_version     : Unsigned_16;
     pkzm                : Zip.PKZip_method;
-    limit               : Zip.Zip_32_Data_Size_Type;
+    limit               : Zip.Zip_64_Data_Size_Type;
     --  Compression is considered too slow or unefficient beyond limit
     --  E.g., kzip's algorithm might be O(N^2) or worse; on large files,
     --   deflate_e or other methods are better anyway
@@ -161,12 +161,14 @@ package body Rezip_lib is
     )
     is
       file_index     : Zip_Streams.ZS_Index_Type;
-      comp_size      : Zip.Zip_32_Data_Size_Type;
-      uncomp_size    : Zip.Zip_32_Data_Size_Type;
+      comp_size      : Zip.Zip_64_Data_Size_Type;
+      uncomp_size    : Zip.Zip_64_Data_Size_Type;
       file_out       : Ada.Streams.Stream_IO.File_Type;
       dummy_encoding : Zip.Zip_name_encoding;
       dummy_crc      : Unsigned_32;
       use UnZip;
+      mem : Zip_Streams.ZS_Index_Type;
+      head_extra : Zip.Headers.Local_File_Header_Extension;
     begin
       Zip.Find_offset (
         info           => archive,
@@ -179,13 +181,22 @@ package body Rezip_lib is
       );
       Set_Index (input, file_index);
       Zip.Headers.Read_and_check (input, header);
-      --  Skip name and extra field
+      --  Skip name
       Set_Index (input,
-        Index (input) +
-          Zip_Streams.ZS_Size_Type
-           (header.extra_field_length +
-            header.filename_length)
+        Index (input) + Zip_Streams.ZS_Size_Type (header.filename_length)
       );
+      mem := Index (input);
+      if (header.dd.compressed_size = 16#FFFF_FFFF# or
+          header.dd.uncompressed_size = 16#FFFF_FFFF#)
+         and then
+          header.extra_field_length >= 4
+      then
+        Zip.Headers.Read_and_check (input, head_extra);
+        header.dd.uncompressed_size := head_extra.uncompressed_size;
+        header.dd.compressed_size   := head_extra.compressed_size;
+      end if;
+      --  Skip extra field
+      Set_Index (input, mem + Zip_Streams.ZS_Size_Type (header.extra_field_length));
       --  * Get the data, compressed
       Ada.Streams.Stream_IO.Create (file_out, Out_File, rip_rename);
       Zip.Copy_chunk (input, Stream (file_out).all, Integer (comp_size));
@@ -218,7 +229,7 @@ package body Rezip_lib is
       );
 
     type Packer_info is record
-      size             : Zip.Zip_32_Data_Size_Type;
+      size             : Zip.Zip_64_Data_Size_Type;
       zfm              : Unsigned_16;
       count            : Natural;
       saved            : Integer_64;  --  Number of bytes saved by chosen method
@@ -292,8 +303,8 @@ package body Rezip_lib is
     end Img;
 
     --  From AZip_Common...
-    function Image_1000 (r : Zip.Zip_32_Data_Size_Type; separator : Character := ''') return String is
-      s : constant String := Zip.Zip_32_Data_Size_Type'Image (r);
+    function Image_1000 (r : Zip.Zip_64_Data_Size_Type; separator : Character := ''') return String is
+      s : constant String := Zip.Zip_64_Data_Size_Type'Image (r);
       t : String (s'First .. s'First + (s'Length * 4) / 3);
       j, c : Natural;
     begin
@@ -476,8 +487,8 @@ package body Rezip_lib is
       header : Zip.Headers.Local_File_Header;
       MyStream   : aliased File_Zipstream;
       cur_dir : constant String := Current_Directory;
-      size_memory : array (1 .. randomized_stable) of Zip.Zip_32_Data_Size_Type := (others => 0);
-      current_size : Zip.Zip_32_Data_Size_Type := 0;
+      size_memory : array (1 .. randomized_stable) of Zip.Zip_64_Data_Size_Type := (others => 0);
+      current_size : Zip.Zip_64_Data_Size_Type := 0;
       zfm : Unsigned_16;
       attempt : Positive := 1;
       dummy_exp_opt : Unbounded_String;
@@ -567,7 +578,7 @@ package body Rezip_lib is
         attempt := attempt + 1;
       end loop;
       info.size        := current_size;
-      info.uncomp_size := Unsigned_64 (header.dd.uncompressed_size);
+      info.uncomp_size := header.dd.uncompressed_size;
       --  uncomp_size should not matter (always the same).
       info.zfm        := zfm;
       info.LZMA_EOS   := (zfm = 14) and (header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
@@ -667,8 +678,8 @@ package body Rezip_lib is
       lightred : constant String := "#f43048";
 
       procedure Process_one (unique_name : String) is
-        comp_size   :  Zip.Zip_32_Data_Size_Type;
-        uncomp_size :  Zip.Zip_32_Data_Size_Type;
+        comp_size   :  Zip.Zip_64_Data_Size_Type;
+        uncomp_size :  Zip.Zip_64_Data_Size_Type;
         choice : Approach := original;
         deco : constant String := "-->-->-->" & (20 + unique_name'Length) * '-';
         mth : Zip.PKZip_method;
@@ -690,6 +701,8 @@ package body Rezip_lib is
         end Winner_color;
         --
         use Zip;
+        needs_zip64 : Boolean;
+        fh_extra : Zip.Headers.Local_File_Header_Extension;
       begin
         --  Start with the set of approaches that has been decided for all entries.
         consider := consider_a_priori;
@@ -940,9 +953,20 @@ package body Rezip_lib is
         --  Put the winning size and method
         e.head.short_info.dd.compressed_size := e.info (choice).size;
         e.head.short_info.zip_type := e.info (choice).zfm;
-        e.head.local_header_offset := Unsigned_32 (Index (repacked_zip_file)) - 1;
-        Zip.Headers.Write (repacked_zip_file, e.head.short_info);
+        e.head.local_header_offset := Unsigned_64 (Index (repacked_zip_file)) - 1;
+        needs_zip64 :=
+          Zip.Headers.Needs_Local_Zip_64_Header_Extension
+            (e.head.short_info, e.head.local_header_offset);
+        Zip.Headers.Write (repacked_zip_file, e.head.short_info, needs_zip64);
         String'Write (repacked_zip_file'Access, S (e.name));
+        if needs_zip64 then
+          fh_extra.tag  := 1;
+          fh_extra.size := Zip.Headers.local_header_extension_short_length - 4;
+          fh_extra.uncompressed_size := e.head.short_info.dd.uncompressed_size;
+          fh_extra.compressed_size   := e.head.short_info.dd.compressed_size;
+          fh_extra.offset            := e.head.local_header_offset;
+          Zip.Headers.Write (repacked_zip_file, fh_extra, True);
+        end if;
         --  Copy the compressed data
         Zip.Copy_file (Temp_name (True, choice), repacked_zip_file);
         Dual_IO.Put_Line (" done");
@@ -1088,31 +1112,79 @@ package body Rezip_lib is
       --
       --  2/ Almost done - write Central Directory:
       --
-      ed.central_dir_offset := Unsigned_32 (Index (repacked_zip_file)) - 1;
+      ed.central_dir_offset := Unsigned_64 (Index (repacked_zip_file)) - 1;
       ed.total_entries := 0;
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
       declare
         comment : constant String := Zip.Zip_comment (zi);
+        needs_64, needs_local_zip64 : Boolean;
+        fh_extra : Zip.Headers.Local_File_Header_Extension;
+        ed64l    : Zip.Headers.Zip64_End_of_Central_Dir_Locator;
+        ed64     : Zip.Headers.Zip64_End_of_Central_Dir;
       begin
         if not delete_comment then
           ed.main_comment_length := comment'Length;
         end if;
         --  Restart at the beginning of the list
         e := list;
+        needs_64 := False;
         while e /= null loop
           ed.total_entries := ed.total_entries + 1;
+          needs_local_zip64 :=
+            Zip.Headers.Needs_Local_Zip_64_Header_Extension
+              (e.head.short_info, e.head.local_header_offset);
+          if needs_local_zip64 then
+            e.head.short_info.extra_field_length := Zip.Headers.local_header_extension_length;
+            fh_extra.tag  := 1;
+            fh_extra.size := Zip.Headers.local_header_extension_length - 4;
+            fh_extra.uncompressed_size := e.head.short_info.dd.uncompressed_size;
+            fh_extra.compressed_size   := e.head.short_info.dd.compressed_size;
+            fh_extra.offset            := e.head.local_header_offset;
+            e.head.short_info.dd.uncompressed_size := 16#FFFF_FFFF#;
+            e.head.short_info.dd.compressed_size   := 16#FFFF_FFFF#;
+            e.head.local_header_offset             := 16#FFFF_FFFF#;
+            needs_64 := True;
+          end if;
           Zip.Headers.Write (repacked_zip_file, e.head);
           String'Write (repacked_zip_file'Access, S (e.name));
+          if needs_local_zip64 then
+            Zip.Headers.Write (repacked_zip_file, fh_extra, False);
+          end if;
           ed.central_dir_size :=
             ed.central_dir_size +
             Zip.Headers.central_header_length +
-            Unsigned_32 (e.head.short_info.filename_length);
+            Unsigned_64 (e.head.short_info.filename_length) +
+            Unsigned_64 (e.head.short_info.extra_field_length);
           e := e.next;
         end loop;
         ed.disknum := 0;
         ed.disknum_with_start := 0;
         ed.disk_total_entries := ed.total_entries;
+        if needs_64 then
+          ed64l.number_of_the_disk_with_the_start_of_the_zip64_end_of_central_dir := 0;
+          ed64l.relative_offset_of_the_zip64_end_of_central_dir_record :=
+            Unsigned_64 (Index (repacked_zip_file) - 1);
+          ed64l.total_number_of_disks := 1;
+          --
+          ed64.size := 44;
+          ed64.version_made_by           := 16#2D#;
+          ed64.version_needed_to_extract := 16#2D#;
+          ed64.number_of_this_disk                                        := ed.disknum;
+          ed64.number_of_the_disk_with_the_start_of_the_central_directory := ed.disknum_with_start;
+          ed64.total_number_of_entries_in_the_central_directory_on_this_disk := ed.disk_total_entries;
+          ed64.total_number_of_entries_in_the_central_directory              := ed.total_entries;
+          ed64.size_of_the_central_directory        := ed.central_dir_size;
+          ed64.offset_of_start_of_central_directory := ed.central_dir_offset;
+          Zip.Headers.Write (repacked_zip_file, ed64);
+          --
+          Zip.Headers.Write (repacked_zip_file, ed64l);
+          --
+          ed.disk_total_entries := 16#FFFF#;
+          ed.total_entries      := 16#FFFF#;
+          ed.central_dir_size   := 16#FFFF_FFFF#;
+          ed.central_dir_offset := 16#FFFF_FFFF#;
+        end if;
         Zip.Headers.Write (repacked_zip_file, ed);
         if not delete_comment then
           String'Write (repacked_zip_file'Access, comment);
