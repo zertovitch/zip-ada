@@ -121,7 +121,9 @@ package body UnZip.Streams is
     else
       --  Sizes and crc are before the data
       if cat_uncomp_size /= local_header.dd.uncompressed_size then
-        raise Uncompressed_size_Error;
+        raise Uncompressed_Size_Error
+          with "Uncompressed size mismatch: in catalogue:" & cat_uncomp_size'Image &
+               "; in local header:" & local_header.dd.uncompressed_size'Image;
       end if;
     end if;
 

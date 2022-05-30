@@ -2001,10 +2001,7 @@ package body UnZip.Decompress is
         null;
     end case;
 
-    UnZ_Glob.compsize  := hint.dd.compressed_size;
-    if UnZ_Glob.compsize > Zip_64_Data_Size_Type (Zip_32_Data_Size_Type'Last - 2) then  --  This means: unknown size
-      UnZ_Glob.compsize := Zip_64_Data_Size_Type (Zip_32_Data_Size_Type'Last - 2);      --  Avoid wraparound in read_buffer
-    end if;                                              --  From TT's version, 2008
+    UnZ_Glob.compsize   := hint.dd.compressed_size;
     UnZ_Glob.uncompsize := hint.dd.uncompressed_size;
     UnZ_IO.Init_Buffers;
     if is_encrypted then
@@ -2070,7 +2067,9 @@ package body UnZip.Decompress is
            memo_uncomp_size /= hint.dd.uncompressed_size
         then
           UnZ_IO.Delete_output;
-          raise Uncompressed_size_Error;
+          raise Uncompressed_Size_Error
+            with "Uncompressed size mismatch: in catalogue:" & memo_uncomp_size'Image &
+                 "; in post-data data descriptor:" & hint.dd.uncompressed_size'Image;
         end if;
       end;
     end if;

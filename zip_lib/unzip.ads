@@ -288,7 +288,7 @@ package UnZip is
   --  Errors
 
   CRC_Error,
-  Uncompressed_size_Error,
+  Uncompressed_Size_Error,
   Write_Error,
   Read_Error,
   Wrong_password,
