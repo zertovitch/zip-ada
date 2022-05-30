@@ -3,7 +3,7 @@
 --
 --  Usage with the HAC command-line tool :
 --
---    hac test_za.adb [option]
+--    hac test_za.hac [option]
 --
 --  The HAC (HAC Ada Compiler) command-line tool can be found @
 --    https://hacadacompiler.sourceforge.io/ ,
@@ -110,7 +110,7 @@ begin
   New_Line;
   Put_Line ("Calls to Comp_Zip are done to compare archives.");
   New_Line;
-  Put_Line ("Usage:  hac test_za.adb [option]");
+  Put_Line ("Usage:  hac test_za.hac [option]");
   New_Line;
   Put_Line ("  Options: slow : test some exotic / slow formats in Zip-Ada");
   Put_Line ("           full : all zippers, including very slow ones");

@@ -56,6 +56,7 @@ package body Zip.Create is
         Zip_Streams.Create (File_Zipstream (Z_Stream.all), Zip_Streams.Out_File);
       end if;
       Info.Duplicates := Duplicates;
+      Info.zip_archive_format := Zip_32;
    end Create_Archive;
 
    function Is_Created (Info : Zip_Create_Info) return Boolean is
@@ -158,6 +159,26 @@ package body Zip.Create is
 
    use Zip.Compress;
 
+   procedure Check_Size
+     (info  : in out Zip_Create_Info;
+      value : in     ZS_Size_Type)  --  Archive index or input stream size
+   is
+     margin : constant := end_of_central_dir_length +
+                          zip_64_end_of_central_dir_length +
+                          zip_64_end_of_central_dir_locator_length +
+                          2 ** 16 +  --  Zip archive comment
+                          10;        --  Unknown unknown...
+   begin
+     if info.zip_archive_format = Zip_32 and then value >= four_GiB - margin then
+       --  Promote format to Zip_64 (entry size or cumulated archive size too large for Zip_32).
+       info.zip_archive_format := Zip_64;
+       if value >= max_size - margin then
+         raise Zip_Capacity_Exceeded with
+           "Archive too large: size is 2 EiB (Exbibytes) or more.";
+       end if;
+     end if;
+   end Check_Size;
+
    procedure Add_Stream (Info            : in out Zip_Create_Info;
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Feedback        : in     Feedback_proc;
@@ -199,12 +220,7 @@ package body Zip.Create is
           cfh.external_attributes := cfh.external_attributes or 1;
         end if;
         Info.Contains (Last).name := new String'(entry_name);
-        if Info.zip_archive_format = Zip_32 and then Size (Stream) >= four_GiB then
-          --  Promote format to Zip64.
-          Info.zip_archive_format := Zip_64;
-          raise Zip_Capacity_Exceeded with
-            "Entry data too large : size is 16 EiB (Exbibytes) or more.";
-        end if;
+        Check_Size (Info, Size (Stream));
         shi.file_timedate         := Get_Time (Stream);
         shi.dd.uncompressed_size  := Unsigned_64 (Size (Stream));
         shi.dd.compressed_size    := shi.dd.uncompressed_size;
@@ -637,7 +653,7 @@ package body Zip.Create is
       if Info.zip_archive_format = Zip_32
         and then Info.Last_entry >= Integer (Unsigned_16'Last)
       then
-        --  Promote format to Zip64.
+        --  Promote format to Zip_64 (too many entries for Zip_32).
         Info.zip_archive_format := Zip_64;
       end if;
       if Info.Contains /= null then
@@ -656,7 +672,7 @@ package body Zip.Create is
             cat.head.short_info.dd.uncompressed_size := 16#FFFF_FFFF#;
             cat.head.short_info.dd.compressed_size   := 16#FFFF_FFFF#;
             cat.head.local_header_offset             := 16#FFFF_FFFF#;
-            --  Promote format to Zip64.
+            --  Promote format to Zip_64 (entry too large for Zip_32).
             Info.zip_archive_format := Zip_64;
           end if;
           Write (Info.Stream.all, cat.head);
@@ -671,6 +687,7 @@ package body Zip.Create is
                 Unsigned_64 (cat.head.short_info.extra_field_length);
           current_index := Index (Info.Stream.all);
         end loop;
+        Check_Size (Info, current_index);
       end if;
       ed.disknum := 0;
       ed.disknum_with_start := 0;
@@ -702,7 +719,6 @@ package body Zip.Create is
       end if;
       Write (Info.Stream.all, ed);
       --
-      current_index := Index (Info.Stream.all);
       Close_eventual_file_and_deallocate;
    end Finish;
 

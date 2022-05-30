@@ -50,15 +50,10 @@ package body Zip.Compress is
   )
   is
     temp_by : constant ZS_Size_Type := ZS_Size_Type (by);
-    --  We limit somewhat the real maximum size (16 EiB) in order
-    --  to catch issues with size before an integer overflow.
-    --  1 EiB = 1024 PiB (Pebibyte) = 1024*1024 TiB = 1,048,576 TiB (Tebibyte),
-    --  around 1,152,922 Terabytes.
-    max     : constant ZS_Size_Type := 16#1FFF_FFFF_FFFF_FFFF#;  --  2 EiB.
     use type Zip_64_Data_Size_Type, ZS_Size_Type;
   begin
-    if temp_by > max then
-      raise Zip.Create.Zip_Capacity_Exceeded with
+    if temp_by > Create.max_size then
+      raise Create.Zip_Capacity_Exceeded with
         "Compressed data too large: size is 2 EiB (Exbibytes) or more.";
     end if;
     out_size := out_size + Zip_64_Data_Size_Type (by);

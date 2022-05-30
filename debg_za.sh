@@ -4,4 +4,4 @@
 #    https://hacadacompiler.sourceforge.io/ ,
 #    https://github.com/zertovitch/hac
 
-hac make_za.adb Debug
+hac make_za.hac Debug

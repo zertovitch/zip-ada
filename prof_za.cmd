@@ -7,7 +7,7 @@ rem  The HAC command-line tool can be built from the project HAC @
 rem    https://hacadacompiler.sourceforge.io/ ,
 rem    https://github.com/zertovitch/hac
 
-hac make_za.adb Profiling %1
+hac make_za.hac Profiling %1
 if "%ERRORLEVEL%"=="0" goto :instr
 
 echo.

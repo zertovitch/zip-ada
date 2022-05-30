@@ -2,7 +2,8 @@
 --  File:            Zip_with_many_files.adb
 --  Description:     Demo/test:
 --                     - stuff a large number of files into a .zip file
---                     - test 65535 limit of "ZIP32" archive format
+--                     - test the (2 ** 16 - 2) limit of the Zip_32 archive
+--                         format and the automatic promotion to Zip_64.
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
@@ -10,6 +11,7 @@ with Zip.Create;                        use Zip.Create;
 
 with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
+with Ada.Text_IO;
 
 procedure Zip_with_many_files is
 
@@ -37,25 +39,31 @@ procedure Zip_with_many_files is
 
     n_img : constant String := Integer'Image (n);
 
+    procedure Create_with_Trace (file_name : String) is
+    begin
+      Ada.Text_IO.Put_Line (file_name);
+      Create_Archive
+       (archive,
+        stream'Unchecked_Access,
+        file_name);
+    end Create_with_Trace;
+
   begin
-    Create_Archive (
-      archive,
-      stream'Unchecked_Access,
-      n_img (n_img'First + 1 .. n_img'Last) & ".zip"
-    );
+    Create_with_Trace ("many_" & n_img (n_img'First + 1 .. n_img'Last) & ".zip");
     for i in 1 .. n loop
       Add_one_entry (
         "Entry #" & Leading_zeros (i, 5) & ".txt",
-        Integer'Max (0, i / 100 - 10)  --  Obtain a certain number of incompressible entries.
+        Integer'Max (0, i / 100 - 10)
       );
     end loop;
     Finish (archive);
   end Create_with_many;
+
 begin
   Create_with_many (2 ** 12);
   Create_with_many (2 ** 13);
   Create_with_many (2 ** 14);
   Create_with_many (2 ** 15);
-  Create_with_many (2 ** 16 - 1);
-  Create_with_many (2 ** 16);  --  Should raise Zip_Capacity_Exceeded in Zip_32 mode.
+  Create_with_many (2 ** 16 - 2);
+  Create_with_many (2 ** 16 - 1);  --  Should promote archive to Zip_64 mode.
 end Zip_with_many_files;

@@ -3,7 +3,7 @@
 --
 --  Usage with the HAC command-line tool :
 --
---    hac test_rz.adb [ReZip options]
+--    hac test_rz.hac [ReZip options]
 --
 --  The HAC (HAC Ada Compiler) command-line tool can be found @
 --    https://hacadacompiler.sourceforge.io/ ,
@@ -33,7 +33,7 @@ begin
   Put_Line ("A call to Comp_Zip is done to compare archives (before / after)");
   Put_Line ("and check that their uncompressed contents are identical.");
   New_Line;
-  Put_Line ("Usage:  hac test_rz.adb [ReZip options]");
+  Put_Line ("Usage:  hac test_rz.hac [ReZip options]");
   New_Line;
 
   --  Create an archive with default compression method (fast).

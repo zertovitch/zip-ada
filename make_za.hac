@@ -4,7 +4,7 @@
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 --
---  Usage: hac make_za.adb [build mode] [full]
+--  Usage: hac make_za.hac [build mode] [full]
 --
 --    Build mode can be Debug, Fast, Small, ...
 

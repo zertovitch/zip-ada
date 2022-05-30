@@ -320,7 +320,7 @@ package Zip.Headers is
 
   --  4.3.14   Zip64 end of central directory record (variable size)
   --  4.3.15   Zip64 end of central directory locator (fixed size)
-  --  4.3.16   End of central directory record with FFFF's (variable size)
+  --  4.3.16   End of central directory record (variable size), disabled with FFFF's
 
   type Zip64_End_of_Central_Dir is record
     size                                                          : Unsigned_64;  --  Size of the remaining record
@@ -334,6 +334,8 @@ package Zip.Headers is
     offset_of_start_of_central_directory                          : Unsigned_64;  --  with respect to the starting disk number
     --  zip64_extensible_data_sector (variable_size)
   end record;
+
+  zip_64_end_of_central_dir_length : constant := 56;
 
   procedure Read_and_check (
     stream     : in out Root_Zipstream_Type'Class;
@@ -350,6 +352,8 @@ package Zip.Headers is
     relative_offset_of_the_zip64_end_of_central_dir_record            : Unsigned_64;
     total_number_of_disks                                             : Unsigned_32;
   end record;
+
+  zip_64_end_of_central_dir_locator_length : constant := 20;
 
   procedure Read_and_check (
     stream         : in out Root_Zipstream_Type'Class;

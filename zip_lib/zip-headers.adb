@@ -499,7 +499,7 @@ package body Zip.Headers is
     the_end_64 :    out Zip64_End_of_Central_Dir
   )
   is
-    eb : Byte_Buffer (1 .. 56);
+    eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_length);
   begin
     Block_Read (stream, eb);
     if not PK_signature (eb, 6, 6) then
@@ -521,7 +521,7 @@ package body Zip.Headers is
     the_end_64 : in     Zip64_End_of_Central_Dir
   )
   is
-    eb : Byte_Buffer (1 .. 56);
+    eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_length);
   begin
     PK_signature (eb, 6, 6);
     eb   (5 .. 12) := Intel_bf (the_end_64.size);
@@ -541,7 +541,7 @@ package body Zip.Headers is
     the_end_64_loc :    out Zip64_End_of_Central_Dir_Locator
   )
   is
-    eb : Byte_Buffer (1 .. 20);
+    eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_locator_length);
   begin
     Block_Read (stream, eb);
     if not PK_signature (eb, 6, 7) then
@@ -557,7 +557,7 @@ package body Zip.Headers is
     the_end_64_loc : in     Zip64_End_of_Central_Dir_Locator
   )
   is
-    eb : Byte_Buffer (1 .. 20);
+    eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_locator_length);
   begin
     PK_signature (eb, 6, 7);
     eb   (5 ..  8) := Intel_bf (the_end_64_loc.number_of_the_disk_with_the_start_of_the_zip64_end_of_central_dir);

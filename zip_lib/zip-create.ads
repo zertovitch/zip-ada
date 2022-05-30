@@ -217,6 +217,12 @@ package Zip.Create is
 
    Zip_Capacity_Exceeded : exception;
 
+   --  We limit somewhat the real maximum size (16 EiB) in order
+   --  to catch issues with size before an integer overflow.
+   --  1 EiB = 1024 PiB (Pebibyte) = 1024*1024 TiB = 1,048,576 TiB (Tebibyte),
+   --  around 1,152,922 Terabytes.
+   max_size : constant := 16#1FFF_FFFF_FFFF_FFFF#;  --  2 EiB.
+
 private
 
    type Dir_entry is record

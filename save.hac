@@ -1,14 +1,27 @@
---#!/usr/bin/env hac
-
---  Local backup Ada shell script for the HAC project.
+--  Local backup Ada shell script.
 --
---  This script works both with HAC (command: hac save.adb)
---  and a full Ada compiler like GNAT, and that on different
---  Operating Systems: Linux and Windows at least.
+--  This HAC script detects saves the essential files of Zip-Ada
+--  into a Zip-ball.
 --
+--  #!/usr/bin/env hac
 --  A "shebang" for Unix/Linux, such as "#!/usr/bin/env hac" can be
 --  added on the top line of this file.
 --  HAC will ignore it, but GNAT won't like it (that's normal).
+--
+--  This is a HAC script *and* an Ada program.
+--  How to run it is your choice.
+--
+--  Usage with the HAC command-line tool :
+--
+--    hac save.hac
+--
+--  The HAC (HAC Ada Compiler) command-line tool can be found @
+--    https://hacadacompiler.sourceforge.io/ ,
+--    https://github.com/zertovitch/hac
+
+--  This script works both with HAC (command: hac save.hac)
+--  and a full Ada compiler like GNAT, and that on different
+--  Operating Systems: Linux and Windows at least.
 --
 --  The extension for the main procedure is a free choice.
 --  We choose ".hac" so we can associate the ".hac" files by
@@ -53,7 +66,7 @@ procedure Save is
     end if;
   end Nice_Date;
 
-  root, examples, files, tests : VString;
+  root, ada_sources, doc, tools, extras, scripts, files : VString;
   zip_res : Integer;
   sep : constant Character := Directory_Separator;
 
@@ -65,45 +78,42 @@ begin
 
   Set_Directory ("..");
 
-  examples := root & "/exm/*.ad* "  &
-              root & "/exm/*.gpr  " & root & "/exm/*.prj  " &
-              root & "/exm/e.cmd "  & root & "/exm/not_working/*.ad* " &
-              --
-              root & "/exm/aoc/2020/aoc*.ad* " &
-              root & "/exm/aoc/2020/aoc*.txt " &
-              root & "/exm/aoc/2020/aoc*.gpr " &
-              root & "/exm/aoc/2020/aoc*.prj " &
-              --
-              root & "/exm/aoc/2021/aoc*.ad* " &
-              root & "/exm/aoc/2021/aoc*.txt " &
-              root & "/exm/aoc/2021/aoc*.gpr " &
-              root & "/exm/aoc/2021/aoc*.prj ";
-
-  tests    := root & "/test/*.ad* " &
-              root & "/test/*.gpr " & root & "/test/*.prj " &
-              root & "/test/t.cmd " & root & "/test/*.aru " &
-              root & "/test/future/*.ad* ";
-
-  files := root & "/src/*.ad* " &
-           root & "/src/compile/*.ad* " &
-           root & "/src/execute/*.ad* " &
-           root & "/src/manage/*.ad* " &
-           root & "/*.gpr " &
+  files := root & "/*.gpr " &
            root & "/*.prj " &
-           root & "/*.hac " &
-           root & "/build.cmd " &
-           root & "/fast.cmd " &
-           root & "/small.cmd " &
-           root & "/*.txt " &
-           root & "/doc/hac*.txt " &
-           root & "/doc/hac*.xls " &
-           root & "/doc/hac*.pdf " &
-           root & "/debug.pra " &
-           root & "/obj/hac_icon* " &
-           root & "/obj/debug/create_dir.txt " &
-           root & "/obj/fast/create_dir.txt ";
+           root & "/*.pra ";
 
-  files := files & ' ' & examples & ' ' & tests;
+  ada_sources := root & "/zip_lib/*.ad* " &
+                 root & "/test/*.ad* " &
+                 root & "/demo/*.ad* " &
+                 --
+                 root & "/trained/*.ad* " &
+                 root & "/trained/*.gpr ";
+
+  doc    := root & "/doc/*.txt " &
+            root & "/doc/za*.xls " &
+            root & "/doc/za*.pdf ";
+
+  tools := root & "/tools/*.ad* " &
+           root & "/tools/rez*.cmd " &
+           root & "/tools/verif.* " &
+           root & "/tools/adactl*.cmd ";
+
+  extras := root & "/extras/*.ad* " &
+            root & "/extras/*.rc " &
+            root & "/extras/*.rbj " &
+            root & "/extras/*.ico " &
+            root & "/extras/*.pl " &
+            root & "/extras/w*.cmd ";
+
+  scripts := root & "/*_za.cmd " &
+             root & "/*.hac " &
+             root & "/*.sh " &
+             root & "/test/test*.cmd " &
+             root & "/test/*.hac " &
+             root & "/test/bench*.cmd " &
+             root & "/test/prof.cmd ";
+
+  files := files & ada_sources & doc & tools & extras & scripts;
 
   --  The ZipAda command-line tool can be built or downloaded
   --  from the project Zip-Ada @
