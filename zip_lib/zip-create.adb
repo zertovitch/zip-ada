@@ -274,9 +274,9 @@ package body Zip.Create is
         Zip.Headers.Write (Info.Stream.all, shi, needs_zip64);
         if needs_zip64 then
           String'Write (Info.Stream, entry_name);
-          fh_extra.uncompressed_size := shi.dd.uncompressed_size;
-          fh_extra.compressed_size   := shi.dd.compressed_size;
-          fh_extra.offset            := cfh.local_header_offset;
+          fh_extra.value_64 (1) := shi.dd.uncompressed_size;
+          fh_extra.value_64 (2) := shi.dd.compressed_size;
+          fh_extra.value_64 (3) := cfh.local_header_offset;  --  Not actually written.
           Zip.Headers.Write (Info.Stream.all, fh_extra, True);
         end if;
         --  Return to momentaneous end of file
@@ -666,9 +666,9 @@ package body Zip.Create is
             cat.head.short_info.extra_field_length := local_header_extension_length;
             fh_extra.tag  := 1;
             fh_extra.size := local_header_extension_length - 4;
-            fh_extra.uncompressed_size := cat.head.short_info.dd.uncompressed_size;
-            fh_extra.compressed_size   := cat.head.short_info.dd.compressed_size;
-            fh_extra.offset            := cat.head.local_header_offset;
+            fh_extra.value_64 (1) := cat.head.short_info.dd.uncompressed_size;
+            fh_extra.value_64 (2) := cat.head.short_info.dd.compressed_size;
+            fh_extra.value_64 (3) := cat.head.local_header_offset;
             cat.head.short_info.dd.uncompressed_size := 16#FFFF_FFFF#;
             cat.head.short_info.dd.compressed_size   := 16#FFFF_FFFF#;
             cat.head.local_header_offset             := 16#FFFF_FFFF#;

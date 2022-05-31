@@ -172,14 +172,12 @@ package Zip.Headers is
 
   --  4.5.3 Zip64 Extended Information Extra Field
 
+  type Values_64 is array (1 .. 3) of Unsigned_64;
+
   type Local_File_Header_Extension is record
-    tag               : Unsigned_16;
-    size              : Unsigned_16;
-    uncompressed_size : Unsigned_64;
-    compressed_size   : Unsigned_64;
-    offset            : Unsigned_64;
-    --  ^ Seems optional, used only for the central dir.
-    --    See local_header_extension_short_length below.
+    tag      : Unsigned_16;
+    size     : Unsigned_16;
+    value_64 : Values_64;
   end record;
 
   local_header_extension_length       : constant := 28;

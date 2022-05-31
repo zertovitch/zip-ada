@@ -962,9 +962,9 @@ package body Rezip_lib is
         if needs_zip64 then
           fh_extra.tag  := 1;
           fh_extra.size := Zip.Headers.local_header_extension_short_length - 4;
-          fh_extra.uncompressed_size := e.head.short_info.dd.uncompressed_size;
-          fh_extra.compressed_size   := e.head.short_info.dd.compressed_size;
-          fh_extra.offset            := e.head.local_header_offset;
+          fh_extra.value_64 (1) := e.head.short_info.dd.uncompressed_size;
+          fh_extra.value_64 (2) := e.head.short_info.dd.compressed_size;
+          fh_extra.value_64 (3) := e.head.local_header_offset;  --  Not actually written.
           Zip.Headers.Write (repacked_zip_file, fh_extra, True);
         end if;
         --  Copy the compressed data
@@ -1138,9 +1138,9 @@ package body Rezip_lib is
             e.head.short_info.extra_field_length := Zip.Headers.local_header_extension_length;
             fh_extra.tag  := 1;
             fh_extra.size := Zip.Headers.local_header_extension_length - 4;
-            fh_extra.uncompressed_size := e.head.short_info.dd.uncompressed_size;
-            fh_extra.compressed_size   := e.head.short_info.dd.compressed_size;
-            fh_extra.offset            := e.head.local_header_offset;
+            fh_extra.value_64 (1) := e.head.short_info.dd.uncompressed_size;
+            fh_extra.value_64 (2) := e.head.short_info.dd.compressed_size;
+            fh_extra.value_64 (3) := e.head.local_header_offset;
             e.head.short_info.dd.uncompressed_size := 16#FFFF_FFFF#;
             e.head.short_info.dd.compressed_size   := 16#FFFF_FFFF#;
             e.head.local_header_offset             := 16#FFFF_FFFF#;

@@ -306,9 +306,9 @@ package body Zip.Headers is
     end if;
 
     Block_Read (stream, lhb_2);
-    header.uncompressed_size := Intel_nb (lhb_2  (5 .. 12));
-    header.compressed_size   := Intel_nb (lhb_2 (13 .. 20));
-    header.offset            := Intel_nb (lhb_2 (21 .. 28));
+    header.value_64 (1) := Intel_nb (lhb_2  (5 .. 12));
+    header.value_64 (2) := Intel_nb (lhb_2 (13 .. 20));
+    header.value_64 (3) := Intel_nb (lhb_2 (21 .. 28));
 
   end Read_and_check;
 
@@ -318,24 +318,31 @@ package body Zip.Headers is
      compressed_size   : in out Unsigned_64;
      offset            : in out Unsigned_64)
   is
+    counter : Natural := 0;
   begin
     if header.tag /= local_header_extension_tag then
       return;  --  It's another kind of extra field.
     end if;
-    case header.size is
-      when 8 =>
-        uncompressed_size := header.uncompressed_size;
-      when 16 =>
-        uncompressed_size := header.uncompressed_size;
-        compressed_size   := header.compressed_size;
-      when 24 .. Unsigned_16'Last =>
-        uncompressed_size := header.uncompressed_size;
-        compressed_size   := header.compressed_size;
-        offset            := header.offset;
-      when others =>
-        raise bad_local_header
-          with "Zip64 extra field bytes: invalid amount" & header.size'Image;
-    end case;
+    --
+    --  All fields are optional - an unusual feature...
+    --
+    if uncompressed_size = 16#FFFF_FFFF# then
+      counter := counter + 1;
+      uncompressed_size := header.value_64 (counter);
+    end if;
+    if compressed_size = 16#FFFF_FFFF# then
+      counter := counter + 1;
+      compressed_size := header.value_64 (counter);
+    end if;
+    if offset = 16#FFFF_FFFF# then
+      counter := counter + 1;
+      offset := header.value_64 (counter);
+    end if;
+    if counter * 8 > Natural (header.size) then
+      raise bad_local_header
+        with "Zip64 extra field bytes: invalid size:" & header.size'Image &
+             ", needed:" & Integer'Image (counter * 8);
+    end if;
   end Interpret;
 
   procedure Write (
@@ -348,9 +355,9 @@ package body Zip.Headers is
   begin
     lhb  (1 ..  2) := Intel_bf (header.tag);
     lhb  (3 ..  4) := Intel_bf (header.size);
-    lhb  (5 .. 12) := Intel_bf (header.uncompressed_size);
-    lhb (13 .. 20) := Intel_bf (header.compressed_size);
-    lhb (21 .. 28) := Intel_bf (header.offset);
+    lhb  (5 .. 12) := Intel_bf (header.value_64 (1));
+    lhb (13 .. 20) := Intel_bf (header.value_64 (2));
+    lhb (21 .. 28) := Intel_bf (header.value_64 (3));
     if short then
       pragma Assert (header.size = local_header_extension_short_length - 4);
       Block_Write (stream, lhb (1 .. local_header_extension_short_length));
