@@ -301,8 +301,8 @@ package body Zip.Headers is
     if header.tag /= local_header_extension_tag then
       return;  --  It's another kind of extra field.
     end if;
-    if header.size < 16 then
-      raise bad_local_header with "Zip64 extra field bytes < 16";
+    if header.size < 8 then
+      raise bad_local_header with "Zip64 extra field bytes < 8";
     end if;
 
     Block_Read (stream, lhb_2);
@@ -311,6 +311,32 @@ package body Zip.Headers is
     header.offset            := Intel_nb (lhb_2 (21 .. 28));
 
   end Read_and_check;
+
+  procedure Interpret
+    (header            : in     Local_File_Header_Extension;
+     uncompressed_size : in out Unsigned_64;
+     compressed_size   : in out Unsigned_64;
+     offset            : in out Unsigned_64)
+  is
+  begin
+    if header.tag /= local_header_extension_tag then
+      return;  --  It's another kind of extra field.
+    end if;
+    case header.size is
+      when 8 =>
+        uncompressed_size := header.uncompressed_size;
+      when 16 =>
+        uncompressed_size := header.uncompressed_size;
+        compressed_size   := header.compressed_size;
+      when 24 .. Unsigned_16'Last =>
+        uncompressed_size := header.uncompressed_size;
+        compressed_size   := header.compressed_size;
+        offset            := header.offset;
+      when others =>
+        raise bad_local_header
+          with "Zip64 extra field bytes: invalid amount" & header.size'Image;
+    end case;
+  end Interpret;
 
   procedure Write (
     stream : in out Root_Zipstream_Type'Class;

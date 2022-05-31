@@ -86,11 +86,11 @@
 --                   perf. issues in some run-times' Ada.Calendar.Time_Of
 
 with Interfaces;
-with Zip_Streams;  use Zip_Streams;
+with Zip_Streams;
 
 package Zip.Headers is
 
-  use Interfaces;
+  use Interfaces, Zip_Streams;
 
   ----------------------------------------------------------------------
   -- PKZIP data descriptor, put after streamed compressed data - PK78 --
@@ -200,6 +200,18 @@ package Zip.Headers is
     stream : in out Root_Zipstream_Type'Class;
     header :    out Local_File_Header_Extension
   );
+
+  --  Depending on its size (1, 2, >=3 values) we may
+  --  need (or not) to change the corresponding variables.
+  --  E.g. 7z may set only the first item, which is correct
+  --  but is contrary to the requirement of appnote.txt (4.5.3)
+  --  to have at least the first two items.
+  --
+  procedure Interpret
+    (header            : in     Local_File_Header_Extension;
+     uncompressed_size : in out Unsigned_64;
+     compressed_size   : in out Unsigned_64;
+     offset            : in out Unsigned_64);
 
   procedure Write (
     stream : in out Root_Zipstream_Type'Class;

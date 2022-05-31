@@ -52,4 +52,7 @@ begin
   Shell_Execute (+".." & Directory_Separator &
                  "comp_zip test_rz test_rz.repacked -q2");
 
+  Put ("Press Return ");
+  Skip_Line;
+
 end Test_RZ;

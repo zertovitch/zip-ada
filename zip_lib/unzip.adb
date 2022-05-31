@@ -262,28 +262,30 @@ package body UnZip is
     --  calculate offset of data
 
     work_index :=
-       work_index +
-       ZS_Size_Type (
-              local_header.filename_length    +
-              local_header.extra_field_length +
-              Zip.Headers.local_header_length
-       );
+      work_index +
+      ZS_Size_Type (
+             local_header.filename_length    +
+             local_header.extra_field_length +
+             Zip.Headers.local_header_length
+      );
 
     --
     --  Zip64 extension.
     --
-    if local_header.dd.compressed_size = 16#FFFF_FFFF#
-      or local_header.dd.uncompressed_size = 16#FFFF_FFFF#
-    then
+    if local_header.extra_field_length >= 4 then
       declare
-        mem : constant Zip_Streams.ZS_Index_Type := Index (zip_file);
+        mem                    : constant Zip_Streams.ZS_Index_Type := Index (zip_file);
         local_header_extension : Zip.Headers.Local_File_Header_Extension;
+        dummy_offset           : Unsigned_64;
       begin
         Set_Index (zip_file, mem + Zip_Streams.ZS_Index_Type (local_header.filename_length));
         Zip.Headers.Read_and_check (zip_file, local_header_extension);
         Set_Index (zip_file, mem);
-        local_header.dd.uncompressed_size := local_header_extension.uncompressed_size;
-        local_header.dd.compressed_size   := local_header_extension.compressed_size;
+        Zip.Headers.Interpret
+          (local_header_extension,
+           local_header.dd.uncompressed_size,
+           local_header.dd.compressed_size,
+           dummy_offset);
       end;
     end if;
 

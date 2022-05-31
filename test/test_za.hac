@@ -196,4 +196,8 @@ begin
   Put_Line (+"   " & fails & " failures");
   New_Line;
   Put_Line (+"" & zipada_used & " different methods of the Zip-Ada library tested.");
+
+  Put ("Press Return ");
+  Skip_Line;
+
 end Test_ZA;

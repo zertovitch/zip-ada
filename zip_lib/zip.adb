@@ -276,13 +276,11 @@ package body Zip is
         mem := Index (from);
         if header.short_info.extra_field_length >= 4 then
           Headers.Read_and_check (from, head_extra);
-          if header.local_header_offset = 16#FFFF_FFFF#
-            and then head_extra.tag = Headers.local_header_extension_tag
-          then
-            header.short_info.dd.uncompressed_size := head_extra.uncompressed_size;
-            header.short_info.dd.compressed_size   := head_extra.compressed_size;
-            header.local_header_offset             := head_extra.offset;
-          end if;
+          Headers.Interpret
+            (head_extra,
+             header.short_info.dd.uncompressed_size,
+             header.short_info.dd.compressed_size,
+             header.local_header_offset);
         end if;
         --  Skip extra field and entry comment.
         Set_Index (
@@ -582,13 +580,11 @@ package body Zip is
       mem := Index (file);
       if header.short_info.extra_field_length >= 4 then
         Headers.Read_and_check (file, head_extra);
-        if header.local_header_offset = 16#FFFF_FFFF#
-          and then head_extra.tag = Headers.local_header_extension_tag
-        then
-          header.short_info.dd.uncompressed_size := head_extra.uncompressed_size;
-          header.short_info.dd.compressed_size   := head_extra.compressed_size;
-          header.local_header_offset             := head_extra.offset;
-        end if;
+        Headers.Interpret
+          (head_extra,
+           header.short_info.dd.uncompressed_size,
+           header.short_info.dd.compressed_size,
+           header.local_header_offset);
       end if;
       Set_Index (file,
         mem +
@@ -647,14 +643,12 @@ package body Zip is
         mem := Index (file);
         if header.short_info.extra_field_length >= 4 then
           Headers.Read_and_check (file, head_extra);
-          if header.local_header_offset = 16#FFFF_FFFF#
-            and then head_extra.tag = Headers.local_header_extension_tag
-          then
-            header.short_info.dd.uncompressed_size := head_extra.uncompressed_size;
-            header.short_info.dd.compressed_size   := head_extra.compressed_size;
-            header.local_header_offset             := head_extra.offset;
+          Headers.Interpret
+            (head_extra,
+             header.short_info.dd.uncompressed_size,
+             header.short_info.dd.compressed_size,
+             header.local_header_offset);
           end if;
-        end if;
         Set_Index (file,
           mem +
           ZS_Size_Type (

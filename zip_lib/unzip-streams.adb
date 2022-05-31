@@ -96,18 +96,20 @@ package body UnZip.Streams is
     --
     --  Zip64 extension.
     --
-    if local_header.dd.compressed_size = 16#FFFF_FFFF#
-      or local_header.dd.uncompressed_size = 16#FFFF_FFFF#
-    then
+    if local_header.extra_field_length >= 4 then
       declare
-        mem : constant Zip_Streams.ZS_Index_Type := Zip_Streams.Index (zip_stream);
+        mem                    : constant Zip_Streams.ZS_Index_Type := Zip_Streams.Index (zip_stream);
         local_header_extension : Zip.Headers.Local_File_Header_Extension;
+        dummy_offset           : Unsigned_64;
       begin
         Zip_Streams.Set_Index (zip_stream, mem + Zip_Streams.ZS_Index_Type (local_header.filename_length));
         Zip.Headers.Read_and_check (zip_stream, local_header_extension);
         Zip_Streams.Set_Index (zip_stream, mem);
-        local_header.dd.uncompressed_size := local_header_extension.uncompressed_size;
-        local_header.dd.compressed_size   := local_header_extension.compressed_size;
+        Zip.Headers.Interpret
+          (local_header_extension,
+           local_header.dd.uncompressed_size,
+           local_header.dd.compressed_size,
+           dummy_offset);
       end;
     end if;
 

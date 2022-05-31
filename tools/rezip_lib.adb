@@ -166,9 +166,10 @@ package body Rezip_lib is
       file_out       : Ada.Streams.Stream_IO.File_Type;
       dummy_encoding : Zip.Zip_name_encoding;
       dummy_crc      : Unsigned_32;
+      mem            : Zip_Streams.ZS_Index_Type;
+      head_extra     : Zip.Headers.Local_File_Header_Extension;
+      dummy_offset   : Unsigned_64;
       use UnZip;
-      mem : Zip_Streams.ZS_Index_Type;
-      head_extra : Zip.Headers.Local_File_Header_Extension;
     begin
       Zip.Find_offset (
         info           => archive,
@@ -186,14 +187,13 @@ package body Rezip_lib is
         Index (input) + Zip_Streams.ZS_Size_Type (header.filename_length)
       );
       mem := Index (input);
-      if (header.dd.compressed_size = 16#FFFF_FFFF# or
-          header.dd.uncompressed_size = 16#FFFF_FFFF#)
-         and then
-          header.extra_field_length >= 4
-      then
+      if header.extra_field_length >= 4 then
         Zip.Headers.Read_and_check (input, head_extra);
-        header.dd.uncompressed_size := head_extra.uncompressed_size;
-        header.dd.compressed_size   := head_extra.compressed_size;
+        Zip.Headers.Interpret
+          (head_extra,
+           header.dd.uncompressed_size,
+           header.dd.compressed_size,
+           dummy_offset);
       end if;
       --  Skip extra field
       Set_Index (input, mem + Zip_Streams.ZS_Size_Type (header.extra_field_length));
