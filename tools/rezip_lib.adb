@@ -168,7 +168,7 @@ package body Rezip_lib is
       dummy_crc      : Unsigned_32;
       mem            : Zip_Streams.ZS_Index_Type;
       head_extra     : Zip.Headers.Local_File_Header_Extension;
-      dummy_offset   : Unsigned_64;
+      dummy_offset   : Unsigned_64 := 0;  --  Initialized for avoiding random value = 16#FFFF_FFFF#
       use UnZip;
     begin
       Zip.Find_offset (

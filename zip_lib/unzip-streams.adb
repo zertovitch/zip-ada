@@ -100,7 +100,7 @@ package body UnZip.Streams is
       declare
         mem                    : constant Zip_Streams.ZS_Index_Type := Zip_Streams.Index (zip_stream);
         local_header_extension : Zip.Headers.Local_File_Header_Extension;
-        dummy_offset           : Unsigned_64;
+        dummy_offset           : Unsigned_64 := 0;  --  Initialized for avoiding random value = 16#FFFF_FFFF#
       begin
         Zip_Streams.Set_Index (zip_stream, mem + Zip_Streams.ZS_Index_Type (local_header.filename_length));
         Zip.Headers.Read_and_check (zip_stream, local_header_extension);
