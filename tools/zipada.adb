@@ -187,10 +187,11 @@ procedure ZipAda is
     c : Character;
   begin
     Put_Line (title);
+    pwd := Null_Unbounded_String;
     loop
       Get_Immediate (c);
       exit when c < ' ';
-      pwd := pwd & c;
+      Append (pwd, c);
     end loop;
   end Enter_password;
 

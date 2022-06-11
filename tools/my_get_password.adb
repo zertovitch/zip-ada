@@ -16,13 +16,13 @@ begin
   --  We use Get_Immediate that has no echo on GNAT/Windows - no mention
   --  of that feature in the (A)RM95, so no warranty about it!
 
-  password := To_Unbounded_String ("");
+  password := Null_Unbounded_String;
 
   loop
     Get_Immediate (c);
-    exit when c = ASCII.CR;
+    exit when c < ' ';
     Put ('*');
-    password := password & c;
+    Append (password, c);
   end loop;
 
   New_Line;
