@@ -100,4 +100,10 @@ library project ZipAda_Lib is
       for Vcs_Kind use "Subversion";
    end Ide;
 
+   package Pretty_Printer is
+      for Default_Switches ("Ada") use (
+           "--indentation=2"
+      );
+   end Pretty_Printer;
+
 end ZipAda_Lib;
