@@ -18,7 +18,8 @@ with Zip.Headers, Zip.Compress, UnZip;
 with Zip.Create;                        use Zip.Create;
 with Zip_Streams;                       use Zip_Streams;
 
-with My_feedback, Flexible_temp_files;
+with Flexible_temp_files;
+with Zip_Console_IO;
 
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
@@ -602,7 +603,7 @@ package body Rezip_lib is
         input_size_known => True,
         input_size       => e.head.short_info.dd.uncompressed_size,
         method           => Approach_to_Method (a),
-        feedback         => My_feedback'Access,
+        feedback         => Zip_Console_IO.My_feedback'Access,
         password         => "",
         content_hint     => Zip.Compress.Guess_type_from_name (S (e.name)),
         CRC              => e.head.short_info.dd.crc_32,

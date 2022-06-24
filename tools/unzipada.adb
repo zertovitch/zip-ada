@@ -22,8 +22,7 @@ with Zip, UnZip;
 --  Pure Ada Text_IO-fashion feedback; should work on every
 --  computer having a screen [and some text console too] :
 
-with My_feedback, My_resolve_conflict, My_tell_data, My_get_password;
-with Summary;
+with Zip_Console_IO;
 with Show_License;
 
 procedure UnZipAda is
@@ -53,10 +52,10 @@ procedure UnZipAda is
   lower_case_match : Boolean := False;
   comment          : Boolean := False;
 
-  fda :          Zip.Feedback_proc     := My_feedback'Access;
-  rca :          Resolve_conflict_proc := My_resolve_conflict'Access;
-  tda :          Tell_data_proc        := My_tell_data'Access;
-  gpw : constant Get_password_proc     := My_get_password'Access;
+  fda :          Zip.Feedback_proc     := Zip_Console_IO.My_feedback'Access;
+  rca :          Resolve_conflict_proc := Zip_Console_IO.My_resolve_conflict'Access;
+  tda :          Tell_data_proc        := Zip_Console_IO.My_tell_data'Access;
+  gpw : constant Get_password_proc     := Zip_Console_IO.My_get_password'Access;
 
   last_option : Natural := 0;
 
@@ -132,6 +131,7 @@ procedure UnZipAda is
   end Help;
 
   zi : Zip.Zip_info;
+  use Zip_Console_IO;
 
 begin
   if Argument_Count = 0 then
@@ -203,7 +203,7 @@ begin
     tda := null;
   end if;
 
-  Summary.Reset;
+  Zip_Console_IO.Summary.Reset;
 
   if Argument_Count = last_option then -- options only ?!
     Help;
@@ -222,6 +222,7 @@ begin
         return archive_given;
       end if;
     end Archive;
+    --
   begin
     if not Zip.Exists (Archive) then
       zip_ext := True;

@@ -26,7 +26,7 @@ with Interfaces;
 with Zip_Streams;                       use Zip_Streams;
 with Zip.Compress, Zip.Create;          use Zip.Create;
 
-with My_feedback;
+with Zip_Console_IO;
 with Show_License;
 
 procedure ZipAda is
@@ -74,9 +74,10 @@ procedure ZipAda is
       Ada.Wide_Text_IO.Put (cut & (1 + maxlen - cut'Length) * ' ');
     end;
     --
-    Add_Stream (
-      Info, Stream, My_feedback'Access, To_String (password), Compressed_Size, Final_Method
-    );
+    Add_Stream
+      (Info, Stream,
+       Zip_Console_IO.My_feedback'Access,
+       To_String (password), Compressed_Size, Final_Method);
     --
     if Size (Stream) = 0 then
       Put ("          ");
@@ -187,11 +188,10 @@ procedure ZipAda is
     c : Character;
   begin
     Put_Line (title);
-    pwd := Null_Unbounded_String;
     loop
       Get_Immediate (c);
       exit when c < ' ';
-      Append (pwd, c);
+      pwd := pwd & c;
     end loop;
   end Enter_password;
 
