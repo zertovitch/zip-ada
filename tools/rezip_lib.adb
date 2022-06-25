@@ -958,7 +958,9 @@ package body Rezip_lib is
         needs_zip64 :=
           Zip.Headers.Needs_Local_Zip_64_Header_Extension
             (e.head.short_info, e.head.local_header_offset);
-        Zip.Headers.Write (repacked_zip_file, e.head.short_info, needs_zip64);
+        Zip.Headers.Write
+          (repacked_zip_file, e.head.short_info,
+           (if needs_zip64 then Zip.Headers.force_zip_64 else Zip.Headers.force_empty));
         String'Write (repacked_zip_file'Access, S (e.name));
         if needs_zip64 then
           fh_extra.tag  := 1;

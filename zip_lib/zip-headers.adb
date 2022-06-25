@@ -249,9 +249,9 @@ package body Zip.Headers is
   end Read_and_check;
 
   procedure Write (
-    stream      : in out Root_Zipstream_Type'Class;
-    header      : in     Local_File_Header;
-    needs_zip64 : in     Boolean
+    stream             : in out Root_Zipstream_Type'Class;
+    header             : in     Local_File_Header;
+    extra_field_policy : in     Extra_Field_Policy_Kind
   )
   is
     lhb : Byte_Buffer (1 .. local_header_length);
@@ -264,7 +264,7 @@ package body Zip.Headers is
     lhb  (9 .. 10) := Intel_bf (header.zip_type);
     lhb (11 .. 14) := Intel_bf (Zip_Streams.Calendar.Convert (header.file_timedate));
     lhb (15 .. 18) := Intel_bf (header.dd.crc_32);
-    if needs_zip64 then
+    if extra_field_policy = force_zip_64 then
       lhb (19 .. 22) := (255, 255, 255, 255);
       lhb (23 .. 26) := (255, 255, 255, 255);
     else
@@ -273,14 +273,11 @@ package body Zip.Headers is
     end if;
     lhb (27 .. 28) := Intel_bf (header.filename_length);
 
-    if header.extra_field_length > 0 then
-      raise bad_local_header with "Extra field is reserved for Zip64";
-    end if;
-    if needs_zip64 then
-      extra_length := local_header_extension_short_length;
-    else
-      extra_length := 0;
-    end if;
+    case extra_field_policy is
+      when from_header  => extra_length := header.extra_field_length;
+      when force_empty  => extra_length := 0;
+      when force_zip_64 => extra_length := local_header_extension_short_length;
+    end case;
     lhb (29 .. 30) := Intel_bf (extra_length);
 
     Block_Write (stream, lhb);

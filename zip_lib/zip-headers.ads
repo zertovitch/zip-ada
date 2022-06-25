@@ -160,10 +160,16 @@ package Zip.Headers is
 
   bad_local_header : exception;
 
+  type Extra_Field_Policy_Kind is
+    (from_header,  --  This policy is for preserving an entry from another Zip
+                   --  file. The extra field could be a Zip_64 or another kind.
+     force_empty,
+     force_zip_64);
+
   procedure Write (
-    stream      : in out Root_Zipstream_Type'Class;
-    header      : in     Local_File_Header;
-    needs_zip64 : in     Boolean
+    stream             : in out Root_Zipstream_Type'Class;
+    header             : in     Local_File_Header;
+    extra_field_policy : in     Extra_Field_Policy_Kind
   );
 
   ---------------------------------------------
@@ -180,7 +186,7 @@ package Zip.Headers is
     value_64 : Values_64;
   end record;
 
-  local_header_extension_length       : constant := 28;
+  local_header_extension_length : constant := 28;
 
   --  Shorter length (witout the offset field) for the local header
   --  extension is not properly documented in appnote.txt but is
@@ -192,7 +198,7 @@ package Zip.Headers is
   --
   local_header_extension_short_length : constant := 20;
 
-  local_header_extension_tag    : constant := 1;
+  local_header_extension_tag : constant := 1;
 
   procedure Read_and_check (
     stream : in out Root_Zipstream_Type'Class;

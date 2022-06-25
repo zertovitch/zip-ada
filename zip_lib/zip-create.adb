@@ -189,7 +189,6 @@ package body Zip.Create is
       mem1, mem2 : ZS_Index_Type := 1;
       entry_name : String := Get_Name (Stream);
       Last : Positive;
-      needs_zip64 : Boolean;
       fh_extra : Local_File_Header_Extension;
    begin
       --  Appnote.txt, V. J. :
@@ -208,6 +207,7 @@ package body Zip.Create is
       declare
         cfh : Central_File_Header renames Info.Contains (Last).head;
         shi : Local_File_Header renames cfh.short_info;
+        extra_field_policy : Extra_Field_Policy_Kind;
       begin
         --  Administration - continued
         if Zip_Streams.Is_Unicode_Name (Stream) then
@@ -229,12 +229,16 @@ package body Zip.Create is
 
         mem1 := Index (Info.Stream.all);
         cfh.local_header_offset := Unsigned_64 (mem1) - 1;
-        needs_zip64 := Needs_Local_Zip_64_Header_Extension (shi, cfh.local_header_offset);
+        if Needs_Local_Zip_64_Header_Extension (shi, cfh.local_header_offset) then
+          extra_field_policy := force_zip_64;
+        else
+          extra_field_policy := force_empty;
+        end if;
         --  Write the local header with incomplete informations
-        Zip.Headers.Write (Info.Stream.all, shi, needs_zip64);
+        Zip.Headers.Write (Info.Stream.all, shi, extra_field_policy);
 
         String'Write (Info.Stream, entry_name);
-        if needs_zip64 then
+        if extra_field_policy = force_zip_64 then
           --  Partial garbage. The extra field is rewritten later.
           fh_extra.tag  := 1;
           fh_extra.size := local_header_extension_short_length - 4;
@@ -271,8 +275,8 @@ package body Zip.Create is
         --  Go back to the local header to rewrite it with complete informations
         --  known after the compression: CRC value, compressed size, actual compression format.
         Set_Index (Info.Stream.all, mem1);
-        Zip.Headers.Write (Info.Stream.all, shi, needs_zip64);
-        if needs_zip64 then
+        Zip.Headers.Write (Info.Stream.all, shi, extra_field_policy);
+        if extra_field_policy = force_zip_64 then
           String'Write (Info.Stream, entry_name);
           fh_extra.value_64 (1) := shi.dd.uncompressed_size;
           fh_extra.value_64 (2) := shi.dd.compressed_size;
@@ -400,7 +404,7 @@ package body Zip.Create is
    begin
       Zip.Headers.Read_and_check (Stream, lh);
       data_descriptor_after_data := (lh.bit_flag and 8) /= 0;
-      --  Copy name and ignore extra field
+      --  Copy name and extra field
       declare
         name  : String (1 .. Positive (lh.filename_length));
         extra : String (1 .. Natural (lh.extra_field_length));
@@ -415,12 +419,12 @@ package body Zip.Create is
         offset := Unsigned_64 (Index (Info.Stream.all)) - 1;
         Info.Contains (Info.Last_entry).head.local_header_offset := offset;
         Info.Contains (Info.Last_entry).name := new String'(name);
-        --  Copy local header to new stream
-        --  (Zip64 extra field is copied anyway):
-        Zip.Headers.Write (Info.Stream.all, lh, needs_zip64 => False);
+        --  Copy local header to new stream.
+        --  Extra field, zip_64 or another kind, is copied.
+        Zip.Headers.Write (Info.Stream.all, lh, from_header);
         --  Copy entry name to new stream:
         String'Write (Info.Stream, name);
-         --  Copy extra field to new stream, usually a Zip64 field:
+        --  Copy extra field to new stream, usually a Zip64 field:
         String'Write (Info.Stream, extra);
       end;
       Zip.Copy_chunk (
@@ -674,6 +678,10 @@ package body Zip.Create is
             cat.head.local_header_offset             := 16#FFFF_FFFF#;
             --  Promote format to Zip_64 (entry too large for Zip_32).
             Info.zip_archive_format := Zip_64;
+          else
+            --  If there is no Zip_64 information,
+            --  we set the extra header in the central dirctory header as empty.
+            cat.head.short_info.extra_field_length := 0;
           end if;
           Write (Info.Stream.all, cat.head);
           String'Write (Info.Stream, cat.name.all);

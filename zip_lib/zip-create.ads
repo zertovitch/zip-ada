@@ -161,8 +161,10 @@ package Zip.Create is
    );
 
    --  Add a new entry to a Zip archive, copied from another Zip archive.
-   --  This is useful for duplicating archives with some differences, like adding, replacing,
-   --  removing or recompressing entries - see the AZip file manager for an application example.
+   --  This is useful for duplicating archives with some differences, like
+   --  adding, replacing, removing or recompressing entries, while preserving
+   --  other entries, which Add_Compressed_Stream is for.
+   --  See the AZip file manager for an application example.
    --  The streams' indices are set at the beginning of local headers in both archives.
    --
    procedure Add_Compressed_Stream (
