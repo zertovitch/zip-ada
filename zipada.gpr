@@ -19,38 +19,28 @@ project ZipAda is
        "Fast", 
        "Small",
        "Profiling",
-       "Coverage",
-       "Style_Checks",
-       --  Check_2005 mode is for checking that the *library* is strictly
-       --  Ada-2005-compliant, for being compiled by a broader set of compilers.
-       --  The demos, tools and tests may use some Ada 2012+ features.
-       "Check_2005"
-      );
+       "Coverage");
 
    Zip_Build_Mode : Zip_Build_Mode_Type := external ("Zip_Build_Mode", "Fast");
-   for Exec_Dir use ".";
+
    for Create_Missing_Dirs use "True";  --  Flips by default the "-p" switch
    
-   case Zip_Build_Mode is
-      when "Check_2005" =>
-         for Source_Dirs use ("zip_lib");
-         for Main use ();
-      when others =>
-         for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
-         for Main use (
-           --  Tools
-           "zipada.adb", 
-           "unzipada.adb",
-           "comp_zip.adb", 
-           "find_zip.adb", 
-           "rezip.adb",
-           "touch2.adb",
-           "zip_dir_list.adb",
-           --  Miscellaneous
-           "lzma_dec", --  LZMA decoder
-           "lzma_enc"  --  LZMA encoder
-         );
-   end case;
+   for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
+   for Exec_Dir use ".";
+
+   for Main use (
+     --  Tools
+     "zipada.adb", 
+     "unzipada.adb",
+     "comp_zip.adb", 
+     "find_zip.adb", 
+     "rezip.adb",
+     "touch2.adb",
+     "zip_dir_list.adb",
+     --  Miscellaneous
+     "lzma_dec", --  LZMA decoder
+     "lzma_enc"  --  LZMA encoder
+   );
 
    case Zip_Build_Mode is
       when "Fast"      =>  for Object_Dir use "obj_opt";
@@ -60,14 +50,22 @@ project ZipAda is
       when others      =>  for Object_Dir use "obj_dbg";
    end case;
 
-   Common_Options := (
-     "-gnatwa",                        --  Warnings switches (a:turn on all info/warnings marked with +)
+   Common_Options :=
+    ("-gnatwa",                        --  Warnings switches (a:turn on all info/warnings marked with +)
      "-gnatwh",                        --  Warnings switches (h:turn on warnings for hiding declarations)
      "-gnatwcijkmopruvz.c.n.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
      "-gnatf",  --  Full errors. Verbose details, all undefined references
      "-gnatq",  --  Don't quit, try semantics, even if parse errors
      "-gnatQ",  --  Don't quit, write ali/tree file even if compile errors
      "-g"
+   )
+   &
+   ( "-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
+     "-gnatybfhiu",  --  Style: check b:no blanks at end of lines, f:no ff/vtabs, h: no htabs, i:if-then layout, u:no unnecessary blank lines
+     "-gnatyO",      --  Style: check that overriding subprograms are explicitly marked as such.
+     "-gnatyx",      --  Style: check x:no extra parens
+     "-gnatye",      --  Style: check e:end/exit labels present
+     "-gnatytc"      --  Style: check t:token separation rules, c:comment format (two spaces)
    );
 
    Debug_Options  :=
@@ -102,27 +100,9 @@ project ZipAda is
 
       case Zip_Build_Mode is
 
-         when "Check_2005" =>
-            for Local_Configuration_Pragmas use project'Project_Dir & "restrictions.pra";
-            for Default_Switches ("ada") use Common_Options & 
-              ( "-gnat05"
-              );
-
          when "Debug" =>
             for Local_Configuration_Pragmas use project'Project_Dir & "debug.pra";
             for Default_Switches ("ada") use Debug_Options ;
-
-         when "Style_Checks" =>
-            for Local_Configuration_Pragmas use project'Project_Dir & "debug.pra";
-            for Default_Switches ("ada") use
-              Debug_Options & 
-                ( "-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
-                  "-gnatybfhiu",  --  Style: check b:no blanks at end of lines, f:no ff/vtabs, h: no htabs, i:if-then layout, u:no unnecessary blank lines
-                  "-gnatyO",      --  Style: check that overriding subprograms are explicitly marked as such.
-                  "-gnatyx",      --  Style: check x:no extra parens
-                  "-gnatye",      --  Style: check e:end/exit labels present
-                  "-gnatytc"      --  Style: check t:token separation rules, c:comment format (two spaces)
-                );
 
          when "Fast" =>
             for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
