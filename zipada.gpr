@@ -25,9 +25,6 @@ project ZipAda is
 
    for Create_Missing_Dirs use "True";  --  Flips by default the "-p" switch
    
-   for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
-   for Exec_Dir use ".";
-
    for Main use (
      --  Tools
      "zipada.adb", 
@@ -42,43 +39,47 @@ project ZipAda is
      "lzma_enc"  --  LZMA encoder
    );
 
+   for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
+   for Exec_Dir use ".";
+
    case Zip_Build_Mode is
-      when "Fast"      =>  for Object_Dir use "obj_opt";
-      when "Small"     =>  for Object_Dir use "obj_small";
-      when "Profiling" =>  for Object_Dir use "obj_pro";
-      when "Coverage"  =>  for Object_Dir use "obj_cov";
-      when others      =>  for Object_Dir use "obj_dbg";
+      when "Fast"      => for Object_Dir use "obj_opt";
+      when "Small"     => for Object_Dir use "obj_small";
+      when "Profiling" => for Object_Dir use "obj_pro";
+      when "Coverage"  => for Object_Dir use "obj_cov";
+      when others      => for Object_Dir use "obj_dbg";
    end case;
 
-   Common_Options :=
+   Common_Compiler_Options :=
     ("-gnatwa",                        --  Warnings switches (a:turn on all info/warnings marked with +)
      "-gnatwh",                        --  Warnings switches (h:turn on warnings for hiding declarations)
      "-gnatwcijkmopruvz.c.n.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
      "-gnatf",  --  Full errors. Verbose details, all undefined references
      "-gnatq",  --  Don't quit, try semantics, even if parse errors
      "-gnatQ",  --  Don't quit, write ali/tree file even if compile errors
-     "-g"
-   )
+     "-g"       --  Generate debugging information
+    )
    &
-   ( "-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
+    ("-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
      "-gnatybfhiu",  --  Style: check b:no blanks at end of lines, f:no ff/vtabs, h: no htabs, i:if-then layout, u:no unnecessary blank lines
      "-gnatyO",      --  Style: check that overriding subprograms are explicitly marked as such.
      "-gnatyx",      --  Style: check x:no extra parens
      "-gnatye",      --  Style: check e:end/exit labels present
      "-gnatytc"      --  Style: check t:token separation rules, c:comment format (two spaces)
-   );
+    );
 
-   Debug_Options  :=
-     Common_Options & (
+   Debug_Compiler_Options  :=
+     Common_Compiler_Options & (
        "-gnatVa",  --  Turn on all validity checking options
        "-gnato",   --  Enable overflow checking in STRICT (-gnato1) mode
        "-gnata",   --  Assertions enabled. Pragma Assert and pragma Debug to be activated.
        "-fno-inline", "-fstack-check"
        );
 
-   Fast_Options_Inlining_Neutral :=
-     Common_Options & (
-       "-O2", "-gnatp",
+   Fast_Compiler_Options_Inlining_Neutral :=
+     Common_Compiler_Options & (
+       "-O2",
+       "-gnatp",
        "-funroll-loops", "-fpeel-loops", "-funswitch-loops",
        "-ftracer", "-fweb", "-frename-registers", 
        "-fpredictive-commoning", "-fgcse-after-reload",
@@ -86,8 +87,8 @@ project ZipAda is
        "-ffunction-sections"
      );
 
-   Fast_Options :=
-     Fast_Options_Inlining_Neutral & (
+   Fast_Compiler_Options :=
+     Fast_Compiler_Options_Inlining_Neutral & (
        "-gnatn"  --  Cross-unit inlining
      );
 
@@ -102,22 +103,22 @@ project ZipAda is
 
          when "Debug" =>
             for Local_Configuration_Pragmas use project'Project_Dir & "debug.pra";
-            for Default_Switches ("ada") use Debug_Options ;
+            for Default_Switches ("ada") use Debug_Compiler_Options ;
 
          when "Fast" =>
             for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             case Zip_OS is
               when "Win32" | "Win64" =>
                 for Default_Switches ("ada") use
-                  Fast_Options & ("-mfpmath=sse", "-msse3");
+                  Fast_Compiler_Options & ("-mfpmath=sse", "-msse3");
               when others =>
-                for Default_Switches ("ada") use Fast_Options;
+                for Default_Switches ("ada") use Fast_Compiler_Options;
             end case;
 
          when "Small" =>
             for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             for Default_Switches ("ada") use
-              Common_Options & (
+              Common_Compiler_Options & (
                 "-Os", "-gnatp",
                 "-ffunction-sections"
               );
@@ -125,24 +126,28 @@ project ZipAda is
          when "Profiling" =>
             for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             for Default_Switches ("ada") use
-              Fast_Options_Inlining_Neutral & ("-fno-inline", "-pg");
+              Fast_Compiler_Options_Inlining_Neutral & ("-fno-inline", "-pg");
 
          when "Coverage" =>
             for Default_Switches ("ada") use
-              Common_Options & ("-fprofile-arcs", "-ftest-coverage");
+              Common_Compiler_Options & ("-fprofile-arcs", "-ftest-coverage");
       end case;
    end Compiler;
 
+   package Binder is
+      --  -Es: Store tracebacks in exception occurrences, and enable symbolic tracebacks
+      for Default_Switches ("ada") use ("-Es");
+   end Binder;
+
    Common_Linker_Options := ("-g");
 
-   --  case Zip_OS is
-   --    when "Win32" | "Win64" =>
-   --      Common_Linker_Options :=
-   --        Common_Linker_Options & ("-Wl,--stack=0x2000000");
-   --        --  Ideally: -Xlinker --stack=0x2000000,0x20000
-   --    when others =>
-   --      null;
-   --  end case;
+   case Zip_OS is
+     when "Win32" | "Win64" =>
+       Common_Linker_Options :=
+         Common_Linker_Options & ("-Xlinker", "--stack=0x2000000,0x20000");
+     when others =>
+       null;
+   end case;
 
    package Linker is
       case Zip_Build_Mode is
@@ -153,11 +158,6 @@ project ZipAda is
          when others      => for Default_Switches ("ada") use                               Common_Linker_Options;
       end case;
    end Linker;
-
-   package Binder is
-      --  -Es: Store tracebacks in exception occurrences, and enable symbolic tracebacks
-      for Default_Switches ("ada") use ("-Es");
-   end Binder;
 
    package Builder is
       --   "If -j0 is used, then the maximum number of simultaneous compilation

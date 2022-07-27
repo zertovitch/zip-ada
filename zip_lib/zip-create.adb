@@ -80,14 +80,14 @@ package body Zip.Create is
      Ada.Unchecked_Deallocation (Dir_entries, Pdir_entries);
 
    procedure Resize (A    : in out Pdir_entries;
-                     Size : Integer) is
+                     Size : Integer_M32) is
       Hlp : constant Pdir_entries := new Dir_entries (1 .. Size);
    begin
       if A = null then
          A := Hlp;
       else
-         Hlp (1 .. Integer'Min (Size, A'Length)) :=
-           A (1 .. Integer'Min (Size, A'Length));
+         Hlp (1 .. Integer_M32'Min (Size, A'Length)) :=
+           A (1 .. Integer_M32'Min (Size, A'Length));
          Dispose (A);
          A := Hlp;
       end if;
@@ -108,7 +108,7 @@ package body Zip.Create is
         Info.Last_entry := 1;
         Resize (Info.Contains, 32);
       else
-        if Info.Last_entry = Natural'Last then
+        if Info.Last_entry = 2 ** 31 - 1 then
           raise Zip_Capacity_Exceeded with
              "Too many entries: more than 2,147,483,647.";
         end if;
@@ -188,7 +188,7 @@ package body Zip.Create is
    is
       mem1, mem2 : ZS_Index_Type := 1;
       entry_name : String := Get_Name (Stream);
-      Last : Positive;
+      Last : Positive_M32;
       fh_extra : Local_File_Header_Extension;
    begin
       --  Appnote.txt, V. J. :
@@ -655,7 +655,7 @@ package body Zip.Create is
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
       if Info.zip_archive_format = Zip_32
-        and then Info.Last_entry >= Integer (Unsigned_16'Last)
+        and then Info.Last_entry >= Integer_M32 (Unsigned_16'Last)
       then
         --  Promote format to Zip_64 (too many entries for Zip_32).
         Info.zip_archive_format := Zip_64;

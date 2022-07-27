@@ -232,7 +232,7 @@ private
      name : p_String;
    end record;
 
-   type Dir_entries is array (Positive range <>) of Dir_entry;
+   type Dir_entries is array (Positive_M32 range <>) of Dir_entry;
    type Pdir_entries is access Dir_entries;
 
    --  The use of Hashed_Maps makes Test_Zip_Create_Info_Timing run ~10x faster than
@@ -246,7 +246,7 @@ private
      Compress           : Zip.Compress.Compression_Method;
      Contains           : Pdir_entries := null;
      --  'Contains' has unused room, to avoid reallocating each time:
-     Last_entry         : Natural := 0;
+     Last_entry         : Natural_M32 := 0;
      Duplicates         : Duplicate_name_policy;
      --  We set up a name dictionary just for detecting duplicate entries:
      name_dictionary    : Name_mapping.Map;

@@ -476,9 +476,8 @@ private
   min_bits_16 : constant := Integer'Max (16, System.Word_Size);
 
   --  We define an Integer type which is at least 32 bits, but n bits
-  --  on a native n (> 32) bits architecture (no performance hit on 64+
-  --  bits architectures).
-  --  Integer_M16 not needed: Integer already guarantees 16 bits
+  --  on a native n (> 32) bits architecture.
+  --  Integer_M16 is not needed: Integer already guarantees 16 bits
   --
   type Integer_M32 is range -2**(min_bits_32 - 1) .. 2**(min_bits_32 - 1) - 1;
   subtype Natural_M32  is Integer_M32 range 0 .. Integer_M32'Last;
