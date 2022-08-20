@@ -401,10 +401,12 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String := "58 preview 3";
-  reference : constant String := "25-Jun-2022";
-  web       : constant String := "http://unzip-ada.sf.net/";
-  --  Hopefully the latest version is at that URL...  --^
+  version   : constant String := "58 preview";
+  reference : constant String := "20-Aug-2022";
+  --  Hopefully the latest version is at one of those URLs:
+  web       : constant String := "https://unzip-ada.sourceforge.io/";
+  web2      : constant String := "https://sourceforge.net/projects/unzip-ada/";
+  web3      : constant String := "https://github.com/zertovitch/zip-ada";
 
   ---------------------
   --  Private items  --
@@ -447,7 +449,7 @@ private
     user_code        : Integer;
   end record;
 
-  type Zip_archive_format_type is (Zip_32, Zip_64);  --  Supported so far: Zip_32.
+  type Zip_archive_format_type is (Zip_32, Zip_64);
 
   type p_String is access String;
 
