@@ -8,10 +8,14 @@
 --
 --    Build mode can be Debug, Fast, Small, ...
 
-with HAL;  use HAL;
---  NB: the "full Ada" package for HAL is in /src in the HAC project
+with HAT;
+--  NB: in case you want to build this program into an executable with a
+--      "full Ada" compiler, the files for HAT (hat.ads, hat*.adb)
+--      is located in the /src directory, in the HAC project.
 
 procedure Make_ZA is
+  use HAT;
+
   gprbuild_options : VString;
 
   procedure Build_with_nice_title (gpr_name, topic : VString) is

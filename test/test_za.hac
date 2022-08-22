@@ -9,10 +9,12 @@
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 
-with HAL;
---  NB: in case you want to build this script into an executable with a
---      "full Ada" compiler, the files for HAL (hal.ads, hal*.adb)
+with HAT;
+--  NB: in case you want to build this program into an executable with a
+--      "full Ada" compiler, the files for HAT (hat.ads, hat*.adb)
 --      is located in the /src directory, in the HAC project.
+
+with Test_Common;
 
 procedure Test_ZA is
 
@@ -20,14 +22,11 @@ procedure Test_ZA is
 
   fails, successes, zipada_used : Natural := 0;
 
-  use HAL;
-
-  files : constant VString := +"*.ad* *.txt *.cmd *.pgm *.ppm *.jpg *.bin *.pdf *.xls *.au";
+  use HAT, Test_Common;
 
   procedure Process_Archive (command, archive : VString; action : Action_Type) is
     full_name : constant VString := archive & ".zip";
     ref_archive : constant VString := +"$mth_zash";
-    --  Orig. set: *.mix *.ad* *.txt *.cmd *.bmp *.csv *.pdf *.html *.bin *.xls
     r : Integer;
   begin
     case action is
@@ -35,7 +34,7 @@ procedure Test_ZA is
         if Exists (full_name) then
           Delete_File (full_name);
         end if;
-        Shell_Execute (command & ' ' & full_name & ' ' & files);
+        Shell_Execute (command & ' ' & full_name & ' ' & test_files);
         if Index (command, "zipada") > 0 then
           zipada_used := zipada_used + 1;
         end if;
@@ -53,7 +52,7 @@ procedure Test_ZA is
   end Process_Archive;
 
   procedure Smuggle (other_dir, file_name: VString) is
-    copy_name : constant VString := "$_" & file_name;
+    copy_name : constant VString := test_dir & "$_" & file_name;
     other_path : constant VString := +".." & Directory_Separator & other_dir & Directory_Separator & file_name;
   begin
     if not Exists (copy_name) then
@@ -120,23 +119,22 @@ begin
     slow := full or (Argument (1) = "slow");
   end if;
   --  Have badly compressible files
-  if not Exists ("$rnd_0.bin") then
+  if not Exists (test_dir & "$rnd_0.bin") then
     for i in 0 .. 10 loop
-      Shell_Execute (+".." & Directory_Separator & "random_data " & i*10 & " $rnd_" & i*10 & ".bin");
+      Shell_Execute (+".." & Directory_Separator & "random_data " & i*10 & ' ' & test_dir & "$rnd_" & i*10 & ".bin");
     end loop;
     for i in 1 .. 9 loop
-      Shell_Execute (+".." & Directory_Separator & "random_data " & i & " $rnd_" & i & ".bin");
+      Shell_Execute (+".." & Directory_Separator & "random_data " & i & ' ' & test_dir & "$rnd_" & i & ".bin");
     end loop;
   end if;
   --  We generate a "large" random file with restricted literal range ('A' .. 'Z').
-  if not Exists ("$rand_alpha.txt") then
-    Shell_Execute (+".." & Directory_Separator & "random_data 77777 $rand_alpha.txt 65 90");
+  if not Exists (test_dir & "$rand_alpha.txt") then
+    Shell_Execute (+".." & Directory_Separator & "random_data 77777 " & test_dir & "$rand_alpha.txt 65 90");
   end if;
   --  We generate a "large" random file (will take more than 1 Deflate block in random_and_text.mix)
-  if not Exists ("$random.bin") then
-    Shell_Execute (+".." & Directory_Separator & "random_data 66666 $random.bin");
+  if not Exists (test_dir & "$random.bin") then
+    Shell_Execute (+".." & Directory_Separator & "random_data 66666 " & test_dir & "$random.bin");
   end if;
-  --  if not exist random_and_text.mix copy /b random.bin+*.txt+..\doc\*.txt random_and_text.mix
   --
   --  Smuggle some files from the project as test files
   --
@@ -186,7 +184,7 @@ begin
       if Exists ("$mth_7z_l.7z") then
         Delete_File ("$mth_7z_l.7z");
       end if;
-      Shell_Execute  (+"7z a -mx=9 $mth_7z_l.7z " & files);
+      Shell_Execute  (+"7z a -mx=9 $mth_7z_l.7z " & test_files);
     end if;
     New_Line;
   end loop;

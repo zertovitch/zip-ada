@@ -9,14 +9,14 @@
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 
-with HAL;
---  NB: in case you want to build this script into an executable with a
---      "full Ada" compiler, the files for HAL (hal.ads, hal*.adb)
+with HAT;
+--  NB: in case you want to build this program into an executable with a
+--      "full Ada" compiler, the files for HAT (hat.ads, hat*.adb)
 --      is located in the /src directory, in the HAC project.
 
 procedure Bench is
 
-  use HAL;
+  use HAT;
 
   procedure Blurb is
   begin

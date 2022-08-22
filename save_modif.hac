@@ -19,7 +19,7 @@
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 
---  This script works both with HAC (command: hac save.hac)
+--  This program works both with HAC (command: hac save.hac)
 --  and a full Ada compiler like GNAT, and that on different
 --  Operating Systems: Linux and Windows at least.
 --
@@ -29,11 +29,11 @@
 --    Explorer: double-click / hit Return on "save_modif.hac".
 --    Cmd / PowerShell: type "save_modif.hac" and hit Return.
 
-with HAL;
+with HAT;
 
 procedure Save_Modif is
 
-  use HAL;
+  use HAT;
 
   function Nice_Date (with_intraday : Boolean) return VString is
     t1 : constant Time := Clock;

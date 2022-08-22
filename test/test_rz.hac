@@ -9,14 +9,16 @@
 --    https://hacadacompiler.sourceforge.io/ ,
 --    https://github.com/zertovitch/hac
 
-with HAL;
---  NB: in case you want to build this script into an executable with a
---      "full Ada" compiler, the files for HAL (hal.ads, hal*.adb)
+with HAT;
+--  NB: in case you want to build this program into an executable with a
+--      "full Ada" compiler, the files for HAT (hat.ads, hat*.adb)
 --      is located in the /src directory, in the HAC project.
+
+with Test_Common;
 
 procedure Test_RZ is
 
-  use HAL;
+  use HAT, Test_Common;
 
   function Gather_Arguments return VString is
     args : VString;
@@ -26,6 +28,8 @@ procedure Test_RZ is
     end loop;
     return args;
   end;
+
+  test_rz_name : VString := +"$test_rz";
 
 begin
   Put_Line ("Testing the ReZip tool - only internal compression methods.");
@@ -38,19 +42,19 @@ begin
 
   --  Create an archive with default compression method (fast).
   Shell_Execute (+".." & Directory_Separator &
-                 "zipada test_rz *.ad* *.txt *.cmd *.sh *.pgm *.ppm *.pdf *.db *.mdb *.xls *.au");
+                 "zipada " & test_rz_name & " " & test_files);
 
   --  Recompress the archive, with optional options...
   Shell_Execute (+".." & Directory_Separator &
-                 "rezip -int " & Gather_Arguments & " test_rz");
+                 "rezip -int " & Gather_Arguments & " " & test_rz_name & "");
 
   --  Show recompression report.
-  Shell_Execute ("firefox test_rz.ReZip.html");  --  Linux
-  Shell_Execute ("start   test_rz.ReZip.html");  --  Windows
+  Shell_Execute ("firefox " & test_rz_name & ".ReZip.html");  --  Linux
+  Shell_Execute ("start   " & test_rz_name & ".ReZip.html");  --  Windows
 
   --  Compare before vs. after.
   Shell_Execute (+".." & Directory_Separator &
-                 "comp_zip test_rz test_rz.repacked -q2");
+                 "comp_zip " & test_rz_name & " " & test_rz_name & ".repacked -q2");
 
   Put ("Press Return ");
   Skip_Line;
