@@ -39,7 +39,7 @@ procedure Test_ZA is
           zipada_used := zipada_used + 1;
         end if;
       when Compare =>
-        if archive /= ref_archive then
+        if archive /= ref_archive and then Exists (full_name) then
           Shell_Execute (+".." & Directory_Separator &
                          "comp_zip " & ref_archive & " " & archive & " -q3", r);
           if r = 0 then
