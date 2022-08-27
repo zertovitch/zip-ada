@@ -1,6 +1,12 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '58', 20-Aug-2022 [rev. 922]:
+  - Support for Zip_64 archives.
+        The Zip_64 format extension is needed when there are more than more
+        than 65535 entries or more than 4 GiB data for a single entry's
+        compressed or uncompressed size, or for a whole archive.
+
 * Changes in '57', 02-Oct-2020 [rev. 799]:
   - UnZip: fixed bad decoding case for the Shrink (LZW) format,
         on some data compressed only by PKZIP up to v.1.10,

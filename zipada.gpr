@@ -151,8 +151,20 @@ project ZipAda is
 
    package Linker is
       case Zip_Build_Mode is
-         when "Fast"      => for Default_Switches ("ada") use ("-Wl,--gc-sections")       & Common_Linker_Options;
-         when "Small"     => for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections") & Common_Linker_Options;
+         when "Fast"      =>
+            case Zip_OS is
+               when "MacOSX" =>
+                  for Default_Switches ("ada") use ("-Wl,-dead_strip")   & Common_Linker_Options;
+               when others =>
+                  for Default_Switches ("ada") use ("-Wl,--gc-sections") & Common_Linker_Options;
+            end case;
+         when "Small"     =>
+            case Zip_OS is
+               when "MacOSX" =>
+                  for Default_Switches ("ada") use ("-s", "-Wl,-dead_strip")   & Common_Linker_Options;
+               when others =>
+                  for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections") & Common_Linker_Options;
+            end case;
          when "Profiling" => for Default_Switches ("ada") use ("-pg")                     & Common_Linker_Options;
          when "Coverage"  => for Default_Switches ("ada") use ("-fprofile-arcs")          & Common_Linker_Options;
          when others      => for Default_Switches ("ada") use                               Common_Linker_Options;
