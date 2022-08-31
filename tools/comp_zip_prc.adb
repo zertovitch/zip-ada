@@ -139,7 +139,7 @@ begin
   z (1) := z1;
   z (2) := z2;
   if quiet <= 3 then
-    Put ("* Comparing [" & Zip.Zip_name (z (1)) & "] and [" & Zip.Zip_name (z (2)) & ']');
+    Put_Line ("* Comparing [" & Zip.Zip_name (z (1)) & "] and [" & Zip.Zip_name (z (2)) & ']');
   end if;
   Compare_all_files (z (1));
   total_2 := Zip.Entries (z (2));
