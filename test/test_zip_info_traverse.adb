@@ -11,6 +11,10 @@ procedure Test_Zip_Info_Traverse is
   end Action;
   procedure Listing is new Traverse (Action);
 begin
-  Load (zi, Argument (1), duplicate_names => admit_duplicates);
-  Listing (zi);
+  if Argument_Count = 0 then
+    Put_Line ("Usage: test_zip_info_traverse archive_name");
+  else
+    Load (zi, Argument (1), duplicate_names => admit_duplicates);
+    Listing (zi);
+  end if;
 end Test_Zip_Info_Traverse;
