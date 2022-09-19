@@ -8,6 +8,7 @@
 with Zip, UnZip, Comp_Zip_Prc;
 with Show_License;
 
+with Ada.Calendar;
 with Ada.Command_Line;                  use Ada.Command_Line;
 with Ada.Text_IO;                       use Ada.Text_IO;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
@@ -25,10 +26,6 @@ procedure Comp_Zip is
     end if;
   end Try_with_zip;
 
-  quiet    : Natural := 0;
-  password : Unbounded_String;
-  total_differences : Natural;
-
   procedure Blurb is
   begin
     Put_Line ("Comp_Zip * compare two zip archive files, including their contents");
@@ -37,6 +34,13 @@ procedure Comp_Zip is
     Put_Line ("URL: " & Zip.web);
     Show_License (Current_Output, "zip.ads");
   end Blurb;
+
+  quiet    : Natural := 0;
+  password : Unbounded_String;
+  total_differences : Natural;
+  T0, T1 : Ada.Calendar.Time;
+
+  use Ada.Calendar;
 
 begin
   if Argument_Count < 2 then
@@ -82,7 +86,12 @@ begin
   if quiet = 0 then
     Blurb;
   end if;
+  T0 := Clock;
   Comp_Zip_Prc (z (1), z (2), quiet, To_String (password), total_differences);
+  T1 := Clock;
+  if quiet < 3 then
+    Put_Line ("Time elapsed :" & Duration'Image (T1 - T0) & " seconds.");
+  end if;
   Set_Exit_Status (Exit_Status (total_differences));
   --
 end Comp_Zip;

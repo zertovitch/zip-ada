@@ -32,6 +32,8 @@ is
   missing_2_in_1 : Natural := 0;
   total_bytes : Integer_64 := 0;
 
+  first_item : Boolean := True;
+
   procedure Compare_1_file (file_name : String) is
     f : array (1 .. 2) of Zipped_File_Type;
     s : array (1 .. 2) of Stream_Access;
@@ -54,6 +56,10 @@ is
 
   begin
     if quiet = 0 then
+      if first_item then
+        New_Line;
+        first_item := False;
+      end if;
       Put ("   [" & stuffing & mininame & "] ");
     end if;
     for i in 1 .. 2 loop
@@ -139,7 +145,7 @@ begin
   z (1) := z1;
   z (2) := z2;
   if quiet <= 3 then
-    Put_Line ("* Comparing [" & Zip.Zip_name (z (1)) & "] and [" & Zip.Zip_name (z (2)) & ']');
+    Put ("* Comparing [" & Zip.Zip_name (z (1)) & "] and [" & Zip.Zip_name (z (2)) & ']');
   end if;
   Compare_all_files (z (1));
   total_2 := Zip.Entries (z (2));
