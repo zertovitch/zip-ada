@@ -38,7 +38,7 @@ procedure Comp_Zip is
   quiet    : Natural := 0;
   password : Unbounded_String;
   total_differences : Natural;
-  T0, T1 : Ada.Calendar.Time;
+  T0, T1, T2 : Ada.Calendar.Time;
 
   use Ada.Calendar;
 
@@ -59,6 +59,7 @@ begin
     Put_Line ("The code 0 means that both archives have identical contents.");
     return;
   end if;
+  T0 := Clock;
   for i in 1 .. 2 loop
     declare
       n : constant String := Try_with_zip (Argument (i));
@@ -86,11 +87,13 @@ begin
   if quiet = 0 then
     Blurb;
   end if;
-  T0 := Clock;
-  Comp_Zip_Prc (z (1), z (2), quiet, To_String (password), total_differences);
   T1 := Clock;
+  Comp_Zip_Prc (z (1), z (2), quiet, To_String (password), total_differences);
+  T2 := Clock;
   if quiet < 3 then
-    Put_Line ("Time elapsed :" & Duration'Image (T1 - T0) & " seconds.");
+    Put_Line
+      ("Time elapsed :" & Duration'Image (T2 - T0) &
+       " seconds (loading catalogues: " & Duration'Image (T1 - T0) & ").");
   end if;
   Set_Exit_Status (Exit_Status (total_differences));
   --

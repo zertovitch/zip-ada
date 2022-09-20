@@ -422,14 +422,23 @@ private
   --  than 11 moves: 2**10=1024 (balanced case), without any read
   --  in the archive.
   --
-  --  *Note* 19-Oct-2018: rev. 670 to 683 used a Hashed Map and a
-  --  Vector (Ada.Containers). The loading of the dictionary was
-  --  much faster (2x), but there were performance bottlenecks elsewhere,
-  --  not solved by profiling. On an archive with 18000 small entries of
-  --  around 1 KiB each, comp_zip ran 100x slower!
-  --  Neither the restricted use of Unbounded_String, nor the replacement
-  --  of the Vector by an array helped solving the performance issue.
-
+  --  Notes on search dictionary
+  ------------------------------
+  --  19-Oct-2018: rev. 670 to 683 used a Vector and a Hashed Map
+  --      from Ada.Containers. The loading of the dictionary was
+  --      much faster (2x), but there were performance bottlenecks elsewhere,
+  --      not solved by profiling. On an archive with 18000 small entries of
+  --      around 1 KiB each, comp_zip ran 100x slower!
+  --      Neither the restricted use of Unbounded_String, nor the replacement
+  --      of the Vector by an array helped solving the performance issue.
+  --  2022: second attempt with Vectors & Indefinite_Hashed_Maps (both a vector
+  --      and a map are needed because a Zip archive may contain entries with
+  --      duplicate keys; otherwise a map would be sufficient).
+  --         - Test_Zip_Info_Timing: load time on many_65535.zip:
+  --              0.75 seconds (binary tree) ->  0.44 seconds (vector & map)
+  --         - But... comp_zip many_4096.zip many_4096.zip -q2:
+  --              5.5  seconds (binary tree) -> 13.2  seconds (vector & map) !
+  
   type Dir_node;
   type p_Dir_node is access Dir_node;
 
@@ -444,7 +453,7 @@ private
     date_time        : Time;
     method           : PKZip_method;
     name_encoding    : Zip_name_encoding;
-    read_only        : Boolean; -- TBD: attributes of most supported systems
+    read_only        : Boolean;  --  TBD: attributes of most supported systems
     encrypted_2_x    : Boolean;
     user_code        : Integer;
   end record;
@@ -456,8 +465,8 @@ private
   type Zip_info is new Ada.Finalization.Controlled with record
     loaded             : Boolean := False;
     case_sensitive     : Boolean;
-    zip_file_name      : p_String;                           -- a file name...
-    zip_input_stream   : Zip_Streams.Zipstream_Class_Access; -- ...or an input stream
+    zip_file_name      : p_String;                            --  a file name...
+    zip_input_stream   : Zip_Streams.Zipstream_Class_Access;  --  ...or an input stream
     --  ^ when not null, we use this, and not zip_file_name
     dir_binary_tree    : p_Dir_node;
     total_entries      : Natural;

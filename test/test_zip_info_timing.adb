@@ -3,7 +3,7 @@
 with Zip, Zip_with_many_files;
 with Ada.Calendar, Ada.Text_IO;
 
-procedure Test_Zip_Info_timing is
+procedure Test_Zip_Info_Timing is
 
   tests : constant := 50;
 
@@ -50,4 +50,4 @@ begin
   Test_1_Archive ("many_4096.zip");
   --  rt.jar: More than 17,000 entries, that is more than 510,000 bytes, not counting file names
   Test_1_Archive ("rt.jar");
-end Test_Zip_Info_timing;
+end Test_Zip_Info_Timing;

@@ -4,12 +4,13 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
+with Ada.Calendar;
 with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Ada.Command_Line;                  use Ada.Command_Line;
+with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
 with Ada.Streams;
 with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
+with Ada.Text_IO;                       use Ada.Text_IO;
 
 with Zip;
 with UnZip.Streams;                     use UnZip.Streams;
@@ -33,6 +34,7 @@ procedure Find_Zip is
     type Buffer_range is mod siz;
     buf : array (Buffer_range) of Character := (others => ' ');
     bup : Buffer_range := 0;
+    --
     --  We define a local, ad-hoc stream type.
     --
     type Search_stream is new Ada.Streams.Root_Stream_Type with null record;
@@ -61,13 +63,13 @@ procedure Find_Zip is
         if ignore_case then
           c := To_Upper (c);
         end if;
-        if c = l then -- last character do match, search further...
+        if c = l then  --  last character do match, search further...
           i := bup;
           j := stl;
           match : loop
             i := i - 1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
             j := j - 1;
-            if j = 0 then -- we survived the whole search string
+            if j = 0 then  --  we survived the whole search string
               occ := occ + 1;
               exit match;
             end if;
@@ -116,13 +118,13 @@ procedure Find_Zip is
       if ignore_case then
         c := To_Upper (c);
       end if;
-      if c = l then -- last character do match, search further...
+      if c = l then  --  last character do match, search further...
         i := bup;
         j := stl;
         match : loop
           i := i - 1;  --  this loops modulo max: 3, 2, 1, 0, max-1, max-2, ...
           j := j - 1;
-          if j = 0 then -- we survived the whole search string
+          if j = 0 then  --  we survived the whole search string
             occ := occ + 1;
             exit match;
           end if;
@@ -165,17 +167,7 @@ procedure Find_Zip is
     end if;
   end Try_with_zip;
 
-begin
-  if Argument_Count < 2 then
-    Put_Line ("Find_Zip * Search a text string in files packed in a zip archive.");
-    Put_Line ("Demo for the Zip-Ada library, by G. de Montmollin");
-    Put_Line ("Library version " & Zip.version & " dated " & Zip.reference);
-    Put_Line ("URL: " & Zip.web);
-    Show_License (Current_Output, "zip.ads");
-    Put_Line ("Usage: find_zip archive[.zip] [""]text[""]");
-    return;
-  end if;
-  declare
+  procedure Load_Archive_Catalogue is
     n : constant String := Try_with_zip (Argument (1));
   begin
     Zip.Load (z, n);
@@ -184,8 +176,9 @@ begin
       Put ("Can't open archive [" & n & ']'); raise;
     when UnZip.Wrong_password      =>
       Put ("Archive has a password"); raise;
-  end;
-  declare
+  end Load_Archive_Catalogue;
+
+  procedure Prepare_Search_String is
     s : String := Argument (2);
   begin
     Put_Line ("Searching string [" & s & "]");
@@ -198,7 +191,34 @@ begin
     end if;
     str (1 .. stl) := s;
     l := str (stl);
-  end;
+  end Prepare_Search_String;
+
+  procedure Blurb is
+  begin
+    Put_Line ("Find_Zip * Search a text string in files packed in a zip archive.");
+    Put_Line ("Demo for the Zip-Ada library, by G. de Montmollin");
+    Put_Line ("Library version " & Zip.version & " dated " & Zip.reference);
+    Put_Line ("URL: " & Zip.web);
+    Show_License (Current_Output, "zip.ads");
+    Put_Line ("Usage: find_zip archive[.zip] [""]text[""]");
+  end Blurb;
+
+  T0, T1, T2 : Ada.Calendar.Time;
+  use Ada.Calendar;
+
+begin
+  if Argument_Count < 2 then
+    Blurb;
+    return;
+  end if;
+  T0 := Clock;
+  Load_Archive_Catalogue;
+  Prepare_Search_String;
+  T1 := Clock;
   Search_all_files (z);
   Search_all_file_names (z);
+  T2 := Clock;
+  Put_Line
+    ("Time elapsed :" & Duration'Image (T2 - T0) &
+     " seconds (loading catalogue: " & Duration'Image (T1 - T0) & ").");
 end Find_Zip;
