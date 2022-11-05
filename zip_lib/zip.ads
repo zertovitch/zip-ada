@@ -438,7 +438,7 @@ private
   --              0.75 seconds (binary tree) ->  0.44 seconds (vector & map)
   --         - But... comp_zip many_4096.zip many_4096.zip -q2:
   --              5.5  seconds (binary tree) -> 13.2  seconds (vector & map) !
-  
+
   type Dir_node;
   type p_Dir_node is access Dir_node;
 
