@@ -57,16 +57,24 @@ project ZipAda is
      "-gnatf",  --  Full errors. Verbose details, all undefined references
      "-gnatq",  --  Don't quit, try semantics, even if parse errors
      "-gnatQ",  --  Don't quit, write ali/tree file even if compile errors
-     "-g"       --  Generate debugging information
-    )
-   &
+     "-g");     --  Generate debugging information
+
+   Style_Checks :=
     ("-gnatyaknpr",  --  Style: check all casings: a:attribute, k:keywords, n:package Standard identifiers, p:pragma, r:identifier references
      "-gnatybfhiu",  --  Style: check b:no blanks at end of lines, f:no ff/vtabs, h: no htabs, i:if-then layout, u:no unnecessary blank lines
      "-gnatyO",      --  Style: check that overriding subprograms are explicitly marked as such.
      "-gnatyx",      --  Style: check x:no extra parens
      "-gnatye",      --  Style: check e:end/exit labels present
-     "-gnatytc"      --  Style: check t:token separation rules, c:comment format (two spaces)
-    );
+     "-gnatytc");    --  Style: check t:token separation rules, c:comment format (two spaces)
+
+   type Zip_Styles_Checks_Type is ("Off", "On");
+
+   Zip_Styles_Checks : Zip_Styles_Checks_Type := external ("Zip_Styles_Checks", "On");
+
+   case Zip_Styles_Checks is
+      when "Off" => null;
+      when "On"  => Common_Compiler_Options := Common_Compiler_Options & Style_Checks;
+   end case;
 
    Debug_Compiler_Options  :=
      Common_Compiler_Options & (

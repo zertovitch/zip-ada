@@ -139,7 +139,7 @@ package body Zip.Create is
      cm : Name_mapping.Cursor;
      OK : Boolean;
    begin
-     m.Insert (To_Unbounded_String (file_name), cm, OK);
+     m.Insert (Ada.Strings.Unbounded.To_Unbounded_String (file_name), cm, OK);
      if not OK then  --  Name already registered
        raise Duplicate_name with "Entry name = " & file_name;
      end if;
@@ -179,6 +179,19 @@ package body Zip.Create is
      end if;
    end Check_Size;
 
+   function Unixify (entry_name : String) return String is
+     unixified : String (entry_name'Range) := entry_name;
+   begin
+     --  Appnote.txt, V. J. :
+     --    " All slashes should be forward slashes '/' as opposed to backwards slashes '\' "
+     for i in unixified'Range loop
+       if unixified (i) = '\' then
+         unixified (i) := '/';
+       end if;
+     end loop;
+     return unixified;
+   end Unixify;
+
    procedure Add_Stream (Info            : in out Zip_Create_Info;
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
                          Feedback        : in     Feedback_proc;
@@ -187,17 +200,10 @@ package body Zip.Create is
                          Final_Method    :    out Natural)
    is
       mem1, mem2 : ZS_Index_Type := 1;
-      entry_name : String := Get_Name (Stream);
+      entry_name : constant String := Unixify (Get_Name (Stream));
       Last : Positive_M32;
       fh_extra : Local_File_Header_Extension;
    begin
-      --  Appnote.txt, V. J. :
-      --    " All slashes should be forward slashes '/' as opposed to backwards slashes '\' "
-      for i in entry_name'Range loop
-        if entry_name (i) = '\' then
-          entry_name (i) := '/';
-        end if;
-      end loop;
       if Info.Duplicates = error_on_duplicate then
         --  Check for duplicates; raises Duplicate_name in this case.
         Insert_to_name_dictionary (entry_name, Info.name_dictionary);
@@ -313,11 +319,11 @@ package body Zip.Create is
       Final_Method    : Natural; -- unused
    begin
      --  Read the file
-     Set_Name (temp_zip_stream, File_Name);
+     Set_Name (temp_zip_stream, Unixify (File_Name));
      Open (temp_zip_stream, Zip_Streams.In_File);
      --  Eventually we set a new name for archiving:
      if Name_in_archive /= "" then
-        Set_Name (temp_zip_stream, Name_in_archive);
+        Set_Name (temp_zip_stream, Unixify (Name_in_archive));
      end if;
      Set_Unicode_Name_Flag (temp_zip_stream, Name_encoding = UTF_8);
      Set_Read_Only_Flag (temp_zip_stream, Is_read_only);
@@ -358,7 +364,7 @@ package body Zip.Create is
    begin
      Add_String (
        Info               => Info,
-       Contents           => To_Unbounded_String (Contents),
+       Contents           => Ada.Strings.Unbounded.To_Unbounded_String (Contents),
        Name_in_archive    => Name_in_archive,
        Name_UTF_8_encoded => Name_UTF_8_encoded,
        Password           => Password,
@@ -367,7 +373,7 @@ package body Zip.Create is
    end Add_String;
 
    procedure Add_String (Info               : in out Zip_Create_Info;
-                         Contents           : Unbounded_String;
+                         Contents           : Ada.Strings.Unbounded.Unbounded_String;
                          Name_in_archive    : String;
                          --  Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
                          Name_UTF_8_encoded : Boolean  := False;
@@ -379,7 +385,7 @@ package body Zip.Create is
      temp_zip_stream : Zip_Memory_Stream;
    begin
      Set (temp_zip_stream, Contents);
-     Set_Name (temp_zip_stream, Name_in_archive);
+     Set_Name (temp_zip_stream, Unixify (Name_in_archive));
      if Creation_time = use_clock
                --  If we have use_file_modification_time by mistake, use clock as well:
        or else Creation_time = use_file_modification_time
@@ -392,11 +398,30 @@ package body Zip.Create is
      Add_Stream (Info, temp_zip_stream, Password);
    end Add_String;
 
-   procedure Add_Compressed_Stream (
-     Info           : in out Zip_Create_Info;                        --  Destination
-     Stream         : in out Zip_Streams.Root_Zipstream_Type'Class;  --  Source
-     Feedback       : in     Feedback_proc
-   )
+   procedure Add_Empty_Folder
+     (Info               : in out Zip_Create_Info;
+      Folder_Name        : in     String;
+      --  Name_UTF_8_encoded = True if Name is actually UTF-8 encoded (Unicode)
+      Name_UTF_8_encoded : in     Boolean  := False)
+   is
+     ufn : constant String := Unixify (Folder_Name);
+   begin
+     Add_String
+       (Info               => Info,
+        Contents           => "",
+        Name_UTF_8_encoded => Name_UTF_8_encoded,
+        Name_in_archive    =>
+          (if ufn'Length > 0 and then ufn (ufn'Last) = '/'
+           then
+             ufn
+           else
+             ufn & '/'));
+   end Add_Empty_Folder;
+
+   procedure Add_Compressed_Stream
+     (Info     : in out Zip_Create_Info;                        --  Destination
+      Stream   : in out Zip_Streams.Root_Zipstream_Type'Class;  --  Source
+      Feedback : in     Feedback_proc)
    is
       lh : Zip.Headers.Local_File_Header;
       data_descriptor_after_data : Boolean;

@@ -8,11 +8,14 @@
 --  See tools/zip_dir_list.adb for a simple example
 --    of a Zip directory traversal.
 --
-with Ada.Text_IO;                       use Ada.Text_IO;
-with UnZip.Streams;                     use UnZip.Streams, UnZip;
+
 with Demo_Zip;
 
+with Ada.Text_IO;
+with UnZip.Streams;
+
 procedure Demo_UnZip is
+  use Ada.Text_IO, UnZip, UnZip.Streams;
   f : Zipped_File_Type;
   s : Stream_Access;
   c : Character;

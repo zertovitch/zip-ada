@@ -9,9 +9,9 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Zip.Create;                        use Zip.Create;
+with Zip.Create;
 
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Ada.Characters.Handling;
 with Ada.Text_IO;
 
 procedure Demo_csv_into_zip is
@@ -82,6 +82,8 @@ procedure Demo_csv_into_zip is
     Other => Other
    );
 
+  use Ada.Characters.Handling;
+
   procedure Output_results (
     g       : GroupCountries;
     p       : Peril;
@@ -105,6 +107,8 @@ procedure Demo_csv_into_zip is
     end loop;
     Close (f);
   end Output_results;
+
+  use Zip.Create;
 
   procedure Pack_results (
     g            : GroupCountries;

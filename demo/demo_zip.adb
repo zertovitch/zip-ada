@@ -1,9 +1,10 @@
 --  Zip archive creation demo.
 --  For a complete Zip creation tool, see tools/zipada.adb .
 --
-with Zip.Create;                        use Zip.Create;
+with Zip.Create;
 
 procedure Demo_Zip is
+  use Zip.Create;
   zip_file : aliased Zip_File_Stream;  --  Archive is a file in this example.
   archive : Zip_Create_Info;
 begin
@@ -18,5 +19,6 @@ begin
     "It is such a nice ""Hello world""-like demo, isn't it ?",
     "nice_string.txt"
   );
+  Add_Empty_Folder (archive, "empty_folder/");
   Finish (archive);
 end Demo_Zip;
