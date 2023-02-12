@@ -355,10 +355,10 @@ package body Rezip_lib is
       return t (j .. t'Last);
     end Image_1000;
 
-    procedure Call_external (
-      packer : String;
-      args   : String
-    )
+    procedure Call_External
+      (packer         : String;
+       args           : String;
+       is_tool_needed : Boolean)
     is
       use GNAT.OS_Lib;
       procedure Dispose is
@@ -371,21 +371,29 @@ package body Rezip_lib is
       GNAT.OS_Lib.Spawn (packer, list.all, ok);
       Dispose (list);
       if not ok then
-        Dual_IO.Put_Line (
-          "ReZip warning: cannot call " & packer &
-          ", or it has returned an error. Is it callable through the ""path"" ?"
-        );
+        declare
+          msg : constant String := " cannot call external tool """ & packer &
+               """, or it has returned an error.";
+        begin
+          Dual_IO.New_Line;
+          Dual_IO.Put_Line ("**************");
+          if is_tool_needed then
+            Dual_IO.Put_Line ("ReZip ERROR:" & msg);
+            raise External_Tool_Failed;
+          else
+            Dual_IO.Put_Line ("ReZip warning:" & msg);
+          end if;
+        end;
       end if;
-    end Call_external;
+    end Call_External;
 
     seed_iterator : Natural;
 
-    procedure Call_external_expanded (
-      packer     :        String;
-      options    :        String;
-      other_args :        String;
-      expand     : in out Unbounded_String  --  expanded arguments
-    )
+    procedure Call_External_Expanded
+      (packer     :        String;
+       options    :        String;
+       other_args :        String;
+       expand     : in out Unbounded_String)  --  expanded arguments
     is
       type Token is (rand, rand_exp);
     begin
@@ -455,8 +463,8 @@ package body Rezip_lib is
           end;
         end loop;
       end loop;
-      Call_external (packer, S (expand) & ' ' & other_args);
-    end Call_external_expanded;
+      Call_External (packer, S (expand) & ' ' & other_args, is_tool_needed => True);
+    end Call_External_Expanded;
 
     function Temp_Zip_Name return String is
     begin
@@ -473,14 +481,13 @@ package body Rezip_lib is
         null;
     end Try_deleting_Temp_Zip_File;
 
-    procedure Process_External (
-      packer     : String;
-      options    : String;
-      out_name   : String;
-      is_rand    : Boolean;
-      is_deflate : Boolean;
-      info       : out Packer_info
-    )
+    procedure Process_External
+      (packer     : String;
+       options    : String;
+       out_name   : String;
+       is_rand    : Boolean;
+       is_deflate : Boolean;
+       info       : out Packer_info)
     is
       rand_winner : constant String := Simple_Name (Radix) & "_$rand$.tmp";
       options_winner : Unbounded_String;
@@ -500,7 +507,7 @@ package body Rezip_lib is
       Set_Directory (Containing_Directory (Radix));
       loop
         Try_deleting_Temp_Zip_File;  --  remove (eventually broken) zip
-        Call_external_expanded (
+        Call_External_Expanded (
           packer,
           options,
           Temp_Zip_Name & ' ' & data_name,
@@ -508,11 +515,11 @@ package body Rezip_lib is
         );
         if (not Exists (Temp_Zip_Name)) and then Ada.Directories.Size (data_name) = 0 then
           --  ADVZip 1.19 doesn't create a zip file for a 0-size entry; we call Zip instead...
-          Call_external_expanded ("zip", "", Temp_Zip_Name & ' ' & data_name, dummy_exp_opt);
+          Call_External_Expanded ("zip", "", Temp_Zip_Name & ' ' & data_name, dummy_exp_opt);
         end if;
         if is_deflate then
           --  Post processing of "deflated" entry with DeflOpt:
-          Call_external (S (defl_opt.name), Temp_Zip_Name);
+          Call_External (S (defl_opt.name), Temp_Zip_Name, is_tool_needed => False);
         end if;
         --  Now, rip
         Set_Name (MyStream, Temp_Zip_Name);
@@ -617,7 +624,9 @@ package body Rezip_lib is
       Close (File_out);
     end Process_Internal_Raw;
 
-    --  Compress data as a Zip archive (like external methods), then call post-processing
+    --  Compress data as a temp Zip archive (like external methods), then call post-processing.
+    --  Currently, only the DeflOpt post-processor is considered.
+    --
     procedure Process_Internal_as_Zip (a : Approach; e : in out Dir_entry) is
       zip_file : aliased File_Zipstream;
       archive : Zip_Create_Info;
@@ -633,7 +642,7 @@ package body Rezip_lib is
       Add_File (archive, data_name);
       Finish (archive);
       --  Post processing of "deflated" entry with DeflOpt:
-      Call_external (S (defl_opt.name), Temp_Zip_Name);
+      Call_External (S (defl_opt.name), Temp_Zip_Name, is_tool_needed => False);
       --  Now, rip
       Set_Name (MyStream, Temp_Zip_Name);
       Open (MyStream, In_File);
@@ -1346,6 +1355,12 @@ package body Rezip_lib is
     if alt_tmp_file_radix = "" then
       Flexible_temp_files.Finalize;
     end if;
+  exception
+    when External_Tool_Failed =>
+      Dual_IO.Put_Line ("  Is that tool callable through the ""path"" ?");
+      Dual_IO.Put_Line ("  In doubt, re-run ReZip with the ""-int"" (internal only) option.");
+      Dual_IO.Close_Log;
+      raise;
   end Rezip;
 
   procedure Show_external_packer_list is

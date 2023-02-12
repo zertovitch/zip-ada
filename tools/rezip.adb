@@ -182,4 +182,6 @@ begin
       end if;
     end;
   end loop;
+exception
+  when External_Tool_Failed => null;  --  Messages have been already issued.
 end ReZip;

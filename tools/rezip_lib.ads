@@ -39,6 +39,8 @@ package Rezip_lib is
 
   procedure Show_external_packer_list;
 
+  External_Tool_Failed : exception;
+
 private
 
   type Zip_format_set is array (Zip.PKZip_method) of Boolean;
