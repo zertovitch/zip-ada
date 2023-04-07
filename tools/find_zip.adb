@@ -4,16 +4,16 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Ada.Calendar;
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
-with Ada.Streams;
-with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
-with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Calendar,
+     Ada.Characters.Handling,
+     Ada.Command_Line,
+     Ada.Integer_Text_IO,
+     Ada.Streams,
+     Ada.Strings.Fixed,
+     Ada.Text_IO;
 
 with Zip;
-with UnZip.Streams;                     use UnZip.Streams;
+with UnZip.Streams;
 with Show_License;
 
 procedure Find_Zip is
@@ -26,6 +26,9 @@ procedure Find_Zip is
   z : Zip.Zip_info;
 
   ignore_case : constant Boolean := True;
+
+  use Ada.Characters.Handling, Ada.Integer_Text_IO, Ada.Text_IO;
+  use UnZip.Streams;
 
   procedure Search_1_file_using_output_stream (file_name : String) is
     occ : Natural := 0;
@@ -150,7 +153,7 @@ procedure Find_Zip is
     if ignore_case then
       un := To_Upper (un);
     end if;
-    if Index (un, str (1 .. stl)) > 0 then
+    if Ada.Strings.Fixed.Index (un, str (1 .. stl)) > 0 then
       Put_Line (" Found in [" & To_Lower (file_name) & "]'s entry name");
     end if;
   end Search_in_entry_name;
@@ -166,6 +169,8 @@ procedure Find_Zip is
       --  Maybe the file doesn't exist, but we tried our best...
     end if;
   end Try_with_zip;
+
+  use Ada.Command_Line;
 
   procedure Load_Archive_Catalogue is
     n : constant String := Try_with_zip (Argument (1));

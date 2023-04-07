@@ -8,10 +8,10 @@
 with Zip, UnZip, Comp_Zip_Prc;
 with Show_License;
 
-with Ada.Calendar;
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
+with Ada.Calendar,
+     Ada.Command_Line,
+     Ada.Strings.Unbounded,
+     Ada.Text_IO;
 
 procedure Comp_Zip is
   z : array (1 .. 2) of Zip.Zip_info;
@@ -26,6 +26,8 @@ procedure Comp_Zip is
     end if;
   end Try_with_zip;
 
+  use Ada.Text_IO;
+
   procedure Blurb is
   begin
     Put_Line ("Comp_Zip * compare two zip archive files, including their contents");
@@ -35,12 +37,12 @@ procedure Comp_Zip is
     Show_License (Current_Output, "zip.ads");
   end Blurb;
 
+  use Ada.Calendar, Ada.Command_Line, Ada.Strings.Unbounded;
+
   quiet    : Natural := 0;
   password : Unbounded_String;
   total_differences : Natural;
-  T0, T1, T2 : Ada.Calendar.Time;
-
-  use Ada.Calendar;
+  T0, T1, T2 : Time;
 
 begin
   if Argument_Count < 2 then

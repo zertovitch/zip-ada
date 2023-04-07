@@ -14,31 +14,33 @@
 --    7-Zip, KZip, Zip (info-zip), AdvZip, DeflOpt
 --    Web URL's: see Zipper_specification below or run ReZip without arguments.
 
-with Zip.Headers, Zip.Compress, UnZip;
-with Zip.Create;                        use Zip.Create;
-with Zip_Streams;                       use Zip_Streams;
+with Zip.Create,
+     Zip.Compress,
+     Zip.Headers;
 
 with Flexible_temp_files;
+with UnZip;
+with Zip_Streams;
 with Zip_Console_IO;
 
-with Ada.Calendar;                      use Ada.Calendar;
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
-with Ada.Directories;                   use Ada.Directories;
-with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
-with Ada.IO_Exceptions;
-with Ada.Numerics.Discrete_Random;
-with Ada.Numerics.Elementary_Functions;
-with Ada.Numerics.Float_Random;
-with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
-with Ada.Strings.Fixed;                 use Ada.Strings.Fixed, Ada.Strings;
-with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Unchecked_Deallocation;
+with Ada.Calendar,
+     Ada.Characters.Handling,
+     Ada.Directories,
+     Ada.Float_Text_IO,
+     Ada.Integer_Text_IO,
+     Ada.IO_Exceptions,
+     Ada.Numerics.Discrete_Random,
+     Ada.Numerics.Elementary_Functions,
+     Ada.Numerics.Float_Random,
+     Ada.Streams.Stream_IO,
+     Ada.Strings.Fixed,
+     Ada.Strings.Unbounded,
+     Ada.Text_IO,
+     Ada.Unchecked_Deallocation;
 
 with Dual_IO;
 
-with Interfaces;                        use Interfaces;
+with Interfaces;
 
 with GNAT.OS_Lib;
 
@@ -49,7 +51,10 @@ package body Rezip_lib is
   function U (Source : String) return Ada.Strings.Unbounded.Unbounded_String
     renames Ada.Strings.Unbounded.To_Unbounded_String;
 
-  --  This might be better read from a config file...
+  use Ada.Strings.Unbounded;
+  use Interfaces;
+
+  --  This info might be better read from a config file...
   --
   type Zipper_specification is record
     name, title, URL, options : Unbounded_String;
@@ -135,6 +140,8 @@ package body Rezip_lib is
     (U ("deflopt"), U ("DeflOpt"), U ("http://www.walbeehm.com/download/"),
      NN, NN, 0, Zip.deflate, 0, False);
 
+  use Ada.Strings.Fixed, Ada.Strings;
+
   procedure Rezip (
     from_zip_file      : String;
     to_zip_file        : String;
@@ -149,6 +156,11 @@ package body Rezip_lib is
     internal_only      : Boolean        := False         --  Zip-Ada algorithms only, no ext. call
   )
   is
+
+    use Zip.Create;
+    use Zip_Streams;
+
+    use Ada.Calendar, Ada.Characters.Handling, Ada.Directories, Ada.Text_IO;
 
     package DFIO is new Dual_IO.Float_IO (Float);
 
@@ -170,7 +182,8 @@ package body Rezip_lib is
       mem            : Zip_Streams.ZS_Index_Type;
       head_extra     : Zip.Headers.Local_File_Header_Extension;
       dummy_offset   : Unsigned_64 := 0;  --  Initialized for avoiding random value = 16#FFFF_FFFF#
-      use UnZip;
+
+      use UnZip, Ada.Streams.Stream_IO;
     begin
       Zip.Find_offset (
         info           => archive,
@@ -686,6 +699,8 @@ package body Rezip_lib is
       consider_a_priori : Approach_Filtering;
       --
       lightred : constant String := "#f43048";
+
+      use Ada.Float_Text_IO, Ada.Integer_Text_IO;
 
       procedure Process_one (unique_name : String) is
         comp_size   :  Zip.Zip_64_Data_Size_Type;

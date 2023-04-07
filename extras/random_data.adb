@@ -5,22 +5,25 @@
 --   min = 0
 --   max = 255
 
-with Ada.Command_Line;                  use Ada.Command_Line;
-
-with Ada.Numerics.Discrete_Random,
+with Ada.Command_Line,
+     Ada.Numerics.Discrete_Random,
      Ada.Sequential_IO;
 
 with Interfaces;
 
 procedure Random_Data is
   use Interfaces;
+  use Ada.Command_Line;
+
   n : Integer_64 := 100;
   type Byte is mod 2**8;
   package BIO is new Ada.Sequential_IO (Byte);
   use BIO;
+
   f : File_Type;
   min : Byte := 0;
   max : Byte := 255;
+
   procedure Spit_random is
     subtype Subyte is Byte range min .. max;
     package Byte_soup is new Ada.Numerics.Discrete_Random (Subyte);
@@ -32,6 +35,7 @@ procedure Random_Data is
       Write (f, Random (cg));
     end loop;
   end Spit_random;
+
 begin
   if Argument_Count >= 1 then
     n := Integer_64'Value (Argument (1));

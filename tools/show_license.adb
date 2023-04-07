@@ -1,6 +1,7 @@
-with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Text_IO;
 
-procedure Show_License (file : File_Type; source_with_license : String) is
+procedure Show_License (file : Ada.Text_IO.File_Type; source_with_license : String) is
+  use Ada.Text_IO;
 begin
   New_Line (file);
   Put_Line (file, "| This software is free and open-source.");

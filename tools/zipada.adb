@@ -10,21 +10,24 @@
 --  ZA v. 28: uses the Zip.Create package
 --  ZA v. 26: modified for the new Zip_Stream package
 
-with Ada.Calendar;                      use Ada.Calendar;
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Directories;                   use Ada.Directories;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Wide_Text_IO;
-with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
-with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
-with Ada.Strings.UTF_Encoding.Conversions;
-with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
-with Ada.Strings.Wide_Fixed;
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
+with Ada.Calendar,
+     Ada.Command_Line,
+     Ada.Directories,
+     Ada.Text_IO,
+     Ada.Wide_Text_IO,
+     Ada.Float_Text_IO,
+     Ada.Strings.Fixed,
+     Ada.Strings.UTF_Encoding.Conversions,
+     Ada.Strings.Unbounded,
+     Ada.Strings.Wide_Fixed,
+     Ada.Characters.Handling;
+
 with Interfaces;
 
-with Zip_Streams;                       use Zip_Streams;
-with Zip.Compress, Zip.Create;          use Zip.Create;
+with Zip_Streams;
+
+with Zip.Compress,
+     Zip.Create;
 
 with Zip_Console_IO;
 with Show_License;
@@ -33,6 +36,13 @@ procedure ZipAda is
 
   T0, T1 : Ada.Calendar.Time;
   seconds_elapsed : Duration;
+
+  use Ada.Calendar, Ada.Characters.Handling, Ada.Command_Line,
+      Ada.Directories, Ada.Float_Text_IO,
+      Ada.Strings.Unbounded, Ada.Text_IO;
+
+  use Zip_Streams;
+  use Zip.Create;
 
   procedure Blurb is
   begin
@@ -85,6 +95,7 @@ procedure ZipAda is
     Put (' ');
     declare
       meth : constant String := Zip.Image (Zip.Method_from_code (Final_Method));
+      use Ada.Strings.Fixed;
     begin
       Put (meth & (Zip.PKZip_method'Width - meth'Length) * ' ');
     end;

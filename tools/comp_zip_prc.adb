@@ -6,13 +6,14 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
-with Interfaces;                        use Interfaces;
+with Ada.Characters.Handling,
+     Ada.Integer_Text_IO,
+     Ada.Text_IO;
+
+with Interfaces;
 
 with Zip;
-with UnZip.Streams;                     use UnZip.Streams;
+with UnZip.Streams;
 
 procedure Comp_Zip_Prc (
   z1, z2            :     Zip.Zip_info;
@@ -21,6 +22,7 @@ procedure Comp_Zip_Prc (
   total_differences : out Natural
 )
 is
+  use Interfaces;
   z : array (1 .. 2) of Zip.Zip_info;
   total_1,
   total_2,
@@ -34,7 +36,11 @@ is
 
   first_item : Boolean := True;
 
+  use Ada.Text_IO;
+
   procedure Compare_1_file (file_name : String) is
+    use UnZip.Streams;
+
     f : array (1 .. 2) of Zipped_File_Type;
     s : array (1 .. 2) of Stream_Access;
     c : array (1 .. 2) of Character;
@@ -51,7 +57,7 @@ is
     end Cut_name;
 
     l : constant := 40;
-    mininame : constant String := To_Lower (Cut_name (file_name, l));
+    mininame : constant String := Ada.Characters.Handling.To_Lower (Cut_name (file_name, l));
     stuffing : constant String (1 .. l - mininame'Length + 1) := (others => ' ');
 
   begin
@@ -140,6 +146,8 @@ is
   procedure Compare_all_files is new Zip.Traverse (Compare_1_file);
 
   err_str : String (1 .. 5);
+
+  use Ada.Integer_Text_IO;
 
 begin
   z (1) := z1;
