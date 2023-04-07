@@ -55,12 +55,11 @@
 --   4-Feb-2009: GdM: Added procedure Add_File
 --
 
-with Zip.Compress;
-with Zip.Headers;
-with Zip_Streams;
+with Zip.Compress,
+     Zip.Headers;
 
-with Ada.Containers.Hashed_Maps;
-with Ada.Strings.Unbounded.Hash;
+with Ada.Containers.Hashed_Maps,
+     Ada.Strings.Unbounded.Hash;
 
 package Zip.Create is
 
@@ -104,7 +103,7 @@ package Zip.Create is
                          Compressed_Size :    out Zip.Zip_64_Data_Size_Type;
                          Final_Method    :    out Natural);
 
-   default_time               : Zip_Streams.Time renames Zip_Streams.default_time;
+   default_creation_time      : Zip_Streams.Time renames Zip_Streams.default_time;
 
    --  If use_file_modification_time is passed to Add_File, Ada.Directories.Modification_Time
    --  will be called on File_Name and that time will be used for setting the Zip entry's time
@@ -130,7 +129,7 @@ package Zip.Create is
                        Delete_file_after : Boolean           := False;
                        Name_encoding     : Zip_name_encoding := IBM_437;
                        --  Time stamp for this entry
-                       Modification_time : Time              := default_time;
+                       Modification_time : Time              := default_creation_time;
                        Is_read_only      : Boolean           := False;
                        Feedback          : Feedback_proc     := null;
                        Password          : String            := "");
@@ -144,7 +143,7 @@ package Zip.Create is
                          Name_UTF_8_encoded : Boolean  := False;
                          Password           : String   := "";
                          --  Time stamp for this entry
-                         Creation_time      : Zip.Time := default_time);
+                         Creation_time      : Zip.Time := default_creation_time);
 
    procedure Add_String (Info               : in out Zip_Create_Info;
                          Contents           : Ada.Strings.Unbounded.Unbounded_String;
@@ -153,7 +152,7 @@ package Zip.Create is
                          Name_UTF_8_encoded : Boolean  := False;
                          Password           : String   := "";
                          --  Time stamp for this entry
-                         Creation_time      : Zip.Time := default_time);
+                         Creation_time      : Zip.Time := default_creation_time);
 
    procedure Add_Empty_Folder
      (Info               : in out Zip_Create_Info;
@@ -201,7 +200,7 @@ package Zip.Create is
    procedure Close
      (Zip_Entry_Stream : in out Zip_Entry_Stream_Type;
       Entry_Name       : in     String;
-      Creation_Time    : in     Zip.Time := default_time;
+      Creation_Time    : in     Zip.Time := default_creation_time;
       Info             : in out Zip_Create_Info);
 
    --  Finish: complete the Zip archive when all desired entries have

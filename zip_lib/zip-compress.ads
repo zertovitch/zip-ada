@@ -22,7 +22,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2022 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -48,7 +48,7 @@
 
 ---------------------------------------------------------------------------------
 
-with Zip_Streams, Zip.CRC_Crypto;
+with Zip.CRC_Crypto;
 
 package Zip.Compress is
 

@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2006 .. 2022 Gautier de Montmollin
+--  Copyright (c) 2006 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,16 +38,15 @@
 --  and the counterpart Canadian patent expired on July 7, 2004.
 --
 
-with Zip.CRC_Crypto;                    use Zip.CRC_Crypto;
+with Zip.CRC_Crypto;
 
-private procedure Zip.Compress.Shrink (
-  input,
-  output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-  input_size_known : Boolean;
-  input_size       : Zip_64_Data_Size_Type; -- ignored if unknown
-  feedback         : Feedback_proc;
-  CRC              : in out Interfaces.Unsigned_32; -- only updated here
-  crypto           : in out Crypto_pack;
-  output_size      : out Zip_64_Data_Size_Type;
-  compression_ok   : out Boolean -- indicates compressed <= uncompressed
-);
+private procedure Zip.Compress.Shrink
+  (input,
+   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+   input_size_known :        Boolean;
+   input_size       :        Zip_64_Data_Size_Type;  --  ignored if unknown
+   feedback         :        Feedback_proc;
+   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
+   crypto           : in out CRC_Crypto.Crypto_pack;
+   output_size      :    out Zip_64_Data_Size_Type;
+   compression_ok   :    out Boolean);  --  indicates compressed <= uncompressed

@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2022 Gautier de Montmollin (maintenance and further development)
+--  Copyright (c) 2008 .. 2023 Gautier de Montmollin (maintenance and further development)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,16 +24,14 @@
 --  NB: this is the MIT License, as found 21-Aug-2016 on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-with Ada.Directories;
-with Ada.IO_Exceptions;
-with Ada.Text_IO;
-with Ada.Unchecked_Deallocation;
-
-with Interfaces;
+with Ada.Directories,
+     Ada.IO_Exceptions,
+     Ada.Text_IO,
+     Ada.Unchecked_Deallocation;
 
 package body Zip.Create is
 
-   use Interfaces, Zip_Streams, Zip.Headers;
+   use Interfaces, Zip.Headers;
 
    procedure Create_Archive (
       Info            : out Zip_Create_Info;
@@ -47,21 +45,22 @@ package body Zip.Create is
       Info.Stream   := Z_Stream;
       Info.Compress := Compress_Method;
       if Archive_Name /= "" then
-         Set_Name (Info.Stream.all, Archive_Name);
+         Info.Stream.Set_Name (Archive_Name);
       end if;
       --
       --  If we have a real file (File_Zipstream or descendent), create the file too:
       --
-      if Z_Stream.all in File_Zipstream'Class then
-        Zip_Streams.Create (File_Zipstream (Z_Stream.all), Zip_Streams.Out_File);
+      if Z_Stream.all in Zip_Streams.File_Zipstream'Class then
+        Zip_Streams.File_Zipstream (Z_Stream.all).Create (Zip_Streams.Out_File);
       end if;
       Info.Duplicates := Duplicates;
       Info.zip_archive_format := Zip_32;
    end Create_Archive;
 
    function Is_Created (Info : Zip_Create_Info) return Boolean is
+     use type Zip_Streams.Zipstream_Class_Access;
    begin
-      return Info.Stream /= null;
+     return Info.Stream /= null;
    end Is_Created;
 
    procedure Set (Info       : in out Zip_Create_Info;
@@ -73,7 +72,7 @@ package body Zip.Create is
 
    function Name (Info : Zip_Create_Info) return String is
    begin
-     return Get_Name (Info.Stream.all);
+     return Info.Stream.Get_Name;
    end Name;
 
    procedure Dispose is new
@@ -161,7 +160,7 @@ package body Zip.Create is
 
    procedure Check_Size
      (info  : in out Zip_Create_Info;
-      value : in     ZS_Size_Type)  --  Archive index or input stream size
+      value : in     Zip_Streams.ZS_Size_Type)  --  Archive index or input stream size
    is
      margin : constant := end_of_central_dir_length +
                           zip_64_end_of_central_dir_length +
@@ -199,8 +198,8 @@ package body Zip.Create is
                          Compressed_Size :    out Zip.Zip_64_Data_Size_Type;
                          Final_Method    :    out Natural)
    is
-      mem1, mem2 : ZS_Index_Type := 1;
-      entry_name : constant String := Unixify (Get_Name (Stream));
+      mem1, mem2 : Zip_Streams.ZS_Index_Type := 1;
+      entry_name : constant String := Unixify (Stream.Get_Name);
       Last : Positive_M32;
       fh_extra : Local_File_Header_Extension;
    begin
@@ -222,18 +221,18 @@ package body Zip.Create is
         if Password /= "" then
           shi.bit_flag := shi.bit_flag or Zip.Headers.Encryption_Flag_Bit;
         end if;
-        if Is_Read_Only (Stream) then
+        if Stream.Is_Read_Only then
           cfh.external_attributes := cfh.external_attributes or 1;
         end if;
         Info.Contains (Last).name := new String'(entry_name);
-        Check_Size (Info, Size (Stream));
-        shi.file_timedate         := Get_Time (Stream);
-        shi.dd.uncompressed_size  := Unsigned_64 (Size (Stream));
+        Check_Size (Info, Stream.Size);
+        shi.file_timedate         := Stream.Get_Time;
+        shi.dd.uncompressed_size  := Unsigned_64 (Stream.Size);
         shi.dd.compressed_size    := shi.dd.uncompressed_size;
         shi.filename_length       := entry_name'Length;
         shi.extra_field_length    := 0;
 
-        mem1 := Index (Info.Stream.all);
+        mem1 := Info.Stream.Index;
         cfh.local_header_offset := Unsigned_64 (mem1) - 1;
         if Needs_Local_Zip_64_Header_Extension (shi, cfh.local_header_offset) then
           extra_field_policy := force_zip_64;
@@ -277,10 +276,10 @@ package body Zip.Create is
           --
           shi.bit_flag := shi.bit_flag or LZMA_EOS_Flag_Bit;
         end if;
-        mem2 := Index (Info.Stream.all);
+        mem2 := Info.Stream.Index;
         --  Go back to the local header to rewrite it with complete informations
         --  known after the compression: CRC value, compressed size, actual compression format.
-        Set_Index (Info.Stream.all, mem1);
+        Info.Stream.Set_Index (mem1);
         Zip.Headers.Write (Info.Stream.all, shi, extra_field_policy);
         if extra_field_policy = force_zip_64 then
           String'Write (Info.Stream, entry_name);
@@ -290,7 +289,7 @@ package body Zip.Create is
           Zip.Headers.Write (Info.Stream.all, fh_extra, True);
         end if;
         --  Return to momentaneous end of file
-        Set_Index (Info.Stream.all, mem2);
+        Info.Stream.Set_Index (mem2);
         --
         Compressed_Size := shi.dd.compressed_size;
         Final_Method    := Natural (shi.zip_type);
@@ -306,47 +305,46 @@ package body Zip.Create is
                        Delete_file_after : Boolean           := False;
                        Name_encoding     : Zip_name_encoding := IBM_437;
                        --  Time stamp for this entry
-                       Modification_time : Time              := default_time;
+                       Modification_time : Time              := default_creation_time;
                        Is_read_only      : Boolean           := False;
                        Feedback          : Feedback_proc     := null;
                        Password          : String            := ""
    )
    is
-      temp_zip_stream : aliased File_Zipstream;
-      use Ada.Text_IO;
-      fd : File_Type;
+      temp_zip_stream : aliased Zip_Streams.File_Zipstream;
+      file_for_deletion : Ada.Text_IO.File_Type;
       Compressed_Size : Zip.Zip_64_Data_Size_Type; -- unused
       Final_Method    : Natural; -- unused
+      use type Zip_Streams.Time;
    begin
      --  Read the file
-     Set_Name (temp_zip_stream, Unixify (File_Name));
-     Open (temp_zip_stream, Zip_Streams.In_File);
+     temp_zip_stream.Set_Name (Unixify (File_Name));
+     temp_zip_stream.Open (Zip_Streams.In_File);
      --  Eventually we set a new name for archiving:
      if Name_in_archive /= "" then
-        Set_Name (temp_zip_stream, Unixify (Name_in_archive));
+        temp_zip_stream.Set_Name (Unixify (Name_in_archive));
      end if;
-     Set_Unicode_Name_Flag (temp_zip_stream, Name_encoding = UTF_8);
-     Set_Read_Only_Flag (temp_zip_stream, Is_read_only);
+     temp_zip_stream.Set_Unicode_Name_Flag (Name_encoding = UTF_8);
+     temp_zip_stream.Set_Read_Only_Flag (Is_read_only);
      if Modification_time = use_file_modification_time then
-       Set_Time (temp_zip_stream,
-         Ada.Directories.Modification_Time (File_Name)
-       );
+       temp_zip_stream.Set_Time
+         (Ada.Directories.Modification_Time (File_Name));
      elsif Modification_time = use_clock then
-       Set_Time (temp_zip_stream, Ada.Calendar.Clock);
+       temp_zip_stream.Set_Time (Ada.Calendar.Clock);
      else
-       Set_Time (temp_zip_stream, Modification_time);
+       temp_zip_stream.Set_Time (Modification_time);
      end if;
      --  Stuff into the .zip archive:
      Add_Stream (Info, temp_zip_stream, Feedback, Password, Compressed_Size, Final_Method);
-     Close (temp_zip_stream);
+     temp_zip_stream.Close;
      if Delete_file_after then
-        Open (fd, In_File, File_Name);
-        Delete (fd);
+       Ada.Text_IO.Open (file_for_deletion, Ada.Text_IO.In_File, File_Name);
+       Ada.Text_IO.Delete (file_for_deletion);
      end if;
    exception
      when User_abort =>
-       if Is_Open (temp_zip_stream) then
-         Close (temp_zip_stream);
+       if temp_zip_stream.Is_Open then
+         temp_zip_stream.Close;
        end if;
        raise;
    end Add_File;
@@ -358,7 +356,7 @@ package body Zip.Create is
                          Name_UTF_8_encoded : Boolean  := False;
                          Password           : String   := "";
                          --  Time stamp for this entry
-                         Creation_time      : Zip.Time := default_time
+                         Creation_time      : Zip.Time := default_creation_time
    )
    is
    begin
@@ -379,22 +377,23 @@ package body Zip.Create is
                          Name_UTF_8_encoded : Boolean  := False;
                          Password           : String   := "";
                          --  Time stamp for this entry
-                         Creation_time      : Zip.Time := default_time
+                         Creation_time      : Zip.Time := default_creation_time
    )
    is
      temp_zip_stream : Zip_Memory_Stream;
+     use type Zip_Streams.Time;
    begin
-     Set (temp_zip_stream, Contents);
-     Set_Name (temp_zip_stream, Unixify (Name_in_archive));
+     temp_zip_stream.Set (Contents);
+     temp_zip_stream.Set_Name (Unixify (Name_in_archive));
      if Creation_time = use_clock
                --  If we have use_file_modification_time by mistake, use clock as well:
        or else Creation_time = use_file_modification_time
      then
-       Set_Time (temp_zip_stream, Ada.Calendar.Clock);
+       temp_zip_stream.Set_Time (Ada.Calendar.Clock);
      else
-       Set_Time (temp_zip_stream, Creation_time);
+       temp_zip_stream.Set_Time (Creation_time);
      end if;
-     Set_Unicode_Name_Flag (temp_zip_stream, Name_UTF_8_encoded);
+     temp_zip_stream. Set_Unicode_Name_Flag (Name_UTF_8_encoded);
      Add_Stream (Info, temp_zip_stream, Password);
    end Add_String;
 
@@ -441,7 +440,7 @@ package body Zip.Create is
           Insert_to_name_dictionary (name, Info.name_dictionary);
         end if;
         Add_catalogue_entry (Info);
-        offset := Unsigned_64 (Index (Info.Stream.all)) - 1;
+        offset := Unsigned_64 (Info.Stream.Index) - 1;
         Info.Contains (Info.Last_entry).head.local_header_offset := offset;
         Info.Contains (Info.Last_entry).name := new String'(name);
         --  Copy local header to new stream.
@@ -553,7 +552,7 @@ package body Zip.Create is
    procedure Close (
      Zip_Entry_Stream : in out Zip_Entry_Stream_Type;
      Entry_Name       : in     String;
-     Creation_Time    : in     Zip.Time := default_time;
+     Creation_Time    : in     Zip.Time := default_creation_time;
      Info             : in out Zip_Create_Info
    )
    is
@@ -570,27 +569,27 @@ package body Zip.Create is
      overriding procedure Write
        (Stream : in out Captive_Type;
         Item   :        Stream_Element_Array) is null;
-     overriding function Index (S : in Captive_Type) return ZS_Index_Type;
-     overriding function Size (S : in Captive_Type) return ZS_Size_Type;
+     overriding function Index (S : in Captive_Type) return Zip_Streams.ZS_Index_Type;
+     overriding function Size (S : in Captive_Type) return Zip_Streams.ZS_Size_Type;
      overriding function End_Of_Stream (S : in Captive_Type) return Boolean;
      --
      overriding procedure Set_Index (
         S  : in out Captive_Type;
-        To :        ZS_Index_Type)
+        To :        Zip_Streams.ZS_Index_Type)
      is
      begin
        S.Loc := Stream_Element_Offset (To);
      end Set_Index;
      --
-     overriding function Index (S : in Captive_Type) return ZS_Index_Type is
+     overriding function Index (S : in Captive_Type) return Zip_Streams.ZS_Index_Type is
      begin
-       return ZS_Index_Type (S.Loc);
+       return Zip_Streams.ZS_Index_Type (S.Loc);
      end Index;
      --
-     overriding function Size (S : in Captive_Type) return ZS_Size_Type is
+     overriding function Size (S : in Captive_Type) return Zip_Streams.ZS_Size_Type is
      pragma Unreferenced (S);
      begin
-       return ZS_Size_Type (Zip_Entry_Stream.Last_Element);
+       return Zip_Streams.ZS_Size_Type (Zip_Entry_Stream.Last_Element);
      end Size;
      --
      overriding function End_Of_Stream (S : in Captive_Type) return Boolean is
@@ -626,15 +625,16 @@ package body Zip.Create is
      end Read;
      --
      Reader_Stream : Captive_Type;
+     use type Zip_Streams.Time;
    begin
      Reader_Stream.Set_Name (Entry_Name);
      if Creation_Time = use_clock
                --  If we have use_file_modification_time by mistake, use clock as well:
        or else Creation_Time = use_file_modification_time
      then
-       Set_Time (Reader_Stream, Ada.Calendar.Clock);
+       Reader_Stream.Set_Time (Ada.Calendar.Clock);
      else
-       Set_Time (Reader_Stream, Creation_Time);
+       Reader_Stream.Set_Time (Creation_Time);
      end if;
      --
      Add_Stream (Info, Reader_Stream);
@@ -645,16 +645,16 @@ package body Zip.Create is
    procedure Finish (Info : in out Zip_Create_Info) is
       ed : Zip.Headers.End_of_Central_Dir;
       procedure Dispose is new Ada.Unchecked_Deallocation (String, p_String);
-      current_index : ZS_Index_Type;
+      current_index : Zip_Streams.ZS_Index_Type;
       --
       --  If the stream is of File_Zipstream type or descendent, close the file too.
       --  Deallocate catalogue entries.
       procedure Close_eventual_file_and_deallocate is
       begin
-        if Info.Stream.all in File_Zipstream'Class
-          and then File_Zipstream (Info.Stream.all).Is_Open
+        if Info.Stream.all in Zip_Streams.File_Zipstream'Class
+          and then Zip_Streams.File_Zipstream (Info.Stream.all).Is_Open
         then
-          File_Zipstream (Info.Stream.all).Close;
+          Zip_Streams.File_Zipstream (Info.Stream.all).Close;
         end if;
         if Info.Contains /= null then
           for e in 1 .. Info.Last_entry loop
@@ -674,7 +674,7 @@ package body Zip.Create is
       --
       --  2/ Almost done - write Central Directory:
       --
-      current_index := Index (Info.Stream.all);
+      current_index := Info.Stream.Index;
       ed.central_dir_offset := Unsigned_64 (current_index) - 1;
       ed.total_entries := 0;
       ed.central_dir_size := 0;
@@ -718,7 +718,7 @@ package body Zip.Create is
               Headers.central_header_length +
                 Unsigned_64 (cat.head.short_info.filename_length) +
                 Unsigned_64 (cat.head.short_info.extra_field_length);
-          current_index := Index (Info.Stream.all);
+          current_index := Info.Stream.Index;
         end loop;
         Check_Size (Info, current_index);
       end if;
@@ -729,7 +729,7 @@ package body Zip.Create is
       if Info.zip_archive_format = Zip_64 then
         ed64l.number_of_the_disk_with_the_start_of_the_zip64_end_of_central_dir := 0;
         ed64l.relative_offset_of_the_zip64_end_of_central_dir_record :=
-          Unsigned_64 (Index (Info.Stream.all) - 1);
+          Unsigned_64 (Info.Stream.Index - 1);
         ed64l.total_number_of_disks := 1;
         --
         ed64.size := 44;

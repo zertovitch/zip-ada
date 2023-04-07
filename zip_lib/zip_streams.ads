@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2023 Gautier de Montmollin (maintainer)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -64,14 +64,15 @@
 --  18-Jan-2009: GdM: Fixed Zip_Streams.Read which did read
 --                      only Item's first element
 
-with Ada.Streams;           use Ada.Streams;
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-with Ada.Streams.Stream_IO;
+with Ada.Calendar,
+     Ada.Streams.Stream_IO,
+     Ada.Strings.Unbounded;
 
-with Ada.Calendar, Interfaces;
-use Interfaces;
+with Interfaces;
 
 package Zip_Streams is
+
+   use Interfaces;
 
    --  We define an own Time (Ada.Calendar's body can be very time-consuming!)
    --  See subpackage Calendar below for own Split, Time_Of and Convert from/to
@@ -148,11 +149,11 @@ package Zip_Streams is
    type Memory_Zipstream is new Root_Zipstream_Type with private;
 
    --  Get the complete value (contents) of the stream
-   procedure Get (Str : Memory_Zipstream; Unb : out Unbounded_String);
+   procedure Get (Str : Memory_Zipstream; Unb : out Ada.Strings.Unbounded.Unbounded_String);
 
    --  Set a value in the stream, the index will be set
    --  to null and old data in the stream will be lost.
-   procedure Set (Str : in out Memory_Zipstream; Unb : Unbounded_String);
+   procedure Set (Str : in out Memory_Zipstream; Unb : Ada.Strings.Unbounded.Unbounded_String);
 
    ----------------------------------------------
    --  File_Zipstream: stream based on a file  --
@@ -190,20 +191,18 @@ package Zip_Streams is
       --
       Time_Error : exception;
       --
-      use Ada.Calendar;
-      --
       procedure Split
         (Date       : Time;
-         To_Year    : out Year_Number;
-         To_Month   : out Month_Number;
-         To_Day     : out Day_Number;
-         To_Seconds : out Day_Duration);
+         To_Year    : out Ada.Calendar.Year_Number;
+         To_Month   : out Ada.Calendar.Month_Number;
+         To_Day     : out Ada.Calendar.Day_Number;
+         To_Seconds : out Ada.Calendar.Day_Duration);
       --
       function Time_Of
-        (From_Year    : Year_Number;
-         From_Month   : Month_Number;
-         From_Day     : Day_Number;
-         From_Seconds : Day_Duration := 0.0) return Time;
+        (From_Year    : Ada.Calendar.Year_Number;
+         From_Month   : Ada.Calendar.Month_Number;
+         From_Day     : Ada.Calendar.Day_Number;
+         From_Seconds : Ada.Calendar.Day_Duration := 0.0) return Time;
       --
       function ">" (Left, Right : Time) return Boolean;
    end Calendar;
@@ -227,7 +226,7 @@ private
 
    type Root_Zipstream_Type is abstract new Ada.Streams.Root_Stream_Type with
       record
-         Name              : Unbounded_String;
+         Name              : Ada.Strings.Unbounded.Unbounded_String;
          Modification_Time : Time := default_time;
          Is_Unicode_Name   : Boolean := False;
          Is_Read_Only      : Boolean := False;  --  only indicative
@@ -236,20 +235,20 @@ private
    --  Memory_Zipstream spec
    type Memory_Zipstream is new Root_Zipstream_Type with
       record
-         Unb : Unbounded_String;
+         Unb : Ada.Strings.Unbounded.Unbounded_String;
          Loc : Integer := 1;
       end record;
    --  Read data from the stream.
    overriding procedure Read
      (Stream : in out Memory_Zipstream;
-      Item   : out Stream_Element_Array;
-      Last   : out Stream_Element_Offset);
+      Item   :    out Ada.Streams.Stream_Element_Array;
+      Last   :    out Ada.Streams.Stream_Element_Offset);
 
    --  Write data to the stream, starting from the current index.
    --  Data will be overwritten from index if already available.
    overriding procedure Write
      (Stream : in out Memory_Zipstream;
-      Item   : Stream_Element_Array);
+      Item   :        Ada.Streams.Stream_Element_Array);
 
    --  Set the index on the stream
    overriding procedure Set_Index (S : in out Memory_Zipstream; To : ZS_Index_Type);
@@ -271,14 +270,14 @@ private
    --  Read data from the stream.
    overriding procedure Read
      (Stream : in out File_Zipstream;
-      Item   : out Stream_Element_Array;
-      Last   : out Stream_Element_Offset);
+      Item   :    out Ada.Streams.Stream_Element_Array;
+      Last   :    out Ada.Streams.Stream_Element_Offset);
 
    --  Write data to the stream, starting from the current index.
    --  Data will be overwritten from index if already available.
    overriding procedure Write
      (Stream : in out File_Zipstream;
-      Item   : Stream_Element_Array);
+      Item   :        Ada.Streams.Stream_Element_Array);
 
    --  Set the index on the stream
    overriding procedure Set_Index (S : in out File_Zipstream; To : ZS_Index_Type);

@@ -5,17 +5,14 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Calendar;                      use Ada.Calendar;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Float_Text_IO;                 use Ada.Float_Text_IO;
-with Interfaces;                        use Interfaces;
+with Ada.Characters.Handling,
+     Ada.Command_Line,
+     Ada.Calendar,
+     Ada.Directories,
+     Ada.Text_IO,
+     Ada.Float_Text_IO;
 
-with Ada.Directories;  --  Ada 2005
-
---  Non-standard item absent from Ada.Directories
---  with Set_Modification_Time_GNAT;  --  This procedure is system-dependent
+with Interfaces;
 
 with Zip, UnZip;
 
@@ -38,19 +35,19 @@ procedure UnZipAda is
   end Set_Modification_Time_B;
   pragma Unreferenced (Set_Modification_Time_B);
 
-  Set_Time_Stamp : constant UnZip.Set_Time_Stamp_proc :=
+  Set_Time_Stamp : UnZip.Set_Time_Stamp_proc :=
     --    If you want the time stamps, uncomment the following
     --    and look into Set_Modification_Time_B above.
     --
     --  Set_Modification_Time_B'Unrestricted_Access;
     null;
 
-  use UnZip;
-
   z_options        : UnZip.Option_set := UnZip.no_option;
   quiet            : Boolean := False;
   lower_case_match : Boolean := False;
   comment          : Boolean := False;
+
+  use UnZip;
 
   fda :          Zip.Feedback_proc     := Zip_Console_IO.My_feedback'Access;
   rca :          Resolve_conflict_proc := Zip_Console_IO.My_resolve_conflict'Access;
@@ -87,7 +84,7 @@ procedure UnZipAda is
     fn1 : String := File_Name;
   begin
     if lower_case_match then
-      fn1 := To_Lower (fn1);
+      fn1 := Ada.Characters.Handling.To_Lower (fn1);
     end if;
     return Add_extract_directory (fn1);
   end Compose_File_Name;
@@ -98,6 +95,8 @@ procedure UnZipAda is
      Compose_File_Name   => Compose_File_Name'Unrestricted_Access,
      others              => null
     );
+
+  use Ada.Calendar, Ada.Text_IO, Ada.Float_Text_IO;
 
   T0, T1 : Time;
   seconds_elapsed : Duration;
@@ -132,12 +131,15 @@ procedure UnZipAda is
 
   zi : Zip.Zip_info;
   use Zip_Console_IO;
+  use Ada.Command_Line;
+  use Interfaces;
 
 begin
   if Argument_Count = 0 then
     Help;
     return;
   end if;
+  Set_Time_Stamp := null;
   for i in 1 .. Argument_Count loop
     if Argument (i)(1) = '-' or else Argument (i)(1) = '/' then
       if last_option = i then
@@ -148,7 +150,7 @@ begin
           Help;
           return;
         end if;
-        case To_Lower (Argument (i)(2)) is
+        case Ada.Characters.Handling.To_Lower (Argument (i)(2)) is
           when 't' =>
             z_options (test_only) := True;
           when 'j' =>

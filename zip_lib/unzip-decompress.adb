@@ -4,7 +4,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2022 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2007 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,22 +34,21 @@ with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
 package body UnZip.Decompress is
 
-  procedure Decompress_data (
-    zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
-    format                     : Zip.PKZip_method;
-    mode                       : Write_mode;
-    output_file_name           : String; -- relevant only if mode = write_to_file
-    output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory
-    output_stream_access       : p_Stream;                   -- \ = write_to_stream
-    feedback                   : Zip.Feedback_proc;
-    explode_literal_tree       : Boolean;
-    explode_slide_8KB_LZMA_EOS : Boolean;
-    data_descriptor_after_data : Boolean;
-    is_encrypted               : Boolean;
-    password                   : in out Ada.Strings.Unbounded.Unbounded_String;
-    get_new_password           : Get_password_proc;
-    hint                       : in out Zip.Headers.Local_File_Header
-  )
+  procedure Decompress_data
+    (zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
+     format                     : Zip.PKZip_method;
+     write_mode                 : Write_Mode_Type;
+     output_file_name           : String; -- relevant only if mode = write_to_file
+     output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory
+     output_stream_access       : p_Stream;                   -- \ = write_to_stream
+     feedback                   : Zip.Feedback_proc;
+     explode_literal_tree       : Boolean;
+     explode_slide_8KB_LZMA_EOS : Boolean;
+     data_descriptor_after_data : Boolean;
+     is_encrypted               : Boolean;
+     password                   : in out Ada.Strings.Unbounded.Unbounded_String;
+     get_new_password           : Get_password_proc;
+     hint                       : in out Zip.Headers.Local_File_Header)
   is
     --  Disable AdaControl rule for detecting global variables, they have become local here.
     --## RULE OFF Directly_Accessed_Globals
@@ -332,7 +331,7 @@ package body UnZip.Decompress is
           Ada.Text_IO.Put ("[Flush...");
         end if;
         begin
-          case mode is
+          case write_mode is
             when write_to_binary_file =>
               Block_Write (Ada.Streams.Stream_IO.Stream (out_bin_file).all, UnZ_Glob.slide (0 .. x - 1));
             when write_to_text_file =>
@@ -484,10 +483,10 @@ package body UnZip.Decompress is
         end loop;
       end Copy_or_zero;
 
-      procedure Delete_output is -- an error has occured (bad compressed data)
+      procedure Delete_output is  --  an error has occured (bad compressed data)
       begin
-        if no_trace then -- if there is a trace, we are debugging
-          case mode is   --  and want to keep the malformed file
+        if no_trace then  --  if there is a trace, we are debugging
+          case write_mode is   --  and want to keep the malformed file
             when write_to_binary_file =>
               Ada.Streams.Stream_IO.Delete (UnZ_IO.out_bin_file);
             when write_to_text_file =>
@@ -553,7 +552,7 @@ package body UnZip.Decompress is
           Ada.Text_IO.Put ("[Unshrink_Flush]");
         end if;
         begin
-          case mode is
+          case write_mode is
             when write_to_binary_file =>
               Block_Write (Stream (UnZ_IO.out_bin_file).all, Writebuf (0 .. Write_Ptr - 1));
             when write_to_text_file =>
@@ -1984,7 +1983,7 @@ package body UnZip.Decompress is
     end if;
     output_memory_access := null;
     --  ^ this is an 'out' parameter, we have to set it anyway
-    case mode is
+    case write_mode is
       when write_to_binary_file =>
          Ada.Streams.Stream_IO.Create (UnZ_IO.out_bin_file, Ada.Streams.Stream_IO.Out_File, output_file_name,
                                          Form => To_String (Zip_Streams.Form_For_IO_Open_and_Create));
@@ -2081,7 +2080,7 @@ package body UnZip.Decompress is
         "; CRC computed now: " & Hexadecimal (UnZ_Glob.crc32val);
     end if;
 
-    case mode is
+    case write_mode is
       when write_to_binary_file =>
         Ada.Streams.Stream_IO.Close (UnZ_IO.out_bin_file);
       when write_to_text_file =>
@@ -2095,7 +2094,7 @@ package body UnZip.Decompress is
 
   exception
     when others =>  --  close the file in case of an error, if not yet closed
-      case mode is  --  or deleted
+      case write_mode is  --  or deleted
         when write_to_binary_file =>
           if Ada.Streams.Stream_IO.Is_Open (UnZ_IO.out_bin_file) then
             Ada.Streams.Stream_IO.Close (UnZ_IO.out_bin_file);

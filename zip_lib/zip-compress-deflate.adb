@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2022 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -59,28 +59,23 @@
 --  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
 --  17-Feb-2011: Created (single-block, "fixed" Huffman encoding).
 
-with LZ77, Zip.CRC_Crypto;
-with Zip_Streams;
-
+with LZ77;
 with Length_limited_Huffman_code_lengths;
 
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Unchecked_Deallocation;
-
-with Interfaces;                        use Interfaces;
+with Ada.Text_IO,
+     Ada.Unchecked_Deallocation;
 
 procedure Zip.Compress.Deflate
- (input,
-  output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-  input_size_known : Boolean;
-  input_size       : Zip_64_Data_Size_Type;
-  feedback         : Feedback_proc;
-  method           : Deflation_Method;
-  CRC              : in out Interfaces.Unsigned_32;  --  only updated here
-  crypto           : in out Crypto_pack;
-  output_size      : out Zip_64_Data_Size_Type;
-  compression_ok   : out Boolean  --  indicates compressed < uncompressed
-)
+  (input,
+   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+   input_size_known :        Boolean;
+   input_size       :        Zip_64_Data_Size_Type;  --  ignored if unknown
+   feedback         :        Feedback_proc;
+   method           :        Deflation_Method;
+   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
+   crypto           : in out CRC_Crypto.Crypto_pack;
+   output_size      :    out Zip_64_Data_Size_Type;
+   compression_ok   :    out Boolean)  --  indicates compressed < uncompressed
 is
   --  Options for testing.
   --  All should be on False for normal use of this procedure.
@@ -90,9 +85,12 @@ is
   trace_descriptors   : constant Boolean := False;  --  Additional logging of Huffman descriptors
 
   --  A log file is used when trace = True.
-  log         : File_Type;
+  log         : Ada.Text_IO.File_Type;
   log_name    : constant String := "Zip.Compress.Deflate.zcd";  --  A CSV with an unusual extension
   sep         : constant Character := ';';
+
+  use Ada.Text_IO;
+  use Interfaces;
 
   -------------------------------------
   -- Buffered I/O - byte granularity --

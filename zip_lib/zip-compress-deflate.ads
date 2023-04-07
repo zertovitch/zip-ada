@@ -7,7 +7,7 @@
 --
 --  Legal licensing note:
 
---  Copyright (c) 2011 .. 2022 Gautier de Montmollin
+--  Copyright (c) 2011 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,17 +31,16 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-with Zip.CRC_Crypto;                    use Zip.CRC_Crypto;
+with Zip.CRC_Crypto;
 
-private procedure Zip.Compress.Deflate (
-  input,
-  output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-  input_size_known : Boolean;
-  input_size       : Zip_64_Data_Size_Type; -- ignored if unknown
-  feedback         : Feedback_proc;
-  method           : Deflation_Method;
-  CRC              : in out Interfaces.Unsigned_32; -- only updated here
-  crypto           : in out Crypto_pack;
-  output_size      : out Zip_64_Data_Size_Type;
-  compression_ok   : out Boolean -- indicates when compressed <= uncompressed
-);
+private procedure Zip.Compress.Deflate
+  (input,
+   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+   input_size_known :        Boolean;
+   input_size       :        Zip_64_Data_Size_Type;  --  ignored if unknown
+   feedback         :        Feedback_proc;
+   method           :        Deflation_Method;
+   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
+   crypto           : in out CRC_Crypto.Crypto_pack;
+   output_size      :    out Zip_64_Data_Size_Type;
+   compression_ok   :    out Boolean);  --  indicates when compressed <= uncompressed

@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2019 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,9 +24,9 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
+with Ada.Text_IO,
+     Ada.Unchecked_Deallocation;
 with Interfaces;
-with Ada.Text_IO;
-with Ada.Unchecked_Deallocation;
 
 package body UnZip.Decompress.Huffman is
 

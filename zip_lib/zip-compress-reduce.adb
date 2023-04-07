@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2022 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,25 +33,24 @@
 --
 --  7-Feb-2009: GdM: added a cache for LZ77 output to make 2nd phase faster
 
-with Interfaces; use Interfaces;
-with LZ77, Zip.CRC_Crypto;
-with Zip_Streams;
+with LZ77;
 
 with Ada.Text_IO;
 
 procedure Zip.Compress.Reduce
- (input,
-  output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-  input_size_known : Boolean;
-  input_size       : Zip_64_Data_Size_Type;  --  ignored if unknown
-  feedback         : Feedback_proc;
-  method           : Reduction_Method;
-  CRC              : in out Interfaces.Unsigned_32;  --  only updated here
-  crypto           : in out Crypto_pack;
-  output_size      : out Zip_64_Data_Size_Type;
-  compression_ok   : out Boolean  --  indicates when compressed <= uncompressed
-)
+  (input,
+   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+   input_size_known :        Boolean;
+   input_size       :        Zip_64_Data_Size_Type;  --  ignored if unknown
+   feedback         :        Feedback_proc;
+   method           :        Reduction_Method;
+   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
+   crypto           : in out CRC_Crypto.Crypto_pack;
+   output_size      :    out Zip_64_Data_Size_Type;
+   compression_ok   :    out Boolean)  --  indicates when compressed <= uncompressed
 is
+  use Interfaces;
+
   reduction_factor : constant Positive :=
     1 + Compression_Method'Pos (method) - Compression_Method'Pos (Reduce_1);
   use Zip_Streams;

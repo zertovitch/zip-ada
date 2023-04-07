@@ -24,7 +24,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2022 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 1999 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -301,7 +301,7 @@ package UnZip is
 
 private
 
-  type Write_mode is
+  type Write_Mode_Type is
     (write_to_binary_file,
      write_to_text_file,
      write_to_memory,
@@ -309,7 +309,7 @@ private
      just_test
     );
 
-  subtype Write_to_file is Write_mode
+  subtype Write_to_file is Write_Mode_Type
     range write_to_binary_file .. write_to_text_file;
 
   type p_Stream is access all Ada.Streams.Root_Stream_Type'Class;

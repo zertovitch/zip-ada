@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2022 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,11 +28,11 @@ with Zip.Headers, UnZip.Decompress;
 with Zip_Streams;
 
 with Ada.IO_Exceptions;
-with Interfaces;                        use Interfaces;
+with Interfaces;
 
 package body UnZip is
 
-  use Ada.Strings.Unbounded;
+  use Ada.Strings.Unbounded, Interfaces;
 
   boolean_to_encoding : constant array (Boolean) of Zip.Zip_name_encoding :=
     (False => Zip.IBM_437, True => Zip.UTF_8);
@@ -44,22 +44,21 @@ package body UnZip is
   -- Input must be _open_ and won't be _closed_ ! --
   --------------------------------------------------
 
-  procedure UnZipFile (
-    zip_file                 : in out Zip_Streams.Root_Zipstream_Type'Class;
-    out_name                 : String;
-    out_name_encoding        : Zip.Zip_name_encoding;
-    name_from_header         : Boolean;
-    header_index             : in out Zip_Streams.ZS_Index_Type;
-    hint_comp_size           : Zip.Zip_64_Data_Size_Type; -- Added 2007 for .ODS files
-    hint_crc_32              : Unsigned_32;    -- Added 2012 for decryption
-    feedback                 : Zip.Feedback_proc;
-    help_the_file_exists     : Resolve_conflict_proc;
-    tell_data                : Tell_data_proc;
-    get_pwd                  : Get_password_proc;
-    options                  : Option_set;
-    password                 : in out Unbounded_String;
-    file_system_routines     : FS_routines_type
-  )
+  procedure UnZipFile
+    (zip_file                 : in out Zip_Streams.Root_Zipstream_Type'Class;
+     out_name                 : String;
+     out_name_encoding        : Zip.Zip_name_encoding;
+     name_from_header         : Boolean;
+     header_index             : in out Zip_Streams.ZS_Index_Type;
+     hint_comp_size           : Zip.Zip_64_Data_Size_Type; -- Added 2007 for .ODS files
+     hint_crc_32              : Unsigned_32;    -- Added 2012 for decryption
+     feedback                 : Zip.Feedback_proc;
+     help_the_file_exists     : Resolve_conflict_proc;
+     tell_data                : Tell_data_proc;
+     get_pwd                  : Get_password_proc;
+     options                  : Option_set;
+     password                 : in out Unbounded_String;
+     file_system_routines     : FS_routines_type)
   is
     work_index : Zip_Streams.ZS_Index_Type := header_index;
     local_header : Zip.Headers.Local_File_Header;
@@ -67,11 +66,11 @@ package body UnZip is
     method : PKZip_method;
 
     skip_this_file : Boolean := False;
-    bin_text_mode : constant array (Boolean) of Write_mode :=
+    bin_text_mode : constant array (Boolean) of Write_Mode_Type :=
       (write_to_binary_file, write_to_text_file);
-    mode : constant array (Boolean) of Write_mode :=
+    mode : constant array (Boolean) of Write_Mode_Type :=
       (bin_text_mode (options (extract_as_text)), just_test);
-    actual_mode : Write_mode := mode (options (test_only));
+    actual_mode : Write_Mode_Type := mode (options (test_only));
 
     true_packed_size : Zip.Zip_64_Data_Size_Type;  --  encryption adds 12 to packed size
 
@@ -233,7 +232,9 @@ package body UnZip is
 
     the_name     : String (1 .. 65_535);  --  Seems overkill, but Zip entry names can be that long!
     the_name_len : Natural;
-    use Zip, Zip_Streams;
+    use Zip_Streams;
+    use type Zip.PKZip_method;
+    use type Zip.Feedback_proc;
 
     actual_feedback : Zip.Feedback_proc;
 
@@ -253,7 +254,7 @@ package body UnZip is
     end;
 
     method := Zip.Method_from_code (local_header.zip_type);
-    if method = unknown then
+    if method = Zip.unknown then
       raise UnZip.Unsupported_method with
          "Format (method) #" & Unsigned_16'Image (local_header.zip_type) &
          " is unknown";
@@ -394,7 +395,7 @@ package body UnZip is
       UnZip.Decompress.Decompress_data (
         zip_file                   => zip_file,
         format                     => method,
-        mode                       => actual_mode,
+        write_mode                 => actual_mode,
         output_file_name           => To_String (the_output_name),
         output_memory_access       => dummy_memory,
         output_stream_access       => dummy_stream,
@@ -413,7 +414,7 @@ package body UnZip is
           if file_system_routines.Set_Time_Stamp /= null then
             file_system_routines.Set_Time_Stamp (
               To_String (the_output_name),
-              Convert (local_header.file_timedate)
+              Zip.Convert (local_header.file_timedate)
             );
           elsif file_system_routines.Set_ZTime_Stamp /= null then
             file_system_routines.Set_ZTime_Stamp (
@@ -548,11 +549,12 @@ package body UnZip is
                      file_system_routines : FS_routines_type := null_routines
                 )
    is
-    use Zip, Zip_Streams;
+    use Zip_Streams;
+    use type Zip.Feedback_proc;
     zip_file      : File_Zipstream;
     header_index  : ZS_Index_Type;
-    comp_size     : Zip_64_Data_Size_Type;
-    uncomp_size   : Zip_64_Data_Size_Type;
+    comp_size     : Zip.Zip_64_Data_Size_Type;
+    uncomp_size   : Zip.Zip_64_Data_Size_Type;
     crc_32        : Unsigned_32;
     work_password : Unbounded_String := To_Unbounded_String (password);
   begin
@@ -573,7 +575,7 @@ package body UnZip is
     UnZipFile (
       zip_file             => zip_file,
       out_name             => what,
-      out_name_encoding    => IBM_437, -- assumption...
+      out_name_encoding    => Zip.IBM_437, -- assumption...
       name_from_header     => False,
       header_index         => header_index,
       hint_comp_size       => comp_size,
@@ -606,11 +608,12 @@ package body UnZip is
                      file_system_routines : FS_routines_type := null_routines
                 )
   is
-    use Zip, Zip_Streams;
+    use Zip_Streams;
+    use type Zip.Feedback_proc;
     zip_file      : aliased File_Zipstream;
     header_index  : Zip_Streams.ZS_Index_Type;
-    comp_size     : Zip_64_Data_Size_Type;
-    uncomp_size   : Zip_64_Data_Size_Type;
+    comp_size     : Zip.Zip_64_Data_Size_Type;
+    uncomp_size   : Zip.Zip_64_Data_Size_Type;
     crc_32        : Unsigned_32;
     work_password : Unbounded_String := To_Unbounded_String (password);
   begin
@@ -631,7 +634,7 @@ package body UnZip is
     UnZipFile (
       zip_file             => zip_file,
       out_name             => rename,
-      out_name_encoding    => IBM_437,  --  assumption...
+      out_name_encoding    => Zip.IBM_437,  --  assumption...
       name_from_header     => False,
       header_index         => header_index,
       hint_comp_size       => comp_size,
@@ -662,7 +665,8 @@ package body UnZip is
                      file_system_routines : FS_routines_type := null_routines
                 )
   is
-    use Zip, Zip_Streams;
+    use Zip_Streams;
+    use type Zip.Feedback_proc;
     zip_file      : File_Zipstream;
     header_index  : Zip_Streams.ZS_Index_Type;
     work_password : Unbounded_String := To_Unbounded_String (password);
@@ -678,7 +682,7 @@ package body UnZip is
       UnZipFile (
         zip_file             => zip_file,
         out_name             => "",
-        out_name_encoding    => IBM_437, -- ignored
+        out_name_encoding    => Zip.IBM_437, -- ignored
         name_from_header     => True,
         header_index         => header_index,
         hint_comp_size       => fallback_compressed_size,
@@ -755,7 +759,8 @@ package body UnZip is
     uncomp_size   : Zip.Zip_64_Data_Size_Type;
     crc_32        : Unsigned_32;
     work_password : Unbounded_String := To_Unbounded_String (password);
-    use Zip, Zip_Streams;
+    use Zip_Streams;
+    use type Zip.Feedback_proc;
     zip_file      : aliased File_Zipstream;
     input_stream  : Zipstream_Class_Access;
     use_a_file    : constant Boolean := Zip.Zip_stream (from) = null;
@@ -832,7 +837,8 @@ package body UnZip is
     uncomp_size   : Zip.Zip_64_Data_Size_Type;
     crc_32        : Unsigned_32;
     work_password : Unbounded_String := To_Unbounded_String (password);
-    use Zip, Zip_Streams;
+    use Zip_Streams;
+    use type Zip.Feedback_proc;
     zip_file      : aliased File_Zipstream;
     input_stream  : Zipstream_Class_Access;
     use_a_file    : constant Boolean := Zip.Zip_stream (from) = null;

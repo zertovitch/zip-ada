@@ -377,7 +377,7 @@ package Zip is
   --  This does the same as Ada 2005's Ada.Directories.Exists
   --  Just there as helper for Ada 95 only systems
   --
-  function Exists (name : String) return Boolean;
+  function Exists (file_name : String) return Boolean;
 
   --  Write a string containing line endings (possibly from another system)
   --  into a text file, with the "correct", native line endings.
@@ -402,7 +402,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String := "58";
-  reference : constant String := "28-Jan-2023";
+  reference : constant String := "07-Apr-2023";
   --  Hopefully the latest version is at one of those URLs:
   web       : constant String := "https://unzip-ada.sourceforge.io/";
   web2      : constant String := "https://sourceforge.net/projects/unzip-ada/";

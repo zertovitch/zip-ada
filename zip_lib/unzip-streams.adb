@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2022 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,9 +26,10 @@
 
 with Zip.Headers, UnZip.Decompress;
 
-with Ada.Strings.Unbounded;
-with Ada.Unchecked_Deallocation;
-with Interfaces;                        use Interfaces;
+with Ada.Strings.Unbounded,
+     Ada.Unchecked_Deallocation;
+
+with Interfaces;
 
 package body UnZip.Streams is
 
@@ -42,6 +43,8 @@ package body UnZip.Streams is
    procedure Dispose is new
      Ada.Unchecked_Deallocation (UnZip_Stream_Type,
                                  Zipped_File_Type);
+
+   use Interfaces;
 
   --------------------------------------------------
   -- *The* internal 1-file unzipping procedure.   --
@@ -65,8 +68,8 @@ package body UnZip.Streams is
     data_descriptor_after_data : Boolean;
     encrypted : Boolean;
     method : Zip.PKZip_method;
-    use Zip;
-    mode : Write_mode;
+    use type Zip.PKZip_method;
+    mode : Write_Mode_Type;
   begin
     begin
       Zip_Streams.Set_Index (zip_stream, header_index);
@@ -78,8 +81,8 @@ package body UnZip.Streams is
         raise Zip.Archive_corrupted;
     end;
 
-    method := Method_from_code (local_header.zip_type);
-    if method = unknown then
+    method := Zip.Method_from_code (local_header.zip_type);
+    if method = Zip.unknown then
       raise Unsupported_method;
     end if;
 
@@ -148,7 +151,7 @@ package body UnZip.Streams is
     UnZip.Decompress.Decompress_data (
       zip_file                   => zip_stream,
       format                     => method,
-      mode                       => mode,
+      write_mode                 => mode,
       output_file_name           => "",
       output_memory_access       => mem_ptr,
       output_stream_access       => out_stream_ptr,

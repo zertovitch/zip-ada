@@ -1370,7 +1370,7 @@ package body LZMA.Encoding is
     )
     is
     pragma Unreferenced (match_trace);
-      use LZ77, Estimates;
+      use Estimates;
       last_pos_any_DL : Natural := 0;
       sim_new : Machine_State := ES;
       offset_new_match_set : constant array (Boolean) of Natural := (0, 1);
@@ -1388,7 +1388,7 @@ package body LZMA.Encoding is
         recursion_level :     Positive;
         prob            : out MProb;
         index           : out Positive;
-        match_set       : out Prefetch_Index_Type
+        match_set       : out LZ77.Prefetch_Index_Type
       )
       is
         --  We compute the probability of the message sent for the bytes
@@ -1397,7 +1397,7 @@ package body LZMA.Encoding is
         prob_i, tail_prob : MProb;
         test_state : Machine_State;
         length_trunc, some_index : Positive;
-        some_match_set : Prefetch_Index_Type;
+        some_match_set : LZ77.Prefetch_Index_Type;
         last_pos_i : Integer;
       begin
         prob := 0.0;
@@ -1438,7 +1438,7 @@ package body LZMA.Encoding is
                     Text_Buf (state.R) =
                     Text_Buf ((state.R - UInt32 (matches (m).dl (i).distance)) and Text_Buf_Mask),
                     "Bytes of simulated copy do not match; start =" & Integer'Image (start) &
-                    "; DL code distance="  & Distance_Type'Image (matches (m).dl (i).distance) &
+                    "; DL code distance="  & LZ77.Distance_Type'Image (matches (m).dl (i).distance) &
                     "; new match set="  & Boolean'Image (m /= old_match_index)
                   );
                   Simulate_Literal_Byte (
@@ -1471,7 +1471,7 @@ package body LZMA.Encoding is
       best_prob : MProb;
       new_wins : Boolean := False;
       last_pos_single_DL : Natural;
-      match_for_max_last_pos : Distance_Length_Pair;
+      match_for_max_last_pos : LZ77.Distance_Length_Pair;
       sim_expand : Machine_State := ES;
       sim_old : constant Machine_State := ES;
     begin

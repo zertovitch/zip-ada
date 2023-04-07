@@ -25,7 +25,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2020 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -49,9 +49,9 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-with Zip, Zip_Streams;
+with Zip_Streams;
 
-with Ada.Streams, Ada.IO_Exceptions;
+with Ada.IO_Exceptions;
 
 package UnZip.Streams is
 

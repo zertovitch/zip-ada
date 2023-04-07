@@ -3,7 +3,7 @@ package body Dual_IO is
 
    Log_open : Boolean := False;
 
-   Log_text : Text_IO.File_Type;
+   Log_text : Ada.Text_IO.File_Type;
 
    procedure Check_Log is
    begin
@@ -13,8 +13,8 @@ package body Dual_IO is
    procedure Create_Log (Name : in String) is
    begin
      if Log_open then raise Log_already_open; end if;
-     Text_IO.Create (File => Log_text,
-                     Mode => Text_IO.Out_File,
+     Ada.Text_IO.Create (File => Log_text,
+                     Mode => Ada.Text_IO.Out_File,
                      Name => Name);
      Log_open := True;
    end Create_Log;
@@ -22,8 +22,8 @@ package body Dual_IO is
    procedure Append_Log (Name : in String) is
    begin
      if Log_open then raise Log_already_open; end if;
-     Text_IO.Open (File => Log_text,
-                   Mode => Text_IO.Append_File,
+     Ada.Text_IO.Open (File => Log_text,
+                   Mode => Ada.Text_IO.Append_File,
                    Name => Name);
      Log_open := True;
    end Append_Log;
@@ -31,7 +31,7 @@ package body Dual_IO is
    procedure Close_Log is
    begin
      Check_Log;
-     Text_IO.Close (Log_text);
+     Ada.Text_IO.Close (Log_text);
      Log_open := False;
    end Close_Log;
 
@@ -41,7 +41,7 @@ package body Dual_IO is
    end Is_Log_Open;
 
    procedure Close_and_Append_Log is
-     log_name : constant String := Text_IO.Name (Log_text);
+     log_name : constant String := Ada.Text_IO.Name (Log_text);
    begin
      Close_Log;
      Append_Log (log_name);
@@ -49,37 +49,37 @@ package body Dual_IO is
 
    procedure Flush is
    begin
-     Text_IO.Flush;
+     Ada.Text_IO.Flush;
      Check_Log;
-     Text_IO.Flush (Log_text);
+     Ada.Text_IO.Flush (Log_text);
    end Flush;
 
    procedure New_Line (Spacing : in Positive_Count := 1) is
    begin
-     Text_IO.New_Line (Spacing);
+     Ada.Text_IO.New_Line (Spacing);
      Check_Log;
-     Text_IO.New_Line (Log_text, Spacing);
+     Ada.Text_IO.New_Line (Log_text, Spacing);
    end New_Line;
 
    procedure Skip_Line (Spacing : in Positive_Count := 1) is
    begin
-     Text_IO.Skip_Line (Spacing);           -- *in*  Standard
+     Ada.Text_IO.Skip_Line (Spacing);           -- *in*  Standard
      Check_Log;
-     Text_IO.New_Line (Log_text, Spacing);  -- *out* Log
+     Ada.Text_IO.New_Line (Log_text, Spacing);  -- *out* Log
    end Skip_Line;
 
    procedure New_Page is
    begin
-     Text_IO.New_Page;
+     Ada.Text_IO.New_Page;
      Check_Log;
-     Text_IO.New_Page (Log_text);
+     Ada.Text_IO.New_Page (Log_text);
    end New_Page;
 
    procedure Skip_Page is
    begin
-     Text_IO.Skip_Page;             -- *in*  Standard
+     Ada.Text_IO.Skip_Page;             -- *in*  Standard
      Check_Log;
-     Text_IO.New_Page (Log_text);  -- *out* Log
+     Ada.Text_IO.New_Page (Log_text);  -- *out* Log
    end Skip_Page;
 
    -----------------------------
@@ -89,17 +89,17 @@ package body Dual_IO is
    procedure Get (Item : out Character) is
      C : Character;
    begin
-     Text_IO.Get (C);            -- *in*  Standard
+     Ada.Text_IO.Get (C);            -- *in*  Standard
      Check_Log;
-     Text_IO.Put (Log_text, C);  -- *out* Log
+     Ada.Text_IO.Put (Log_text, C);  -- *out* Log
      Item := C;
    end Get;
 
    procedure Put (Item : in Character) is
    begin
-     Text_IO.Put (Item);
+     Ada.Text_IO.Put (Item);
      Check_Log;
-     Text_IO.Put (Log_text, Item);
+     Ada.Text_IO.Put (Log_text, Item);
    end Put;
 
    --------------------------
@@ -109,17 +109,17 @@ package body Dual_IO is
    procedure Get (Item : out String) is
      S : String (Item'Range);
    begin
-     Text_IO.Get (S);            -- *in*  Standard
+     Ada.Text_IO.Get (S);            -- *in*  Standard
      Check_Log;
-     Text_IO.Put (Log_text, S);  -- *out* Log
+     Ada.Text_IO.Put (Log_text, S);  -- *out* Log
      Item := S;
    end Get;
 
    procedure Put (Item : in String) is
    begin
-     Text_IO.Put (Item);
+     Ada.Text_IO.Put (Item);
      Check_Log;
-     Text_IO.Put (Log_text, Item);
+     Ada.Text_IO.Put (Log_text, Item);
    end Put;
 
    procedure Get_Line
@@ -128,9 +128,9 @@ package body Dual_IO is
      S : String (Item'Range);
      L : Natural;
    begin
-     Text_IO.Get_Line (S, L);               -- *in*  Standard
+     Ada.Text_IO.Get_Line (S, L);               -- *in*  Standard
      Check_Log;
-     Text_IO.Put_Line (Log_text, S (1 .. L));  -- *out* Log
+     Ada.Text_IO.Put_Line (Log_text, S (1 .. L));  -- *out* Log
      Item (Item'First .. Item'First + L - 1) := S (1 .. L);
      Last := L;
    end Get_Line;
@@ -138,14 +138,14 @@ package body Dual_IO is
    procedure Put_Line
      (Item : in String) is
    begin
-     Text_IO.Put_Line (Item);
+     Ada.Text_IO.Put_Line (Item);
      Check_Log;
-     Text_IO.Put_Line (Log_text, Item);
+     Ada.Text_IO.Put_Line (Log_text, Item);
    end Put_Line;
 
    package body Integer_IO is
 
-      package TIIO is new Text_IO.Integer_IO (Num);
+      package TIIO is new Ada.Text_IO.Integer_IO (Num);
 
       procedure Get (Item  : out Num;
                      Width : in  Field := 0) is
@@ -170,7 +170,7 @@ package body Dual_IO is
 
    package body Float_IO is
 
-      package TFIO is new Text_IO.Float_IO (Num);
+      package TFIO is new Ada.Text_IO.Float_IO (Num);
 
       procedure Get (Item  : out Num;
                      Width : in  Field := 0) is
@@ -196,7 +196,7 @@ package body Dual_IO is
 
    package body Fixed_IO is
 
-      package TXIO is new Text_IO.Fixed_IO (Num);
+      package TXIO is new Ada.Text_IO.Fixed_IO (Num);
 
       procedure Get (Item  : out Num;
                      Width : in  Field := 0) is
@@ -222,7 +222,7 @@ package body Dual_IO is
 
    package body Decimal_IO is
 
-      package TDIO is new Text_IO.Decimal_IO (Num);
+      package TDIO is new Ada.Text_IO.Decimal_IO (Num);
 
       procedure Get
         (Item  : out Num;
@@ -250,7 +250,7 @@ package body Dual_IO is
 
    package body Modular_IO is
 
-      package TMIO is new Text_IO.Modular_IO (Num);
+      package TMIO is new Ada.Text_IO.Modular_IO (Num);
 
       procedure Get
         (Item  : out Num;
@@ -277,7 +277,7 @@ package body Dual_IO is
 
    package body Enumeration_IO is
 
-      package TEIO is new Text_IO.Enumeration_IO (Enum);
+      package TEIO is new Ada.Text_IO.Enumeration_IO (Enum);
 
       procedure Get (Item : out Enum) is
         I : Enum;

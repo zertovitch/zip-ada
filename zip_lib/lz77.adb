@@ -2142,12 +2142,12 @@ package body LZ77 is
     --  algorithms applied to entropy encoders (Deflate, LZMA, ...).
 
     procedure LZ77_from_Dump_File is
-      use Ada.Text_IO, Ada.Integer_Text_IO;
-      LZ77_Dump : File_Type;
+      LZ77_Dump : Ada.Text_IO.File_Type;
       tag : String (1 .. 3);
       Wrong_LZ77_tag : exception;
       a, b : Integer;
       dummy : Byte;
+      use Ada.Integer_Text_IO;
     begin
       --  Pretend we compress the given stream.
       --  Entire stream is consumed here.
@@ -2155,10 +2155,10 @@ package body LZ77 is
         dummy := Read_Byte;
       end loop;
       --  Now send dumped LZ77 data further.
-      Open (LZ77_Dump, In_File, "dump.lz77");
+      Ada.Text_IO.Open (LZ77_Dump, Ada.Text_IO.In_File, "dump.lz77");
       --  File from UnZip.Decompress, or LZMA.Decoding, some_trace = True mode
-      while not End_Of_File (LZ77_Dump) loop
-        Get (LZ77_Dump, tag);
+      while not Ada.Text_IO.End_Of_File (LZ77_Dump) loop
+        Ada.Text_IO.Get (LZ77_Dump, tag);
         if tag = "Lit" then
           Get (LZ77_Dump, a);
           Write_Literal (Byte (a));
@@ -2169,9 +2169,9 @@ package body LZ77 is
         else
           raise Wrong_LZ77_tag;
         end if;
-        Skip_Line (LZ77_Dump);
+        Ada.Text_IO.Skip_Line (LZ77_Dump);
       end loop;
-      Close (LZ77_Dump);
+      Ada.Text_IO.Close (LZ77_Dump);
     end LZ77_from_Dump_File;
 
   begin

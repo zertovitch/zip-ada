@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2020 Gautier de Montmollin (maintainer)
+--  Copyright (c) 2008 .. 2023 Gautier de Montmollin (maintainer)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,8 @@
 --                       only 1st element of Item
 
 package body Zip_Streams is
+
+   use Ada.Strings.Unbounded;
 
    procedure Set_Name (S : in out Root_Zipstream_Type; Name : String) is
    begin
@@ -98,22 +100,25 @@ package body Zip_Streams is
    ---------------------------------------------------------------------
    -- Unbounded_Stream: stream based on an in-memory Unbounded_String --
    ---------------------------------------------------------------------
-   procedure Get (Str : Memory_Zipstream; Unb : out Unbounded_String) is
+   procedure Get (Str : Memory_Zipstream; Unb : out Ada.Strings.Unbounded.Unbounded_String) is
    begin
       Unb := Str.Unb;
    end Get;
 
-   procedure Set (Str : in out Memory_Zipstream; Unb : Unbounded_String) is
+   procedure Set (Str : in out Memory_Zipstream; Unb : Ada.Strings.Unbounded.Unbounded_String) is
    begin
       Str.Unb := Null_Unbounded_String; -- clear the content of the stream
       Str.Unb := Unb;
       Str.Loc := 1;
    end Set;
 
+   use Ada.Streams;
+
    overriding procedure Read
      (Stream : in out Memory_Zipstream;
-      Item   : out Stream_Element_Array;
-      Last   : out Stream_Element_Offset) is
+      Item   :    out Ada.Streams.Stream_Element_Array;
+      Last   :    out Ada.Streams.Stream_Element_Offset)
+   is
    begin
       --  Item is read from the stream. If (and only if) the stream is
       --  exhausted, Last will be < Item'Last. In that case, T'Read will
@@ -139,7 +144,7 @@ package body Zip_Streams is
 
    overriding procedure Write
      (Stream : in out Memory_Zipstream;
-      Item   : Stream_Element_Array)
+      Item   :        Ada.Streams.Stream_Element_Array)
    is
      I : Stream_Element_Offset := Item'First;
      chunk_size : Integer;
@@ -295,10 +300,10 @@ package body Zip_Streams is
 
       procedure Split
         (Date       : Time;
-         To_Year    : out Year_Number;
-         To_Month   : out Month_Number;
-         To_Day     : out Day_Number;
-         To_Seconds : out Day_Duration)
+         To_Year    : out Ada.Calendar.Year_Number;
+         To_Month   : out Ada.Calendar.Month_Number;
+         To_Day     : out Ada.Calendar.Day_Number;
+         To_Seconds : out Ada.Calendar.Day_Duration)
       is
          d_date : constant Integer := Integer (Date  /  65536);
          d_time : constant Integer := Integer (Date and 65535);
@@ -309,12 +314,12 @@ package body Zip_Streams is
       begin
          To_Year := 1980 + d_date / 512;
          x := (d_date / 32) mod 16;
-         if x not in Month_Number then  --  that is 0, or in 13..15
+         if x not in Ada.Calendar.Month_Number then  --  that is 0, or in 13..15
            raise Time_Error;
          end if;
          To_Month := x;
          x := d_date mod 32;
-         if x not in Day_Number then  --  that is 0
+         if x not in Ada.Calendar.Day_Number then  --  that is 0
            raise Time_Error;
          end if;
          To_Day := x;
@@ -327,14 +332,14 @@ package body Zip_Streams is
          then
            raise Time_Error;
          end if;
-         To_Seconds := Day_Duration (hours * 3600 + minutes * 60 + seconds_only);
+         To_Seconds := Ada.Calendar.Day_Duration (hours * 3600 + minutes * 60 + seconds_only);
       end Split;
       --
       function Time_Of
-        (From_Year    : Year_Number;
-         From_Month   : Month_Number;
-         From_Day     : Day_Number;
-         From_Seconds : Day_Duration := 0.0) return Time
+        (From_Year    : Ada.Calendar.Year_Number;
+         From_Month   : Ada.Calendar.Month_Number;
+         From_Day     : Ada.Calendar.Day_Number;
+         From_Seconds : Ada.Calendar.Day_Duration := 0.0) return Time
       is
          year_2          : Integer := From_Year;
          hours           : Unsigned_32;
@@ -364,23 +369,23 @@ package body Zip_Streams is
       end ">";
 
       function Convert (Date : in Ada.Calendar.Time) return Time is
-         year_temp       : Year_Number;
-         month_temp      : Month_Number;
-         day_temp        : Day_Number;
-         seconds_day_dur : Day_Duration;
+         year_temp       : Ada.Calendar.Year_Number;
+         month_temp      : Ada.Calendar.Month_Number;
+         day_temp        : Ada.Calendar.Day_Number;
+         seconds_day_dur : Ada.Calendar.Day_Duration;
       begin
-         Split (Date, year_temp, month_temp, day_temp, seconds_day_dur);
+         Ada.Calendar.Split (Date, year_temp, month_temp, day_temp, seconds_day_dur);
          return Time_Of (year_temp, month_temp, day_temp, seconds_day_dur);
       end Convert;
 
       function Convert (Date : in Time) return Ada.Calendar.Time is
-         year_temp       : Year_Number;
-         month_temp      : Month_Number;
-         day_temp        : Day_Number;
-         seconds_day_dur : Day_Duration;
+         year_temp       : Ada.Calendar.Year_Number;
+         month_temp      : Ada.Calendar.Month_Number;
+         day_temp        : Ada.Calendar.Day_Number;
+         seconds_day_dur : Ada.Calendar.Day_Duration;
       begin
          Split (Date, year_temp, month_temp, day_temp, seconds_day_dur);
-         return Time_Of (year_temp, month_temp, day_temp, seconds_day_dur);
+         return Ada.Calendar.Time_Of (year_temp, month_temp, day_temp, seconds_day_dur);
       end Convert;
 
       function Convert (Date : in DOS_Time) return Time is

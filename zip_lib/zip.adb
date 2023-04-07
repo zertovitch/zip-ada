@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2022 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2023 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,12 +26,12 @@
 
 with Zip.Headers;
 
-with Ada.Characters.Handling;
-with Ada.Exceptions;
-with Ada.Unchecked_Deallocation;
-with Ada.IO_Exceptions;
-with Ada.Strings.Fixed;
-with Ada.Strings.Unbounded;
+with Ada.Characters.Handling,
+     Ada.Exceptions,
+     Ada.Unchecked_Deallocation,
+     Ada.IO_Exceptions,
+     Ada.Strings.Fixed,
+     Ada.Strings.Unbounded;
 
 package body Zip is
 
@@ -268,12 +268,11 @@ package body Zip is
       Zip.Headers.Read_and_check (from, header);
       declare
         this_name : String (1 .. Natural (header.short_info.filename_length));
-        use Zip_Streams;
-        mem : ZS_Index_Type;
+        mem : Zip_Streams.ZS_Index_Type;
         head_extra : Headers.Local_File_Header_Extension;
       begin
         String'Read (from'Access, this_name);
-        mem := Index (from);
+        mem := from.Index;
         if header.short_info.extra_field_length >= 4 then
           Headers.Read_and_check (from, head_extra);
           Headers.Interpret
@@ -283,14 +282,11 @@ package body Zip is
              header.local_header_offset);
         end if;
         --  Skip extra field and entry comment.
-        Set_Index (
-          from,
-          mem +
-          ZS_Size_Type (
-            header.short_info.extra_field_length +
-            header.comment_length
-          )
-        );
+        from.Set_Index
+          (mem +
+           Zip_Streams.ZS_Size_Type
+             (header.short_info.extra_field_length +
+              header.comment_length));
         --  Now the whole i_th central directory entry is behind
         Insert (dico_name   => Normalize (this_name, case_sensitive),
                 file_name   => Normalize (this_name, True),
@@ -347,12 +343,11 @@ package body Zip is
     duplicate_names : in  Duplicate_name_policy := error_on_duplicate
   )
   is
-    use Zip_Streams;
-    MyStream   : aliased File_Zipstream;
+    my_stream : aliased Zip_Streams.File_Zipstream;
   begin
-    Set_Name (MyStream, from);
+    my_stream.Set_Name (from);
     begin
-      Open (MyStream, In_File);
+      my_stream.Open (Zip_Streams.In_File);
     exception
       when others =>
         raise Archive_open_error with "Archive: [" & from & ']';
@@ -360,18 +355,18 @@ package body Zip is
     --  Call the stream version of Load(...)
     Load (
       info,
-      MyStream,
+      my_stream,
       case_sensitive,
       duplicate_names
     );
-    Close (MyStream);
+    my_stream.Close;
     Dispose (info.zip_file_name);
     info.zip_file_name := new String'(from);
     info.zip_input_stream := null; -- forget about the stream!
   exception
     when others =>
-      if Is_Open (MyStream) then
-        Close (MyStream);
+      if my_stream.Is_Open then
+        my_stream.Close;
       end if;
       raise;
   end Load;
@@ -558,15 +553,12 @@ package body Zip is
     the_end    : Zip.Headers.End_of_Central_Dir;
     header     : Zip.Headers.Central_File_Header;
     min_offset : Zip_64_Data_Size_Type;
-    use Zip_Streams;
-    mem : ZS_Index_Type;
+    mem        : Zip_Streams.ZS_Index_Type;
     head_extra : Headers.Local_File_Header_Extension;
   begin
     Zip.Headers.Load (file, the_end);
-    Set_Index (
-      file,
-      ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting
-    );
+    file.Set_Index
+      (Zip_Streams.ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting);
 
     min_offset := the_end.central_dir_offset; -- will be lowered if the archive is not empty.
 
@@ -576,8 +568,8 @@ package body Zip is
 
     for i in 1 .. the_end.total_entries loop
       Headers.Read_and_check (file, header);
-      Set_Index (file, Index (file) + ZS_Size_Type (header.short_info.filename_length));
-      mem := Index (file);
+      file.Set_Index (file.Index + Zip_Streams.ZS_Size_Type (header.short_info.filename_length));
+      mem := file.Index;
       if header.short_info.extra_field_length >= 4 then
         Headers.Read_and_check (file, head_extra);
         Headers.Interpret
@@ -586,13 +578,11 @@ package body Zip is
            header.short_info.dd.compressed_size,
            header.local_header_offset);
       end if;
-      Set_Index (file,
-        mem +
-        ZS_Size_Type
-              (header.short_info.extra_field_length +
-               header.comment_length
-              )
-      );
+      file.Set_Index
+        (mem +
+         Zip_Streams.ZS_Size_Type
+           (header.short_info.extra_field_length +
+            header.comment_length));
       --  Now the whole i_th central directory entry is behind
 
       if header.local_header_offset < min_offset then
@@ -628,19 +618,19 @@ package body Zip is
   is
     the_end : Zip.Headers.End_of_Central_Dir;
     header  : Zip.Headers.Central_File_Header;
-    use Zip_Streams;
-    mem : ZS_Index_Type;
+    mem : Zip_Streams.ZS_Index_Type;
     head_extra : Headers.Local_File_Header_Extension;
   begin
     Zip.Headers.Load (file, the_end);
-    Set_Index (file, ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting);
+    file.Set_Index
+      (Zip_Streams.ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting);
     for i in 1 .. the_end.total_entries loop
       Zip.Headers.Read_and_check (file, header);
       declare
         this_name : String (1 .. Natural (header.short_info.filename_length));
       begin
         String'Read (file'Access, this_name);
-        mem := Index (file);
+        mem := file.Index;
         if header.short_info.extra_field_length >= 4 then
           Headers.Read_and_check (file, head_extra);
           Headers.Interpret
@@ -649,13 +639,11 @@ package body Zip is
              header.short_info.dd.compressed_size,
              header.local_header_offset);
           end if;
-        Set_Index (file,
-          mem +
-          ZS_Size_Type (
-                  header.short_info.extra_field_length +
-                  header.comment_length
-          )
-        );
+        file.Set_Index
+          (mem +
+            Zip_Streams.ZS_Size_Type
+              (header.short_info.extra_field_length +
+               header.comment_length));
         --  Now the whole i_th central directory entry is behind
         if Normalize (this_name, case_sensitive) =
            Normalize (name, case_sensitive)
@@ -917,21 +905,21 @@ package body Zip is
     actually_read :    out Natural
   )
   is
-    use Ada.Streams, Zip_Streams;
+    use Ada.Streams;
     SE_Buffer   : Stream_Element_Array (1 .. buffer'Length);
     for SE_Buffer'Address use buffer'Address;
     pragma Import (Ada, SE_Buffer);
     Last_Read   : Stream_Element_Offset;
   begin
     if workaround_possible then
-      Read (stream, SE_Buffer, Last_Read);
+      stream.Read (SE_Buffer, Last_Read);
       actually_read := Natural (Last_Read);
     else
-      if End_Of_Stream (stream) then
+      if stream.End_Of_Stream then
         actually_read := 0;
       else
         actually_read :=
-          Integer'Min (buffer'Length, Integer (Size (stream) - Index (stream) + 1));
+          Integer'Min (buffer'Length, Integer (stream.Size - stream.Index + 1));
         Byte_Buffer'Read (
           stream'Access,
           buffer (buffer'First .. buffer'First + actually_read - 1)
@@ -1085,14 +1073,14 @@ package body Zip is
   --  This does the same as Ada 2005's Ada.Directories.Exists
   --  Just there as helper for Ada 95 only systems
   --
-  function Exists (name : String) return Boolean is
+  function Exists (file_name : String) return Boolean is
     use Ada.Text_IO, Ada.Strings.Fixed;
     f : File_Type;
   begin
-    if Index (name, "*") > 0 then
+    if Index (file_name, "*") > 0 then
       return False;
     end if;
-    Open (f, In_File, name, Form => Ada.Strings.Unbounded.To_String (Zip_Streams.Form_For_IO_Open_and_Create));
+    Open (f, In_File, file_name, Form => Ada.Strings.Unbounded.To_String (Zip_Streams.Form_For_IO_Open_and_Create));
     Close (f);
     return True;
   exception

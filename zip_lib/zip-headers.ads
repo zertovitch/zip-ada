@@ -85,9 +85,6 @@
 --  16-Nov-2009: GdM: Replaced Ada.Calendar.Time by Zip.Time in headers, due to
 --                   perf. issues in some run-times' Ada.Calendar.Time_Of
 
-with Interfaces;
-with Zip_Streams;
-
 package Zip.Headers is
 
   use Interfaces, Zip_Streams;

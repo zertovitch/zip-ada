@@ -9,27 +9,26 @@
 --          genuine Text_IO for Files and String I/O.
 --
 --
---  Date/version:    2-Mar-2013; 2-Feb-2011; 7-Jul-2001; 4-Jul-2001
+--  Date/version:    7-Apr-2023; 2-Mar-2013; 2-Feb-2011; 4-Jul-2001
 --  Author:          G. de Montmollin
 --                   http://gautiersblog.blogspot.com/
 ------------------------------------------------------------------------------
 
-with IO_Exceptions, Text_IO;
-   --  ^ These are standard renamings of Ada.Text_IO & Ada.IO_Exceptions
+with Ada.IO_Exceptions, Ada.Text_IO;
 
 package Dual_IO is
 
-   subtype Count is Text_IO.Count;
+   subtype Count is Ada.Text_IO.Count;
 
-   subtype Positive_Count is Text_IO.Positive_Count;
+   subtype Positive_Count is Ada.Text_IO.Positive_Count;
 
-   Unbounded : constant Count := Text_IO.Unbounded;
+   Unbounded : constant Count := Ada.Text_IO.Unbounded;
 
-   subtype Field is Text_IO.Field;
+   subtype Field is Ada.Text_IO.Field;
 
-   subtype Number_Base is Text_IO.Number_Base;
+   subtype Number_Base is Ada.Text_IO.Number_Base;
 
-   subtype Type_Set is Text_IO.Type_Set;
+   subtype Type_Set is Ada.Text_IO.Type_Set;
 
    -------------------------
    -- Log file Management --
@@ -50,10 +49,10 @@ package Dual_IO is
    -- Specification of line and page lengths --
    --------------------------------------------
 
-   procedure Set_Line_Length (To : in Count) renames Text_IO.Set_Line_Length;
-   procedure Set_Page_Length (To : in Count) renames Text_IO.Set_Page_Length;
-   function Line_Length return Count renames Text_IO.Line_Length;
-   function Page_Length return Count renames Text_IO.Page_Length;
+   procedure Set_Line_Length (To : in Count) renames Ada.Text_IO.Set_Line_Length;
+   procedure Set_Page_Length (To : in Count) renames Ada.Text_IO.Set_Page_Length;
+   function Line_Length return Count renames Ada.Text_IO.Line_Length;
+   function Page_Length return Count renames Ada.Text_IO.Page_Length;
 
    ------------------------------------
    -- Column, Line, and Page Control --
@@ -61,16 +60,16 @@ package Dual_IO is
 
    procedure New_Line (Spacing : in Positive_Count := 1);
    procedure Skip_Line (Spacing : in Positive_Count := 1);
-   function End_Of_Line return Boolean renames Text_IO.End_Of_Line;
+   function End_Of_Line return Boolean renames Ada.Text_IO.End_Of_Line;
    procedure New_Page;
    procedure Skip_Page;
-   function End_Of_Page return Boolean         renames Text_IO.End_Of_Page;
-   function End_Of_File return Boolean         renames Text_IO.End_Of_File;
-   procedure Set_Col (To : in Positive_Count)  renames Text_IO.Set_Col;
-   procedure Set_Line (To : in Positive_Count) renames Text_IO.Set_Line;
-   function Col return Positive_Count          renames Text_IO.Col;
-   function Line return Positive_Count         renames Text_IO.Line;
-   function Page return Positive_Count         renames Text_IO.Page;
+   function End_Of_Page return Boolean         renames Ada.Text_IO.End_Of_Page;
+   function End_Of_File return Boolean         renames Ada.Text_IO.End_Of_File;
+   procedure Set_Col (To : in Positive_Count)  renames Ada.Text_IO.Set_Col;
+   procedure Set_Line (To : in Positive_Count) renames Ada.Text_IO.Set_Line;
+   function Col return Positive_Count          renames Ada.Text_IO.Col;
+   function Line return Positive_Count         renames Ada.Text_IO.Line;
+   function Page return Positive_Count         renames Ada.Text_IO.Page;
 
    -----------------------------
    -- Characters Input-Output --
@@ -81,16 +80,16 @@ package Dual_IO is
 
    procedure Look_Ahead (Item           : out Character;
                          Is_End_Of_Line : out Boolean)
-      renames Text_IO.Look_Ahead;
+      renames Ada.Text_IO.Look_Ahead;
 
    --  No echo -> not logged -> renames suffices
 
    procedure Get_Immediate (Item      : out Character)
-      renames Text_IO.Get_Immediate;
+      renames Ada.Text_IO.Get_Immediate;
 
    procedure Get_Immediate (Item      : out Character;
                             Available : out Boolean)
-      renames Text_IO.Get_Immediate;
+      renames Ada.Text_IO.Get_Immediate;
 
    --------------------------
    -- Strings Input-Output --
@@ -210,7 +209,7 @@ package Dual_IO is
    package Enumeration_IO is
 
       Default_Width   : Field := 0;
-      Default_Setting : Type_Set := Text_IO.Upper_Case;
+      Default_Setting : Type_Set := Ada.Text_IO.Upper_Case;
 
       procedure Get (Item : out Enum);
 
@@ -221,14 +220,14 @@ package Dual_IO is
 
    --  Exceptions
 
-   Status_Error : exception renames IO_Exceptions.Status_Error;
-   Mode_Error   : exception renames IO_Exceptions.Mode_Error;
-   Name_Error   : exception renames IO_Exceptions.Name_Error;
-   Use_Error    : exception renames IO_Exceptions.Use_Error;
-   Device_Error : exception renames IO_Exceptions.Device_Error;
-   End_Error    : exception renames IO_Exceptions.End_Error;
-   Data_Error   : exception renames IO_Exceptions.Data_Error;
-   Layout_Error : exception renames IO_Exceptions.Layout_Error;
+   Status_Error : exception renames Ada.IO_Exceptions.Status_Error;
+   Mode_Error   : exception renames Ada.IO_Exceptions.Mode_Error;
+   Name_Error   : exception renames Ada.IO_Exceptions.Name_Error;
+   Use_Error    : exception renames Ada.IO_Exceptions.Use_Error;
+   Device_Error : exception renames Ada.IO_Exceptions.Device_Error;
+   End_Error    : exception renames Ada.IO_Exceptions.End_Error;
+   Data_Error   : exception renames Ada.IO_Exceptions.Data_Error;
+   Layout_Error : exception renames Ada.IO_Exceptions.Layout_Error;
 
    Log_not_open     : exception;
    Log_already_open : exception;
