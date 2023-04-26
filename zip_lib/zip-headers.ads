@@ -344,7 +344,8 @@ package Zip.Headers is
     total_number_of_entries_in_the_central_directory_on_this_disk : Unsigned_64;
     total_number_of_entries_in_the_central_directory              : Unsigned_64;
     size_of_the_central_directory                                 : Unsigned_64;
-    offset_of_start_of_central_directory                          : Unsigned_64;  --  with respect to the starting disk number
+    offset_of_start_of_central_directory                          : Unsigned_64;
+    --  ^ offset: with respect to the starting disk number
     --  zip64_extensible_data_sector (variable_size)
   end record;
 

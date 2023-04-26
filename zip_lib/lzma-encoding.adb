@@ -521,7 +521,8 @@ package body LZMA.Encoding is
         case index_rm is
           when 0 =>
             res := res * Test_Bit_Encoding (probs.switch.rep_g0 (sim.state), The_distance_is_rep0_choice)
-                       * Test_Bit_Encoding (probs.switch.rep0_long (sim.state, sim.pos_state), The_length_is_not_1_choice);
+                       * Test_Bit_Encoding
+                           (probs.switch.rep0_long (sim.state, sim.pos_state), The_length_is_not_1_choice);
           when 1 =>
             res := res * Test_Bit_Encoding (probs.switch.rep_g0 (sim.state), The_distance_is_not_rep0_choice)
                        * Test_Bit_Encoding (probs.switch.rep_g1 (sim.state), The_distance_is_rep1_choice);

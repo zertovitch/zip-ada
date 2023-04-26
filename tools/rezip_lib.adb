@@ -129,7 +129,8 @@ package body Rezip_lib is
       (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**26 = 64 MiB
          U ("a -tzip -mm=LZMA:a=2:d=26:mf=bt#RAND#(3,5):fb=273:lc=8:lp0:pb1"), NN, 63, Zip.lzma_meth, 0, False),
       (U ("7z"), U ("7-Zip"), NN, --  Super-randomized version
-         U ("a -tzip -mm=LZMA:a=2:d=#RAND_EXP#(1,65535)k:mf=bt#RAND#(2,5):fb=#RAND#(128,273):lc=#RAND#(0,8):lp#RAND#(0,4):pb#RAND#(0,4)"),
+         U ("a -tzip -mm=LZMA:a=2:d=#RAND_EXP#(1,65535)k:mf=bt#RAND#(2,5):fb=#RAND#(128,273):" &
+            "lc=#RAND#(0,8):lp#RAND#(0,4):pb#RAND#(0,4)"),
          NN, 63, Zip.lzma_meth, 0, True),
       --  AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U ("advzip"), U ("AdvZip"), U ("http://advancemame.sf.net/comp-readme.html"),
@@ -1315,10 +1316,16 @@ package body Rezip_lib is
       --
       --  Report total saved bytes per approach, *including ex-aequos*.
       --
-      Put (summary, "<tr><td></td><td><b>T<small>OTAL BYTES SAVED (by chosen or ex-aequo optimal approach)</small></b></td>");
+      Put
+        (summary,
+         "<tr><td></td><td><b>T<small>OTAL BYTES SAVED (by chosen or " &
+         "ex-aequo optimal approach)</small></b></td>");
       for a in Approach loop
         if consider_a_priori (a) then
-          Put (summary, "<td bgcolor=#" & Webcolor (a) & ">" & Image_1000 (total (a).saved_ex_aequo) & "</td>");
+          Put
+            (summary,
+             "<td bgcolor=#" & Webcolor (a) & ">" &
+             Image_1000 (total (a).saved_ex_aequo) & "</td>");
         end if;
       end loop;
       Put (summary, "<td></td><td></td><td></td><td></td><td></td><td>");

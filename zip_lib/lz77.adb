@@ -733,7 +733,9 @@ package body LZ77 is
         if prev_length >= good_match then
           chain_length := chain_length / 4;
         end if;
-        pragma Assert (strstart <= Integer_M32 (window_size) - MIN_LOOKAHEAD, "insufficient lookahead");  --  In deflate.c
+        pragma Assert
+          (strstart <= Integer_M32 (window_size) - MIN_LOOKAHEAD,
+           "insufficient lookahead");  --  In deflate.c
         loop
           if current_match >= strstart then
             --  Added 2020-11-07. The file test/sample.jpg bombs the assertion a few lines later.
@@ -1742,7 +1744,9 @@ package body LZ77 is
         if matches (current_match_index).count > 0 then
           new_ld := matches (current_match_index).dl (matches (current_match_index).count);  --  Longest new match
           if        (new_ld.length >= main.length + hurdle     and then new_ld.distance < main.distance)
-            or else (new_ld.length =  main.length + hurdle + 1 and then not Has_much_smaller_Distance (main.distance, new_ld.distance))
+            or else
+              (new_ld.length =  main.length + hurdle + 1
+               and then not Has_much_smaller_Distance (main.distance, new_ld.distance))
             or else  new_ld.length >  main.length + hurdle + 1
             or else (new_ld.length >= main.length + hurdle - 1
                 and then main.length >= MATCH_LEN_MIN + 1

@@ -65,6 +65,7 @@ project ZipAda is
      "-gnatyO",      --  Style: check that overriding subprograms are explicitly marked as such.
      "-gnatyx",      --  Style: check x:no extra parens
      "-gnatye",      --  Style: check e:end/exit labels present
+     "-gnatyM120",   --  Style: check M:line length <= nn characters
      "-gnatytc");    --  Style: check t:token separation rules, c:comment format (two spaces)
 
    type Zip_Styles_Checks_Type is ("Off", "On");
