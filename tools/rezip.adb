@@ -44,7 +44,8 @@ procedure ReZip is
     Put_Line ("                        for instance: ""y:\ram_temp\rz_"" or ""rz_""");
     New_Line;
     Put_Line ("External programs (available for Windows and Linux) are used, except");
-    Put_Line ("with the ""-int"" option. They must be callable through the ""path"".");
+    Put_Line ("when ReZip is called with the ""-int"" option.");
+    Put_Line ("The external programs must be callable through the ""path"".");
     Put_Line ("List of external programs:");
     New_Line;
     Rezip_lib.Show_external_packer_list;

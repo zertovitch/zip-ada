@@ -1,12 +1,11 @@
---  This test builds with ObjectAda and GNAT in -gnat83 mode, so
---  perhaps with all Ada (83, 95, 2005, ...) compilers!...
-
 with Length_limited_Huffman_code_lengths;
 
-with Text_IO; use Text_IO;
+with Ada.Text_IO;
 
 procedure Test_LLHC is
-  package IIO is new Integer_IO (Integer); use IIO;
+  use Ada.Text_IO;
+  package IIO is new Integer_IO (Integer);
+  use IIO;
   --
   procedure Test_1 is
     subtype Alphabet is Character range 'a' .. 'k';
