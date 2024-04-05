@@ -25,7 +25,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2023 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -56,7 +56,8 @@ with Ada.IO_Exceptions;
 package UnZip.Streams is
 
    ----------------------------------------------------------------------------
-   --                    ** Variant 1: Input Stream **                       --
+   --              ** Variant 1: contents as Input Stream **                 --
+   --                 -----------------------------------                    --
    --                                                                        --
    --  Extract a Zip archive entry as an input stream.                       --
    --                                                                        --
@@ -73,6 +74,7 @@ package UnZip.Streams is
    type Zipped_File_Type is private;
 
    type Count is new Zip_Streams.ZS_Size_Type;
+   subtype Positive_Count is Count range 1 .. Count'Last;
 
    --  Opens an input stream for the compressed file named Name stored
    --  in the archive file named Archive_Name. The function Stream(..)
@@ -127,47 +129,50 @@ package UnZip.Streams is
    ------------------------------------------------------------------------
    function Stream (File : Zipped_File_Type) return Stream_Access;
 
+   --  Operations on position within decompressed file
+
+   procedure Set_Index (File : in Zipped_File_Type; To : in Positive_Count);
+   function Index (File : in Zipped_File_Type) return Positive_Count;
    function Size (File : in Zipped_File_Type) return Count;
 
    Use_Error    : exception renames Ada.IO_Exceptions.Use_Error;
    End_Error    : exception renames Ada.IO_Exceptions.End_Error;
 
    ------------------------------------------------------------------
-   --               ** Variant 2: Output Stream **                 --
+   --         ** Variant 2: contents as Output Stream **           --
+   --            ------------------------------------              --
    --                                                              --
    --  Extract a Zip archive entry to an available output stream.  --
    --                                                              --
    --  NB: the memory footprint is limited to the decompression    --
    --      structures and buffering, so the outward stream can be  --
-   --      an interesting alternative to the inward, albeit less   --
-   --      comfortable.                                            --
+   --      an interesting alternative to the inward stream         --
+   --      (variant 1), albeit less comfortable.                   --
    --                                                              --
    ------------------------------------------------------------------
 
-   procedure Extract (
-     Destination      : in out Ada.Streams.Root_Stream_Type'Class;
-     Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
-     Entry_Name       : in String;               -- Name of zipped entry
-     Password         : in String  := "";        -- Decryption password
-     Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
-   );
+   procedure Extract
+     (Destination      : in out Ada.Streams.Root_Stream_Type'Class;
+      Archive_Info     : in Zip.Zip_info;         --  Archive's Zip_info
+      Entry_Name       : in String;               --  Name of zipped entry
+      Password         : in String  := "";        --  Decryption password
+      Ignore_Directory : in Boolean := False);    --  True: will open Name in first directory found
 
 private
 
-   type UZS_state is (
-      uninitialized,
-      data_uncompressed, -- In that model, all data is unzipped in one
-                         --   time, into memory. If you have a smarter
-                         --   idea (small buffer with tasking, write me!)
-      end_of_zip         -- We have reached the end, not yet closed
-     );
+   type UZS_State is
+     (uninitialized,
+      data_uncompressed,  --  In that model, all data is unzipped in one
+                          --    time, into memory. If you have a smarter
+                          --    idea (small buffer with tasking, write me!)
+      end_of_zip);        --  We have reached the end, not yet closed
 
    type p_String is access String;
 
    type UnZip_Stream_Type is new Ada.Streams.Root_Stream_Type with record
-      state        : UZS_state := uninitialized;
-      archive_info : Zip.Zip_info; -- archive info (.zip file, directory)
-      file_name    : p_String; -- name of zipped file to unzip from archive
+      state        : UZS_State := uninitialized;
+      archive_info : Zip.Zip_info;  --  archive info (.zip file, directory)
+      file_name    : p_String;  --  name of zipped file to unzip from archive
       uncompressed : p_Stream_Element_Array; -- whole uncompressed data
       index        : Ada.Streams.Stream_Element_Offset;
    end record;

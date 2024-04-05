@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2023 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -86,15 +86,14 @@ package body UnZip.Streams is
       raise Unsupported_method;
     end if;
 
-    --  calculate offset of data
+    --  Calculate offset of data
 
     work_index :=
       work_index +
-      Zip_Streams.ZS_Size_Type (
-              local_header.filename_length    +
-              local_header.extra_field_length +
-              Zip.Headers.local_header_length
-      );
+      Zip_Streams.ZS_Size_Type
+        (local_header.filename_length    +
+         local_header.extra_field_length +
+         Zip.Headers.local_header_length);
 
     --
     --  Zip64 extension.
@@ -103,7 +102,8 @@ package body UnZip.Streams is
       declare
         mem                    : constant Zip_Streams.ZS_Index_Type := Zip_Streams.Index (zip_stream);
         local_header_extension : Zip.Headers.Local_File_Header_Extension;
-        dummy_offset           : Unsigned_64 := 0;  --  Initialized for avoiding random value = 16#FFFF_FFFF#
+        dummy_offset           : Unsigned_64 := 0;
+        --  ^ Initialized for avoiding a random value being by mistake 16#FFFF_FFFF#
       begin
         Zip_Streams.Set_Index (zip_stream, mem + Zip_Streams.ZS_Index_Type (local_header.filename_length));
         Zip.Headers.Read_and_check (zip_stream, local_header_extension);
@@ -183,14 +183,14 @@ package body UnZip.Streams is
 
   end UnZipFile;
 
-  procedure S_Extract (from             : Zip.Zip_info;
-                       zip_stream       : in out Zip_Streams.Root_Zipstream_Type'Class;
-                       what             : String;
-                       password         : in String;
-                       mem_ptr          : out p_Stream_Element_Array;
-                       out_stream_ptr   : p_Stream;
-                       Ignore_Directory : in Boolean
-                      )
+  procedure S_Extract
+    (from             : in     Zip.Zip_info;
+     zip_stream       : in out Zip_Streams.Root_Zipstream_Type'Class;
+     what             : in     String;
+     password         : in     String;
+     mem_ptr          :    out p_Stream_Element_Array;
+     out_stream_ptr   : in     p_Stream;
+     Ignore_Directory : in     Boolean)
   is
     header_index : Zip_Streams.ZS_Index_Type;
     comp_size    : Zip.Zip_64_Data_Size_Type;
@@ -407,6 +407,29 @@ package body UnZip.Streams is
     return Stream_Access (File);
   end Stream;
 
+  procedure Set_Index (File : in Zipped_File_Type; To : in Positive_Count) is
+    use Ada.Streams;
+  begin
+    --  In the RM, A.12.1 The Package Streams.Stream_IO, 1.1/1,
+    --  the behaviour of the current index is said to be described in A.8.
+    --
+    --  In A.8.5, Set_Index's behaviour beyond the size is specified as such:
+    --     "Sets the current index of the given file to the given index
+    --      value (which may exceed the current size of the file)."
+    --
+    --  Empirical verification: GNAT doesn't set a limit to the index.
+    --  Only when a read occurs off the actual file limits, an End_Error is
+    --  raised.
+    File.index :=
+       Stream_Element_Offset (To - 1) + File.uncompressed'First;
+  end Set_Index;
+
+  function Index (File : in Zipped_File_Type) return Positive_Count is
+    use Ada.Streams;
+  begin
+    return Positive_Count (File.index - File.uncompressed'First) + 1;
+  end Index;
+
   function Size (File : in Zipped_File_Type) return Count is
     comp_size   : Zip.Zip_64_Data_Size_Type;
     uncomp_size : Zip.Zip_64_Data_Size_Type;
@@ -424,13 +447,12 @@ package body UnZip.Streams is
     raise write_not_supported;
   end Write;
 
-  procedure Extract (
-     Destination      : in out Ada.Streams.Root_Stream_Type'Class;
-     Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
-     Entry_Name       : in String;               -- Name of zipped entry
-     Password         : in String  := "";        -- Decryption password
-     Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
-   )
+  procedure Extract
+    (Destination      : in out Ada.Streams.Root_Stream_Type'Class;
+     Archive_Info     : in Zip.Zip_info;         --  Archive's Zip_info
+     Entry_Name       : in String;               --  Name of zipped entry
+     Password         : in String  := "";        --  Decryption password
+     Ignore_Directory : in Boolean := False)     --  True: will open Name in first directory found
   is
     use Zip_Streams;
     zip_stream   : aliased File_Zipstream;
