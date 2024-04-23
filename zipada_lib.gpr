@@ -74,7 +74,6 @@ library project ZipAda_Lib is
    Zip_OS : Zip_OS_Kind := external ("Zip_OS", "Any");
 
    package Compiler is
-      for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
       case Zip_OS is
         when "Win32" | "Win64" =>
           for Default_Switches ("ada") use

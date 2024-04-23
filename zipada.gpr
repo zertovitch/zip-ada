@@ -115,7 +115,6 @@ project ZipAda is
             for Default_Switches ("ada") use Debug_Compiler_Options ;
 
          when "Fast" =>
-            for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             case Zip_OS is
               when "Win32" | "Win64" =>
                 for Default_Switches ("ada") use
@@ -125,7 +124,6 @@ project ZipAda is
             end case;
 
          when "Small" =>
-            for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             for Default_Switches ("ada") use
               Common_Compiler_Options & (
                 "-Os", "-gnatp",
@@ -133,7 +131,6 @@ project ZipAda is
               );
 
          when "Profiling" =>
-            for Local_Configuration_Pragmas use project'Project_Dir & "za_elim.pra";
             for Default_Switches ("ada") use
               Fast_Compiler_Options_Inlining_Neutral & ("-fno-inline", "-pg");
 
