@@ -235,7 +235,7 @@ sub create_header
 <meta name=\"keywords\" content=\"Ada, zip, unzip, pkzip, pkunzip, programming\">
 <link rel=\"Shortcut Icon\" href=../zip.ico>
 </HEAD>
-<BODY bgcolor=#fff0dd>\n";
+<BODY bgcolor=#fffbf4>\n";
   
   if (($main eq "_main_") or ($adafile ne ""))
   {
@@ -280,7 +280,7 @@ sub create_footer
   local ($adafile) = shift;
   local ($string) = "";
   $string = "</PRE>" if ($adafile ne "");
-  return $string . "<br><font color=#fcf0dc>
+  return $string . "<br><font color=#fcf0f5>
   Zip-Ada: Ada library for zip archive files (.zip).
   Ada programming.</font>
   </BODY></HTML>\n";
@@ -291,7 +291,7 @@ sub create_ada_frame_footer
   local ($adafile) = shift;
   local ($string) = "";
   $string = "</PRE>" if ($adafile ne "");
-  return $string . "<br><font color=#feebdd>
+  return $string . "<br><font color=#fef1ef>
   Zip-Ada: Ada library for zip archive files (.zip).
   Ada programming.</font>
   <hr>
@@ -955,7 +955,7 @@ sub create_file_index
       {
 	if ($last_letter ne '')
 	{
-	  print INDEX_FILE "</UL><font color=#fef0de>Ada programming.</font></BODY></HTML>\n";
+	  print INDEX_FILE "</UL><font color=#fef4f7>Ada programming.</font></BODY></HTML>\n";
 	  close (INDEX_FILE);
 	}
 	$last_letter = &uppercases (substr ($_, 0, 1));
@@ -963,7 +963,7 @@ sub create_file_index
 	|| die "couldn't write $output_dir/files/$last_letter.htm";
 	print INDEX_FILE <<"EOF";
 <HTML><HEAD><TITLE>$last_letter</TITLE></HEAD>
-<BODY bgcolor=#fff0dd>
+<BODY bgcolor=#fffbf4>
 <H2>Files - $last_letter</H2>
 <A HREF=../files.htm TARGET=_self>[index]</A>
 <UL COMPACT TYPE=DISC>
@@ -978,7 +978,7 @@ EOF
       ".htm TARGET=main>$_</A>\n";   ## Problem with TARGET when in no_frame mode!
     }
     
-    print INDEX_FILE "</UL><font color=#fef0de>Ada programming.</font></BODY></HTML>\n";
+    print INDEX_FILE "</UL><font color=#fef4f7>Ada programming.</font></BODY></HTML>\n";
     close INDEX_FILE;
   }
   else
@@ -1025,7 +1025,7 @@ sub create_function_index
       {
 	if ($last_letter ne '')
 	{
-	  print INDEX_FILE "</UL><font color=#fef0de>Ada programming.</font></BODY></HTML>\n";
+	  print INDEX_FILE "</UL><font color=#fef4f7>Ada programming.</font></BODY></HTML>\n";
 	  close (INDEX_FILE);
 	}
 	
@@ -1041,7 +1041,7 @@ sub create_function_index
 		|| die "couldn't write $output_dir/funcs/$initial.htm";
 	    print INDEX_FILE <<"EOF";
 <HTML><HEAD><TITLE>$initial</TITLE></HEAD>
-<BODY bgcolor=#fff0dd>
+<BODY bgcolor=#fffbf4>
 <H2>Functions - $initial</H2>
 <A HREF=../funcs.htm TARGET=_self>[index]</A>
 <UL COMPACT TYPE=DISC>
@@ -1062,7 +1062,7 @@ EOF
       }
     }
     
-    print INDEX_FILE "</UL><font color=#fef0de>Ada programming.</font></BODY></HTML>\n";
+    print INDEX_FILE "</UL><font color=#fef4f7>Ada programming.</font></BODY></HTML>\n";
     close INDEX_FILE;
   }
   else

@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------------
---  File:            Demo_csv_into_zip.adb
+--  File:            demo_csv_into_zip.adb
 --  Description:     Demo / test / prototype derived from ZipTest.
 --  Purpose:         Stuff many files directly into a Zip archive file.
 --                     Can be helpful when using network drives, for instance:
@@ -11,18 +11,17 @@
 
 with Zip.Create;
 
-with Ada.Characters.Handling;
-with Ada.Text_IO;
+with Ada.Characters.Handling,
+     Ada.Text_IO;
 
-procedure Demo_csv_into_zip is
+procedure Demo_CSV_into_Zip is
 
   type Continent is
    (Overseas,
     North_America,
     Latin_America,
     Europe,
-    Other
-   );
+    Other);
 
   type GroupCountries is
    (France_Benelux,
@@ -41,8 +40,7 @@ procedure Demo_csv_into_zip is
     South_America,
     Central_America,
     Caribbean,
-    Other
-   );
+    Other);
 
   type Peril is
    (Drought,
@@ -50,17 +48,15 @@ procedure Demo_csv_into_zip is
     Flood,
     Frost,
     Hail,
-    Windstorm
-   );
+    Windstorm);
 
-  Peril_abbr : constant array (Peril) of String (1 .. 2) :=
+  Peril_Abbr : constant array (Peril) of String (1 .. 2) :=
    (Drought    => "DT",
     Earthquake => "EQ",
     Flood      => "FD",
     Frost      => "FT",
     Hail       => "HL",
-    Windstorm  => "WS"
-   );
+    Windstorm  => "WS");
 
   groupcountries_to_continent : constant array (GroupCountries) of Continent :=
    (France_Benelux => Europe,
@@ -79,16 +75,15 @@ procedure Demo_csv_into_zip is
     South_America => Latin_America,
     Central_America => Latin_America,
     Caribbean => Latin_America,
-    Other => Other
-   );
+    Other => Other);
 
   use Ada.Characters.Handling;
 
-  procedure Output_results (
-    g       : GroupCountries;
-    p       : Peril;
-    to_file : String
-  ) is
+  procedure Output_Results
+    (g       : GroupCountries;
+     p       : Peril;
+     to_file : String)
+  is
     use Ada.Text_IO;
     f : File_Type;
     separator : constant Character := ';';
@@ -106,50 +101,47 @@ procedure Demo_csv_into_zip is
       New_Line (f);
     end loop;
     Close (f);
-  end Output_results;
+  end Output_Results;
 
   use Zip.Create;
 
-  procedure Pack_results (
-    g            : GroupCountries;
-    p            : Peril;
-    to_archive   : in out Zip_Create_Info
-  )
+  procedure Pack_Results
+    (g            : GroupCountries;
+     p            : Peril;
+     to_archive   : in out Zip_Create_Info)
   is
     temp_name : constant String := "temp.csv";
     final_name : constant String :=
-      To_Lower (
-        Peril'Image (p) & '/' &
-        Continent'Image (groupcountries_to_continent (g)) & '/' &
-        GroupCountries'Image (g) &
-        '_' & Peril_abbr (p) & ".csv"
-      );
+      To_Lower
+        (Peril'Image (p) & '/' &
+         Continent'Image (groupcountries_to_continent (g)) & '/' &
+         GroupCountries'Image (g) &
+         '_' & Peril_Abbr (p) & ".csv");
   begin
-    Output_results (g, p, temp_name);
+    Output_Results (g, p, temp_name);
     --  Alternatives:
     --    1) use a string instead of a temporary file
     --    2) use an input stream
     --    3) instead of a .csv, an Excel file from Excel Writer
     --         ( http://excel-writer.sf.net/ ) as a string or a stream.
-    Zip.Create.Add_File (
-      Info              => to_archive,
-      File_Name         => temp_name,
-      Name_in_archive   => final_name,
-      Delete_file_after => True
-    );
-  end Pack_results;
+    Zip.Create.Add_File
+      (Info              => to_archive,
+       File_Name         => temp_name,
+       Name_in_archive   => final_name,
+       Delete_file_after => True);
+  end Pack_Results;
 
   procedure Output_all_results is
     MyStream_file : aliased Zip_File_Stream;
     archive : Zip_Create_Info;
   begin
-    Create_Archive (archive,
-      MyStream_file'Unchecked_Access,
-      "detailed_results.zip"
-    );
+    Create_Archive
+      (archive,
+       MyStream_file'Unchecked_Access,
+       "detailed_results.zip");
     for p in Peril loop
       for g in GroupCountries loop
-        Pack_results (g, p, archive);
+        Pack_Results (g, p, archive);
       end loop;
     end loop;
     Finish (archive);
@@ -157,4 +149,4 @@ procedure Demo_csv_into_zip is
 
 begin
   Output_all_results;
-end Demo_csv_into_zip;
+end Demo_CSV_into_Zip;

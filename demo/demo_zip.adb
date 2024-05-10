@@ -14,11 +14,11 @@ begin
   Add_File (archive, "demo/demo_unzip.adb");
   --  Here we add directly some contents to the Zip archive
   --  without a file in the first place:
-  Add_String (archive,
-    "==== Hello world! ====" & ASCII.LF &
-    "It is such a nice ""Hello world""-like demo, isn't it ?",
-    "nice_string.txt"
-  );
+  Add_String
+    (archive,
+     "==== Hello world! ====" & ASCII.LF &
+     "It is such a nice ""Hello world""-like demo, isn't it ?",
+     "nice_string.txt");
   Add_Empty_Folder (archive, "empty_folder/");
   Finish (archive);
 end Demo_Zip;

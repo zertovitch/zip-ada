@@ -43,11 +43,11 @@ begin
     Put (c);
   end loop;
   New_Line;
-  Put ("*** Dump done. Size of entry named [" &
-    Name (f) & "] is" &
-    UnZip.Streams.Count'Image (Size (f)) &
-    ". Press Enter!"
-  );
+  Put
+    ("*** Dump done. Size of entry named [" &
+     Name (f) & "] is" &
+     UnZip.Streams.Count'Image (Size (f)) &
+     ". Press Enter!");
   Close (f);
   Skip_Line;
   --
