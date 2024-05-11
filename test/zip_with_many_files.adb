@@ -7,26 +7,27 @@
 --  Author:          Gautier de Montmollin
 ------------------------------------------------------------------------------
 
-with Zip.Create;                        use Zip.Create;
+with Zip.Create;
 
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
-with Ada.Strings.Fixed;                 use Ada.Strings.Fixed;
-with Ada.Text_IO;
+with Ada.Integer_Text_IO,
+     Ada.Strings.Fixed,
+     Ada.Text_IO;
 
 procedure Zip_with_many_files is
 
-  procedure Create_with_many (n : Positive) is
+  procedure Create_with_many (n : Positive; suffix : String := "") is
+    use Ada.Integer_Text_IO, Ada.Strings.Fixed, Zip.Create;
     stream  : aliased Zip_File_Stream;
     archive : Zip_Create_Info;
 
     procedure Add_one_entry (file_name : String; rep : Natural) is
     begin
-      Zip.Create.Add_String (
-        Info              => archive,
-        Contents          => "..." & rep * ("Hello! My name is: """ & file_name & '"' & ASCII.LF),
-        Name_in_archive   => file_name,
-        Creation_time     => use_clock
-      );
+      Zip.Create.Add_String
+        (Info              => archive,
+         Contents          => "..." &
+                              rep * ("Hello! My name is: """ & file_name & '"' & ASCII.LF),
+         Name_in_archive   => file_name,
+         Creation_time     => use_clock);
     end Add_one_entry;
 
     function Leading_zeros (i, zeros : Integer) return String is
@@ -43,18 +44,18 @@ procedure Zip_with_many_files is
     begin
       Ada.Text_IO.Put_Line (file_name);
       Create_Archive
-       (archive,
-        stream'Unchecked_Access,
-        file_name);
+        (archive,
+         stream'Unchecked_Access,
+         file_name);
     end Create_with_Trace;
 
   begin
-    Create_with_Trace ("many_" & n_img (n_img'First + 1 .. n_img'Last) & ".zip");
+    Create_with_Trace
+      ("many_" & n_img (n_img'First + 1 .. n_img'Last) & suffix & ".zip");
     for i in 1 .. n loop
-      Add_one_entry (
-        "Entry #" & Leading_zeros (i, 5) & ".txt",
-        Integer'Max (0, i / 100 - 10)
-      );
+      Add_one_entry
+        ("Entry #" & Leading_zeros (i, 5) & ".txt",
+         Integer'Max (0, i / 100 - 10));
     end loop;
     Finish (archive);
   end Create_with_many;
@@ -65,5 +66,7 @@ begin
   Create_with_many (2 ** 14);
   Create_with_many (2 ** 15);
   Create_with_many (2 ** 16 - 2);
-  Create_with_many (2 ** 16 - 1);  --  Should promote archive to Zip_64 mode.
+  Create_with_many (2 ** 16 - 1,    "_zip64");  --  Should promote archive to Zip_64 mode.
+  Create_with_many (2 ** 16,        "_zip64");  --  Should promote archive to Zip_64 mode.
+  Create_with_many (2 ** 16 + 4464, "_zip64");  --  Should promote archive to Zip_64 mode.
 end Zip_with_many_files;
