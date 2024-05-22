@@ -4,7 +4,7 @@
 --      Home page:     http://unzip-ada.sf.net/
 --      Project page:  http://sf.net/projects/unzip-ada/
 --      Mirror:        https://github.com/zertovitch/zip-ada
---      Alire crate:   https://alire.ada.dev/crates/gid
+--      Alire crate:   https://alire.ada.dev/crates/zipada
 --
 --  Build me with "gprbuild -P zipada_lib", or "gnatmake -P zipada_lib",
 --  or open me with GNAT Studio.
