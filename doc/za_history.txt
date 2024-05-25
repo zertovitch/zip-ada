@@ -1,6 +1,11 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '59', 25-May-2024 [rev. 946]:
+  - UnZip.Streams: added Set_Index & Index subprograms for inward
+        streams from Zip archives.
+  - Zip.Create: added procedure Add_Empty_Folder
+
 * Changes in '58', 20-Aug-2022 [rev. 922]:
   - Support for Zip_64 archives.
         The Zip_64 format extension is needed when there are more than more
