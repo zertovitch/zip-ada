@@ -21,7 +21,7 @@ procedure Test_non_zip is
 
   nz   : array (Raw_scheme) of aliased Zip_File_Stream;
   info : array (Raw_scheme) of Zip_Create_Info;
-  zi   : array (Raw_scheme) of Zip.Zip_info;
+  zi   : array (Raw_scheme) of Zip.Zip_Info;
 
   subtype Byte is Interfaces.Unsigned_8;
 

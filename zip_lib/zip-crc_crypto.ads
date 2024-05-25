@@ -4,7 +4,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2019 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -51,10 +51,10 @@ package Zip.CRC_Crypto is
   type Crypto_pack is private;
   --
   type Crypto_Mode is (clear, encrypted);
-  procedure Set_mode (obj : in out Crypto_pack; new_mode : Crypto_Mode);
-  function Get_mode (obj : Crypto_pack) return Crypto_Mode;
+  procedure Set_Mode (obj : in out Crypto_pack; new_mode : Crypto_Mode);
+  function Get_Mode (obj : Crypto_pack) return Crypto_Mode;
   --
-  procedure Init_keys (obj : in out Crypto_pack; password : String);
+  procedure Init_Keys (obj : in out Crypto_pack; password : String);
   --
   procedure Encode (obj : in out Crypto_pack; buf : in out Zip.Byte_Buffer);
   pragma Inline (Encode);
@@ -63,9 +63,9 @@ package Zip.CRC_Crypto is
   pragma Inline (Decode);
 
 private
-  type Decrypt_keys is array (0 .. 2) of Unsigned_32;
-  type Crypto_pack is record
-    keys         : Decrypt_keys;
+  type Decrypt_Keys is array (0 .. 2) of Unsigned_32;
+  type Crypto_Pack is record
+    keys         : Decrypt_Keys;
     current_mode : Crypto_Mode;
   end record;
 

@@ -166,7 +166,7 @@ package body Rezip_lib is
     package DFIO is new Dual_IO.Float_IO (Float);
 
     procedure Rip_data (
-      archive      : Zip.Zip_info; -- from this archive...
+      archive      : Zip.Zip_Info; -- from this archive...
       input        : in out Root_Zipstream_Type'Class;
       data_name    : String;       -- extract this data
       rip_rename   : String;       -- to this file (compressed)
@@ -178,7 +178,7 @@ package body Rezip_lib is
       comp_size      : Zip.Zip_64_Data_Size_Type;
       uncomp_size    : Zip.Zip_64_Data_Size_Type;
       file_out       : Ada.Streams.Stream_IO.File_Type;
-      dummy_encoding : Zip.Zip_name_encoding;
+      dummy_encoding : Zip.Zip_Name_Encoding;
       dummy_crc      : Unsigned_32;
       mem            : Zip_Streams.ZS_Index_Type;
       head_extra     : Zip.Headers.Local_File_Header_Extension;
@@ -186,7 +186,7 @@ package body Rezip_lib is
 
       use UnZip, Ada.Streams.Stream_IO;
     begin
-      Zip.Find_offset (
+      Zip.Find_Offset (
         info           => archive,
         name           => data_name,
         name_encoding  => dummy_encoding,
@@ -196,14 +196,14 @@ package body Rezip_lib is
         crc_32         => dummy_crc
       );
       Set_Index (input, file_index);
-      Zip.Headers.Read_and_check (input, header);
+      Zip.Headers.Read_and_Check (input, header);
       --  Skip name
       Set_Index (input,
         Index (input) + Zip_Streams.ZS_Size_Type (header.filename_length)
       );
       mem := Index (input);
       if header.extra_field_length >= 4 then
-        Zip.Headers.Read_and_check (input, head_extra);
+        Zip.Headers.Read_and_Check (input, head_extra);
         Zip.Headers.Interpret
           (head_extra,
            header.dd.uncompressed_size,
@@ -214,7 +214,7 @@ package body Rezip_lib is
       Set_Index (input, mem + Zip_Streams.ZS_Size_Type (header.extra_field_length));
       --  * Get the data, compressed
       Ada.Streams.Stream_IO.Create (file_out, Out_File, rip_rename);
-      Zip.Copy_chunk (input, Stream (file_out).all, Integer (comp_size));
+      Zip.Copy_Chunk (input, Stream (file_out).all, Integer (comp_size));
       Close (file_out);
       if unzip_rename /= "" then
         --  * Get the data, uncompressed
@@ -514,7 +514,7 @@ package body Rezip_lib is
       zfm : Unsigned_16;
       attempt : Positive := 1;
       dummy_exp_opt : Unbounded_String;
-      zi_ext : Zip.Zip_info;
+      zi_ext : Zip.Zip_Info;
     begin
       --  We jump into the TEMP directory, to avoid putting pathes into the
       --  temporary zip file.
@@ -617,7 +617,7 @@ package body Rezip_lib is
       Open (File_in, In_File);
       Set_Name (File_out, Temp_name (True, a));
       Create (File_out, Out_File);
-      Zip.Compress.Compress_data
+      Zip.Compress.Compress_Data
       (
         input            => File_in,
         output           => File_out,
@@ -626,7 +626,7 @@ package body Rezip_lib is
         method           => Approach_to_Method (a),
         feedback         => Zip_Console_IO.My_feedback'Access,
         password         => "",
-        content_hint     => Zip.Compress.Guess_type_from_name (S (e.name)),
+        content_hint     => Zip.Compress.Guess_Type_from_Name (S (e.name)),
         CRC              => e.head.short_info.dd.crc_32,
         --  we take the occasion to compute the CRC if not
         --  yet available (e.g. JAR)
@@ -645,7 +645,7 @@ package body Rezip_lib is
       zip_file : aliased File_Zipstream;
       archive : Zip_Create_Info;
       data_name : constant String := Simple_Name (Temp_name (False, original));
-      zi_ext : Zip.Zip_info;
+      zi_ext : Zip.Zip_Info;
       header : Zip.Headers.Local_File_Header;
       MyStream   : aliased File_Zipstream;
       cur_dir : constant String := Current_Directory;
@@ -682,7 +682,7 @@ package body Rezip_lib is
 
     procedure Repack_contents (orig_name, repacked_name, html_report_name : String)
     is
-      zi : Zip.Zip_info;
+      zi : Zip.Zip_Info;
       MyStream   : aliased File_Zipstream;
 
       list, e, curr : p_Dir_entry := null;
@@ -786,7 +786,7 @@ package body Rezip_lib is
           e.name := U (To_Lower (S (e.name)));
         end if;
         --  Get reliable data from zi
-        Zip.Get_sizes (
+        Zip.Get_Sizes (
           info           => zi,
           name           => unique_name,
           comp_size      => comp_size,
@@ -830,7 +830,7 @@ package body Rezip_lib is
                 e.info (a).LZMA_EOS :=
                   (e.info (a).zfm = 14) and
                   (e.head.short_info.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
-                mth := Zip.Method_from_code (e.info (a).zfm);
+                mth := Zip.Method_from_Code (e.info (a).zfm);
                 --
               when Internal =>
                 if Approach_to_Method (a) in Zip.Compress.Deflation_Method
@@ -928,12 +928,12 @@ package body Rezip_lib is
         Put (summary, "<td>" & Img (choice, html => True) & "</td>");
         Put (summary,
           "<td bgcolor=#fafa64>" &
-          Zip.Image (Zip.Method_from_code (e.info (choice).zfm)) &
+          Zip.Image (Zip.Method_from_Code (e.info (choice).zfm)) &
           "</td>"
         );
         Put (summary,
           "<td>" &
-          Zip.Image (Zip.Method_from_code (e.info (original).zfm)) &
+          Zip.Image (Zip.Method_from_Code (e.info (original).zfm)) &
           "</td>"
         );
         Winner_color;
@@ -996,7 +996,7 @@ package body Rezip_lib is
           Zip.Headers.Write (repacked_zip_file, fh_extra, True);
         end if;
         --  Copy the compressed data
-        Zip.Copy_file (Temp_name (True, choice), repacked_zip_file);
+        Zip.Copy_File (Temp_name (True, choice), repacked_zip_file);
         Dual_IO.Put_Line (" done");
         Dual_IO.New_Line;
       end Process_one;
@@ -1145,7 +1145,7 @@ package body Rezip_lib is
       ed.central_dir_size := 0;
       ed.main_comment_length := 0;
       declare
-        comment : constant String := Zip.Zip_comment (zi);
+        comment : constant String := Zip.Zip_Comment (zi);
         needs_64, needs_local_zip64 : Boolean;
         fh_extra : Zip.Headers.Local_File_Header_Extension;
         ed64l    : Zip.Headers.Zip64_End_of_Central_Dir_Locator;

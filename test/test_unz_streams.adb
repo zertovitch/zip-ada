@@ -40,7 +40,7 @@ procedure Test_UnZ_Streams is
 
   procedure Test_Output_Stream (suffix : String; trash_dir : Boolean) is
     o : Ada.Streams.Stream_IO.File_Type;
-    z : Zip.Zip_info;
+    z : Zip.Zip_Info;
     a : constant String := "detailed_results.zip";               --  Created by Demo_csv_into_zip
     n : constant String := "flood/oveRSEas/auSTRalasia_fd.csv";  --  we check case-unsensitiveness
   begin

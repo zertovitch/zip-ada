@@ -35,24 +35,24 @@ procedure UnZipAda is
   end Set_Modification_Time_B;
   pragma Unreferenced (Set_Modification_Time_B);
 
-  Set_Time_Stamp : UnZip.Set_Time_Stamp_proc :=
+  Set_Time_Stamp : UnZip.Set_Time_Stamp_Proc :=
     --    If you want the time stamps, uncomment the following
     --    and look into Set_Modification_Time_B above.
     --
     --  Set_Modification_Time_B'Unrestricted_Access;
     null;
 
-  z_options        : UnZip.Option_set := UnZip.no_option;
+  z_options        : UnZip.Option_Set := UnZip.no_option;
   quiet            : Boolean := False;
   lower_case_match : Boolean := False;
   comment          : Boolean := False;
 
   use UnZip;
 
-  fda :          Zip.Feedback_proc     := Zip_Console_IO.My_feedback'Access;
-  rca :          Resolve_conflict_proc := Zip_Console_IO.My_resolve_conflict'Access;
-  tda :          Tell_data_proc        := Zip_Console_IO.My_tell_data'Access;
-  gpw : constant Get_password_proc     := Zip_Console_IO.My_get_password'Access;
+  fda :          Zip.Feedback_Proc     := Zip_Console_IO.My_feedback'Access;
+  rca :          Resolve_Conflict_Proc := Zip_Console_IO.My_resolve_conflict'Access;
+  tda :          Tell_Data_Proc        := Zip_Console_IO.My_tell_data'Access;
+  gpw : constant Get_Password_Proc     := Zip_Console_IO.My_get_password'Access;
 
   last_option : Natural := 0;
 
@@ -76,7 +76,7 @@ procedure UnZipAda is
 
   function Compose_File_Name (
     File_Name     : String;
-    Name_encoding : Zip.Zip_name_encoding
+    Name_encoding : Zip.Zip_Name_Encoding
   )
   return String
   is
@@ -89,7 +89,7 @@ procedure UnZipAda is
     return Add_extract_directory (fn1);
   end Compose_File_Name;
 
-  My_FS_routines : constant FS_routines_type :=
+  My_FS_routines : constant FS_Routines_Type :=
     (Create_Path         => Ada.Directories.Create_Path'Access,  --  Ada 2005
      Set_Time_Stamp      => Set_Time_Stamp,
      Compose_File_Name   => Compose_File_Name'Unrestricted_Access,
@@ -129,7 +129,7 @@ procedure UnZipAda is
     Put_Line ("          -q     : quiet mode");
   end Help;
 
-  zi : Zip.Zip_info;
+  zi : Zip.Zip_Info;
   use Zip_Console_IO;
   use Ada.Command_Line;
   use Interfaces;
@@ -260,7 +260,7 @@ begin
     T0 := Clock;
     if comment then  --  Option: -z , display comment only
       Zip.Load (zi, Archive);
-      Zip.Put_Multi_Line (Standard_Output, Zip.Zip_comment (zi));
+      Zip.Put_Multi_Line (Standard_Output, Zip.Zip_Comment (zi));
     elsif extract_all then
       Extract (
         Archive,

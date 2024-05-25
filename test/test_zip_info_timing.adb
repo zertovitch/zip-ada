@@ -10,7 +10,7 @@ procedure Test_Zip_Info_Timing is
   use Ada.Text_IO;
 
   procedure Test_1_Archive (archive_name : String) is
-    zi : array (1 .. tests) of Zip.Zip_info;
+    zi : array (1 .. tests) of Zip.Zip_Info;
     t1, t2 : Ada.Calendar.Time;
     d : Duration := 0.0;
     n : Integer;
@@ -24,7 +24,7 @@ procedure Test_Zip_Info_Timing is
         t2 := Ada.Calendar.Clock;
         d := d + (t2 - t1);
       end loop;
-      Put_Line ("Zip archive: " & Zip.Zip_name (zi (1)));
+      Put_Line ("Zip archive: " & Zip.Zip_Name (zi (1)));
       Put_Line ("   Entries:" & Integer'Image (Zip.Entries (zi (1))));
       d := d / tests;
       Put_Line

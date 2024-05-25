@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2000 .. 2022 Gautier de Montmollin
+--  Copyright (c) 2000 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -93,7 +93,7 @@ package Zip.Headers is
   -- PKZIP data descriptor, put after streamed compressed data - PK78 --
   ----------------------------------------------------------------------
 
-  type Data_descriptor is record
+  type Data_Descriptor is record
     --  PK78                           --  1 .. 4
     crc_32             : Unsigned_32;  --  5 .. 8
     compressed_size,
@@ -106,22 +106,19 @@ package Zip.Headers is
 
   --  This header needs to be read in continuation of
   --  the compressed data -> access to a buffer
-  procedure Copy_and_check (
-    buffer        : in     Byte_Buffer;
-    the_data_desc :    out Data_descriptor
-  );
+  procedure Copy_and_Check
+    (buffer        : in     Byte_Buffer;
+     the_data_desc :    out Data_Descriptor);
 
-  procedure Read_and_check (
-    stream        : in out Root_Zipstream_Type'Class;
-    the_data_desc :    out Data_descriptor
-  );
+  procedure Read_and_Check
+    (stream        : in out Root_Zipstream_Type'Class;
+     the_data_desc :    out Data_Descriptor);
 
   bad_data_descriptor : exception;
 
-  procedure Write (
-    stream        : in out Root_Zipstream_Type'Class;
-    the_data_desc : in     Data_descriptor
-  );
+  procedure Write
+    (stream        : in out Root_Zipstream_Type'Class;
+     the_data_desc : in     Data_Descriptor);
 
   -----------------------------------------------------------------------
   -- PKZIP local file header, in front of every file in archive - PK34 --
@@ -143,17 +140,16 @@ package Zip.Headers is
     bit_flag               : Unsigned_16;   --  Appnote: 4.4.4 general purpose bit flag
     zip_type               : Unsigned_16;
     file_timedate          : Time;
-    dd                     : Data_descriptor;
+    dd                     : Data_Descriptor;
     filename_length,
     extra_field_length     : Unsigned_16;
   end record;
 
   local_header_length : constant := 30;
 
-  procedure Read_and_check (
-    stream : in out Root_Zipstream_Type'Class;
-    header :    out Local_File_Header
-  );
+  procedure Read_and_Check
+    (stream : in out Root_Zipstream_Type'Class;
+     header :    out Local_File_Header);
 
   bad_local_header : exception;
 
@@ -163,11 +159,10 @@ package Zip.Headers is
      force_empty,
      force_zip_64);
 
-  procedure Write (
-    stream             : in out Root_Zipstream_Type'Class;
-    header             : in     Local_File_Header;
-    extra_field_policy : in     Extra_Field_Policy_Kind
-  );
+  procedure Write
+    (stream             : in out Root_Zipstream_Type'Class;
+     header             : in     Local_File_Header;
+     extra_field_policy : in     Extra_Field_Policy_Kind);
 
   ---------------------------------------------
   -- PKZIP local file header Zip64 extension --
@@ -197,10 +192,9 @@ package Zip.Headers is
 
   local_header_extension_tag : constant := 1;
 
-  procedure Read_and_check (
-    stream : in out Root_Zipstream_Type'Class;
-    header :    out Local_File_Header_Extension
-  );
+  procedure Read_and_Check
+    (stream : in out Root_Zipstream_Type'Class;
+     header :    out Local_File_Header_Extension);
 
   --  Depending on its size (1, 2, >=3 values) we may
   --  need (or not) to change the corresponding variables.
@@ -214,11 +208,10 @@ package Zip.Headers is
      compressed_size   : in out Unsigned_64;
      offset            : in out Unsigned_64);
 
-  procedure Write (
-    stream : in out Root_Zipstream_Type'Class;
-    header : in     Local_File_Header_Extension;
-    short  : in     Boolean
-  );
+  procedure Write
+    (stream : in out Root_Zipstream_Type'Class;
+     header : in     Local_File_Header_Extension;
+     short  : in     Boolean);
 
   ---------------------------------------------------------
   --  PKZIP file header, as in central directory - PK12  --
@@ -246,22 +239,19 @@ package Zip.Headers is
 
   central_header_length : constant := 46;
 
-  procedure Read_and_check (
-    stream : in out Root_Zipstream_Type'Class;
-    header :    out Central_File_Header
-  );
+  procedure Read_and_Check
+    (stream : in out Root_Zipstream_Type'Class;
+     header :    out Central_File_Header);
 
   bad_central_header : exception;
 
-  procedure Write (
-    stream : in out Root_Zipstream_Type'Class;
-    header : in     Central_File_Header
-  );
+  procedure Write
+    (stream : in out Root_Zipstream_Type'Class;
+     header : in     Central_File_Header);
 
   function Needs_Local_Zip_64_Header_Extension
     (header : Local_File_Header;
-     offset : Unsigned_64  --  Not part of the Zip32 header but of the Zip64 one...
-    )
+     offset : Unsigned_64)  --  Not part of the Zip32 header but of the Zip64 one...
   return Boolean;
 
   -------------------------------------------
@@ -294,32 +284,28 @@ package Zip.Headers is
 
   --  Copy_and_check and Read_and_check assume a buffer or a stream
   --  pointing to the End-of-Central-Dir signature.
-  procedure Copy_and_check (
-    buffer  : in     Byte_Buffer;
-    the_end :    out End_of_Central_Dir
-  );
+  procedure Copy_and_Check
+    (buffer  : in     Byte_Buffer;
+     the_end :    out End_of_Central_Dir);
 
-  procedure Read_and_check (
-    stream  : in out Root_Zipstream_Type'Class;
-    the_end :    out End_of_Central_Dir
-  );
+  procedure Read_and_Check
+    (stream  : in out Root_Zipstream_Type'Class;
+     the_end :    out End_of_Central_Dir);
 
   bad_end : exception;
 
-  procedure Write (
-    stream  : in out Root_Zipstream_Type'Class;
-    the_end : in     End_of_Central_Dir
-  );
+  procedure Write
+    (stream  : in out Root_Zipstream_Type'Class;
+     the_end : in     End_of_Central_Dir);
 
   --  A bit more elaborated variant of Read:
   --  find the End-of-Central-Dir and load it.
   --  It includes the processing of an eventual Zip64
   --  End-of-Central-Dir.
 
-  procedure Load (
-    stream  : in out Root_Zipstream_Type'Class;
-    the_end :    out End_of_Central_Dir
-  );
+  procedure Load
+    (stream  : in out Root_Zipstream_Type'Class;
+     the_end :    out End_of_Central_Dir);
 
   ------------------------------------------------------------
   --  Zip64 extensions for end-of-central directory stuff.  --
@@ -351,15 +337,13 @@ package Zip.Headers is
 
   zip_64_end_of_central_dir_length : constant := 56;
 
-  procedure Read_and_check (
-    stream     : in out Root_Zipstream_Type'Class;
-    the_end_64 :    out Zip64_End_of_Central_Dir
-  );
+  procedure Read_and_Check
+    (stream     : in out Root_Zipstream_Type'Class;
+     the_end_64 :    out Zip64_End_of_Central_Dir);
 
-  procedure Write (
-    stream     : in out Root_Zipstream_Type'Class;
-    the_end_64 : in     Zip64_End_of_Central_Dir
-  );
+  procedure Write
+    (stream     : in out Root_Zipstream_Type'Class;
+     the_end_64 : in     Zip64_End_of_Central_Dir);
 
   type Zip64_End_of_Central_Dir_Locator is record
     number_of_the_disk_with_the_start_of_the_zip64_end_of_central_dir : Unsigned_32;
@@ -369,14 +353,12 @@ package Zip.Headers is
 
   zip_64_end_of_central_dir_locator_length : constant := 20;
 
-  procedure Read_and_check (
-    stream         : in out Root_Zipstream_Type'Class;
-    the_end_64_loc :    out Zip64_End_of_Central_Dir_Locator
-  );
+  procedure Read_and_Check
+    (stream         : in out Root_Zipstream_Type'Class;
+     the_end_64_loc :    out Zip64_End_of_Central_Dir_Locator);
 
-  procedure Write (
-    stream         : in out Root_Zipstream_Type'Class;
-    the_end_64_loc : in     Zip64_End_of_Central_Dir_Locator
-  );
+  procedure Write
+    (stream         : in out Root_Zipstream_Type'Class;
+     the_end_64_loc : in     Zip64_End_of_Central_Dir_Locator);
 
 end Zip.Headers;

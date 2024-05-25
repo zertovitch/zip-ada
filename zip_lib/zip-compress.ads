@@ -22,7 +22,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2023 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -100,8 +100,8 @@ package Zip.Compress is
      Preselection_2   --  Can be very slow on large data; selects Deflate_3, LZMA_2* or LZMA_3*
     );
 
-  type Method_to_Format_type is array (Compression_Method) of PKZip_method;
-  Method_to_Format : constant Method_to_Format_type;
+  type Method_to_Format_Type is array (Compression_Method) of PKZip_method;
+  Method_to_Format : constant Method_to_Format_Type;
 
   subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
 
@@ -125,55 +125,52 @@ package Zip.Compress is
 
   User_abort : exception;
 
-  type Data_content_type is (
-    Neutral,
-    Source_code,
-    JPEG,
-    ARW_RW2,     --  Raw digital camera image
-    ORF_CR2,     --  Raw digital camera image
-    Zip_in_Zip,
-    GIF, PNG, PGM, PPM,
-    WAV,
-    AU,          --  Audacity .au raw sound file
-    MP3, MP4
-  );
+  type Data_Content_Type is
+    (Neutral,
+     Source_code,
+     JPEG,
+     ARW_RW2,     --  Raw digital camera image
+     ORF_CR2,     --  Raw digital camera image
+     Zip_in_Zip,
+     GIF, PNG, PGM, PPM,
+     WAV,
+     AU,          --  Audacity .au raw sound file
+     MP3, MP4);
 
   --  Compress data from an input stream to an output stream until
   --  End_Of_File(input) = True, or number of input bytes = input_size .
   --  If password /= "", an encryption header is written.
 
-  procedure Compress_data (
-    input,
-    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    input_size_known : Boolean;
-    input_size       : Zip_64_Data_Size_Type; -- ignored if input_size_known = False
-    method           : Compression_Method;
-    feedback         : Feedback_proc;
-    password         : String;
-    content_hint     : Data_content_type;
-    CRC              : out Interfaces.Unsigned_32;
-    output_size      : out Zip_64_Data_Size_Type;
-    zip_type         : out Interfaces.Unsigned_16
-    --  ^ code corresponding to the compression method actually used
-  );
+  procedure Compress_Data
+    (input,
+     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+     input_size_known : in     Boolean;
+     input_size       : in     Zip_64_Data_Size_Type;  --  ignored if input_size_known = False
+     method           : in     Compression_Method;
+     feedback         : in     Feedback_Proc;
+     password         : in     String;
+     content_hint     : in     Data_Content_Type;
+     CRC              :    out Interfaces.Unsigned_32;
+     output_size      :    out Zip_64_Data_Size_Type;
+     zip_type         :    out Interfaces.Unsigned_16);
+     --  ^ code corresponding to the compression method actually used
 
-  function Guess_type_from_name (name : String) return Data_content_type;
+  function Guess_Type_from_Name (name : String) return Data_Content_Type;
 
 private
 
   feedback_steps : constant := 100;
 
-  Method_to_Format : constant Method_to_Format_type :=
-    (Store               => store,
-     Shrink              => shrink,
-     Reduce_1            => reduce_1,
-     Reduce_2            => reduce_2,
-     Reduce_3            => reduce_3,
-     Reduce_4            => reduce_4,
-     Deflation_Method    => deflate,
-     LZMA_Method         => lzma_meth,
-     Multi_Method        => unknown
-    );
+  Method_to_Format : constant Method_to_Format_Type :=
+    (Store             => store,
+     Shrink            => shrink,
+     Reduce_1          => reduce_1,
+     Reduce_2          => reduce_2,
+     Reduce_3          => reduce_3,
+     Reduce_4          => reduce_4,
+     Deflation_Method  => deflate,
+     LZMA_Method       => lzma_meth,
+     Multi_Method      => unknown);
 
   -----------------------------------
   --  I/O buffers for compression  --
@@ -190,27 +187,24 @@ private
     InputEoF    : Boolean;      --  End of file indicator
   end record;
 
-  procedure Allocate_Buffers (
-    b                : in out IO_Buffers_Type;
-    input_size_known :        Boolean;
-    input_size       :        Zip_64_Data_Size_Type
-  );
+  procedure Allocate_Buffers
+    (b                : in out IO_Buffers_Type;
+     input_size_known : in     Boolean;
+     input_size       : in     Zip_64_Data_Size_Type);
 
   procedure Deallocate_Buffers (b : in out IO_Buffers_Type);
 
-  procedure Read_Block (
-    b     : in out IO_Buffers_Type;
-    input : in out Zip_Streams.Root_Zipstream_Type'Class
-  );
+  procedure Read_Block
+    (b     : in out IO_Buffers_Type;
+     input : in out Zip_Streams.Root_Zipstream_Type'Class);
 
-  procedure Write_Block (
-    b                : in out IO_Buffers_Type;
-    input_size_known :        Boolean;
-    input_size       :        Zip_64_Data_Size_Type;
-    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    output_size      : in out Zip_64_Data_Size_Type;
-    crypto           : in out Zip.CRC_Crypto.Crypto_pack
-  );
+  procedure Write_Block
+    (b                : in out IO_Buffers_Type;
+     input_size_known : in     Boolean;
+     input_size       : in     Zip_64_Data_Size_Type;
+     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+     output_size      : in out Zip_64_Data_Size_Type;
+     crypto           : in out Zip.CRC_Crypto.Crypto_pack);
 
   --  Exception for the case where compression works but produces
   --  a bigger file than the file to be compressed (data is too "random").

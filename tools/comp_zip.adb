@@ -14,7 +14,7 @@ with Ada.Calendar,
      Ada.Text_IO;
 
 procedure Comp_Zip is
-  z : array (1 .. 2) of Zip.Zip_info;
+  z : array (1 .. 2) of Zip.Zip_Info;
 
   function Try_with_zip (zip_name : String) return String is
   begin

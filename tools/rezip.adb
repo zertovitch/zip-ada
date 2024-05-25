@@ -121,7 +121,7 @@ begin
       arg_rpt   : constant String := arg_nozip & ".ReZip.html";
       arg_log   : constant String := arg_nozip & ".ReZip.log";
       info_original_zip,
-      info_rezipped_zip : Zip.Zip_info;
+      info_rezipped_zip : Zip.Zip_Info;
     begin
       if arg (arg'First) = '-' or arg (arg'First) = '/' then
         --  Options

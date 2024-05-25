@@ -34,7 +34,7 @@ package body UnZip is
 
   use Ada.Strings.Unbounded, Interfaces;
 
-  boolean_to_encoding : constant array (Boolean) of Zip.Zip_name_encoding :=
+  boolean_to_encoding : constant array (Boolean) of Zip.Zip_Name_Encoding :=
     (False => Zip.IBM_437, True => Zip.UTF_8);
 
   fallback_compressed_size : constant := 16#FFFF_FFFF#;
@@ -47,23 +47,23 @@ package body UnZip is
   procedure UnZipFile
     (zip_file                 : in out Zip_Streams.Root_Zipstream_Type'Class;
      out_name                 : String;
-     out_name_encoding        : Zip.Zip_name_encoding;
+     out_name_encoding        : Zip.Zip_Name_Encoding;
      name_from_header         : Boolean;
      header_index             : in out Zip_Streams.ZS_Index_Type;
      hint_comp_size           : Zip.Zip_64_Data_Size_Type; -- Added 2007 for .ODS files
      hint_crc_32              : Unsigned_32;    -- Added 2012 for decryption
-     feedback                 : Zip.Feedback_proc;
-     help_the_file_exists     : Resolve_conflict_proc;
-     tell_data                : Tell_data_proc;
-     get_pwd                  : Get_password_proc;
-     options                  : Option_set;
+     feedback                 : Zip.Feedback_Proc;
+     help_the_file_exists     : Resolve_Conflict_Proc;
+     tell_data                : Tell_Data_Proc;
+     get_pwd                  : Get_Password_Proc;
+     options                  : Option_Set;
      password                 : in out Unbounded_String;
-     file_system_routines     : FS_routines_type)
+     file_system_routines     : FS_Routines_Type)
   is
     work_index : Zip_Streams.ZS_Index_Type := header_index;
     local_header : Zip.Headers.Local_File_Header;
     data_descriptor_after_data : Boolean;
-    method : PKZip_method;
+    method : PKZip_Method;
 
     skip_this_file : Boolean := False;
     bin_text_mode : constant array (Boolean) of Write_Mode_Type :=
@@ -143,7 +143,7 @@ package body UnZip is
 
     function Full_Path_Name (
       file_name_in_archive : String;
-      encoding             : Zip.Zip_name_encoding)
+      encoding             : Zip.Zip_Name_Encoding)
     return String
     is
     begin
@@ -156,7 +156,7 @@ package body UnZip is
 
     procedure Set_outfile (
       long_not_composed_name : String;
-      encoding               : Zip.Zip_name_encoding
+      encoding               : Zip.Zip_Name_Encoding
     )
     is
       --  Eventually trash the archived directory structure, then
@@ -169,7 +169,7 @@ package body UnZip is
 
     procedure Set_outfile_interactive (
       long_not_composed_possible_name : String;
-      encoding                        : Zip.Zip_name_encoding
+      encoding                        : Zip.Zip_Name_Encoding
     )
     is
       --  Eventually trash the archived directory structure, then
@@ -234,9 +234,9 @@ package body UnZip is
     the_name_len : Natural;
     use Zip_Streams;
     use type Zip.PKZip_method;
-    use type Zip.Feedback_proc;
+    use type Zip.Feedback_Proc;
 
-    actual_feedback : Zip.Feedback_proc;
+    actual_feedback : Zip.Feedback_Proc;
 
     dummy_memory : p_Stream_Element_Array;
     dummy_stream : constant p_Stream := null;
@@ -245,7 +245,7 @@ package body UnZip is
   begin
     begin
       Set_Index (zip_file, work_index);
-      Zip.Headers.Read_and_check (zip_file, local_header);
+      Zip.Headers.Read_and_Check (zip_file, local_header);
     exception
       when Zip.Headers.bad_local_header =>
         raise;  --  Processed later, on Extract
@@ -253,7 +253,7 @@ package body UnZip is
         raise Zip.Archive_corrupted;
     end;
 
-    method := Zip.Method_from_code (local_header.zip_type);
+    method := Zip.Method_from_Code (local_header.zip_type);
     if method = Zip.unknown then
       raise UnZip.Unsupported_method with
          "Format (method) #" & Unsigned_16'Image (local_header.zip_type) &
@@ -280,7 +280,7 @@ package body UnZip is
         dummy_offset           : Unsigned_64 := 0;  --  Initialized for avoiding random value = 16#FFFF_FFFF#
       begin
         Set_Index (zip_file, mem + Zip_Streams.ZS_Index_Type (local_header.filename_length));
-        Zip.Headers.Read_and_check (zip_file, local_header_extension);
+        Zip.Headers.Read_and_Check (zip_file, local_header_extension);
         Set_Index (zip_file, mem);
         Zip.Headers.Interpret
           (local_header_extension,
@@ -392,7 +392,7 @@ package body UnZip is
           raise Zip.Archive_corrupted with
             "End of stream reached (location: between local header and archived data)";
       end;
-      UnZip.Decompress.Decompress_data (
+      UnZip.Decompress.Decompress_Data (
         zip_file                   => zip_file,
         format                     => method,
         write_mode                 => actual_mode,
@@ -465,10 +465,10 @@ package body UnZip is
   --  Extract all files from an archive (from)
 
   procedure Extract (from                 : String;
-                     options              : Option_set := no_option;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
   begin
     Extract (from, null, null, null, null,
              options, password, file_system_routines);
@@ -476,10 +476,10 @@ package body UnZip is
 
   procedure Extract (from                 : String;
                      what                 : String;
-                     options              : Option_set := no_option;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
   begin
     Extract (from, what, null, null, null, null,
              options, password, file_system_routines);
@@ -488,43 +488,43 @@ package body UnZip is
   procedure Extract (from                 : String;
                      what                 : String;
                      rename               : String;
-                     options              : Option_set := no_option;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
   begin
     Extract (from, what, rename, null, null, null,
              options, password, file_system_routines);
   end Extract;
 
-  procedure Extract (from                 : Zip.Zip_info;
-                     options              : Option_set := no_option;
+  procedure Extract (from                 : Zip.Zip_Info;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
   begin
     Extract (from, null, null, null, null,
              options, password, file_system_routines);
   end Extract;
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
-                     options              : Option_set := no_option;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
   begin
     Extract (from, what, null, null, null, null,
              options, password, file_system_routines);
   end Extract;
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
                      rename               : String;
-                     options              : Option_set := no_option;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
   begin
     Extract (from, what, rename, null, null, null,
              options, password, file_system_routines);
@@ -540,17 +540,16 @@ package body UnZip is
 
   procedure Extract (from                 : String;
                      what                 : String;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                )
-   is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
     use Zip_Streams;
-    use type Zip.Feedback_proc;
+    use type Zip.Feedback_Proc;
     zip_file      : File_Zipstream;
     header_index  : ZS_Index_Type;
     comp_size     : Zip.Zip_64_Data_Size_Type;
@@ -563,31 +562,31 @@ package body UnZip is
     end if;
     Set_Name (zip_file, from);
     Open (zip_file, In_File);
-    Zip.Find_offset (
-      file           => zip_file,
-      name           => what,
-      case_sensitive => options (case_sensitive_match),
-      file_index     => header_index,
-      comp_size      => comp_size,
-      uncomp_size    => uncomp_size,
-      crc_32         => crc_32
-    );
-    UnZipFile (
-      zip_file             => zip_file,
-      out_name             => what,
-      out_name_encoding    => Zip.IBM_437, -- assumption...
-      name_from_header     => False,
-      header_index         => header_index,
-      hint_comp_size       => comp_size,
-      hint_crc_32          => crc_32,
-      feedback             => feedback,
-      help_the_file_exists => help_the_file_exists,
-      tell_data            => tell_data,
-      get_pwd              => get_pwd,
-      options              => options,
-      password             => work_password,
-      file_system_routines => file_system_routines
-    );
+    Zip.Find_Offset
+      (file           => zip_file,
+       name           => what,
+       case_sensitive => options (case_sensitive_match),
+       file_index     => header_index,
+       comp_size      => comp_size,
+       uncomp_size    => uncomp_size,
+       crc_32         => crc_32);
+    --
+    UnZipFile
+      (zip_file             => zip_file,
+       out_name             => what,
+       out_name_encoding    => Zip.IBM_437, -- assumption...
+       name_from_header     => False,
+       header_index         => header_index,
+       hint_comp_size       => comp_size,
+       hint_crc_32          => crc_32,
+       feedback             => feedback,
+       help_the_file_exists => help_the_file_exists,
+       tell_data            => tell_data,
+       get_pwd              => get_pwd,
+       options              => options,
+       password             => work_password,
+       file_system_routines => file_system_routines);
+    --
     Close (zip_file);
   exception
     when Zip.Headers.bad_local_header =>
@@ -600,16 +599,15 @@ package body UnZip is
   procedure Extract (from                 : String;
                      what                 : String;
                      rename               : String;
-                     feedback             : Zip.Feedback_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                )
+                     file_system_routines : FS_Routines_Type := null_routines)
   is
     use Zip_Streams;
-    use type Zip.Feedback_proc;
+    use type Zip.Feedback_Proc;
     zip_file      : aliased File_Zipstream;
     header_index  : Zip_Streams.ZS_Index_Type;
     comp_size     : Zip.Zip_64_Data_Size_Type;
@@ -622,31 +620,31 @@ package body UnZip is
     end if;
     Set_Name (zip_file, from);
     Open (zip_file, In_File);
-    Zip.Find_offset (
-      file           => zip_file,
-      name           => what,
-      case_sensitive => options (case_sensitive_match),
-      file_index     => header_index,
-      comp_size      => comp_size,
-      uncomp_size    => uncomp_size,
-      crc_32         => crc_32
-    );
-    UnZipFile (
-      zip_file             => zip_file,
-      out_name             => rename,
-      out_name_encoding    => Zip.IBM_437,  --  assumption...
-      name_from_header     => False,
-      header_index         => header_index,
-      hint_comp_size       => comp_size,
-      hint_crc_32          => crc_32,
-      feedback             => feedback,
-      help_the_file_exists => null,
-      tell_data            => tell_data,
-      get_pwd              => get_pwd,
-      options              => options,
-      password             => work_password,
-      file_system_routines => file_system_routines
-    );
+    Zip.Find_Offset
+      (file           => zip_file,
+       name           => what,
+       case_sensitive => options (case_sensitive_match),
+       file_index     => header_index,
+       comp_size      => comp_size,
+       uncomp_size    => uncomp_size,
+       crc_32         => crc_32);
+    --
+    UnZipFile
+      (zip_file             => zip_file,
+       out_name             => rename,
+       out_name_encoding    => Zip.IBM_437,  --  assumption...
+       name_from_header     => False,
+       header_index         => header_index,
+       hint_comp_size       => comp_size,
+       hint_crc_32          => crc_32,
+       feedback             => feedback,
+       help_the_file_exists => null,
+       tell_data            => tell_data,
+       get_pwd              => get_pwd,
+       options              => options,
+       password             => work_password,
+       file_system_routines => file_system_routines);
+    --
     Close (zip_file);
   exception
     when Zip.Headers.bad_local_header =>
@@ -656,17 +654,16 @@ package body UnZip is
   --  Extract all files from an archive (from)
 
   procedure Extract (from                 : String;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                )
+                     file_system_routines : FS_Routines_Type := null_routines)
   is
     use Zip_Streams;
-    use type Zip.Feedback_proc;
+    use type Zip.Feedback_Proc;
     zip_file      : File_Zipstream;
     header_index  : Zip_Streams.ZS_Index_Type;
     work_password : Unbounded_String := To_Unbounded_String (password);
@@ -676,26 +673,25 @@ package body UnZip is
     end if;
     Set_Name (zip_file, from);
     Open (zip_file, In_File);
-    Zip.Find_first_offset (zip_file, header_index); -- >= 13-May-2001
+    Zip.Find_first_Offset (zip_file, header_index); -- >= 13-May-2001
     --  We simply unzip everything sequentially, until the end:
     all_files : loop
-      UnZipFile (
-        zip_file             => zip_file,
-        out_name             => "",
-        out_name_encoding    => Zip.IBM_437, -- ignored
-        name_from_header     => True,
-        header_index         => header_index,
-        hint_comp_size       => fallback_compressed_size,
-        --                      ^ no better hint available if comp_size is 0 in local header
-        hint_crc_32          => 0, -- 2.0 decryption can fail if data descriptor after data
-        feedback             => feedback,
-        help_the_file_exists => help_the_file_exists,
-        tell_data            => tell_data,
-        get_pwd              => get_pwd,
-        options              => options,
-        password             => work_password,
-        file_system_routines => file_system_routines
-      );
+      UnZipFile
+        (zip_file             => zip_file,
+         out_name             => "",
+         out_name_encoding    => Zip.IBM_437, -- ignored
+         name_from_header     => True,
+         header_index         => header_index,
+         hint_comp_size       => fallback_compressed_size,
+         --                      ^ no better hint available if comp_size is 0 in local header
+         hint_crc_32          => 0, -- 2.0 decryption can fail if data descriptor after data
+         feedback             => feedback,
+         help_the_file_exists => help_the_file_exists,
+         tell_data            => tell_data,
+         get_pwd              => get_pwd,
+         options              => options,
+         password             => work_password,
+         file_system_routines => file_system_routines);
     end loop all_files;
   exception
     when Zip.Headers.bad_local_header | Zip.Archive_is_empty =>
@@ -710,28 +706,27 @@ package body UnZip is
   --  Extract all files from an archive (from)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set := no_option;
+  procedure Extract (from                 : Zip.Zip_Info;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                )
+                     file_system_routines : FS_Routines_Type := null_routines)
   is
     procedure Extract_1_file (name : String) is
     begin
-      Extract (from => from,
-              what => name,
-              feedback => feedback,
-              help_the_file_exists => help_the_file_exists,
-              tell_data => tell_data,
-              get_pwd => get_pwd,
-              options => options,
-              password => password,
-              file_system_routines => file_system_routines
-      );
+      Extract
+        (from                 => from,
+         what                 => name,
+         feedback             => feedback,
+         help_the_file_exists => help_the_file_exists,
+         tell_data            => tell_data,
+         get_pwd              => get_pwd,
+         options              => options,
+         password             => password,
+         file_system_routines => file_system_routines);
     end Extract_1_file;
     --
     procedure Extract_all_files is new Zip.Traverse (Extract_1_file);
@@ -743,15 +738,15 @@ package body UnZip is
   --  Extract one precise file (what) from an archive (from)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
+                     file_system_routines : FS_Routines_Type := null_routines
                 ) is
 
     header_index  : Zip_Streams.ZS_Index_Type;
@@ -760,47 +755,47 @@ package body UnZip is
     crc_32        : Unsigned_32;
     work_password : Unbounded_String := To_Unbounded_String (password);
     use Zip_Streams;
-    use type Zip.Feedback_proc;
+    use type Zip.Feedback_Proc;
     zip_file      : aliased File_Zipstream;
     input_stream  : Zipstream_Class_Access;
-    use_a_file    : constant Boolean := Zip.Zip_stream (from) = null;
-    name_encoding : Zip.Zip_name_encoding;
+    use_a_file    : constant Boolean := Zip.Zip_Stream (from) = null;
+    name_encoding : Zip.Zip_Name_Encoding;
   begin
     if use_a_file then
       input_stream := zip_file'Unchecked_Access;
-      Set_Name (zip_file, Zip.Zip_name (from));
+      Set_Name (zip_file, Zip.Zip_Name (from));
       Open (zip_file, In_File);
     else -- use the given stream
-      input_stream := Zip.Zip_stream (from);
+      input_stream := Zip.Zip_Stream (from);
     end if;
     if feedback = null then
       current_user_attitude := yes_to_all; -- non-interactive
     end if;
-    Zip.Find_offset (
-      info          => from,
-      name          => what,
-      name_encoding => name_encoding,
-      file_index    => header_index,
-      comp_size     => comp_size,
-      uncomp_size   => uncomp_size,
-      crc_32        => crc_32
-    );
-    UnZipFile (
-      zip_file              => input_stream.all,
-      out_name              => what,
-      out_name_encoding     => name_encoding,
-      name_from_header      => False,
-      header_index          => header_index,
-      hint_comp_size        => comp_size,
-      hint_crc_32           => crc_32,
-      feedback              => feedback,
-      help_the_file_exists  => help_the_file_exists,
-      tell_data             => tell_data,
-      get_pwd               => get_pwd,
-      options               => options,
-      password              => work_password,
-      file_system_routines  => file_system_routines
-    );
+    Zip.Find_Offset
+      (info          => from,
+       name          => what,
+       name_encoding => name_encoding,
+       file_index    => header_index,
+       comp_size     => comp_size,
+       uncomp_size   => uncomp_size,
+       crc_32        => crc_32);
+    --
+    UnZipFile
+      (zip_file              => input_stream.all,
+       out_name              => what,
+       out_name_encoding     => name_encoding,
+       name_from_header      => False,
+       header_index          => header_index,
+       hint_comp_size        => comp_size,
+       hint_crc_32           => crc_32,
+       feedback              => feedback,
+       help_the_file_exists  => help_the_file_exists,
+       tell_data             => tell_data,
+       get_pwd               => get_pwd,
+       options               => options,
+       password              => work_password,
+       file_system_routines  => file_system_routines);
+    --
     if use_a_file then
       Close (zip_file);
     end if;
@@ -821,16 +816,16 @@ package body UnZip is
   --  but save under a new name (rename)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
                      rename               : String;
-                     feedback             : Zip.Feedback_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_routines_type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
 
     header_index  : Zip_Streams.ZS_Index_Type;
     comp_size     : Zip.Zip_64_Data_Size_Type;
@@ -838,47 +833,47 @@ package body UnZip is
     crc_32        : Unsigned_32;
     work_password : Unbounded_String := To_Unbounded_String (password);
     use Zip_Streams;
-    use type Zip.Feedback_proc;
+    use type Zip.Feedback_Proc;
     zip_file      : aliased File_Zipstream;
     input_stream  : Zipstream_Class_Access;
-    use_a_file    : constant Boolean := Zip.Zip_stream (from) = null;
-    name_encoding : Zip.Zip_name_encoding;
+    use_a_file    : constant Boolean := Zip.Zip_Stream (from) = null;
+    name_encoding : Zip.Zip_Name_Encoding;
   begin
     if use_a_file then
       input_stream := zip_file'Unchecked_Access;
-      Set_Name (zip_file, Zip.Zip_name (from));
+      Set_Name (zip_file, Zip.Zip_Name (from));
       Open (zip_file, In_File);
     else  --  use the given stream
-      input_stream := Zip.Zip_stream (from);
+      input_stream := Zip.Zip_Stream (from);
     end if;
     if feedback = null then
       current_user_attitude := yes_to_all;  --  non-interactive
     end if;
-    Zip.Find_offset (
-      info          => from,
-      name          => what,
-      name_encoding => name_encoding,
-      file_index    => header_index,
-      comp_size     => comp_size,
-      uncomp_size   => uncomp_size,
-      crc_32        => crc_32
-    );
-    UnZipFile (
-      zip_file             => input_stream.all,
-      out_name             => rename,
-      out_name_encoding    => name_encoding, -- assumption: encoding same as name
-      name_from_header     => False,
-      header_index         => header_index,
-      hint_comp_size       => comp_size,
-      hint_crc_32          => crc_32,
-      feedback             => feedback,
-      help_the_file_exists => null,
-      tell_data            => tell_data,
-      get_pwd              => get_pwd,
-      options              => options,
-      password             => work_password,
-      file_system_routines => file_system_routines
-    );
+    Zip.Find_Offset
+      (info          => from,
+       name          => what,
+       name_encoding => name_encoding,
+       file_index    => header_index,
+       comp_size     => comp_size,
+       uncomp_size   => uncomp_size,
+       crc_32        => crc_32);
+    --
+    UnZipFile
+      (zip_file             => input_stream.all,
+       out_name             => rename,
+       out_name_encoding    => name_encoding, -- assumption: encoding same as name
+       name_from_header     => False,
+       header_index         => header_index,
+       hint_comp_size       => comp_size,
+       hint_crc_32          => crc_32,
+       feedback             => feedback,
+       help_the_file_exists => null,
+       tell_data            => tell_data,
+       get_pwd              => get_pwd,
+       options              => options,
+       password             => work_password,
+       file_system_routines => file_system_routines);
+    --
     if use_a_file then
       Close (zip_file);
     end if;

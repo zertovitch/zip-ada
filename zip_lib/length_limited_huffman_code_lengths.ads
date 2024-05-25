@@ -1,4 +1,4 @@
---  Length_limited_Huffman_code_lengths
+--  Length_Limited_Huffman_Code_Lengths
 ---------------------------------------
 --    This algorithm builds optimal Huffman codes for a given alphabet
 --    and occurrence counts (frequencies) of this alphabet. These occurrences
@@ -11,7 +11,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2016 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2016 .. 2024 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 --
 --  The copyright holder is only the maintainer of the Ada version;
@@ -57,7 +57,6 @@ generic
   type Length_Array is array (Alphabet) of Natural;
   max_bits : Positive;  --  Length limit in Huffman codes
 
-procedure Length_limited_Huffman_code_lengths (
-  frequencies : in  Count_Array;
-  bit_lengths : out Length_Array
-);
+procedure Length_Limited_Huffman_Code_Lengths
+  (frequencies : in  Count_Array;
+   bit_lengths : out Length_Array);

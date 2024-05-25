@@ -193,7 +193,7 @@ package body Zip.Create is
 
    procedure Add_Stream (Info            : in out Zip_Create_Info;
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
-                         Feedback        : in     Feedback_proc;
+                         Feedback        : in     Feedback_Proc;
                          Password        : in     String := "";
                          Compressed_Size :    out Zip.Zip_64_Data_Size_Type;
                          Final_Method    :    out Natural)
@@ -250,7 +250,7 @@ package body Zip.Create is
           Zip.Headers.Write (Info.Stream.all, fh_extra, True);
         end if;
 
-        Zip.Compress.Compress_data
+        Zip.Compress.Compress_Data
           (input            => Stream,
            output           => Info.Stream.all,
            input_size_known => True,
@@ -258,7 +258,7 @@ package body Zip.Create is
            method           => Info.Compress,
            feedback         => Feedback,
            password         => Password,
-           content_hint     => Guess_type_from_name (entry_name),
+           content_hint     => Guess_Type_from_Name (entry_name),
            CRC              => shi.dd.crc_32,
            output_size      => shi.dd.compressed_size,
            zip_type         => shi.zip_type
@@ -303,11 +303,11 @@ package body Zip.Create is
                        Name_in_archive   : String            := "";
                        --  Delete_file_after: practical to delete temporary file after adding.
                        Delete_file_after : Boolean           := False;
-                       Name_encoding     : Zip_name_encoding := IBM_437;
+                       Name_encoding     : Zip_Name_Encoding := IBM_437;
                        --  Time stamp for this entry
                        Modification_time : Time              := default_creation_time;
                        Is_read_only      : Boolean           := False;
-                       Feedback          : Feedback_proc     := null;
+                       Feedback          : Feedback_Proc     := null;
                        Password          : String            := ""
    )
    is
@@ -420,13 +420,13 @@ package body Zip.Create is
    procedure Add_Compressed_Stream
      (Info     : in out Zip_Create_Info;                        --  Destination
       Stream   : in out Zip_Streams.Root_Zipstream_Type'Class;  --  Source
-      Feedback : in     Feedback_proc)
+      Feedback : in     Feedback_Proc)
    is
       lh : Zip.Headers.Local_File_Header;
       data_descriptor_after_data : Boolean;
       offset : Unsigned_64;
    begin
-      Zip.Headers.Read_and_check (Stream, lh);
+      Zip.Headers.Read_and_Check (Stream, lh);
       data_descriptor_after_data := (lh.bit_flag and 8) /= 0;
       --  Copy name and extra field
       declare
@@ -451,7 +451,7 @@ package body Zip.Create is
         --  Copy extra field to new stream, usually a Zip64 field:
         String'Write (Info.Stream, extra);
       end;
-      Zip.Copy_chunk (
+      Zip.Copy_Chunk (
         Stream,
         Info.Stream.all,
         Integer (lh.dd.compressed_size),
@@ -464,7 +464,7 @@ package body Zip.Create is
       if data_descriptor_after_data then
         --  NB: some faulty JAR files may fail with Read_and_check.
         --  See UnZip.Decompress, Process_descriptor.
-        Zip.Headers.Read_and_check (Stream, lh.dd);
+        Zip.Headers.Read_and_Check (Stream, lh.dd);
         --  lh's values have been corrected on the way.
         Zip.Headers.Write (Info.Stream.all, lh.dd);  --  Copy descriptor to new stream.
       end if;

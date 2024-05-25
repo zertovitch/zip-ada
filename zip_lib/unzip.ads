@@ -24,7 +24,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2023 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -54,50 +54,48 @@ with Ada.Calendar, Ada.Streams, Ada.Strings.Unbounded;
 
 package UnZip is
 
-  type Option is (
-    test_only,            -- test .zip file integrity, no write
-    junk_directories,     -- ignore directory info -> extract to current one
-    case_sensitive_match, -- case sensitive name matching
-    extract_as_text       -- files will be written with native line endings
-  );
+  type Option is
+    (test_only,             --  test .zip file integrity, no write
+     junk_directories,      --  ignore directory info -> extract to current one
+     case_sensitive_match,  --  case sensitive name matching
+     extract_as_text);      --  files will be written with native line endings
 
-  type Option_set is array (Option) of Boolean;
+  type Option_Set is array (Option) of Boolean;
 
-  no_option : constant Option_set := (others => False);
+  no_option : constant Option_Set := (others => False);
 
   --  Ada 2005's Ada.Directories.Create_Path.
   --  For Ada 95 compatibility we pass it as an optional procedure access.
-  type Create_Path_proc is access
+  type Create_Path_Proc is access
     procedure (New_Directory : in String;
                Form          : in String := "");
 
   --  This is system-dependent (or in a future Ada)
-  type Set_Time_Stamp_proc is access
+  type Set_Time_Stamp_Proc is access
     procedure (file_name : String; stamp : Ada.Calendar.Time);
 
   --  Alternatively, you can use Zip.Time to set file time stamps
-  type Set_ZTime_Stamp_proc is access
+  type Set_ZTime_Stamp_Proc is access
     procedure (file_name : String; stamp : Zip.Time);
   --  NB: you can use Zip.Convert to change Ada.Calendar.Time from/to Zip.Time
   --      or use our Split to avoid using Ada.Calendar at all.
 
   --  This is for modifying output file names (e.g. adding a
   --  work directory, modifying the archived path, etc.)
-  type Compose_func is access function (
-    File_Name     : String;
-    Name_encoding : Zip.Zip_name_encoding
-  )
+  type Compose_Func is access function
+    (File_Name     : String;
+     Name_encoding : Zip.Zip_Name_Encoding)
   return String;
 
   --  File System dependent settings
-  type FS_routines_type is record
-    Create_Path            : Create_Path_proc;
-    Set_Time_Stamp         : Set_Time_Stamp_proc;
-    Compose_File_Name      : Compose_func;
-    Set_ZTime_Stamp        : Set_ZTime_Stamp_proc; -- alt. to Set_Time_Stamp
+  type FS_Routines_Type is record
+    Create_Path       : Create_Path_Proc;
+    Set_Time_Stamp    : Set_Time_Stamp_Proc;
+    Compose_File_Name : Compose_Func;
+    Set_ZTime_Stamp   : Set_ZTime_Stamp_Proc;  --  alt. to Set_Time_Stamp
   end record;
 
-  null_routines : constant FS_routines_type := (null, null, null, null);
+  null_routines : constant FS_Routines_Type := (null, null, null, null);
 
   ----------------------------------
   -- Simple extraction procedures --
@@ -106,19 +104,17 @@ package UnZip is
   --  Extract all files from an archive (from)
 
   procedure Extract (from                 : String;
-                     options              : Option_set       := no_option;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                    );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from)
 
   procedure Extract (from                 : String;
                      what                 : String;
-                     options              : Option_set       := no_option;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                    );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from),
   --  but save under a new name (rename)
@@ -126,10 +122,9 @@ package UnZip is
   procedure Extract (from                 : String;
                      what                 : String;
                      rename               : String;
-                     options              : Option_set       := no_option;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                    );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   -------------------------------------------------------------------------
   -- Simple extraction procedures without re-searching central directory --
@@ -138,35 +133,32 @@ package UnZip is
   --  Extract all files from an archive (from)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
-                     options              : Option_set       := no_option;
+  procedure Extract (from                 : Zip.Zip_Info;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                   );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
-                     options              : Option_set       := no_option;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                    );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from),
   --  but save under a new name (rename)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
                      rename               : String;
-                     options              : Option_set       := no_option;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                   );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
-  subtype PKZip_method is Zip.PKZip_method;
+  subtype PKZip_Method is Zip.PKZip_method;
   pragma Obsolescent (PKZip_method, "Better use the type: Zip.PKZip_method");
 
   ----------------------------------------------
@@ -178,54 +170,52 @@ package UnZip is
   --  or some changes.
   --  Read unzipada.adb for details and examples.
 
-  type Name_conflict_intervention is
+  type Name_Conflict_Intervention is
     (yes, no, yes_to_all, none, rename_it, abort_now);
 
-  current_user_attitude : Name_conflict_intervention := yes;
+  current_user_attitude : Name_Conflict_Intervention := yes;
   --  reset to "yes" for a new session (in case of yes_to_all / none state!)
 
-  type Resolve_conflict_proc is access
+  type Resolve_Conflict_Proc is access
     procedure (name            :  in String;
-               name_encoding   :  in Zip.Zip_name_encoding;
-               action          : out Name_conflict_intervention;
+               name_encoding   :  in Zip.Zip_Name_Encoding;
+               action          : out Name_Conflict_Intervention;
                new_name        : out String;
                new_name_length : out Natural);
 
-  type Get_password_proc is access
+  type Get_Password_Proc is access
     procedure (password : out Ada.Strings.Unbounded.Unbounded_String);
 
   --  Inform user about some archive data
 
-  type Tell_data_proc is access
+  type Tell_Data_Proc is access
     procedure (name               : String;
                compressed_bytes   : Zip.Zip_64_Data_Size_Type;
                uncompressed_bytes : Zip.Zip_64_Data_Size_Type;
-               method             : PKZip_method);
+               method             : PKZip_Method);
 
   --  Extract all files from an archive (from)
 
   procedure Extract (from                 : String;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set       := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                   );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from)
 
   procedure Extract (from                 : String;
                      what                 : String;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set       := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                    );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from),
   --  but save under a new name (rename)
@@ -233,57 +223,53 @@ package UnZip is
   procedure Extract (from                 : String;
                      what                 : String;
                      rename               : String;
-                     feedback             : Zip.Feedback_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set       := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                    );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Using Zip_info structure:
 
   --  Extract all files from an archive (from)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set       := no_option;
+  procedure Extract (from                 : Zip.Zip_Info;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                   );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
-                     feedback             : Zip.Feedback_proc;
-                     help_the_file_exists : Resolve_conflict_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set       := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     help_the_file_exists : Resolve_Conflict_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                   );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Extract one precise file (what) from an archive (from),
   --  but save under a new name (rename)
   --  Needs Zip.Load(from, ...) prior to the extraction
 
-  procedure Extract (from                 : Zip.Zip_info;
+  procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
                      rename               : String;
-                     feedback             : Zip.Feedback_proc;
-                     tell_data            : Tell_data_proc;
-                     get_pwd              : Get_password_proc;
-                     options              : Option_set       := no_option;
+                     feedback             : Zip.Feedback_Proc;
+                     tell_data            : Tell_Data_Proc;
+                     get_pwd              : Get_Password_Proc;
+                     options              : Option_Set       := no_option;
                      password             : String           := "";
-                     file_system_routines : FS_routines_type := null_routines
-                   );
+                     file_system_routines : FS_Routines_Type := null_routines);
 
   --  Errors
 
@@ -306,8 +292,7 @@ private
      write_to_text_file,
      write_to_memory,
      write_to_stream,
-     just_test
-    );
+     just_test);
 
   subtype Write_to_file is Write_Mode_Type
     range write_to_binary_file .. write_to_text_file;

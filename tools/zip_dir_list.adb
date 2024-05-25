@@ -28,7 +28,7 @@ procedure Zip_Dir_List is
   procedure Record_Directories (n : String) is
   begin
     for i in n'Range loop
-      if n (i) = '/' or n (i) = '\' then
+      if n (i) in '/' | '\' then
         --  NB:  - A Zip file should use '/' as separator, but some may have it wrong...
         --       - The search is compatible with UTF-8 strings.
         Record_Directory (n (n'First .. i));
@@ -48,7 +48,7 @@ procedure Zip_Dir_List is
     end if;
   end Try_with_zip;
 
-  z : Zip.Zip_info;
+  z : Zip.Zip_Info;
 
   use Ada.Command_Line, Ada.Text_IO;
 

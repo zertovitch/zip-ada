@@ -60,7 +60,7 @@
 --  17-Feb-2011: Created (single-block, "fixed" Huffman encoding).
 
 with LZ77;
-with Length_limited_Huffman_code_lengths;
+with Length_Limited_Huffman_Code_Lengths;
 
 with Ada.Text_IO,
      Ada.Unchecked_Deallocation;
@@ -70,7 +70,7 @@ procedure Zip.Compress.Deflate
    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
    input_size_known :        Boolean;
    input_size       :        Zip_64_Data_Size_Type;  --  ignored if unknown
-   feedback         :        Feedback_proc;
+   feedback         :        Feedback_Proc;
    method           :        Deflation_Method;
    CRC              : in out Interfaces.Unsigned_32;  --  only updated here
    crypto           : in out CRC_Crypto.Crypto_pack;
@@ -353,11 +353,11 @@ is
     bl_for_lit_len : Bit_length_array_lit_len;
     bl_for_dis     : Bit_length_array_dis;
     procedure LLHCL_lit_len is new
-      Length_limited_Huffman_code_lengths (
+      Length_Limited_Huffman_Code_Lengths (
         Alphabet_lit_len, Count_type, Stats_lit_len_type, Bit_length_array_lit_len, 15
       );
     procedure LLHCL_dis is new
-      Length_limited_Huffman_code_lengths (
+      Length_Limited_Huffman_Code_Lengths (
         Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15
       );
     stats_dis_copy : Stats_dis_type := stats_dis;
@@ -717,7 +717,7 @@ is
     alphabet_permutation : constant array (Alphabet) of Natural :=
        (16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15);
     procedure LLHCL is new
-      Length_limited_Huffman_code_lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
+      Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
     a_non_zero : Alphabet;
   begin
     Concatenate_all_bit_lengths;

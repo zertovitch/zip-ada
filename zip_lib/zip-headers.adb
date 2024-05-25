@@ -91,10 +91,9 @@ package body Zip.Headers is
   -- PKZIP data descriptor, after streamed compressed data - PK78 --
   ------------------------------------------------------------------
 
-  procedure Copy_and_check (
-    buffer        : in     Byte_Buffer;
-    the_data_desc :    out Data_descriptor
-  )
+  procedure Copy_and_Check
+    (buffer        : in     Byte_Buffer;
+     the_data_desc :    out Data_Descriptor)
   is
   begin
     if not PK_signature (buffer, 7, 8) then
@@ -105,23 +104,21 @@ package body Zip.Headers is
     the_data_desc.compressed_size   := Intel_nb (buffer  (9  .. 12));
     the_data_desc.uncompressed_size := Intel_nb (buffer (13 .. 16));
 
-  end Copy_and_check;
+  end Copy_and_Check;
 
-  procedure Read_and_check (
-    stream        : in out Root_Zipstream_Type'Class;
-    the_data_desc :    out Data_descriptor
-  )
+  procedure Read_and_Check
+    (stream        : in out Root_Zipstream_Type'Class;
+     the_data_desc :    out Data_Descriptor)
   is
     ddb : Byte_Buffer (1 .. 16);
   begin
     Block_Read (stream, ddb);
-    Copy_and_check (ddb, the_data_desc);
-  end Read_and_check;
+    Copy_and_Check (ddb, the_data_desc);
+  end Read_and_Check;
 
-  procedure Write (
-    stream        : in out Root_Zipstream_Type'Class;
-    the_data_desc : in     Data_descriptor
-  )
+  procedure Write
+    (stream        : in out Root_Zipstream_Type'Class;
+     the_data_desc : in     Data_Descriptor)
   is
     ddb : Byte_Buffer (1 .. 16);
   begin
@@ -137,10 +134,9 @@ package body Zip.Headers is
   -------------------------------------------------------
   -- PKZIP file header, as in central directory - PK12 --
   -------------------------------------------------------
-  procedure Read_and_check (
-    stream : in out Root_Zipstream_Type'Class;
-    header :    out Central_File_Header
-  )
+  procedure Read_and_Check
+    (stream : in out Root_Zipstream_Type'Class;
+     header :    out Central_File_Header)
   is
     chb : Byte_Buffer (1 .. 46);
   begin
@@ -167,12 +163,11 @@ package body Zip.Headers is
     header.external_attributes               := Intel_nb (chb (39 .. 42));
     header.local_header_offset               := Intel_nb (chb (43 .. 46));
 
-  end Read_and_check;
+  end Read_and_Check;
 
-  procedure Write (
-    stream : in out Root_Zipstream_Type'Class;
-    header : in     Central_File_Header
-  )
+  procedure Write
+    (stream : in out Root_Zipstream_Type'Class;
+     header : in     Central_File_Header)
   is
     chb : Byte_Buffer (1 .. 46);
   begin
@@ -201,8 +196,7 @@ package body Zip.Headers is
 
   function Needs_Local_Zip_64_Header_Extension
     (header : Local_File_Header;
-     offset : Unsigned_64  --  Not part of the Zip32 header but of the Zip64 one...
-    )
+     offset : Unsigned_64)  --  Not part of the Zip32 header but of the Zip64 one...
   return Boolean
   is
     do_we_want_always_zip64 : constant Boolean := False;
@@ -218,10 +212,9 @@ package body Zip.Headers is
   -----------------------------------------------------------------------
   -- PKZIP local file header, in front of every file in archive - PK34 --
   -----------------------------------------------------------------------
-  procedure Read_and_check (
-    stream : in out Root_Zipstream_Type'Class;
-    header :    out Local_File_Header
-  )
+  procedure Read_and_Check
+    (stream : in out Root_Zipstream_Type'Class;
+     header :    out Local_File_Header)
   is
     lhb : Byte_Buffer (1 .. local_header_length);
     u32 : Unsigned_32;
@@ -246,13 +239,12 @@ package body Zip.Headers is
     header.filename_length        := Intel_nb (lhb (27 .. 28));
     header.extra_field_length     := Intel_nb (lhb (29 .. 30));
 
-  end Read_and_check;
+  end Read_and_Check;
 
-  procedure Write (
-    stream             : in out Root_Zipstream_Type'Class;
-    header             : in     Local_File_Header;
-    extra_field_policy : in     Extra_Field_Policy_Kind
-  )
+  procedure Write
+    (stream             : in out Root_Zipstream_Type'Class;
+     header             : in     Local_File_Header;
+     extra_field_policy : in     Extra_Field_Policy_Kind)
   is
     lhb : Byte_Buffer (1 .. local_header_length);
     extra_length : Unsigned_16;
@@ -283,10 +275,9 @@ package body Zip.Headers is
     Block_Write (stream, lhb);
   end Write;
 
-  procedure Read_and_check (
-    stream : in out Root_Zipstream_Type'Class;
-    header :    out Local_File_Header_Extension
-  )
+  procedure Read_and_Check
+    (stream : in out Root_Zipstream_Type'Class;
+     header :    out Local_File_Header_Extension)
   is
     lhb_1 : Byte_Buffer (1 .. 4);
     lhb_2 : Byte_Buffer (5 .. local_header_extension_length);
@@ -307,7 +298,7 @@ package body Zip.Headers is
     header.value_64 (2) := Intel_nb (lhb_2 (13 .. 20));
     header.value_64 (3) := Intel_nb (lhb_2 (21 .. 28));
 
-  end Read_and_check;
+  end Read_and_Check;
 
   procedure Interpret
     (header            : in     Local_File_Header_Extension;
@@ -342,11 +333,10 @@ package body Zip.Headers is
     end if;
   end Interpret;
 
-  procedure Write (
-    stream : in out Root_Zipstream_Type'Class;
-    header : in     Local_File_Header_Extension;
-    short  : in     Boolean
-  )
+  procedure Write
+    (stream : in out Root_Zipstream_Type'Class;
+     header : in     Local_File_Header_Extension;
+     short  : in     Boolean)
   is
     lhb : Byte_Buffer (1 .. local_header_extension_length);
   begin
@@ -367,10 +357,9 @@ package body Zip.Headers is
   -------------------------------------------
   -- PKZIP end-of-central-directory - PK56 --
   -------------------------------------------
-  procedure Copy_and_check (
-    buffer  : in     Byte_Buffer;
-    the_end :    out End_of_Central_Dir
-  )
+  procedure Copy_and_Check
+    (buffer  : in     Byte_Buffer;
+     the_end :    out End_of_Central_Dir)
   is
     o : constant Integer := buffer'First - 1;
   begin
@@ -386,23 +375,21 @@ package body Zip.Headers is
     the_end.central_dir_offset  := Intel_nb (buffer (o + 17 .. o + 20));
     the_end.main_comment_length := Intel_nb (buffer (o + 21 .. o + 22));
 
-  end Copy_and_check;
+  end Copy_and_Check;
 
-  procedure Read_and_check (
-    stream  : in out Root_Zipstream_Type'Class;
-    the_end :    out End_of_Central_Dir
-  )
+  procedure Read_and_Check
+    (stream  : in out Root_Zipstream_Type'Class;
+     the_end :    out End_of_Central_Dir)
   is
     eb : Byte_Buffer (1 .. 22);
   begin
     Block_Read (stream, eb);
-    Copy_and_check (eb, the_end);
-  end Read_and_check;
+    Copy_and_Check (eb, the_end);
+  end Read_and_Check;
 
-  procedure Load (
-    stream  : in out Root_Zipstream_Type'Class;
-    the_end :    out End_of_Central_Dir
-  )
+  procedure Load
+    (stream  : in out Root_Zipstream_Type'Class;
+     the_end :    out End_of_Central_Dir)
   is
     min_end_start : ZS_Index_Type;  --  min_end_start >= 1
     max_comment : constant := 65_535;
@@ -441,7 +428,7 @@ package body Zip.Headers is
         --  because PKWARE put a variable-size comment _after_ it 8-(
         ilb := Integer (i - min_end_start);
         if PK_signature (large_buffer (ilb .. ilb + 3), 5, 6) then
-          Copy_and_check (large_buffer (ilb .. ilb + 21), the_end);
+          Copy_and_Check (large_buffer (ilb .. ilb + 21), the_end);
           if Is_64 then
             found := True;
             exit;
@@ -482,7 +469,7 @@ package body Zip.Headers is
     --
     if Is_64 then
       Set_Index (stream, Index (stream) - 42);
-      Read_and_check (stream, end_64_loc);
+      Read_and_Check (stream, end_64_loc);
       --  We zero the offset shifting. This assumes that the offsets are as
       --  written, i.e. the Zip file is not appended to another file.
       --  The reason is that the "Zip64 end of central directory" has
@@ -494,7 +481,7 @@ package body Zip.Headers is
         ZS_Index_Type
           (end_64_loc.relative_offset_of_the_zip64_end_of_central_dir_record) +
           the_end.offset_shifting + 1);
-      Read_and_check (stream, end_64);
+      Read_and_Check (stream, end_64);
       the_end.disknum            := end_64.number_of_this_disk;
       the_end.disknum_with_start := end_64.number_of_the_disk_with_the_start_of_the_central_directory;
       the_end.disk_total_entries := end_64.total_number_of_entries_in_the_central_directory_on_this_disk;
@@ -504,10 +491,9 @@ package body Zip.Headers is
     end if;
   end Load;
 
-  procedure Write (
-    stream  : in out Root_Zipstream_Type'Class;
-    the_end : in     End_of_Central_Dir
-  )
+  procedure Write
+    (stream  : in out Root_Zipstream_Type'Class;
+     the_end : in     End_of_Central_Dir)
   is
     eb : Byte_Buffer (1 .. 22);
   begin
@@ -524,10 +510,9 @@ package body Zip.Headers is
     Block_Write (stream, eb);
   end Write;
 
-  procedure Read_and_check (
-    stream     : in out Root_Zipstream_Type'Class;
-    the_end_64 :    out Zip64_End_of_Central_Dir
-  )
+  procedure Read_and_Check
+    (stream     : in out Root_Zipstream_Type'Class;
+     the_end_64 :    out Zip64_End_of_Central_Dir)
   is
     eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_length);
   begin
@@ -544,12 +529,11 @@ package body Zip.Headers is
     the_end_64.total_number_of_entries_in_the_central_directory              := Intel_nb (eb  (33 .. 40));
     the_end_64.size_of_the_central_directory                                 := Intel_nb (eb  (41 .. 48));
     the_end_64.offset_of_start_of_central_directory                          := Intel_nb (eb  (49 .. 56));
-  end Read_and_check;
+  end Read_and_Check;
 
-  procedure Write (
-    stream     : in out Root_Zipstream_Type'Class;
-    the_end_64 : in     Zip64_End_of_Central_Dir
-  )
+  procedure Write
+    (stream     : in out Root_Zipstream_Type'Class;
+     the_end_64 : in     Zip64_End_of_Central_Dir)
   is
     eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_length);
   begin
@@ -566,10 +550,9 @@ package body Zip.Headers is
     Block_Write (stream, eb);
   end Write;
 
-  procedure Read_and_check (
-    stream         : in out Root_Zipstream_Type'Class;
-    the_end_64_loc :    out Zip64_End_of_Central_Dir_Locator
-  )
+  procedure Read_and_Check
+    (stream         : in out Root_Zipstream_Type'Class;
+     the_end_64_loc :    out Zip64_End_of_Central_Dir_Locator)
   is
     eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_locator_length);
   begin
@@ -580,12 +563,11 @@ package body Zip.Headers is
     the_end_64_loc.number_of_the_disk_with_the_start_of_the_zip64_end_of_central_dir := Intel_nb (eb   (5 ..  8));
     the_end_64_loc.relative_offset_of_the_zip64_end_of_central_dir_record            := Intel_nb (eb   (9 .. 16));
     the_end_64_loc.total_number_of_disks                                             := Intel_nb (eb  (17 .. 20));
-  end Read_and_check;
+  end Read_and_Check;
 
-  procedure Write (
-    stream         : in out Root_Zipstream_Type'Class;
-    the_end_64_loc : in     Zip64_End_of_Central_Dir_Locator
-  )
+  procedure Write
+    (stream         : in out Root_Zipstream_Type'Class;
+     the_end_64_loc : in     Zip64_End_of_Central_Dir_Locator)
   is
     eb : Byte_Buffer (1 .. zip_64_end_of_central_dir_locator_length);
   begin

@@ -1,4 +1,4 @@
-with Length_limited_Huffman_code_lengths;
+with Length_Limited_Huffman_Code_Lengths;
 
 with Ada.Text_IO;
 
@@ -16,7 +16,7 @@ procedure Test_LLHC is
     for m in 4 .. 5 loop
       declare
         procedure LLHCL is new
-          Length_limited_Huffman_code_lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, m);
+          Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, m);
       begin
         LLHCL (freq, len);
       end;
@@ -40,7 +40,7 @@ procedure Test_LLHC is
     type Alpha_Array is array (Alphabet) of Natural;
     freq, len : Alpha_Array;
     procedure LLHCL is new
-      Length_limited_Huffman_code_lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
+      Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
   begin
     --  freq:= (11, 1, 1, 1, 13, 15, 16, 23, 42, 72, 94, 33, 3, 4, 2, 3, 1, 1, 1);  --  OK with max=7
     freq := (6, 1, 1, 2, 10, 13, 19, 33, 41, 78, 89, 25, 7, 4, 2, 3, 1, 1, 1);  --  OK after fixing LLHC
@@ -64,10 +64,10 @@ procedure Test_LLHC is
     type Alpha_Array is array (Alphabet) of Natural;
     freq, len : Alpha_Array;
     procedure LLHCL is new
-      Length_limited_Huffman_code_lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 15);
+      Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 15);
   begin
     freq :=
-      (0 => 1277,        1 => 163,         2 => 118,         3 => 152,         4 => 123,
+         (0 => 1277,        1 => 163,         2 => 118,         3 => 152,         4 => 123,
           5 => 98,          6 => 52,          7 => 29,          8 => 55,          9 => 27,
          10 => 50,         11 => 76,         12 => 49,         13 => 35,         14 => 31,
          15 => 23,         16 => 59,         17 => 22,         18 => 21,         19 => 14,
@@ -124,8 +124,7 @@ procedure Test_LLHC is
         270 => 159,       271 => 112,       272 => 60,        273 => 45,        274 => 22,
         275 => 24,        276 => 10,        277 => 7,         278 => 4,         279 => 1,
         280 => 5,         281 => 0,         282 => 3,         283 => 3,         284 => 4,
-        285 => 6,         286 => 0,         287 => 0
-    );
+        285 => 6,         286 => 0,         287 => 0);
     New_Line;
     Put_Line ("Deflate alphabet for literal & LZ length");
     Put_Line ("----------------------------------------");

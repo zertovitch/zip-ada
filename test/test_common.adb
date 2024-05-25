@@ -1,5 +1,7 @@
 package body Test_Common is
 
+  use HAT;
+
   function test_dir return VString is
   begin
     return +"test_data" & Directory_Separator;

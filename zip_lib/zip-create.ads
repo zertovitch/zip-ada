@@ -98,7 +98,7 @@ package Zip.Create is
 
    procedure Add_Stream (Info            : in out Zip_Create_Info;
                          Stream          : in out Zip_Streams.Root_Zipstream_Type'Class;
-                         Feedback        : in     Feedback_proc;
+                         Feedback        : in     Feedback_Proc;
                          Password        : in     String := "";
                          Compressed_Size :    out Zip.Zip_64_Data_Size_Type;
                          Final_Method    :    out Natural);
@@ -127,11 +127,11 @@ package Zip.Create is
                        Name_in_archive   : String            := "";
                        --  Delete_file_after: practical to delete temporary file after adding.
                        Delete_file_after : Boolean           := False;
-                       Name_encoding     : Zip_name_encoding := IBM_437;
+                       Name_encoding     : Zip_Name_Encoding := IBM_437;
                        --  Time stamp for this entry
                        Modification_time : Time              := default_creation_time;
                        Is_read_only      : Boolean           := False;
-                       Feedback          : Feedback_proc     := null;
+                       Feedback          : Feedback_Proc     := null;
                        Password          : String            := "");
 
    --  Add a new entry to a Zip archive, from a buffer stored in a string
@@ -170,7 +170,7 @@ package Zip.Create is
    procedure Add_Compressed_Stream
      (Info     : in out Zip_Create_Info;                        --  Destination
       Stream   : in out Zip_Streams.Root_Zipstream_Type'Class;  --  Source
-      Feedback : in     Feedback_proc);
+      Feedback : in     Feedback_Proc);
 
    --  Zip_Entry_Stream_Type
    -------------------------

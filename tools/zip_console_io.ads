@@ -32,8 +32,8 @@ package Zip_Console_IO is
 
   procedure My_resolve_conflict
    (file_name       :  in String;
-    name_encoding   :  in Zip.Zip_name_encoding;
-    action          : out UnZip.Name_conflict_intervention;
+    name_encoding   :  in Zip.Zip_Name_Encoding;
+    action          : out UnZip.Name_Conflict_Intervention;
     new_name        : out String;
     new_name_length : out Natural);
 

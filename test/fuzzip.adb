@@ -52,7 +52,7 @@ procedure Fuzzip is
       mem_stream_content,
       mem_stream_unpacked : aliased Zip_Memory_Stream;
       zci : Zip.Create.Zip_Create_Info;
-      zi : Zip.Zip_info;
+      zi : Zip.Zip_Info;
       unpacked : Unbounded_String;
       name_for_data_for_testing : constant String := "data_for_testing.dat";
       name_in_zip : constant String := "packed_" & Compression_Method'Image (method) & ".dat";

@@ -34,20 +34,20 @@ with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
 package body UnZip.Decompress is
 
-  procedure Decompress_data
+  procedure Decompress_Data
     (zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
      format                     : Zip.PKZip_method;
      write_mode                 : Write_Mode_Type;
      output_file_name           : String; -- relevant only if mode = write_to_file
      output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory
      output_stream_access       : p_Stream;                   -- \ = write_to_stream
-     feedback                   : Zip.Feedback_proc;
+     feedback                   : Zip.Feedback_Proc;
      explode_literal_tree       : Boolean;
      explode_slide_8KB_LZMA_EOS : Boolean;
      data_descriptor_after_data : Boolean;
      is_encrypted               : Boolean;
      password                   : in out Ada.Strings.Unbounded.Unbounded_String;
-     get_new_password           : Get_password_proc;
+     get_new_password           : Get_Password_Proc;
      hint                       : in out Zip.Headers.Local_File_Header)
   is
     --  Disable AdaControl rule for detecting global variables, they have become local here.
@@ -335,9 +335,8 @@ package body UnZip.Decompress is
             when write_to_binary_file =>
               Block_Write (Ada.Streams.Stream_IO.Stream (out_bin_file).all, UnZ_Glob.slide (0 .. x - 1));
             when write_to_text_file =>
-              Zip.Write_as_text (
-                UnZ_IO.out_txt_file, UnZ_Glob.slide (0 .. x - 1), UnZ_IO.last_char
-              );
+              Write_as_Text
+                (UnZ_IO.out_txt_file, UnZ_Glob.slide (0 .. x - 1), UnZ_IO.last_char);
             when write_to_memory =>
               for i in 0 .. x - 1 loop
                 output_memory_access (UnZ_Glob.uncompressed_index) :=
@@ -504,10 +503,10 @@ package body UnZip.Decompress is
       t : Unsigned_32;
     begin
       --  Step 1 - Initializing the encryption keys
-      Init_keys (local_crypto_pack, password_for_keys);
+      Init_Keys (local_crypto_pack, password_for_keys);
       --  Step 2 - Decrypting the encryption header. 11 bytes are random,
       --           just to shuffle the keys, 1 byte is from the CRC value.
-      Set_mode (local_crypto_pack, encrypted);
+      Set_Mode (local_crypto_pack, encrypted);
       for i in 1 .. 12 loop
         UnZ_IO.Read_byte_no_decrypt (c);
         Decode (local_crypto_pack, c);
@@ -556,7 +555,7 @@ package body UnZip.Decompress is
             when write_to_binary_file =>
               Block_Write (Stream (UnZ_IO.out_bin_file).all, Writebuf (0 .. Write_Ptr - 1));
             when write_to_text_file =>
-              Zip.Write_as_text (UnZ_IO.out_txt_file, Writebuf (0 .. Write_Ptr - 1), UnZ_IO.last_char);
+              Zip.Write_as_Text (UnZ_IO.out_txt_file, Writebuf (0 .. Write_Ptr - 1), UnZ_IO.last_char);
             when write_to_memory =>
               for I in 0 .. Write_Ptr - 1 loop
                 output_memory_access (UnZ_Glob.uncompressed_index) :=
@@ -1410,7 +1409,7 @@ package body UnZip.Decompress is
         read_in, absorbed : Zip.Zip_64_Data_Size_Type;
       begin
         absorbed := 0;
-        if Get_mode (local_crypto_pack) = encrypted then
+        if Get_Mode (local_crypto_pack) = encrypted then
           absorbed := 12;
         end if;
         while absorbed < size loop
@@ -1949,13 +1948,13 @@ package body UnZip.Decompress is
 
     end UnZ_Meth;
 
-    procedure Process_descriptor (dd : out Zip.Headers.Data_descriptor) is
+    procedure Process_descriptor (dd : out Zip.Headers.Data_Descriptor) is
       start : Integer;
       b : Unsigned_8;
       dd_buffer : Zip.Byte_Buffer (1 .. 30);
     begin
       UnZ_IO.Bit_buffer.Dump_to_byte_boundary;
-      Set_mode (local_crypto_pack, clear); -- We are after compressed data, switch off decryption.
+      Set_Mode (local_crypto_pack, clear); -- We are after compressed data, switch off decryption.
       b := UnZ_IO.Read_byte_decrypted;
       if b = 75 then -- 'K' ('P' is before, this is a Java/JAR bug!)
         dd_buffer (1) := 80;
@@ -1968,7 +1967,7 @@ package body UnZip.Decompress is
       for i in start .. 16 loop
         dd_buffer (i) := UnZ_IO.Read_byte_decrypted;
       end loop;
-      Zip.Headers.Copy_and_check (dd_buffer, dd);
+      Zip.Headers.Copy_and_Check (dd_buffer, dd);
     exception
       when Zip.Headers.bad_data_descriptor =>
         raise Zip.Archive_corrupted;
@@ -2004,7 +2003,7 @@ package body UnZip.Decompress is
     UnZ_Glob.uncompsize := hint.dd.uncompressed_size;
     UnZ_IO.Init_Buffers;
     if is_encrypted then
-      Set_mode (local_crypto_pack, encrypted);
+      Set_Mode (local_crypto_pack, encrypted);
       work_index := Zip_Streams.Index (zip_file);
       password_passes : for pass in 1 .. tolerance_wrong_password loop
         begin
@@ -2028,7 +2027,7 @@ package body UnZip.Decompress is
         UnZ_IO.Init_Buffers;
       end loop password_passes;
     else
-      Set_mode (local_crypto_pack, clear);
+      Set_Mode (local_crypto_pack, clear);
     end if;
 
     --  UnZip correct type
@@ -2107,6 +2106,6 @@ package body UnZip.Decompress is
           null;  --  Nothing to close!
       end case;
       raise;
-  end Decompress_data;
+  end Decompress_Data;
 
 end UnZip.Decompress;

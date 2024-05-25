@@ -109,7 +109,7 @@ package UnZip.Streams is
    --  Version: Zip as Zip_info.
    procedure Open
      (File             : in out Zipped_File_Type; -- File-in-archive handle
-      Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
+      Archive_Info     : in Zip.Zip_Info;         -- Archive's Zip_info
       Name             : in String;               -- Name of zipped entry
       Password         : in String  := "";        -- Decryption password
       Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
@@ -153,10 +153,10 @@ package UnZip.Streams is
 
    procedure Extract
      (Destination      : in out Ada.Streams.Root_Stream_Type'Class;
-      Archive_Info     : in Zip.Zip_info;         --  Archive's Zip_info
-      Entry_Name       : in String;               --  Name of zipped entry
-      Password         : in String  := "";        --  Decryption password
-      Ignore_Directory : in Boolean := False);    --  True: will open Name in first directory found
+      Archive_Info     : in Zip.Zip_Info;       --  Archive's Zip_info
+      Entry_Name       : in String;             --  Name of zipped entry
+      Password         : in String  := "";      --  Decryption password
+      Ignore_Directory : in Boolean := False);  --  True: will open Name in first directory found
 
 private
 
@@ -171,9 +171,9 @@ private
 
    type UnZip_Stream_Type is new Ada.Streams.Root_Stream_Type with record
       state        : UZS_State := uninitialized;
-      archive_info : Zip.Zip_info;  --  archive info (.zip file, directory)
+      archive_info : Zip.Zip_Info;  --  archive info (.zip file, directory)
       file_name    : p_String;  --  name of zipped file to unzip from archive
-      uncompressed : p_Stream_Element_Array; -- whole uncompressed data
+      uncompressed : p_Stream_Element_Array;  --  whole uncompressed data
       index        : Ada.Streams.Stream_Element_Offset;
    end record;
 

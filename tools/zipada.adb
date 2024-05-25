@@ -94,7 +94,7 @@ procedure ZipAda is
     end if;
     Put (' ');
     declare
-      meth : constant String := Zip.Image (Zip.Method_from_code (Final_Method));
+      meth : constant String := Zip.Image (Zip.Method_from_Code (Final_Method));
       use Ada.Strings.Fixed;
     begin
       Put (meth & (Zip.PKZip_method'Width - meth'Length) * ' ');

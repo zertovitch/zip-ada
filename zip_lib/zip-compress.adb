@@ -65,15 +65,15 @@ package body Zip.Compress is
   -- Compress_data --
   -------------------
 
-  procedure Compress_data
+  procedure Compress_Data
    (input,
     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
     input_size_known : Boolean;
     input_size       : Zip_64_Data_Size_Type;
     method           : Compression_Method;
-    feedback         : Feedback_proc;
+    feedback         : Feedback_Proc;
     password         : String;
-    content_hint     : Data_content_type;
+    content_hint     : Data_Content_Type;
     CRC              : out Interfaces.Unsigned_32;
     output_size      : out Zip_64_Data_Size_Type;
     zip_type         : out Interfaces.Unsigned_16
@@ -144,8 +144,8 @@ package body Zip.Compress is
     begin
       Init (CRC);
       if is_encrypted then
-        Init_keys (encrypt_pack, password);
-        Set_mode (encrypt_pack, encrypted);
+        Init_Keys (encrypt_pack, password);
+        Set_Mode (encrypt_pack, encrypted);
         --  A bit dumb from Zip spec: we need to know the final CRC in order to set up
         --  the last byte of the encryption header, that allows for detecting if a password
         --  is OK - this, with 255/256 probability of correct detection of a wrong password!
@@ -166,7 +166,7 @@ package body Zip.Compress is
         --
         mem_encrypt_pack := encrypt_pack;
       else
-        Set_mode (encrypt_pack, clear);
+        Set_Mode (encrypt_pack, clear);
       end if;
       --
       --  Dispatch the work to child procedures doing the stream compression
@@ -240,7 +240,7 @@ package body Zip.Compress is
     fast_presel : constant Boolean :=
       method = Preselection_1 or (input_size_known and then input_size < 22_805);
 
-    data_type_to_LZMA_method : constant array (Data_content_type) of LZMA_Method :=
+    data_type_to_LZMA_method : constant array (Data_Content_Type) of LZMA_Method :=
       (JPEG    => LZMA_for_JPEG,
        ARW_RW2 => LZMA_for_ARW,
        ORF_CR2 => LZMA_for_ORF,
@@ -302,9 +302,9 @@ package body Zip.Compress is
             end if;
         end case;
     end case;
-  end Compress_data;
+  end Compress_Data;
 
-  function Guess_type_from_name (name : String) return Data_content_type is
+  function Guess_Type_from_Name (name : String) return Data_Content_Type is
     use Ada.Characters.Handling, Ada.Strings.Fixed;
     up : constant String := To_Upper (name);
     ext_1 : constant String := Tail (up, 2);
@@ -381,7 +381,7 @@ package body Zip.Compress is
       return AU;
     end if;
     return Neutral;
-  end Guess_type_from_name;
+  end Guess_Type_from_Name;
 
   -----------------------------------
   --  I/O buffers for compression  --

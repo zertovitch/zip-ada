@@ -23,7 +23,7 @@ procedure Find_Zip is
   stl : Natural;  --  string length
   l : Character;  --  last character of the search string
 
-  z : Zip.Zip_info;
+  z : Zip.Zip_Info;
 
   ignore_case : constant Boolean := True;
 

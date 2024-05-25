@@ -73,7 +73,7 @@ package body UnZip.Streams is
   begin
     begin
       Zip_Streams.Set_Index (zip_stream, header_index);
-      Zip.Headers.Read_and_check (zip_stream, local_header);
+      Zip.Headers.Read_and_Check (zip_stream, local_header);
     exception
       when Zip.Headers.bad_local_header =>
         raise Zip.Archive_corrupted with "Bad local header";
@@ -81,7 +81,7 @@ package body UnZip.Streams is
         raise Zip.Archive_corrupted;
     end;
 
-    method := Zip.Method_from_code (local_header.zip_type);
+    method := Zip.Method_from_Code (local_header.zip_type);
     if method = Zip.unknown then
       raise Unsupported_method;
     end if;
@@ -106,7 +106,7 @@ package body UnZip.Streams is
         --  ^ Initialized for avoiding a random value being by mistake 16#FFFF_FFFF#
       begin
         Zip_Streams.Set_Index (zip_stream, mem + Zip_Streams.ZS_Index_Type (local_header.filename_length));
-        Zip.Headers.Read_and_check (zip_stream, local_header_extension);
+        Zip.Headers.Read_and_Check (zip_stream, local_header_extension);
         Zip_Streams.Set_Index (zip_stream, mem);
         Zip.Headers.Interpret
           (local_header_extension,
@@ -148,7 +148,7 @@ package body UnZip.Streams is
       mode := write_to_stream;
     end if;
     --  Unzip correct type
-    UnZip.Decompress.Decompress_data (
+    UnZip.Decompress.Decompress_Data (
       zip_file                   => zip_stream,
       format                     => method,
       write_mode                 => mode,
@@ -184,7 +184,7 @@ package body UnZip.Streams is
   end UnZipFile;
 
   procedure S_Extract
-    (from             : in     Zip.Zip_info;
+    (from             : in     Zip.Zip_Info;
      zip_stream       : in out Zip_Streams.Root_Zipstream_Type'Class;
      what             : in     String;
      password         : in     String;
@@ -198,40 +198,37 @@ package body UnZip.Streams is
     crc_32 : Interfaces.Unsigned_32;
     work_password : Ada.Strings.Unbounded.Unbounded_String :=
       Ada.Strings.Unbounded.To_Unbounded_String (password);
-    dummy_name_encoding : Zip.Zip_name_encoding;
+    dummy_name_encoding : Zip.Zip_Name_Encoding;
 
   begin
     if Ignore_Directory then
-      Zip.Find_offset_without_directory (
-        info          => from,
-        name          => what,
-        name_encoding => dummy_name_encoding,
-        file_index    => header_index,
-        comp_size     => comp_size,
-        uncomp_size   => uncomp_size,
-        crc_32        => crc_32
-      );
+      Zip.Find_Offset_without_Directory
+        (info          => from,
+         name          => what,
+         name_encoding => dummy_name_encoding,
+         file_index    => header_index,
+         comp_size     => comp_size,
+         uncomp_size   => uncomp_size,
+         crc_32        => crc_32);
     else
-      Zip.Find_offset (
-        info          => from,
-        name          => what,
-        name_encoding => dummy_name_encoding,
-        file_index    => header_index,
-        comp_size     => comp_size,
-        uncomp_size   => uncomp_size,
-        crc_32        => crc_32
-      );
+      Zip.Find_Offset
+        (info          => from,
+         name          => what,
+         name_encoding => dummy_name_encoding,
+         file_index    => header_index,
+         comp_size     => comp_size,
+         uncomp_size   => uncomp_size,
+         crc_32        => crc_32);
     end if;
-    UnZipFile (
-      zip_stream      => zip_stream,
-      header_index    => header_index,
-      mem_ptr         => mem_ptr,
-      out_stream_ptr  => out_stream_ptr,
-      password        => work_password,
-      hint_comp_size  => comp_size,
-      hint_crc_32     => crc_32,
-      cat_uncomp_size => uncomp_size
-    );
+    UnZipFile
+      (zip_stream      => zip_stream,
+       header_index    => header_index,
+       mem_ptr         => mem_ptr,
+       out_stream_ptr  => out_stream_ptr,
+       password        => work_password,
+       hint_comp_size  => comp_size,
+       hint_crc_32     => crc_32,
+       cat_uncomp_size => uncomp_size);
   end S_Extract;
 
   -------------------- for exportation:
@@ -266,17 +263,16 @@ package body UnZip.Streams is
   end End_Of_File;
 
   procedure Open
-     (File             : in out Zipped_File_Type; -- File-in-archive handle
-      Archive_Info     : in Zip.Zip_info;         -- Archive's Zip_info
-      Name             : in String;               -- Name of zipped entry
-      Password         : in String  := "";        -- Decryption password
-      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
-     )
+     (File             : in out Zipped_File_Type;  --  File-in-archive handle
+      Archive_Info     : in Zip.Zip_Info;          --  Archive's Zip_info
+      Name             : in String;                --  Name of zipped entry
+      Password         : in String  := "";         --  Decryption password
+      Ignore_Directory : in Boolean := False)      --  True: will open Name in first directory found
   is
     use Zip_Streams, Ada.Streams;
     zip_stream   : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
-    use_a_file   : constant Boolean := Zip.Zip_stream (Archive_Info) = null;
+    use_a_file   : constant Boolean := Zip.Zip_Stream (Archive_Info) = null;
   begin
     if File = null then
       File := new UnZip_Stream_Type;
@@ -285,10 +281,10 @@ package body UnZip.Streams is
     end if;
     if use_a_file then
       input_stream := zip_stream'Unchecked_Access;
-      Set_Name (zip_stream, Zip.Zip_name (Archive_Info));
+      Set_Name (zip_stream, Zip.Zip_Name (Archive_Info));
       Open (zip_stream, In_File);
     else -- use the given stream
-      input_stream := Zip.Zip_stream (Archive_Info);
+      input_stream := Zip.Zip_Stream (Archive_Info);
     end if;
     --
     File.archive_info := Archive_Info;  --  Full clone. Now a copy is safely with File.
@@ -327,10 +323,9 @@ package body UnZip.Streams is
       Name             : in String;               -- Name of zipped entry
       Password         : in String  := "";        -- Decryption password
       Case_sensitive   : in Boolean := False;
-      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
-     )
+      Ignore_Directory : in Boolean := False)     -- True: will open Name in first directory found
    is
-    temp_info : Zip.Zip_info;
+    temp_info : Zip.Zip_Info;
   begin
     Zip.Load (temp_info, Archive_Name, Case_sensitive);
     Open (File, temp_info, Name, Password, Ignore_Directory);
@@ -342,10 +337,9 @@ package body UnZip.Streams is
       Name             : in String;               -- Name of zipped entry
       Password         : in String  := "";        -- Decryption password
       Case_sensitive   : in Boolean := False;
-      Ignore_Directory : in Boolean := False      -- True: will open Name in first directory found
-     )
+      Ignore_Directory : in Boolean := False)     -- True: will open Name in first directory found
   is
-    temp_info : Zip.Zip_info;
+    temp_info : Zip.Zip_Info;
   begin
     Zip.Load (temp_info, Archive_Stream, Case_sensitive);
     Open (File, temp_info, Name, Password, Ignore_Directory);
@@ -434,7 +428,7 @@ package body UnZip.Streams is
     comp_size   : Zip.Zip_64_Data_Size_Type;
     uncomp_size : Zip.Zip_64_Data_Size_Type;
   begin
-    Zip.Get_sizes (File.archive_info, File.file_name.all, comp_size, uncomp_size);
+    Zip.Get_Sizes (File.archive_info, File.file_name.all, comp_size, uncomp_size);
     return Count (uncomp_size);
   end Size;
 
@@ -449,7 +443,7 @@ package body UnZip.Streams is
 
   procedure Extract
     (Destination      : in out Ada.Streams.Root_Stream_Type'Class;
-     Archive_Info     : in Zip.Zip_info;         --  Archive's Zip_info
+     Archive_Info     : in Zip.Zip_Info;         --  Archive's Zip_info
      Entry_Name       : in String;               --  Name of zipped entry
      Password         : in String  := "";        --  Decryption password
      Ignore_Directory : in Boolean := False)     --  True: will open Name in first directory found
@@ -457,14 +451,14 @@ package body UnZip.Streams is
     use Zip_Streams;
     zip_stream   : aliased File_Zipstream;
     input_stream : Zipstream_Class_Access;
-    use_a_file   : constant Boolean := Zip.Zip_stream (Archive_Info) = null;
+    use_a_file   : constant Boolean := Zip.Zip_Stream (Archive_Info) = null;
   begin
     if use_a_file then
       input_stream := zip_stream'Unchecked_Access;
-      Set_Name (zip_stream, Zip.Zip_name (Archive_Info));
+      Set_Name (zip_stream, Zip.Zip_Name (Archive_Info));
       Open (zip_stream, In_File);
     else -- use the given stream
-      input_stream := Zip.Zip_stream (Archive_Info);
+      input_stream := Zip.Zip_Stream (Archive_Info);
     end if;
     declare
       dummy_mem_ptr : p_Stream_Element_Array;

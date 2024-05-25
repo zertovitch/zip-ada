@@ -77,17 +77,17 @@ package body Zip.CRC_Crypto is
 
   --
 
-  procedure Set_mode (obj : in out Crypto_pack; new_mode : Crypto_Mode) is
+  procedure Set_Mode (obj : in out Crypto_Pack; new_mode : Crypto_Mode) is
   begin
     obj.current_mode := new_mode;
-  end Set_mode;
+  end Set_Mode;
 
-  function Get_mode (obj : Crypto_pack) return Crypto_Mode is
+  function Get_Mode (obj : Crypto_Pack) return Crypto_Mode is
   begin
     return obj.current_mode;
-  end Get_mode;
+  end Get_Mode;
 
-  procedure Update_keys (obj : in out Crypto_pack; by : Zip.Byte) is
+  procedure Update_keys (obj : in out Crypto_Pack; by : Zip.Byte) is
   begin
     Update (obj.keys (0), (0 => by));
     obj.keys (1) := obj.keys (1) + (obj.keys (0) and 16#000000ff#);
@@ -99,7 +99,7 @@ package body Zip.CRC_Crypto is
   end Update_keys;
 
   --  Crypto_code: Pseudo-random byte to be XOR'ed with.
-  function Crypto_code (obj : Crypto_pack) return Zip.Byte is
+  function Crypto_code (obj : Crypto_Pack) return Zip.Byte is
   pragma Inline (Crypto_code);
     temp : Unsigned_16;
   begin
@@ -107,15 +107,15 @@ package body Zip.CRC_Crypto is
     return Zip.Byte (Shift_Right (temp * (temp xor 1), 8));
   end Crypto_code;
 
-  procedure Init_keys (obj : in out Crypto_pack; password : String) is
+  procedure Init_Keys (obj : in out Crypto_Pack; password : String) is
   begin
     obj.keys := (16#12345678#, 16#23456789#, 16#34567890#);
     for i in password'Range loop
       Update_keys (obj, Character'Pos (password (i)));
     end loop;
-  end Init_keys;
+  end Init_Keys;
 
-  procedure Encode (obj : in out Crypto_pack; buf : in out Zip.Byte_Buffer) is
+  procedure Encode (obj : in out Crypto_Pack; buf : in out Zip.Byte_Buffer) is
     bc : Zip.Byte;
   begin
     if obj.current_mode = encrypted then
@@ -127,7 +127,7 @@ package body Zip.CRC_Crypto is
     end if;
   end Encode;
 
-  procedure Decode (obj : in out Crypto_pack; b : in out Unsigned_8) is
+  procedure Decode (obj : in out Crypto_Pack; b : in out Unsigned_8) is
   begin
     if obj.current_mode = encrypted then
       b := b xor Crypto_code (obj);

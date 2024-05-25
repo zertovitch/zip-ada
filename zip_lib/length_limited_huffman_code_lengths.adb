@@ -41,7 +41,7 @@
 --    - all structures are allocated on stack
 --    - sub-programs are nested, then unneeded parameters are removed
 
-procedure Length_limited_Huffman_code_lengths (
+procedure Length_Limited_Huffman_Code_Lengths (
   frequencies : in  Count_Array;
   bit_lengths : out Length_Array
 )
@@ -276,4 +276,4 @@ begin
       end if;
     end loop;
   end if;
-end Length_limited_Huffman_code_lengths;
+end Length_Limited_Huffman_Code_Lengths;
