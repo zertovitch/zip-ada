@@ -1,4 +1,9 @@
 --  Reverse operation to the function Ada.Directories.Modification_Time.
+--
+--  This non-portable unit is not part of the Zip-Ada library.
+--
+--  However, it may be useful for using the UnZip package
+--  (search: "Set_Time_Stamp") in an application built with GNAT.
 
 with Ada.Calendar;
 with GNAT.OS_Lib;

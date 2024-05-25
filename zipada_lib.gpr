@@ -17,6 +17,7 @@ library project ZipAda_Lib is
 
    for Source_Dirs use ("zip_lib");
    for Object_Dir use "obj_lib";
+
    for Create_Missing_Dirs use "true";  --  Flips by default the "-p" switch
 
    for Library_Dir use "lib";
@@ -41,18 +42,17 @@ library project ZipAda_Lib is
        "relocatable"
       );
 
-   Library_Mode : Library_Type := external ("Library_Mode", "static");
+   Library_Mode : Library_Type := external ("Library_Mode", "dynamic");
    for Library_Kind use Library_Mode;
 
-   Common_Compiler_Options := (
-     "-gnatwa",                        --  Warnings switches (a:turn on all info/warnings marked with +)
-     "-gnatwh",                        --  Warnings switches (h:turn on warnings for hiding declarations)
-     "-gnatwcijkmopruvz.c.n.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
+   Common_Compiler_Options :=
+    ("-gnatwa",                      --  Warnings switches (a:turn on all info/warnings marked with +)
+     "-gnatwh",                      --  Warnings switches (h:turn on warnings for hiding declarations)
+     "-gnatwcijkmopruvz.c.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
      "-gnatf",  --  Full errors. Verbose details, all undefined references
      "-gnatq",  --  Don't quit, try semantics, even if parse errors
      "-gnatQ",  --  Don't quit, write ali/tree file even if compile errors
-     "-g"
-   );
+     "-g");     --  Generate debugging information
 
    Fast_Compiler_Options_Inlining_Neutral := Common_Compiler_Options & ("-Ofast", "-gnatp");
 
