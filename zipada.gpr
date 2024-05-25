@@ -79,19 +79,18 @@ project ZipAda is
    end case;
 
    Debug_Compiler_Options  :=
-     Common_Compiler_Options & (
-       "-gnatVa",  --  Turn on all validity checking options
+     Common_Compiler_Options &
+      ("-gnatVa",  --  Turn on all validity checking options
        "-gnato",   --  Enable overflow checking in STRICT (-gnato1) mode
        "-gnata",   --  Assertions enabled. Pragma Assert and pragma Debug to be activated.
-       "-fno-inline", "-fstack-check"
-       );
+       "-fno-inline", "-fstack-check");
 
-   Fast_Compiler_Options_Inlining_Neutral := Common_Compiler_Options & ("-Ofast", "-gnatp");
+   Fast_Compiler_Options_Inlining_Neutral :=
+     Common_Compiler_Options & ("-Ofast");
 
    Fast_Compiler_Options :=
-     Fast_Compiler_Options_Inlining_Neutral & (
-       "-gnatn"  --  Cross-unit inlining
-     );
+     Fast_Compiler_Options_Inlining_Neutral &
+       ("-gnatn");  --  Cross-unit inlining
 
    type Zip_OS_Kind is
       ("Win32", "Win64", "Linux", "MacOSX", "Any");

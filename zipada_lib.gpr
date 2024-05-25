@@ -28,8 +28,7 @@ library project ZipAda_Lib is
        "lzma", "lzma.decoding", "lzma.encoding",
        "unzip", "unzip.streams",
        "zip", "zip.crc_crypto", "zip.create", "zip.compress", "zip.headers",
-       "zip_streams"
-      );
+       "zip_streams");
 
    for Library_Standalone use "standard";
    for Library_Auto_Init use "true";
@@ -39,8 +38,7 @@ library project ZipAda_Lib is
       ("static",
        "static-pic",
        "dynamic",
-       "relocatable"
-      );
+       "relocatable");
 
    Library_Mode : Library_Type := external ("Library_Mode", "dynamic");
    for Library_Kind use Library_Mode;
@@ -54,12 +52,11 @@ library project ZipAda_Lib is
      "-gnatQ",  --  Don't quit, write ali/tree file even if compile errors
      "-g");     --  Generate debugging information
 
-   Fast_Compiler_Options_Inlining_Neutral := Common_Compiler_Options & ("-Ofast", "-gnatp");
+   Fast_Compiler_Options_Inlining_Neutral := Common_Compiler_Options & ("-Ofast");
 
    Fast_Compiler_Options :=
-     Fast_Compiler_Options_Inlining_Neutral & (
-       "-gnatn"  --  Cross-unit inlining
-     );
+     Fast_Compiler_Options_Inlining_Neutral &
+       ("-gnatn");  --  Cross-unit inlining
 
    type Zip_OS_Kind is
       ("Win32", "Win64", "Linux", "MacOSX", "Any");
