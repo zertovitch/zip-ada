@@ -34,7 +34,7 @@ package body BZip2.Decoding is
   procedure Decompress is
 
     max_groups     : constant := 6;
-    max_alpha_size : constant := 258;
+    max_alphabet_size : constant := 258;
     max_code_len   : constant := 23;
     group_size     : constant := 50;
     max_selectors  : constant := 2 + (900_000 / group_size);
@@ -43,42 +43,44 @@ package body BZip2.Decoding is
 
     type Length_array is array (Integer range <>) of Natural;
 
-    block_randomized : Boolean := False;
-    block_size : Natural;
-
     use Interfaces;
 
-    type Tcardinal_array is array (Integer range <>) of Unsigned_32;
+    subtype Natural_32 is Integer_32 range 0 .. Integer_32'Last;
+
+    block_randomized : Boolean := False;
+    block_size : Natural_32;
+
+    type Tcardinal_array is array (Natural_32 range <>) of Unsigned_32;
     type Pcardinal_array is access Tcardinal_array;
     procedure Dispose is new Ada.Unchecked_Deallocation (Tcardinal_array, Pcardinal_array);
     tt : Pcardinal_array;
-    tt_count : Natural;
+    tt_count : Natural_32;
 
     rle_run_left : Natural := 0;
     rle_run_data : Byte := 0;
-    decode_available : Natural := Natural'Last;
-    block_origin : Natural := 0;
+    decode_available : Natural_32 := Natural_32'Last;
+    block_origin : Natural_32 := 0;
     read_data : Byte := 0;
     bits_available : Natural := 0;
     inuse_count : Natural;
     seq_to_unseq : array (0 .. 255) of Natural;
-    alpha_size_glob : Natural;  --  Not global actually, but less local than "alpha_size" below
+    alphabet_size_glob : Natural;  --  Not global actually, but less local than "alphabet_size" below
     group_count : Natural;
     --
     selector_count : Natural;
     selector, selector_mtf : array (0 .. max_selectors) of Byte;
     --
-    type Alpha_U32_array is array (0 .. max_alpha_size) of Unsigned_32;
-    type Alpha_Nat_array is array (0 .. max_alpha_size) of Natural;
+    type Alphabet_U32_array is array (0 .. max_alphabet_size) of Unsigned_32;
+    type Alphabet_Nat_array is array (0 .. max_alphabet_size) of Natural;
 
-    len          : array (0 .. max_groups) of Alpha_Nat_array;
+    len          : array (0 .. max_groups) of Alphabet_Nat_array;
     limit_glob,  --  Not global actually, but less local than "limit" below
     base_glob,   --  Not global actually, but less local than "base" below
     perm_glob    --  Not global actually, but less local than "perm" below
-                 : array (0 .. max_groups) of Alpha_U32_array;
+                 : array (0 .. max_groups) of Alphabet_U32_array;
     --
     minlens : Length_array (0 .. max_groups);
-    cftab : array (0 .. 257) of Natural;
+    cftab : array (0 .. 257) of Natural_32;
     --
     end_reached : Boolean := False;
 
@@ -97,19 +99,18 @@ package body BZip2.Decoding is
       return res;
     end Read_byte;
 
-    procedure Create_Huffman_Decoding_Tables (
-       limit, base, perm : in out Alpha_U32_array;
-       length            : in     Alpha_Nat_array;
-       min_len, max_len  : Natural;
-       alpha_size        : Integer
-    )
+    procedure Create_Huffman_Decoding_Tables
+      (limit, base, perm : in out Alphabet_U32_array;
+       length            : in     Alphabet_Nat_array;
+       min_len, max_len  : in     Natural;
+       alphabet_size     : in     Integer)
     is
       pp, idx : Integer;
       vec : Unsigned_32;
     begin
       pp := 0;
       for i in min_len .. max_len loop
-        for j in 0 .. alpha_size - 1 loop
+        for j in 0 .. alphabet_size - 1 loop
           if length (j) = i then
             perm (pp) := Unsigned_32 (j);
             pp := pp + 1;
@@ -120,7 +121,7 @@ package body BZip2.Decoding is
         base (i) := 0;
         limit (i) := 0;
       end loop;
-      for i in 0 .. alpha_size - 1 loop
+      for i in 0 .. alphabet_size - 1 loop
         idx := length (i) + 1;
         base (idx) := base (idx) + 1;
       end loop;
@@ -152,7 +153,7 @@ package body BZip2.Decoding is
       end if;
       --  Read the block size and allocate the working array.
       b := Read_byte;
-      block_size := Natural (b) - Character'Pos ('0');
+      block_size := Natural_32 (b) - Character'Pos ('0');
       tt := new Tcardinal_array (0 .. block_size * sub_block_size);
     end Init;
 
@@ -269,7 +270,7 @@ package body BZip2.Decoding is
     begin
       for t in 0 .. group_count - 1 loop
         current_bit_length := Natural (Get_Bits (5));
-        for symbol in 0 .. alpha_size_glob - 1 loop
+        for symbol in 0 .. alphabet_size_glob - 1 loop
           loop
             if current_bit_length not in 1 .. 20 then
               raise data_error;
@@ -287,24 +288,23 @@ package body BZip2.Decoding is
     end Receive_Huffman_Bit_Lengths;
 
     procedure Make_Huffman_Tables is
-      minlen, maxlen : Natural;
+      min_len, max_len : Natural;
     begin
       for t in 0 .. group_count - 1 loop
-        minlen := 32;
-        maxlen := 0;
-        for i in 0 .. alpha_size_glob - 1 loop
-          if len (t)(i) > maxlen then
-            maxlen := len (t)(i);
+        min_len := 32;
+        max_len := 0;
+        for i in 0 .. alphabet_size_glob - 1 loop
+          if len (t)(i) > max_len then
+            max_len := len (t)(i);
           end if;
-          if len (t)(i) < minlen then
-            minlen := len (t)(i);
+          if len (t)(i) < min_len then
+            min_len := len (t)(i);
           end if;
         end loop;
-        Create_Huffman_Decoding_Tables (
-          limit_glob (t), base_glob (t), perm_glob (t), len (t),
-          minlen, maxlen, alpha_size_glob
-        );
-        minlens (t) := minlen;
+        Create_Huffman_Decoding_Tables
+          (limit_glob (t), base_glob (t), perm_glob (t), len (t),
+           min_len, max_len, alphabet_size_glob);
+        minlens (t) := min_len;
       end loop;
     end Make_Huffman_Tables;
 
@@ -316,7 +316,7 @@ package body BZip2.Decoding is
       --
       mtfa_size : constant := 4096;
       mtfl_size : constant := 16;
-      mtfbase : array (0 .. 256 / mtfl_size - 1) of Natural;
+      mtf_base : array (0 .. 256 / mtfl_size - 1) of Natural;
       mtfa : array (0 .. mtfa_size - 1) of Natural;
       --
       procedure Init_MTF is
@@ -327,7 +327,7 @@ package body BZip2.Decoding is
             mtfa (k) := i * mtfl_size + j;
             k := k - 1;
           end loop;
-          mtfbase (i) := k + 1;
+          mtf_base (i) := k + 1;
         end loop;
       end Init_MTF;
       --
@@ -359,21 +359,36 @@ package body BZip2.Decoding is
       begin
         k := mtfa_size;
         for i in reverse 0 .. 256  /  mtfl_size - 1 loop
-          j := mtfbase (i);
+          j := mtf_base (i);
           mtfa (k - 16 .. k - 1) := mtfa (j .. j + 15);
           k := k - 16;
-          mtfbase (i) := k;
+          mtf_base (i) := k;
         end loop;
       end Move_MTF_Block;
       --
       run_b : constant := 1;
-      t : Natural;
+      t : Natural_32;
       next_sym : Unsigned_32;
-      es : Natural;
-      n, nn : Natural;
+      es : Natural_32;
+      n : Natural;
       p, q : Natural;  --  indexes mtfa
       u, v : Natural;  --  indexes mtfbase
       lno, off : Natural;
+
+      procedure Setup_Table is
+      --  Setup cftab to facilitate generation of inverse transformation.
+        t, nn : Natural_32;
+      begin
+        t := 0;
+        for i in 0 .. 256 loop
+          nn := cftab (i);
+          cftab (i) := t;
+          t := t + nn;
+        end loop;
+      end Setup_Table;
+
+      nn : Natural;
+
     begin  --  Receive_MTF_Values
       group_no := -1;
       group_pos := 0;
@@ -387,12 +402,12 @@ package body BZip2.Decoding is
           es := 0;
           n := 0;
           loop
-            es := es + Natural (Shift_Left (next_sym + 1, n));
+            es := es + Natural_32 (Shift_Left (next_sym + 1, n));
             n := n + 1;
             next_sym := Get_MTF_Value;
             exit when next_sym > run_b;
           end loop;
-          n := seq_to_unseq (mtfa (mtfbase (0)));
+          n := seq_to_unseq (mtfa (mtf_base (0)));
           cftab (n) := cftab (n) + es;
           if t + es > sub_block_size * block_size then
             raise data_error;
@@ -406,7 +421,7 @@ package body BZip2.Decoding is
           nn := Natural (next_sym - 1);
           if nn < mtfl_size then
             --  Avoid the costs of the general case.
-            p := mtfbase (0);
+            p := mtf_base (0);
             q := p + nn;
             n := mtfa (q);
             loop
@@ -419,23 +434,23 @@ package body BZip2.Decoding is
             --  General case.
             lno := nn   /   mtfl_size;
             off := nn  mod  mtfl_size;
-            p := mtfbase (lno);
+            p := mtf_base (lno);
             q := p + off;
             n := mtfa (q);
             while q /= p loop
               mtfa (q) := mtfa (q - 1);
               q := q - 1;
             end loop;
-            u := mtfbase'First;
+            u := mtf_base'First;
             v := u + lno;
             loop
-              mtfa (mtfbase (v)) := mtfa (mtfbase (v - 1) + mtfl_size - 1);
+              mtfa (mtf_base (v)) := mtfa (mtf_base (v - 1) + mtfl_size - 1);
               v := v - 1;
-              mtfbase (v) := mtfbase (v) - 1;
+              mtf_base (v) := mtf_base (v) - 1;
               exit when v = u;
             end loop;
-            mtfa (mtfbase (v)) := n;
-            if mtfbase (v) = 0 then
+            mtfa (mtf_base (v)) := n;
+            if mtf_base (v) = 0 then
               Move_MTF_Block;
             end if;
           end if;
@@ -449,18 +464,13 @@ package body BZip2.Decoding is
         end if;
       end loop;
       tt_count := t;
-      --  Setup cftab to facilitate generation of T^(-1).
-      t := 0;
-      for i in 0 .. 256 loop
-        nn := cftab (i);
-        cftab (i) := t;
-        t := t + nn;
-      end loop;
+      Setup_Table;
     end Receive_MTF_Values;
 
     procedure BWT_Detransform is
       a : Unsigned_32 := 0;
-      r, i255 : Natural;
+      i255 : Natural;
+      r : Natural_32;
     begin
       for p in 0 .. tt_count - 1 loop
         i255 := Natural (tt (p) and 16#ff#);
@@ -491,9 +501,9 @@ package body BZip2.Decoding is
         end if;
         stored_blockcrc := Get_Cardinal_32;
         block_randomized := Get_Boolean;
-        block_origin := Natural (Get_Cardinal_24);
+        block_origin := Natural_32 (Get_Cardinal_24);
         Receive_Mapping_Table;
-        alpha_size_glob := inuse_count + 2;
+        alphabet_size_glob := inuse_count + 2;
         Receive_Selectors;
         Undo_MTF_Values_For_Selectors;
         Receive_Huffman_Bit_Lengths;
@@ -510,7 +520,7 @@ package body BZip2.Decoding is
       end if;
     end Decode_Block;
 
-    next_rle_idx : Integer := -2;
+    next_rle_idx : Integer_32 := -2;
     buf : Buffer (1 .. output_buffer_size);
     last : Natural;
 
@@ -556,7 +566,7 @@ package body BZip2.Decoding is
         procedure Consume_RLE is
           pragma Inline (Consume_RLE);
         begin
-          next_rle_idx := Integer (Shift_Right (tt (next_rle_idx), 8));
+          next_rle_idx := Natural_32 (Shift_Right (tt (next_rle_idx), 8));
           decode_available := decode_available - 1;
           if decode_available = 0 then
             compare_final_CRC := True;
@@ -566,7 +576,7 @@ package body BZip2.Decoding is
             --
             --  ** New block
             if Decode_Block then
-              next_rle_idx := Natural (Shift_Right (tt (block_origin), 8));
+              next_rle_idx := Natural_32 (Shift_Right (tt (block_origin), 8));
             else
               next_rle_idx := -1;
               end_reached := True;
@@ -606,10 +616,10 @@ package body BZip2.Decoding is
           end if;
         end if;
         begin
-          --  The big loop
+          Big_RLE_Loop :
           loop
             if decode_available = 0 or end_reached then
-              exit;
+              exit Big_RLE_Loop;
             end if;
             rle_len := 1;
             data := RLE_Byte;
@@ -628,8 +638,8 @@ package body BZip2.Decoding is
               end if;
             end if;
             RLE_Write;
-            exit when count = 0;
-          end loop;
+            exit Big_RLE_Loop when count = 0;
+          end loop Big_RLE_Loop;
         exception
           when input_dried => RLE_Write;
         end;
@@ -638,14 +648,11 @@ package body BZip2.Decoding is
         rle_run_left := rle_len;
       end RLE_Read;
 
-    begin  --  Read
+    begin
       last := buf'Last;
-      if decode_available = Natural'Last then
-        --  Initialize the rle process:
-        --       - Decode a block
-        --       - Initialize pointer.
+      if decode_available = Natural_32'Last then
         if Decode_Block then
-          next_rle_idx := Natural (Shift_Right (tt (block_origin), 8));
+          next_rle_idx := Natural_32 (Shift_Right (tt (block_origin), 8));
         else
           next_rle_idx := -1;
           end_reached := True;
