@@ -37,52 +37,16 @@ package body BZip2.Decoding is
     max_alphabet_size : constant := 258;
     max_code_len      : constant := 23;
     group_size        : constant := 50;
-    max_selectors     : constant := 2 + (900_000 / group_size);
-
-    sub_block_size : constant := 100_000;
+    max_block_size    : constant := 9;
+    sub_block_size    : constant := 100_000;
+    max_selectors     : constant := 2 + ((max_block_size * sub_block_size) / group_size);
 
     type Length_Array is array (Integer range <>) of Natural;
 
     use Interfaces;
 
-    subtype Natural_32 is Integer_32 range 0 .. Integer_32'Last;
-
-    block_randomized : Boolean := False;
-    block_size : Natural_32;
-
-    type Tcardinal_array is array (Natural_32 range <>) of Unsigned_32;
-    type Pcardinal_array is access Tcardinal_array;
-    procedure Dispose is new Ada.Unchecked_Deallocation (Tcardinal_array, Pcardinal_array);
-    tt : Pcardinal_array;
-    tt_count : Natural_32;
-
-    rle_run_left : Natural := 0;
-    rle_run_data : Byte := 0;
-    decode_available : Natural_32 := Natural_32'Last;
-    block_origin : Natural_32 := 0;
-    read_data : Byte := 0;
-    bits_available : Natural := 0;
-    inuse_count : Natural;
-    seq_to_unseq : array (0 .. 255) of Natural;
-    alphabet_size_glob : Natural;  --  Not global actually, but less local than "alphabet_size" below
-    group_count : Natural;
-    --
-    selector_count : Natural;
-    selector, selector_mtf : array (0 .. max_selectors) of Byte;
-    --
     type Alphabet_U32_array is array (0 .. max_alphabet_size) of Unsigned_32;
     type Alphabet_Nat_array is array (0 .. max_alphabet_size) of Natural;
-
-    len          : array (0 .. max_groups) of Alphabet_Nat_array;
-    limit_glob,  --  Not global actually, but less local than "limit" below
-    base_glob,   --  Not global actually, but less local than "base" below
-    perm_glob    --  Not global actually, but less local than "perm" below
-                 : array (0 .. max_groups) of Alphabet_U32_array;
-    --
-    min_lens : Length_Array (0 .. max_groups);
-    cf_tab : array (0 .. 257) of Natural_32;
-    --
-    end_reached : Boolean := False;
 
     in_buf : Buffer (1 .. input_buffer_size);
     in_idx : Natural := in_buf'Last + 1;
@@ -139,6 +103,15 @@ package body BZip2.Decoding is
       end loop;
     end Create_Huffman_Decoding_Tables;
 
+    subtype Natural_32 is Integer_32 range 0 .. Integer_32'Last;
+
+    type Tcardinal_array is array (Natural_32 range <>) of Unsigned_32;
+    type Pcardinal_array is access Tcardinal_array;
+    procedure Dispose is new Ada.Unchecked_Deallocation (Tcardinal_array, Pcardinal_array);
+
+    block_size : Natural_32;
+    tt : Pcardinal_array;
+
     procedure Init is
       magic : String (1 .. 3);
       b : Byte;
@@ -153,25 +126,31 @@ package body BZip2.Decoding is
       end if;
       --  Read the block size and allocate the working array.
       b := Read_byte;
+      if b not in Character'Pos ('1') .. Character'Pos ('9') then
+        raise data_error with "Received bad BZip2 block size, should be in '1' .. '9'";
+      end if;
       block_size := Natural_32 (b) - Character'Pos ('0');
       tt := new Tcardinal_array (0 .. block_size * sub_block_size);
     end Init;
 
+    bits_available : Natural := 0;
+    read_data : Byte := 0;
+
     function Get_Bits (n : Natural) return Byte is
-      Result_get_bits : Byte;
+      result_get_bits : Byte;
       data : Byte;
     begin
       if n > bits_available then
         data := Read_byte;
-        Result_get_bits := Shift_Right (read_data, 8 - n) or Shift_Right (data, 8 - (n - bits_available));
+        result_get_bits := Shift_Right (read_data, 8 - n) or Shift_Right (data, 8 - (n - bits_available));
         read_data := Shift_Left (data, n - bits_available);
         bits_available := bits_available + 8;
       else
-        Result_get_bits := Shift_Right (read_data, 8 - n);
+        result_get_bits := Shift_Right (read_data, 8 - n);
         read_data := Shift_Left (read_data, n);
       end if;
       bits_available := bits_available - n;
-      return Result_get_bits;
+      return result_get_bits;
     end Get_Bits;
 
     function Get_Bits_32 (n : Natural) return Unsigned_32 is
@@ -202,6 +181,9 @@ package body BZip2.Decoding is
              Get_Bits_32 (8);
     end Get_Cardinal_32;
 
+    seq_to_unseq : array (0 .. 255) of Natural;
+    inuse_count : Natural;
+
     --  Receive the mapping table. To save space, the inuse set is stored in pieces
     --  of 16 bits. First 16 bits are stored which pieces of 16 bits are used, then
     --  the pieces follow.
@@ -228,6 +210,10 @@ package body BZip2.Decoding is
         end if;
       end loop;
     end Receive_Mapping_Table;
+
+    group_count : Natural;
+    selector_count : Natural;
+    selector, selector_mtf : array (0 .. max_selectors) of Byte;
 
     procedure Receive_Selectors is
       j : Byte;
@@ -265,12 +251,15 @@ package body BZip2.Decoding is
       end loop;
     end Undo_MTF_Values_For_Selectors;
 
+    alphabet_size_overall : Natural;  --  Alphabet size used for all groups
+    len : array (0 .. max_groups) of Alphabet_Nat_array;
+
     procedure Receive_Huffman_Bit_Lengths is
       current_bit_length : Natural;
     begin
       for t in 0 .. group_count - 1 loop
         current_bit_length := Natural (Get_Bits (5));
-        for symbol in 0 .. alphabet_size_glob - 1 loop
+        for symbol in 0 .. alphabet_size_overall - 1 loop
           loop
             if current_bit_length not in 1 .. 20 then
               raise data_error;
@@ -287,13 +276,17 @@ package body BZip2.Decoding is
       end loop;
     end Receive_Huffman_Bit_Lengths;
 
+    --  Tables for Huffman trees.
+    limit, base, perm : array (0 .. max_groups) of Alphabet_U32_array;
+    min_lens : Length_Array (0 .. max_groups);
+
     procedure Make_Huffman_Tables is
       min_len, max_len : Natural;
     begin
       for t in 0 .. group_count - 1 loop
         min_len := 32;
         max_len := 0;
-        for i in 0 .. alphabet_size_glob - 1 loop
+        for i in 0 .. alphabet_size_overall - 1 loop
           if len (t)(i) > max_len then
             max_len := len (t)(i);
           end if;
@@ -302,8 +295,7 @@ package body BZip2.Decoding is
           end if;
         end loop;
         Create_Huffman_Decoding_Tables
-          (limit_glob (t), base_glob (t), perm_glob (t), len (t),
-           min_len, max_len, alphabet_size_glob);
+          (limit (t), base (t), perm (t), len (t), min_len, max_len, alphabet_size_overall);
         min_lens (t) := min_len;
       end loop;
     end Make_Huffman_Tables;
@@ -311,6 +303,9 @@ package body BZip2.Decoding is
     -------------------------
     -- MTF - Move To Front --
     -------------------------
+
+    cf_tab : array (0 .. 257) of Natural_32;
+    tt_count : Natural_32;
 
     procedure Receive_MTF_Values is
       --  NB: it seems that MTF is also performed in this procedure (where else?).
@@ -347,11 +342,11 @@ package body BZip2.Decoding is
         group_pos := group_pos - 1;
         z_n := g_min_len;
         z_vec := Get_Bits_32 (z_n);
-        while z_vec > limit_glob (g_sel)(z_n) loop
+        while z_vec > limit (g_sel)(z_n) loop
           z_n := z_n + 1;
           z_vec := Shift_Left (z_vec, 1) or Get_Bits_32 (1);
         end loop;
-        return perm_glob (g_sel)(Natural (z_vec - base_glob (g_sel)(z_n)));
+        return perm (g_sel)(Natural (z_vec - base (g_sel)(z_n)));
       end Get_MTF_Value;
       --
       procedure Move_MTF_Block is
@@ -484,6 +479,9 @@ package body BZip2.Decoding is
 
     compare_final_CRC : Boolean := False;
     stored_blockcrc, mem_stored_blockcrc, computed_crc : Unsigned_32;
+    block_randomized : Boolean := False;
+    block_origin : Natural_32 := 0;
+    decode_available : Natural_32 := Natural_32'Last;
 
     --  Decode a new compressed block.
     function Decode_Block return Boolean is
@@ -504,7 +502,7 @@ package body BZip2.Decoding is
         block_randomized := Get_Boolean;
         block_origin := Natural_32 (Get_Cardinal_24);
         Receive_Mapping_Table;
-        alphabet_size_glob := inuse_count + 2;
+        alphabet_size_overall := inuse_count + 2;
         Receive_Selectors;
         Undo_MTF_Values_For_Selectors;
         Receive_Huffman_Bit_Lengths;
@@ -525,6 +523,9 @@ package body BZip2.Decoding is
     next_rle_idx : Integer_32 := -2;
     buf : Buffer (1 .. output_buffer_size);
     last : Natural;
+    end_reached : Boolean := False;
+    rle_run_left : Natural := 0;
+    rle_run_data : Byte := 0;
 
     procedure Read_Chunk is
       shorten : Natural := 0;
