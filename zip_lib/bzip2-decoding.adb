@@ -33,15 +33,15 @@ package body BZip2.Decoding is
 
   procedure Decompress is
 
-    max_groups     : constant := 6;
+    max_groups        : constant := 6;
     max_alphabet_size : constant := 258;
-    max_code_len   : constant := 23;
-    group_size     : constant := 50;
-    max_selectors  : constant := 2 + (900_000 / group_size);
+    max_code_len      : constant := 23;
+    group_size        : constant := 50;
+    max_selectors     : constant := 2 + (900_000 / group_size);
 
     sub_block_size : constant := 100_000;
 
-    type Length_array is array (Integer range <>) of Natural;
+    type Length_Array is array (Integer range <>) of Natural;
 
     use Interfaces;
 
@@ -79,8 +79,8 @@ package body BZip2.Decoding is
     perm_glob    --  Not global actually, but less local than "perm" below
                  : array (0 .. max_groups) of Alphabet_U32_array;
     --
-    minlens : Length_array (0 .. max_groups);
-    cftab : array (0 .. 257) of Natural_32;
+    min_lens : Length_Array (0 .. max_groups);
+    cf_tab : array (0 .. 257) of Natural_32;
     --
     end_reached : Boolean := False;
 
@@ -304,7 +304,7 @@ package body BZip2.Decoding is
         Create_Huffman_Decoding_Tables
           (limit_glob (t), base_glob (t), perm_glob (t), len (t),
            min_len, max_len, alphabet_size_glob);
-        minlens (t) := min_len;
+        min_lens (t) := min_len;
       end loop;
     end Make_Huffman_Tables;
 
@@ -313,18 +313,18 @@ package body BZip2.Decoding is
     -------------------------
 
     procedure Receive_MTF_Values is
-      --
-      mtfa_size : constant := 4096;
-      mtfl_size : constant := 16;
-      mtf_base : array (0 .. 256 / mtfl_size - 1) of Natural;
-      mtfa : array (0 .. mtfa_size - 1) of Natural;
+      --  NB: it seems that MTF is also performed in this procedure (where else?).
+      mtf_a_size : constant := 4096;
+      mtf_l_size : constant := 16;
+      mtf_base : array (0 .. 256 / mtf_l_size - 1) of Natural;
+      mtf_a : array (0 .. mtf_a_size - 1) of Natural;
       --
       procedure Init_MTF is
-        k : Natural := mtfa_size - 1;
+        k : Natural := mtf_a_size - 1;
       begin
-        for i in reverse 0 .. 256  /  mtfl_size - 1 loop
-          for j in reverse 0 .. mtfl_size - 1 loop
-            mtfa (k) := i * mtfl_size + j;
+        for i in reverse 0 .. 256  /  mtf_l_size - 1 loop
+          for j in reverse 0 .. mtf_l_size - 1 loop
+            mtf_a (k) := i * mtf_l_size + j;
             k := k - 1;
           end loop;
           mtf_base (i) := k + 1;
@@ -332,35 +332,35 @@ package body BZip2.Decoding is
       end Init_MTF;
       --
       group_pos, group_no : Integer;
-      gminlen, gsel : Natural;
+      g_min_len, g_sel : Natural;
       --
       function Get_MTF_Value return Unsigned_32 is
-        zn : Natural;
-        zvec : Unsigned_32;
+        z_n : Natural;
+        z_vec : Unsigned_32;
       begin
         if group_pos = 0 then
           group_no := group_no + 1;
           group_pos := group_size;
-          gsel := Natural (selector (group_no));
-          gminlen := minlens (gsel);
+          g_sel := Natural (selector (group_no));
+          g_min_len := min_lens (g_sel);
         end if;
         group_pos := group_pos - 1;
-        zn := gminlen;
-        zvec := Get_Bits_32 (zn);
-        while zvec > limit_glob (gsel)(zn) loop
-          zn := zn + 1;
-          zvec := Shift_Left (zvec, 1) or Get_Bits_32 (1);
+        z_n := g_min_len;
+        z_vec := Get_Bits_32 (z_n);
+        while z_vec > limit_glob (g_sel)(z_n) loop
+          z_n := z_n + 1;
+          z_vec := Shift_Left (z_vec, 1) or Get_Bits_32 (1);
         end loop;
-        return perm_glob (gsel)(Natural (zvec - base_glob (gsel)(zn)));
+        return perm_glob (g_sel)(Natural (z_vec - base_glob (g_sel)(z_n)));
       end Get_MTF_Value;
       --
       procedure Move_MTF_Block is
         j, k : Natural;
       begin
-        k := mtfa_size;
-        for i in reverse 0 .. 256  /  mtfl_size - 1 loop
+        k := mtf_a_size;
+        for i in reverse 0 .. 256  /  mtf_l_size - 1 loop
           j := mtf_base (i);
-          mtfa (k - 16 .. k - 1) := mtfa (j .. j + 15);
+          mtf_a (k - 16 .. k - 1) := mtf_a (j .. j + 15);
           k := k - 16;
           mtf_base (i) := k;
         end loop;
@@ -371,18 +371,18 @@ package body BZip2.Decoding is
       next_sym : Unsigned_32;
       es : Natural_32;
       n : Natural;
-      p, q : Natural;  --  indexes mtfa
-      u, v : Natural;  --  indexes mtfbase
+      p, q : Natural;  --  indexes mtf_a
+      u, v : Natural;  --  indexes mtf_base
       lno, off : Natural;
 
       procedure Setup_Table is
-      --  Setup cftab to facilitate generation of inverse transformation.
+      --  Setup cf_tab to facilitate generation of inverse transformation.
         t, nn : Natural_32;
       begin
         t := 0;
         for i in 0 .. 256 loop
-          nn := cftab (i);
-          cftab (i) := t;
+          nn := cf_tab (i);
+          cf_tab (i) := t;
           t := t + nn;
         end loop;
       end Setup_Table;
@@ -393,7 +393,7 @@ package body BZip2.Decoding is
       group_no := -1;
       group_pos := 0;
       t := 0;
-      cftab := (others => 0);
+      cf_tab := (others => 0);
       Init_MTF;
       next_sym := Get_MTF_Value;
       --
@@ -407,8 +407,8 @@ package body BZip2.Decoding is
             next_sym := Get_MTF_Value;
             exit when next_sym > run_b;
           end loop;
-          n := seq_to_unseq (mtfa (mtf_base (0)));
-          cftab (n) := cftab (n) + es;
+          n := seq_to_unseq (mtf_a (mtf_base (0)));
+          cf_tab (n) := cf_tab (n) + es;
           if t + es > sub_block_size * block_size then
             raise data_error;
           end if;
@@ -418,43 +418,44 @@ package body BZip2.Decoding is
             t := t + 1;
           end loop;
         else
-          nn := Natural (next_sym - 1);
-          if nn < mtfl_size then
+          --  NB: Likely, the reverse MTF algo happens here.
+          nn := Natural (next_sym - 1);  --  Here we know: next_sym > 1, nn > 0.
+          if nn < mtf_l_size then
             --  Avoid the costs of the general case.
             p := mtf_base (0);
-            q := p + nn;
-            n := mtfa (q);
+            q := p + nn;  --  We know: q > p.
+            n := mtf_a (q);
             loop
-              mtfa (q) := mtfa (q - 1);
+              mtf_a (q) := mtf_a (q - 1);
               q := q - 1;
               exit when q = p;
             end loop;
-            mtfa (q) := n;
+            mtf_a (q) := n;
           else
             --  General case.
-            lno := nn   /   mtfl_size;
-            off := nn  mod  mtfl_size;
+            lno := nn   /   mtf_l_size;
+            off := nn  mod  mtf_l_size;
             p := mtf_base (lno);
-            q := p + off;
-            n := mtfa (q);
+            q := p + off;  --  q >= p
+            n := mtf_a (q);
             while q /= p loop
-              mtfa (q) := mtfa (q - 1);
+              mtf_a (q) := mtf_a (q - 1);
               q := q - 1;
             end loop;
             u := mtf_base'First;
             v := u + lno;
             loop
-              mtfa (mtf_base (v)) := mtfa (mtf_base (v - 1) + mtfl_size - 1);
+              mtf_a (mtf_base (v)) := mtf_a (mtf_base (v - 1) + mtf_l_size - 1);
               v := v - 1;
               mtf_base (v) := mtf_base (v) - 1;
               exit when v = u;
             end loop;
-            mtfa (mtf_base (v)) := n;
+            mtf_a (mtf_base (v)) := n;
             if mtf_base (v) = 0 then
               Move_MTF_Block;
             end if;
           end if;
-          cftab (seq_to_unseq (n)) := cftab (seq_to_unseq (n)) + 1;
+          cf_tab (seq_to_unseq (n)) := cf_tab (seq_to_unseq (n)) + 1;
           tt (t) := Unsigned_32 (seq_to_unseq (n));
           t := t + 1;
           if t > sub_block_size * block_size then
@@ -469,13 +470,13 @@ package body BZip2.Decoding is
 
     procedure BWT_Detransform is
       a : Unsigned_32 := 0;
-      i255 : Natural;
       r : Natural_32;
+      i255 : Natural;
     begin
       for p in 0 .. tt_count - 1 loop
         i255 := Natural (tt (p) and 16#ff#);
-        r := cftab (i255);
-        cftab (i255) := cftab (i255) + 1;
+        r := cf_tab (i255);
+        cf_tab (i255) := cf_tab (i255) + 1;
         tt (r) := tt (r) or a;
         a := a + 16#100#;
       end loop;
@@ -508,8 +509,9 @@ package body BZip2.Decoding is
         Undo_MTF_Values_For_Selectors;
         Receive_Huffman_Bit_Lengths;
         Make_Huffman_Tables;
+        --  Move-to-Front:
         Receive_MTF_Values;
-        --  Undo the Burrows Wheeler transformation.
+        --  Undo the Burrows Wheeler Transformation.
         BWT_Detransform;
         decode_available := tt_count;
         return True;
