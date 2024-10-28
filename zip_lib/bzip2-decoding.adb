@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2009 .. 2024 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,25 +33,14 @@ package body BZip2.Decoding is
 
   procedure Decompress is
 
-    max_groups        : constant := 6;
-    max_alphabet_size : constant := 258;
-    max_code_len      : constant := 23;
-    group_size        : constant := 50;
-    max_block_size    : constant := 9;
-    sub_block_size    : constant := 100_000;
-    max_selectors     : constant := 2 + ((max_block_size * sub_block_size) / group_size);
-
-    type Length_Array is array (Integer range <>) of Natural;
-
-    use Interfaces;
-
-    type Alphabet_U32_array is array (0 .. max_alphabet_size) of Unsigned_32;
-    type Alphabet_Nat_array is array (0 .. max_alphabet_size) of Natural;
+    --------------------------
+    --  Byte & Bit buffers  --
+    --------------------------
 
     in_buf : Buffer (1 .. input_buffer_size);
     in_idx : Natural := in_buf'Last + 1;
 
-    function Read_byte return Byte is
+    function Read_Byte return Byte is
       res : Byte;
     begin
       if in_idx > in_buf'Last then
@@ -61,7 +50,125 @@ package body BZip2.Decoding is
       res := in_buf (in_idx);
       in_idx := in_idx + 1;
       return res;
-    end Read_byte;
+    end Read_Byte;
+
+    bits_available : Natural := 0;
+    read_data : Byte := 0;
+    use Interfaces;
+
+    function Get_Bits (n : Natural) return Byte is
+      result_get_bits : Byte;
+      data : Byte;
+    begin
+      if n > bits_available then
+        data := Read_Byte;
+        result_get_bits := Shift_Right (read_data, 8 - n) or Shift_Right (data, 8 - (n - bits_available));
+        read_data := Shift_Left (data, n - bits_available);
+        bits_available := bits_available + 8;
+      else
+        result_get_bits := Shift_Right (read_data, 8 - n);
+        read_data := Shift_Left (read_data, n);
+      end if;
+      bits_available := bits_available - n;
+      return result_get_bits;
+    end Get_Bits;
+
+    function Get_Bits_32 (n : Natural) return Unsigned_32 is
+    begin
+      return Unsigned_32 (Get_Bits (n));
+    end Get_Bits_32;
+
+    function Get_Boolean return Boolean is
+    begin
+      return Boolean'Val (Get_Bits (1));
+    end Get_Boolean;
+
+    function Get_Byte return Byte is
+    begin
+      return Get_Bits (8);
+    end Get_Byte;
+
+    function Get_Cardinal_24 return Unsigned_32 is
+    begin
+      return Shift_Left (Get_Bits_32 (8), 16) or Shift_Left (Get_Bits_32 (8), 8) or Get_Bits_32 (8);
+    end Get_Cardinal_24;
+
+    function Get_Cardinal_32 return Unsigned_32 is
+    begin
+      return Shift_Left (Get_Bits_32 (8), 24)  or
+             Shift_Left (Get_Bits_32 (8), 16)  or
+             Shift_Left (Get_Bits_32 (8), 8)  or
+             Get_Bits_32 (8);
+    end Get_Cardinal_32;
+
+    seq_to_unseq : array (0 .. 255) of Natural;
+    inuse_count : Natural;
+
+    --  Receive the mapping table. To save space, the in_use set is stored in pieces of 16 bits.
+    --  First 16 bits store which pieces of 16 bits are used, then the pieces follow.
+    procedure Receive_Mapping_Table is
+      in_use : array (0 .. 15) of Boolean;
+    begin
+      --  Receive the first 16 bits which tell which pieces are stored.
+      for i in in_use'Range loop
+        in_use (i) := Get_Boolean;
+      end loop;
+      --  Receive the used pieces.
+      inuse_count := 0;
+      for i in in_use'Range loop
+        if in_use (i) then
+          for j in 0 .. 15 loop
+            if Get_Boolean then
+              seq_to_unseq (inuse_count) := 16 * i + j;
+              inuse_count := inuse_count + 1;
+            end if;
+          end loop;
+        end if;
+      end loop;
+    end Receive_Mapping_Table;
+
+    group_count : Byte;
+    selector_count : Natural;
+    selector, selector_mtf : array (0 .. max_selectors) of Byte;
+
+    procedure Receive_Selectors is
+      symbol : array (Byte range 0 .. max_groups) of Byte;
+      j, tmp, v : Byte;
+    begin
+      group_count := Get_Bits (3);  --  Up to 7.
+      selector_count := Natural (Shift_Left (Get_Bits_32 (8), 7) or Get_Bits_32 (7));  --  Up to 32767.
+      --  1) Receive selector list, MTF-transformed:
+      for i in 0 .. selector_count - 1 loop
+        j := 0;
+        while Get_Boolean loop
+          j := j + 1;
+          if j > 5 then
+            raise data_error;
+          end if;
+        end loop;
+        selector_mtf (i) := j;
+      end loop;
+      --  2) De-transform selectors list:
+      for w in Byte range 0 .. group_count - 1 loop
+        --  We start with 0, 1, 2, 3, ...:
+        symbol (w) := w;
+      end loop;
+      Undo_MTF_Values_For_Selectors :
+      for i in 0 .. selector_count - 1 loop
+        v := selector_mtf (i);
+        --  Move pos (v) to the front.
+        tmp := symbol (v);
+        while v /= 0 loop
+          symbol (v) := symbol (v - 1);
+          v := v - 1;
+        end loop;
+        symbol (0) := tmp;
+        selector (i) := tmp;
+      end loop Undo_MTF_Values_For_Selectors;
+    end Receive_Selectors;
+
+    type Alphabet_U32_array is array (0 .. max_alphabet_size) of Unsigned_32;
+    type Alphabet_Nat_array is array (0 .. max_alphabet_size) of Natural;
 
     procedure Create_Huffman_Decoding_Tables
       (limit, base, perm : in out Alphabet_U32_array;
@@ -105,154 +212,12 @@ package body BZip2.Decoding is
 
     subtype Natural_32 is Integer_32 range 0 .. Integer_32'Last;
 
-    type Tcardinal_array is array (Natural_32 range <>) of Unsigned_32;
-    type Pcardinal_array is access Tcardinal_array;
-    procedure Dispose is new Ada.Unchecked_Deallocation (Tcardinal_array, Pcardinal_array);
-
-    block_size : Natural_32;
-    tt : Pcardinal_array;
-
-    procedure Init is
-      magic : String (1 .. 3);
-      b : Byte;
-    begin
-      --  Read the magic.
-      for i in magic'Range loop
-        b := Read_byte;
-        magic (i) := Character'Val (b);
-      end loop;
-      if magic /= "BZh" then
-        raise bad_header_magic;
-      end if;
-      --  Read the block size and allocate the working array.
-      b := Read_byte;
-      if b not in Character'Pos ('1') .. Character'Pos ('9') then
-        raise data_error with "Received bad BZip2 block size, should be in '1' .. '9'";
-      end if;
-      block_size := Natural_32 (b) - Character'Pos ('0');
-      tt := new Tcardinal_array (0 .. block_size * sub_block_size);
-    end Init;
-
-    bits_available : Natural := 0;
-    read_data : Byte := 0;
-
-    function Get_Bits (n : Natural) return Byte is
-      result_get_bits : Byte;
-      data : Byte;
-    begin
-      if n > bits_available then
-        data := Read_byte;
-        result_get_bits := Shift_Right (read_data, 8 - n) or Shift_Right (data, 8 - (n - bits_available));
-        read_data := Shift_Left (data, n - bits_available);
-        bits_available := bits_available + 8;
-      else
-        result_get_bits := Shift_Right (read_data, 8 - n);
-        read_data := Shift_Left (read_data, n);
-      end if;
-      bits_available := bits_available - n;
-      return result_get_bits;
-    end Get_Bits;
-
-    function Get_Bits_32 (n : Natural) return Unsigned_32 is
-    begin
-      return Unsigned_32 (Get_Bits (n));
-    end Get_Bits_32;
-
-    function Get_Boolean return Boolean is
-    begin
-      return Boolean'Val (Get_Bits (1));
-    end Get_Boolean;
-
-    function Get_Byte return Byte is
-    begin
-      return Get_Bits (8);
-    end Get_Byte;
-
-    function Get_Cardinal_24 return Unsigned_32 is
-    begin
-      return Shift_Left (Get_Bits_32 (8), 16) or Shift_Left (Get_Bits_32 (8), 8) or Get_Bits_32 (8);
-    end Get_Cardinal_24;
-
-    function Get_Cardinal_32 return Unsigned_32 is
-    begin
-      return Shift_Left (Get_Bits_32 (8), 24)  or
-             Shift_Left (Get_Bits_32 (8), 16)  or
-             Shift_Left (Get_Bits_32 (8), 8)  or
-             Get_Bits_32 (8);
-    end Get_Cardinal_32;
-
-    seq_to_unseq : array (0 .. 255) of Natural;
-    inuse_count : Natural;
-
-    --  Receive the mapping table. To save space, the inuse set is stored in pieces
-    --  of 16 bits. First 16 bits are stored which pieces of 16 bits are used, then
-    --  the pieces follow.
-    procedure Receive_Mapping_Table is
-      inuse16 : array (0 .. 15) of Boolean;
-      --* inuse: array(0 .. 255) of Boolean; -- for dump purposes
-    begin
-      --  Receive the first 16 bits which tell which pieces are stored.
-      for i in inuse16'Range loop
-        inuse16 (i) := Get_Boolean;
-      end loop;
-      --  Receive the used pieces.
-      --* inuse:= (others => False);
-      inuse_count := 0;
-      for i in inuse16'Range loop
-        if inuse16 (i) then
-          for j in 0 .. 15 loop
-            if Get_Boolean then
-              --* inuse(16*i+j):= True;
-              seq_to_unseq (inuse_count) := 16 * i + j;
-              inuse_count := inuse_count + 1;
-            end if;
-          end loop;
-        end if;
-      end loop;
-    end Receive_Mapping_Table;
-
-    group_count : Natural;
-    selector_count : Natural;
-    selector, selector_mtf : array (0 .. max_selectors) of Byte;
-
-    procedure Receive_Selectors is
-      j : Byte;
-    begin
-      group_count := Natural (Get_Bits (3));
-      selector_count := Natural (Shift_Left (Get_Bits_32 (8), 7) or Get_Bits_32 (7));
-      for i in 0 .. selector_count - 1 loop
-        j := 0;
-        while Get_Boolean loop
-          j := j + 1;
-          if j > 5 then
-            raise data_error;
-          end if;
-        end loop;
-        selector_mtf (i) := j;
-      end loop;
-    end Receive_Selectors;
-
-    procedure Undo_MTF_Values_For_Selectors is
-      pos : array (0 .. max_groups) of Natural;
-      v, tmp : Natural;
-    begin
-      for w in 0 .. group_count - 1 loop
-        pos (w) := w;
-      end loop;
-      for i in 0 .. selector_count - 1 loop
-        v := Natural (selector_mtf (i));
-        tmp := pos (v);
-        while v /= 0 loop
-          pos (v) := pos (v - 1);
-          v := v - 1;
-        end loop;
-        pos (0) := tmp;
-        selector (i) := Byte (tmp);
-      end loop;
-    end Undo_MTF_Values_For_Selectors;
+    type U32_Array is array (Natural_32 range <>) of Unsigned_32;
+    type U32_Array_Access is access U32_Array;
+    procedure Dispose is new Ada.Unchecked_Deallocation (U32_Array, U32_Array_Access);
 
     alphabet_size_overall : Natural;  --  Alphabet size used for all groups
-    len : array (0 .. max_groups) of Alphabet_Nat_array;
+    len : array (Byte range 0 .. max_groups) of Alphabet_Nat_array;
 
     procedure Receive_Huffman_Bit_Lengths is
       current_bit_length : Natural;
@@ -277,8 +242,8 @@ package body BZip2.Decoding is
     end Receive_Huffman_Bit_Lengths;
 
     --  Tables for Huffman trees.
-    limit, base, perm : array (0 .. max_groups) of Alphabet_U32_array;
-    min_lens : Length_Array (0 .. max_groups);
+    limit, base, perm : array (Byte range 0 .. max_groups) of Alphabet_U32_array;
+    min_lens : array (Byte range 0 .. max_groups) of Natural;
 
     procedure Make_Huffman_Tables is
       min_len, max_len : Natural;
@@ -299,6 +264,9 @@ package body BZip2.Decoding is
         min_lens (t) := min_len;
       end loop;
     end Make_Huffman_Tables;
+
+    block_size : Natural_32;
+    tt : U32_Array_Access;
 
     -------------------------
     -- MTF - Move To Front --
@@ -327,7 +295,8 @@ package body BZip2.Decoding is
       end Init_MTF;
       --
       group_pos, group_no : Integer;
-      g_min_len, g_sel : Natural;
+      g_sel : Byte;
+      g_min_len : Natural;
       --
       function Get_MTF_Value return Unsigned_32 is
         z_n : Natural;
@@ -336,7 +305,7 @@ package body BZip2.Decoding is
         if group_pos = 0 then
           group_no := group_no + 1;
           group_pos := group_size;
-          g_sel := Natural (selector (group_no));
+          g_sel := selector (group_no);
           g_min_len := min_lens (g_sel);
         end if;
         group_pos := group_pos - 1;
@@ -361,7 +330,6 @@ package body BZip2.Decoding is
         end loop;
       end Move_MTF_Block;
       --
-      run_b : constant := 1;
       t : Natural_32;
       next_sym : Unsigned_32;
       es : Natural_32;
@@ -504,7 +472,6 @@ package body BZip2.Decoding is
         Receive_Mapping_Table;
         alphabet_size_overall := inuse_count + 2;
         Receive_Selectors;
-        Undo_MTF_Values_For_Selectors;
         Receive_Huffman_Bit_Lengths;
         Make_Huffman_Tables;
         --  Move-to-Front:
@@ -665,8 +632,29 @@ package body BZip2.Decoding is
       last := last - shorten;
     end Read_Chunk;
 
+    procedure Init_Stream_Decompression is
+      magic : String (1 .. 3);
+      b : Byte;
+    begin
+      --  Read the magic.
+      for i in magic'Range loop
+        b := Read_Byte;
+        magic (i) := Character'Val (b);
+      end loop;
+      if magic /= "BZh" then
+        raise bad_header_magic;
+      end if;
+      --  Read the block size and allocate the working array.
+      b := Read_Byte;
+      if b not in Character'Pos ('1') .. Character'Pos ('9') then
+        raise data_error with "Received bad BZip2 block size, should be in '1' .. '9'";
+      end if;
+      block_size := Natural_32 (b) - Character'Pos ('0');
+      tt := new U32_Array (0 .. block_size * sub_block_size);
+    end Init_Stream_Decompression;
+
   begin
-    Init;
+    Init_Stream_Decompression;
     loop
       Read_Chunk;
       Write (buf (1 .. last));

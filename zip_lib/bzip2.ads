@@ -9,16 +9,20 @@
 --  LZ77/LZ78-based compressors, and approaches the performance of the
 --  PPM family of statistical compressors.
 --
+--  bzip2 was created by Julian Seward in 1996.
+--  Web site: https://sourceware.org/bzip2/
+--
 --  Documentation pointers:
 --
 --    Burrows-Wheeler transform
 --      https://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform
+--
 --    MTF Move-To-Front
 --      https://en.wikipedia.org/wiki/Move-to-front_transform
 --
 --  Legal licensing note:
 --
---  Copyright (c) 2018 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2018 .. 2024 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -49,6 +53,22 @@ package BZip2 is
   subtype Byte is Interfaces.Unsigned_8;
 
 private
+
+  --  Constants used for both compression and decompression.
+  --  BZ_* names as in bzlib_private.h.
+
+  max_alphabet_size : constant := 258;  --  BZ_MAX_ALPHA_SIZE
+  max_code_len      : constant := 23;   --  BZ_MAX_CODE_LEN
+
+  run_a             : constant := 0;    --  BZ_RUNA
+  run_b             : constant := 1;    --  BZ_RUNB
+
+  max_groups        : constant := 6;    --  BZ_N_GROUPS
+  group_size        : constant := 50;   --  BZ_G_SIZE
+
+  max_block_size    : constant := 9;
+  sub_block_size    : constant := 100_000;
+  max_selectors     : constant := 2 + ((max_block_size * sub_block_size) / group_size);  --  BZ_MAX_SELECTORS
 
   --  Cyclic redundancy check to verify uncompressed block data integrity
 
