@@ -135,8 +135,14 @@ package body BZip2.Decoding is
       symbol : array (Byte range 0 .. max_groups) of Byte;
       j, tmp, v : Byte;
     begin
+
       group_count := Get_Bits (3);  --  Up to 7.
       selector_count := Natural (Shift_Left (Get_Bits_32 (8), 7) or Get_Bits_32 (7));  --  Up to 32767.
+      if selector_count > max_selectors then
+        raise data_error with "Invalid BZip2 selector count, maximum is" & max_selectors'Image;
+        --  With standard settings, the maximum value is 18002.
+      end if;
+
       --  1) Receive selector list, MTF-transformed:
       for i in 0 .. selector_count - 1 loop
         j := 0;
@@ -148,6 +154,7 @@ package body BZip2.Decoding is
         end loop;
         selector_mtf (i) := j;
       end loop;
+
       --  2) De-transform selectors list:
       for w in Byte range 0 .. group_count - 1 loop
         --  We start with 0, 1, 2, 3, ...:
@@ -165,6 +172,7 @@ package body BZip2.Decoding is
         symbol (0) := tmp;
         selector (i) := tmp;
       end loop Undo_MTF_Values_For_Selectors;
+
     end Receive_Selectors;
 
     type Alphabet_U32_array is array (0 .. max_alphabet_size) of Unsigned_32;

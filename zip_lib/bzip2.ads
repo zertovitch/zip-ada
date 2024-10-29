@@ -54,14 +54,18 @@ package BZip2 is
 
 private
 
-  --  Constants used for both compression and decompression.
-  --  BZ_* names as in bzlib_private.h.
+  --------------------------------------------------------------
+  --  Constants used for both compression and decompression.  --
+  --  BZ_* names as in bzlib_private.h.                       --
+  --------------------------------------------------------------
 
   max_alphabet_size : constant := 258;  --  BZ_MAX_ALPHA_SIZE
   max_code_len      : constant := 23;   --  BZ_MAX_CODE_LEN
 
   run_a             : constant := 0;    --  BZ_RUNA
   run_b             : constant := 1;    --  BZ_RUNB
+
+  --  Each group of data can use one of up to 7 different Huffman tables.
 
   max_groups        : constant := 6;    --  BZ_N_GROUPS
   group_size        : constant := 50;   --  BZ_G_SIZE
@@ -70,7 +74,9 @@ private
   sub_block_size    : constant := 100_000;
   max_selectors     : constant := 2 + ((max_block_size * sub_block_size) / group_size);  --  BZ_MAX_SELECTORS
 
-  --  Cyclic redundancy check to verify uncompressed block data integrity
+  ---------------------------------------------------------------------------
+  --  Cyclic redundancy check to verify uncompressed block data integrity  --
+  ---------------------------------------------------------------------------
 
   package CRC is
     use Interfaces;
