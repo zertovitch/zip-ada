@@ -205,7 +205,9 @@ package body UnZip.Decompress is
         else
           UnZ_Glob.readpos := UnZ_Glob.inbuf'Length;
           --  Simulates reading -> no blocking.
-          --  The buffer is full of "random" data and we hope for a wrong code or a CRC error
+          --  The buffer is full of "random" data.
+          --  A correct compressed stream will hit its own end-of-compressed-stream.
+          --  On a corrupted data we will get a wrong code or a CRC error on the way.
           Zip_EOF := True;
         end if;
       end Process_compressed_end_reached;
