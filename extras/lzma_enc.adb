@@ -10,10 +10,10 @@ procedure LZMA_Enc is
 
   use LZMA, LZMA.Encoding;
 
-  level                 : Compression_level           := Level_3;
-  literal_context_bits  : Literal_context_bits_range  := 3;
-  literal_position_bits : Literal_position_bits_range := 0;
-  position_bits         : Position_bits_range         := 2;
+  level                 : Compression_Level           := Level_3;
+  literal_context_bits  : Literal_Context_Bits_Range  := 3;
+  literal_position_bits : Literal_Position_Bits_Range := 0;
+  position_bits         : Position_Bits_Range         := 2;
 
   procedure Encode_LZMA_stream (s_in, s_out : Stream_Access) is
     EOS : Boolean := False;
@@ -95,16 +95,16 @@ begin
     bench := bench or Argument (i) = "-b";
   end loop;
   if bench then
-    for lc in reverse Literal_context_bits_range loop
-      for lp in reverse Literal_position_bits_range loop
-        for pb in reverse Position_bits_range loop
+    for lc in reverse Literal_Context_Bits_Range loop
+      for lp in reverse Literal_Position_Bits_Range loop
+        for pb in reverse Position_Bits_Range loop
           for lv in Level_0 .. Level_3 loop
             Open (f_in, In_File, Argument (1));
             Create (f_out, Out_File,
               Argument (2) & '_' &
               Character'Val (z + lc) & Character'Val (z + lp) & Character'Val (z + pb) &
               "_l" &
-              Character'Val (z + Compression_level'Pos (lv)) & ".lzma"
+              Character'Val (z + Compression_Level'Pos (lv)) & ".lzma"
             );
             literal_context_bits  := lc;
             literal_position_bits := lp;

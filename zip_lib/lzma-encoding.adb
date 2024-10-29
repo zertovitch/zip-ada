@@ -56,16 +56,15 @@ package body LZMA.Encoding is
 
   use type Data_Bytes_Count;
 
-  procedure Encode (
-    level                  : Compression_level           := Level_1;
-    literal_context_bits   : Literal_context_bits_range  := 3;   --  Bits of last byte are used.
-    literal_position_bits  : Literal_position_bits_range := 0;   --  Position mod 2**bits is used.
-    position_bits          : Position_bits_range         := 2;   --  Position mod 2**bits is used.
-    end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker ?
-    uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
-                                                --  In LZMA.Decoding, type LZMA_Hints: has_size.
-    dictionary_size        : Natural := Default_dictionary_size  --  Not used by Level_1, Level_2.
-  )
+  procedure Encode
+    (level                  : Compression_Level           := Level_1;
+     literal_context_bits   : Literal_Context_Bits_Range  := 3;   --  Bits of last byte are used.
+     literal_position_bits  : Literal_Position_Bits_Range := 0;   --  Position mod 2**bits is used.
+     position_bits          : Position_Bits_Range         := 2;   --  Position mod 2**bits is used.
+     end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker ?
+     uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
+                                                 --  In LZMA.Decoding, type LZMA_Hints: has_size.
+     dictionary_size        : Natural := Default_dictionary_size)  --  Not used by Level_1, Level_2.
   is
 
     --  Gets an integer [0, 63] matching the highest two bits of an integer.
@@ -116,17 +115,17 @@ package body LZMA.Encoding is
     --  LZ77 compression parameters  --
     -----------------------------------
 
-    LZ77_choice : constant array (Compression_level) of LZ77.Method_Type :=
+    LZ77_choice : constant array (Compression_Level) of LZ77.Method_Type :=
       (Level_0   => LZ77.No_LZ77,  --  We don't do any LZ77 for level 0
        Level_1   => LZ77.IZ_6,
        Level_2   => LZ77.IZ_10,
        Level_3   => LZ77.BT4);
 
-    Min_length : constant array (Compression_level) of Positive :=
+    Min_length : constant array (Compression_Level) of Positive :=
       (Level_1 | Level_2  => 3,     --  Deflate's minimum value
        others             => 2);    --  LZMA's minimum value
 
-    Max_length : constant array (Compression_level) of Positive :=
+    Max_length : constant array (Compression_Level) of Positive :=
       (Level_1 | Level_2  => 258,   --  Deflate's maximum value
        others             => 273);  --  LZMA's maximum value
 
@@ -135,7 +134,7 @@ package body LZMA.Encoding is
     --  sent for real to the encoder.
 
     --  String_buffer_size: the actual dictionary size used.
-    String_buffer_size : constant array (Compression_level) of Positive :=
+    String_buffer_size : constant array (Compression_Level) of Positive :=
       (Level_0            => 16,       --  Fake: actually we don't use any LZ77 for level 0
        Level_1 | Level_2  => 2 ** 15,  --  Deflate's Value: 32 KiB
        Level_3            =>
@@ -163,9 +162,9 @@ package body LZMA.Encoding is
       header_has_size      : Boolean := uncompressed_size_info;
       has_end_mark         : Boolean := end_marker;
       dict_size            : UInt32  := UInt32 (String_buffer_size (level));
-      lc                   : Literal_context_bits_range  := literal_context_bits;
-      lp                   : Literal_position_bits_range := literal_position_bits;
-      pb                   : Position_bits_range         := position_bits;
+      lc                   : Literal_Context_Bits_Range  := literal_context_bits;
+      lp                   : Literal_Position_Bits_Range := literal_position_bits;
+      pb                   : Position_Bits_Range         := position_bits;
     end record;
 
     params : LZMA_Params_Info;
@@ -349,7 +348,7 @@ package body LZMA.Encoding is
 
     package body Estimates is
       To_Prob_Factor : constant  --  We compute the division (more expensive) at compile-time.
-        MProb := 1.0 / MProb'Base (Probability_model_count);
+        MProb := 1.0 / MProb'Base (probability_model_count);
 
       function To_Math (cp : CProb) return MProb is
       pragma Inline (To_Math);
@@ -564,7 +563,7 @@ package body LZMA.Encoding is
         end Simulate_Bit_Tree_Reverse;
         --
         function Test_Distance return MProb is
-          len_state : constant Unsigned := Unsigned'Min (length - 2, Len_to_pos_states - 1);
+          len_state : constant Unsigned := Unsigned'Min (length - 2, len_to_pos_states - 1);
           dist_slot : constant Unsigned := Get_dist_slot (distance);
           base, dist_reduced : UInt32;
           footerBits : Natural;
@@ -584,11 +583,11 @@ package body LZMA.Encoding is
                 );
             else
               res := res *
-                (0.5 ** (footerBits - Align_bits)) *  --  direct bits
+                (0.5 ** (footerBits - align_bits)) *  --  direct bits
                 Simulate_Bit_Tree_Reverse (
                   probs.dist.align_coder,
-                  Align_bits,
-                  dist_reduced and Align_mask
+                  align_bits,
+                  dist_reduced and align_mask
                 );
             end if;
           end if;
@@ -1014,7 +1013,7 @@ package body LZMA.Encoding is
       --  The current interval is [low, high=low+width[ .
       --  The bound is between 0 and width, closer to 0 if prob
       --  is small, closer to width if prob is large.
-      bound : constant UInt32 := Shift_Right (range_enc.width, Probability_model_bits) * UInt32 (cur_prob);
+      bound : constant UInt32 := Shift_Right (range_enc.width, probability_model_bits) * UInt32 (cur_prob);
     begin
       if symbol = 0 then
         --  Left sub-interval, for symbol 0: [low, low+bound[ .
@@ -1023,7 +1022,7 @@ package body LZMA.Encoding is
         Normalize;
         --  Increase probability.
         --  The truncation ensures that prob <= Probability_model_count - (2**m - 1). See note (*).
-        prob := cur_prob + Shift_Right (Probability_model_count - cur_prob, Probability_change_bits);
+        prob := cur_prob + Shift_Right (probability_model_count - cur_prob, probability_change_bits);
       else
         --  Right sub-interval, for symbol 1: [low+bound, high=low+width[ .
         --  Set new range. low is new, high is unchanged.
@@ -1032,7 +1031,7 @@ package body LZMA.Encoding is
         Normalize;
         --  Decrease probability: prob:= prob - {prob / 2**m}, approx. equal to prob * (1 - 2**m).
         --  The truncation represented by {} ensures that prob >= 2**m - 1. See note (*).
-        prob := cur_prob - Shift_Right (cur_prob, Probability_change_bits);
+        prob := cur_prob - Shift_Right (cur_prob, probability_change_bits);
       end if;
       --  (*) It can be checked exhaustively that it is always the case.
       --      A too low prob could cause the width to be too small or even zero.
@@ -1216,7 +1215,7 @@ package body LZMA.Encoding is
       end Encode_Direct_Bits;
       --
       procedure Encode_Distance is
-        len_state : constant Unsigned := Unsigned'Min (length - 2, Len_to_pos_states - 1);
+        len_state : constant Unsigned := Unsigned'Min (length - 2, len_to_pos_states - 1);
         dist_slot : constant Unsigned := Get_dist_slot (dist_ip);
         base, dist_reduced : UInt32;
         footerBits : Natural;
@@ -1233,11 +1232,11 @@ package body LZMA.Encoding is
               dist_reduced
             );
           else
-            Encode_Direct_Bits (Shift_Right (dist_reduced, Align_bits), footerBits - Align_bits);
+            Encode_Direct_Bits (Shift_Right (dist_reduced, align_bits), footerBits - align_bits);
             Bit_Tree_Reverse_Encode (
               probs.dist.align_coder,
-              Align_bits,
-              dist_reduced and Align_mask
+              align_bits,
+              dist_reduced and align_mask
             );
           end if;
         end if;

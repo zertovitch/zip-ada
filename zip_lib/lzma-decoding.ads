@@ -114,9 +114,9 @@ private
     markerIsMandatory     : Boolean;
     dictionary_size       : UInt32;
     dictSizeInProperties  : UInt32;
-    lc                    : Literal_context_bits_range;   -- number of "literal context" bits
-    lp                    : Literal_position_bits_range;  -- number of "literal pos" bits
-    pb                    : Position_bits_range;          -- number of "pos" bits
+    lc                    : Literal_Context_Bits_Range;   -- number of "literal context" bits
+    lp                    : Literal_Position_Bits_Range;  -- number of "literal pos" bits
+    pb                    : Position_Bits_Range;          -- number of "pos" bits
     range_dec_corrupted   : Boolean;
   end record;
 

@@ -84,10 +84,10 @@ package body LZMA.Decoding is
     if d >= 9 * 5 * 5 then
       raise LZMA_Error with "Incorrect LZMA properties";
     end if;
-    o.lc := Literal_context_bits_range (d mod 9);
+    o.lc := Literal_Context_Bits_Range (d mod 9);
     d := d / 9;
-    o.lp := Literal_position_bits_range (d mod 5);
-    o.pb := Position_bits_range (d / 5);
+    o.lp := Literal_Position_Bits_Range (d mod 5);
+    o.pb := Position_Bits_Range (d / 5);
     o.dictSizeInProperties := 0;
     for i in 0 .. 3 loop
       o.dictSizeInProperties := o.dictSizeInProperties +
@@ -107,7 +107,7 @@ package body LZMA.Decoding is
     --  Local copies of invariant properties.
     is_unpack_size_defined : constant Boolean := o.unpackSizeDefined;
     literal_pos_mask : constant UInt32 := 2 ** o.lp - 1;
-    lc : constant Literal_context_bits_range := o.lc;
+    lc : constant Literal_Context_Bits_Range := o.lc;
     --
     use type Data_Bytes_Count;
     out_win : Out_Window;
@@ -134,16 +134,16 @@ package body LZMA.Decoding is
     procedure Decode_Bit (prob : in out CProb; symbol : out Unsigned) is
     pragma Inline (Decode_Bit);
       cur_prob : constant CProb := prob;  --  Local copy
-      bound : constant UInt32 := Shift_Right (range_dec.width, Probability_model_bits) * UInt32 (cur_prob);
+      bound : constant UInt32 := Shift_Right (range_dec.width, probability_model_bits) * UInt32 (cur_prob);
       --  See encoder for explanations about the maths.
     begin
       if range_dec.code < bound then
-        prob := cur_prob + Shift_Right (Probability_model_count - cur_prob, Probability_change_bits);
+        prob := cur_prob + Shift_Right (probability_model_count - cur_prob, probability_change_bits);
         range_dec.width := bound;
         Normalize;
         symbol := 0;
       else
-        prob := cur_prob - Shift_Right (cur_prob, Probability_change_bits);
+        prob := cur_prob - Shift_Right (cur_prob, probability_change_bits);
         range_dec.code  := range_dec.code - bound;
         range_dec.width := range_dec.width - bound;
         Normalize;
@@ -384,7 +384,7 @@ package body LZMA.Decoding is
         end Bit_Tree_Reverse_Decode;
         --
         --  len has been set up previously by Decode_Length.
-        len_state     : constant Unsigned := Unsigned'Min (len, Len_to_pos_states - 1);
+        len_state     : constant Unsigned := Unsigned'Min (len, len_to_pos_states - 1);
         dist_slot     : Unsigned;
         numDirectBits : Natural;
         --
@@ -402,9 +402,9 @@ package body LZMA.Decoding is
             numDirectBits
           );
         else
-          Decode_Direct_Bits (numDirectBits - Align_bits);
-          dist := dist + Shift_Left (decode_direct, Align_bits);
-          Bit_Tree_Reverse_Decode (probs.dist.align_coder, Align_bits);
+          Decode_Direct_Bits (numDirectBits - align_bits);
+          dist := dist + Shift_Left (decode_direct, align_bits);
+          Bit_Tree_Reverse_Decode (probs.dist.align_coder, align_bits);
         end if;
       end Decode_Distance;
       --

@@ -37,7 +37,7 @@ package LZMA.Encoding is
   --  Low level: faster but weaker compression
   --  High level: slower but stronger compression
   --
-  type Compression_level is (
+  type Compression_Level is (
     Level_0,  --  no LZ compression
     Level_1,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 6
     Level_2,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 10
@@ -51,16 +51,15 @@ package LZMA.Encoding is
     --  Output of LZMA-compressed data:
     with procedure Write_Byte (b : Byte);
     --
-  procedure Encode (
-    level                  : Compression_level           := Level_1;
-    literal_context_bits   : Literal_context_bits_range  := 3;   --  Bits of last byte are used.
-    literal_position_bits  : Literal_position_bits_range := 0;   --  Position mod 2**bits is used.
-    position_bits          : Position_bits_range         := 2;   --  Position mod 2**bits is used.
-    end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker (*) ?
-    uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
-                                                --  In LZMA.Decoding, type LZMA_Hints: has_size.
-    dictionary_size        : Natural := Default_dictionary_size  --  Not used by Level_1, Level_2.
-  );
+  procedure Encode
+    (level                  : Compression_Level           := Level_1;
+     literal_context_bits   : Literal_Context_Bits_Range  := 3;   --  Bits of last byte are used.
+     literal_position_bits  : Literal_Position_Bits_Range := 0;   --  Position mod 2**bits is used.
+     position_bits          : Position_Bits_Range         := 2;   --  Position mod 2**bits is used.
+     end_marker             : Boolean := True;   --  Produce an End-Of-Stream marker (*) ?
+     uncompressed_size_info : Boolean := False;  --  Optional extra header needed for .lzma files.
+                                                 --  In LZMA.Decoding, type LZMA_Hints: has_size.
+     dictionary_size        : Natural := Default_dictionary_size);  --  Not used by Level_1, Level_2.
 
   --  (*) In PKWARE's Appnote (5.8.9), the use of an EOS marker is "highly recommended" for LZMA.
   --

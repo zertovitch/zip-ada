@@ -109,10 +109,10 @@ is
   use LZMA, LZMA.Encoding;
 
   type LZMA_param_bundle is record
-    lc : Literal_context_bits_range;
-    lp : Literal_position_bits_range;
-    pb : Position_bits_range;
-    lz : Compression_level;
+    lc : Literal_Context_Bits_Range;
+    lp : Literal_Position_Bits_Range;
+    pb : Position_Bits_Range;
+    lz : Compression_Level;
   end record;
 
   --  Set the LZMA parameters tuned depending on the data type.
