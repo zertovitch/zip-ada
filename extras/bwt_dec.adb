@@ -7,12 +7,14 @@
 
 with BWT;
 
-with Ada.Text_IO; use Ada.Text_IO;
-with Ada.Streams.Stream_IO; use Ada.Streams.Stream_IO;
-with Ada.Command_Line; use Ada.Command_Line;
+with Ada.Text_IO,
+     Ada.Streams.Stream_IO,
+     Ada.Command_Line;
 
 procedure BWT_Dec is
-  fi, fo : Ada.Streams.Stream_IO.File_Type;
+  use Ada.Streams.Stream_IO;
+  fi, fo : File_Type;
+  use Ada.Command_Line, Ada.Text_IO;
 begin
   if Argument_Count < 3 then
     Put_Line ("Syntax: bwt_dec infile index outfile");

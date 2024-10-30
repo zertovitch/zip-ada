@@ -7,12 +7,14 @@
 
 with BWT;
 
-with Ada.Text_IO; use Ada.Text_IO;
-with Ada.Streams.Stream_IO; use Ada.Streams.Stream_IO;
-with Ada.Command_Line; use Ada.Command_Line;
+with Ada.Text_IO,
+     Ada.Streams.Stream_IO,
+     Ada.Command_Line;
 
 procedure BWT_Enc is
-  fi, fo : Ada.Streams.Stream_IO.File_Type;
+  use Ada.Streams.Stream_IO;
+  fi, fo : File_Type;
+  use Ada.Command_Line, Ada.Text_IO;
 begin
   if Argument_Count < 2 then
     Put_Line ("Syntax: bwt_enc infile outfile");
@@ -25,9 +27,9 @@ begin
     idx : Positive;
   begin
     String'Read (Stream (fi), msg);
-    BWT.Encode (msg, idx);
+    BWT.Encode (msg, idx, smart => True);
     String'Write (Stream (fo), msg);
-    Put_Line (Current_Error, "Index: " & Integer'Image (idx));
+    Put_Line (Current_Error, "Index: " & idx'Image);
   end;
   Close (fi);
   Close (fo);

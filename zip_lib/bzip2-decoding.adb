@@ -132,7 +132,7 @@ package body BZip2.Decoding is
     selector, selector_mtf : array (0 .. max_selectors) of Byte;
 
     procedure Receive_Selectors is
-      symbol : array (Byte range 0 .. max_groups) of Byte;
+      symbol : array (Byte range 0 .. max_entropy_encoders) of Byte;
       j, tmp, v : Byte;
     begin
 
@@ -218,14 +218,16 @@ package body BZip2.Decoding is
       end loop;
     end Create_Huffman_Decoding_Tables;
 
-    subtype Natural_32 is Integer_32 range 0 .. Integer_32'Last;
-
     type U32_Array is array (Natural_32 range <>) of Unsigned_32;
     type U32_Array_Access is access U32_Array;
     procedure Dispose is new Ada.Unchecked_Deallocation (U32_Array, U32_Array_Access);
 
     alphabet_size_overall : Natural;  --  Alphabet size used for all groups
-    len : array (Byte range 0 .. max_groups) of Alphabet_Nat_array;
+
+    --  Tables for the Huffman trees used for decoding MTF values.
+    limit, base, perm : array (Byte range 0 .. max_entropy_encoders) of Alphabet_U32_array;
+    min_lens : array (Byte range 0 .. max_entropy_encoders) of Natural;
+    len : array (Byte range 0 .. max_entropy_encoders) of Alphabet_Nat_array;
 
     procedure Receive_Huffman_Bit_Lengths is
       current_bit_length : Natural;
@@ -235,7 +237,7 @@ package body BZip2.Decoding is
         for symbol in 0 .. alphabet_size_overall - 1 loop
           loop
             if current_bit_length not in 1 .. 20 then
-              raise data_error;
+              raise data_error with "In BZip2, invalid bit length for a Huffman tree";
             end if;
             exit when not Get_Boolean;
             if Get_Boolean then
@@ -248,10 +250,6 @@ package body BZip2.Decoding is
         end loop;
       end loop;
     end Receive_Huffman_Bit_Lengths;
-
-    --  Tables for Huffman trees.
-    limit, base, perm : array (Byte range 0 .. max_groups) of Alphabet_U32_array;
-    min_lens : array (Byte range 0 .. max_groups) of Natural;
 
     procedure Make_Huffman_Tables is
       min_len, max_len : Natural;
@@ -302,7 +300,7 @@ package body BZip2.Decoding is
         end loop;
       end Init_MTF;
       --
-      group_pos, group_no : Integer;
+      group_pos_countdown, group_no : Integer;
       g_sel : Byte;
       g_min_len : Natural;
       --
@@ -310,13 +308,13 @@ package body BZip2.Decoding is
         z_n : Natural;
         z_vec : Unsigned_32;
       begin
-        if group_pos = 0 then
+        if group_pos_countdown = 0 then
           group_no := group_no + 1;
-          group_pos := group_size;
+          group_pos_countdown := group_size;
           g_sel := selector (group_no);
           g_min_len := min_lens (g_sel);
         end if;
-        group_pos := group_pos - 1;
+        group_pos_countdown := group_pos_countdown - 1;
         z_n := g_min_len;
         z_vec := Get_Bits_32 (z_n);
         while z_vec > limit (g_sel)(z_n) loop
@@ -362,7 +360,7 @@ package body BZip2.Decoding is
 
     begin  --  Receive_MTF_Values
       group_no := -1;
-      group_pos := 0;
+      group_pos_countdown := 0;
       t := 0;
       cf_tab := (others => 0);
       Init_MTF;

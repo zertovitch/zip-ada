@@ -3,19 +3,32 @@ with Ada.Unchecked_Deallocation;
 
 package body BWT is
 
-  procedure Encode (message : in out String; index : out Positive) is
+  --  "Dumb" encoder corresponding to the academic representation
+  --  of the algorithm, with a n*n matrix which is sorted
+  --  row-wise.
+  --
+  procedure Encode_Dumb (message : in out String; index : out Positive) is
     subtype Msg_Range is Integer range message'Range;
     subtype Message_Clone is String (Msg_Range);
+
+    --  The table will contain all rotations of the message.
+    --  If the length is n, the table will have the size n^2.
+    --  This "visual" version of the algorithm is a massive
+    --  waste of space (and time too)...
+
     type Table is array (Msg_Range) of Message_Clone;
+
     --  Access type needed only because of Ada systems with
     --  tiny stack sizes or complicated stack options.
+
     type p_Table is access Table;
     procedure Dispose is new Ada.Unchecked_Deallocation (Table, p_Table);
-    --
-    procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort (
-      Index_Type   => Msg_Range,
-      Element_Type => Message_Clone,
-      Array_Type   => Table);
+
+    procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+      (Index_Type   => Msg_Range,
+       Element_Type => Message_Clone,
+       Array_Type   => Table);
+
     m : p_Table := new Table;
     found : Boolean := False;
     new_message : Message_Clone;
@@ -27,34 +40,110 @@ package body BWT is
       end loop;
     end loop;
     Sort (m.all);
-    --  Copy last column and find index of original message.
     for i in Msg_Range loop
+      --  Copy last column into transformed message:
       new_message (i) := m (i)(Msg_Range'Last);
       if not found and then m (i) = message then
+        --  Found the row index of the original message.
         found := True;
-        index := i;  --  Found row with the message without rotation.
+        index := i;
       end if;
     end loop;
     Dispose (m);
     message := new_message;
+  end Encode_Dumb;
+
+  --  "Smart" encoder: the rotated strings are not stored.
+  --  We only set up an array of offsets.
+  --
+  procedure Encode_Smart (message : in out String; index : out Positive) is
+    length : constant Natural := message'Length;
+
+    subtype Offset_Range is Integer range 0 .. length - 1;
+    type Offset_Table is array (Offset_Range) of Offset_Range;
+
+    --  Compare the message, rotated with two (possibly different) offsets.
+    function Lexicographically_Smaller (left, right : Offset_Range) return Boolean is
+      l, r : Character;
+    begin
+      for i in Offset_Range loop
+        l := message (message'First + (i - left)  mod length);
+        r := message (message'First + (i - right) mod length);
+        if l < r then
+          return True;
+        elsif l > r then
+          return False;
+        end if;
+      end loop;
+      --  Equality.
+      return False;
+    end Lexicographically_Smaller;
+
+    procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+      (Index_Type   => Offset_Range,
+       Element_Type => Offset_Range,
+       Array_Type   => Offset_Table,
+       "<"          => Lexicographically_Smaller);
+
+    offset : Offset_Table;
+    new_message : String (message'Range);
+  begin
+    --  At the beginning, row i (0-based) of the matrix represents
+    --  a rotation of offset i of the original message (row 0 has a
+    --  0 offset, row 1 rotates the message by 1 to the right, etc.):
+    --
+    for i in Offset_Range loop
+      offset (i) := i;
+    end loop;
+    Sort (offset);
+    for i in Offset_Range loop
+      --  Copy last column into transformed message:
+      new_message (message'First + i) := message (message'First + (length - 1 - offset (i)) mod length);
+      if offset (i) = 0 then
+        --  Found the row index of the original message.
+        index := 1 + i;
+      end if;
+    end loop;
+    message := new_message;
+  end Encode_Smart;
+
+  procedure Encode (message : in out String; index : out Positive; smart : Boolean := False) is
+  begin
+    if message'Length = 0 then
+      index := 1;
+      return;
+    elsif smart then
+      Encode_Smart (message, index);
+    else
+      Encode_Dumb (message, index);
+    end if;
   end Encode;
 
   procedure Decode (message : in out String; index : in Positive) is
     subtype Msg_Range is Integer range message'Range;
     subtype Message_Clone is String (Msg_Range);
+
     type Table is array (Msg_Range) of Message_Clone;
+
     --  Access type needed only because of Ada systems with
     --  tiny stack sizes or complicated stack options.
     type p_Table is access Table;
     procedure Dispose is new Ada.Unchecked_Deallocation (Table, p_Table);
-    --
+
     procedure Sort is
       new Ada.Containers.Generic_Constrained_Array_Sort
         (Index_Type   => Msg_Range,
          Element_Type => Message_Clone,
          Array_Type   => Table);
+
     m : p_Table := new Table'(others => (others => ' '));
+
   begin
+
+    if message'Length = 0 then
+      return;
+    end if;
+
     Shift_Insert_Sort :
     for iter in Msg_Range loop
       --  Shift columns right

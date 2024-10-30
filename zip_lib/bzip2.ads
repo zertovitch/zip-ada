@@ -62,17 +62,25 @@ private
   max_alphabet_size : constant := 258;  --  BZ_MAX_ALPHA_SIZE
   max_code_len      : constant := 23;   --  BZ_MAX_CODE_LEN
 
+  --  The run_a and run_b symbols are used to encode
+  --  the run-lengths in the 2nd RLE phase (the encoding
+  --  of MTF indices).
+
   run_a             : constant := 0;    --  BZ_RUNA
   run_b             : constant := 1;    --  BZ_RUNB
 
   --  Each group of data can use one of up to 7 different Huffman tables.
 
-  max_groups        : constant := 6;    --  BZ_N_GROUPS
+  max_entropy_encoders        : constant := 6;    --  BZ_N_GROUPS
   group_size        : constant := 50;   --  BZ_G_SIZE
+
+  --  Constants used to calibrate the main memory pool.
 
   max_block_size    : constant := 9;
   sub_block_size    : constant := 100_000;
   max_selectors     : constant := 2 + ((max_block_size * sub_block_size) / group_size);  --  BZ_MAX_SELECTORS
+
+  subtype Natural_32 is Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;
 
   ---------------------------------------------------------------------------
   --  Cyclic redundancy check to verify uncompressed block data integrity  --
