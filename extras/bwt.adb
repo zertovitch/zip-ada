@@ -24,7 +24,7 @@ package body BWT is
     type p_Table is access Table;
     procedure Dispose is new Ada.Unchecked_Deallocation (Table, p_Table);
 
-    procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+    procedure String_Sort is new Ada.Containers.Generic_Constrained_Array_Sort
       (Index_Type   => Msg_Range,
        Element_Type => Message_Clone,
        Array_Type   => Table);
@@ -39,7 +39,7 @@ package body BWT is
         m (i)(j) := message (Msg_Range'First + (j - Msg_Range'First + i - Msg_Range'First) mod message'Length);
       end loop;
     end loop;
-    Sort (m.all);
+    String_Sort (m.all);
     for i in Msg_Range loop
       --  Copy last column into transformed message:
       new_message (i) := m (i)(Msg_Range'Last);
@@ -79,7 +79,7 @@ package body BWT is
       return False;
     end Lexicographically_Smaller;
 
-    procedure Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+    procedure Offset_Sort is new Ada.Containers.Generic_Constrained_Array_Sort
       (Index_Type   => Offset_Range,
        Element_Type => Offset_Range,
        Array_Type   => Offset_Table,
@@ -90,15 +90,16 @@ package body BWT is
   begin
     --  At the beginning, row i (0-based) of the matrix represents
     --  a rotation of offset i of the original message (row 0 has a
-    --  0 offset, row 1 rotates the message by 1 to the right, etc.):
+    --  0 offset, row 1 rotates the message by 1 character, etc.):
     --
     for i in Offset_Range loop
       offset (i) := i;
     end loop;
-    Sort (offset);
+    Offset_Sort (offset);
     for i in Offset_Range loop
       --  Copy last column into transformed message:
-      new_message (message'First + i) := message (message'First + (length - 1 - offset (i)) mod length);
+      new_message (message'First + i) :=
+        message (message'First + (length - 1 - offset (i)) mod length);
       if offset (i) = 0 then
         --  Found the row index of the original message.
         index := 1 + i;
@@ -119,6 +120,8 @@ package body BWT is
     end if;
   end Encode;
 
+  --  Very dumb, but illustrative, decoder.
+  --
   procedure Decode (message : in out String; index : in Positive) is
     subtype Msg_Range is Integer range message'Range;
     subtype Message_Clone is String (Msg_Range);

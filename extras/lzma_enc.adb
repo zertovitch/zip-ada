@@ -2,9 +2,9 @@
 
 with LZMA.Encoding;
 
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
+with Ada.Command_Line,
+     Ada.Text_IO,
+     Ada.Streams.Stream_IO;
 
 procedure LZMA_Enc is
 
@@ -15,9 +15,9 @@ procedure LZMA_Enc is
   literal_position_bits : Literal_Position_Bits_Range := 0;
   position_bits         : Position_Bits_Range         := 2;
 
-  procedure Encode_LZMA_stream (s_in, s_out : Stream_Access) is
+  procedure Encode_LZMA_Stream (s_in, s_out : Ada.Streams.Stream_IO.Stream_Access) is
     EOS : Boolean := False;
-    mem_b : Byte := Character'Pos ('X');  --  delayed by 1 byte to catch the EOS
+    mem_b : Byte := Character'Pos ('X');  --  delayed by 1 byte to catch the EOS (End-Of-Stream)
 
     --  NB: The Byte I/O below is not buffered, so it is very slow.
     --  You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
@@ -50,18 +50,21 @@ procedure LZMA_Enc is
     dummy : Byte := Read_byte;  --  Consume the initial 'X'
 
   begin
-    --  Whole processing here:
-    LZMA_Encode (
-      level,
-      literal_context_bits,
-      literal_position_bits,
-      position_bits,
-      dictionary_size => 2**20,
-      uncompressed_size_info => True
-    );
+    --  Whole processing is done here:
+    LZMA_Encode
+      (level,
+       literal_context_bits,
+       literal_position_bits,
+       position_bits,
+       dictionary_size => 2**20,
+       uncompressed_size_info => True);
   end Encode_LZMA_stream;
 
-  f_in, f_out : Ada.Streams.Stream_IO.File_Type;
+  use Ada.Streams.Stream_IO;
+
+  f_in, f_out : File_Type;
+
+  use Ada.Text_IO;
 
   procedure Print_Data_Bytes_Count (title : String; v : Data_Bytes_Count) is
     package CIO is new Integer_IO (Data_Bytes_Count);
@@ -76,13 +79,15 @@ procedure LZMA_Enc is
   bench : Boolean := False;
   z : constant := Character'Pos ('0');
 
+   use Ada.Command_Line;
+
 begin
   New_Line;
   Put_Line ("LZMA_Enc: a standalone LZMA encoder.");
   if Argument_Count = 0 then
     Put_Line ("Use: lzma_enc infile outfile [options]");
     New_Line;
-    Put_Line ("NB: - The "".lzma"" extension automatically added to outfile.");
+    Put_Line ("NB: - The "".lzma"" extension is automatically added to outfile.");
     Put_Line ("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
     New_Line;
     Put_Line ("Options: -b: benchmark LZ77's and the context parameters (900 .lzma output files!)");

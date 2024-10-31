@@ -55,9 +55,9 @@ procedure LZMA_Dec is
 
 begin
   New_Line;
-  Put_Line ("LZMA_Dec, adapted from the LZMA Reference Decoder 9.31 by Igor Pavlov.");
+  Put_Line ("LZMA_Dec: a standalone LZMA decoder.");
   if Argument_Count = 0 then
-    Put_Line ("Use: lzma_dec a.lzma outfile");
+    Put_Line ("Usage: lzma_dec infile.lzma outfile");
     New_Line;
     Put_Line ("NB: The I/O is not buffered => may be slow.");
     Put_Line ("    Consider the UnZipAda tool for a LZMA demo with fast I/O.");

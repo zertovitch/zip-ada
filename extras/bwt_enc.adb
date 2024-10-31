@@ -1,6 +1,4 @@
---  Burrows-Wheeler data precompression tool - encoding
---
---  Caution: stack memory required is the SQUARE of the file size!...
+--  Burrows-Wheeler data pre-compression tool - encoding
 --
 --  See BWT_Dec for decoding and BWT_Demo for a simple demo.
 --

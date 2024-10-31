@@ -1,5 +1,6 @@
---  Burrows-Wheeler transform: block-sorting pre-processing
---  for improving data compression (this step is called pre-compression).
+--  Experimental/recreative implementations of the Burrows-Wheeler
+--  Transform (BWT), a block-sorting pre-processing for improving data compression
+--  (this step is called pre-compression).
 --
 --  https://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform
 --
