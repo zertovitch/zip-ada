@@ -26,19 +26,19 @@ project ZipAda is
 
    for Create_Missing_Dirs use "True";  --  Flips by default the "-p" switch
    
-   for Main use (
-     --  Tools
-     "zipada.adb", 
-     "unzipada.adb",
-     "comp_zip.adb", 
-     "find_zip.adb", 
-     "rezip.adb",
-     "touch2.adb",
-     "zip_dir_list.adb",
-     --  Miscellaneous
-     "lzma_dec", --  LZMA decoder
-     "lzma_enc"  --  LZMA encoder
-   );
+   for Main use
+     (--  Tools
+      "zipada.adb", 
+      "unzipada.adb",
+      "comp_zip.adb", 
+      "find_zip.adb", 
+      "rezip.adb",
+      "zip_dir_list.adb",
+      --  Miscellaneous
+      "touch2.adb",
+      "bzip2_dec",   --  Standalone BZip2 decoder (for .bz2 files)
+      "lzma_dec",    --  Standalone LZMA decoder
+      "lzma_enc");   --  Standalone LZMA encoder
 
    for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
    for Exec_Dir use ".";
@@ -54,7 +54,7 @@ project ZipAda is
    Common_Compiler_Options :=
     ("-gnatwa",                      --  Warnings switches (a:turn on all info/warnings marked with +)
      "-gnatwh",                      --  Warnings switches (h:turn on warnings for hiding declarations)
-     "-gnatwcijkmopruvz.c.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
+     "-gnatwCijkmopruvz.c.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
      "-gnatf",  --  Full errors. Verbose details, all undefined references
      "-gnatq",  --  Don't quit, try semantics, even if parse errors
      "-gnatQ",  --  Don't quit, write ali/tree file even if compile errors

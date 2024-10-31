@@ -2,38 +2,37 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
 
    for Source_Dirs use ("extras", "test");
 
-   for Main use (
-     --  Tests
-     "fuzzip.adb",
-     "lz77_stats.adb",     --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
-     "random_data.adb",    --  Produces n bytes of pseudo-random data
-     "several_sizes.adb",  --  Truncates a file into partial copies of several sizes
-     "test_chunk.adb", 
-     "test_extract.adb", 
-     "test_lz_scramble",                 --  Test LZ_Scramble
-     "test_llhc",                        --  Test for Length_limited_Huffman_code_lengths
-     "test_lz77.adb",                    --  Test the LZ77 package
-     "test_non_zip.adb",                 --  Test compression raw schemes without Zip archive format
-     "test_zip_create_info_timing.adb",  --  Timing for entries management during Zip creation
-     "test_zip_entry_stream.adb",        --  Test Zip_Entry_Stream_Type
-     "test_zip_info_timing.adb",         --  Timing of loading of Zip archive's directory
-     "test_zip_info_traverse.adb",       --  Check duplicate-tolerant traversal
-     "test_stream_performance.adb",
-     "test_unz_streams.adb",
-     "ziptest.adb", 
-     "zip_with_many_files.adb",
-     "zip_with_big_files.adb",
-     --  Demos
-     "demo_csv_into_zip.adb", 
-     "demo_zip.adb",
-     "demo_unzip.adb",
-     --  Miscellaneous, non-Zip or experimental stuff
-     "bunzip",   --  Standalone BZip2 decoder (for .bz2 files)
-     "lzhuf",    --  A simple LZ-Huffman coder/decoder
-     "bwt_demo", --  Burrows-Wheeler precompression demo
-     "bwt_enc",  --  Burrows-Wheeler file encoder
-     "bwt_dec"   --  Burrows-Wheeler file decoder
-   );
+   for Main use
+      --  Tests
+     ("fuzzip.adb",
+      "lz77_stats.adb",     --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
+      "random_data.adb",    --  Produces n bytes of pseudo-random data
+      "several_sizes.adb",  --  Truncates a file into partial copies of several sizes
+      "test_chunk.adb", 
+      "test_extract.adb", 
+      "test_lz_scramble",                 --  Test LZ_Scramble
+      "test_llhc",                        --  Test for Length_limited_Huffman_code_lengths
+      "test_lz77.adb",                    --  Test the LZ77 package
+      "test_non_zip.adb",                 --  Test compression raw schemes without Zip archive format
+      "test_zip_create_info_timing.adb",  --  Timing for entries management during Zip creation
+      "test_zip_entry_stream.adb",        --  Test Zip_Entry_Stream_Type
+      "test_zip_info_timing.adb",         --  Timing of loading of Zip archive's directory
+      "test_zip_info_traverse.adb",       --  Check duplicate-tolerant traversal
+      "test_stream_performance.adb",
+      "test_unz_streams.adb",
+      "ziptest.adb", 
+      "zip_with_many_files.adb",
+      "zip_with_big_files.adb",
+      --  Demos
+      "demo_csv_into_zip.adb", 
+      "demo_zip.adb",
+      "demo_unzip.adb",
+      --  Miscellaneous, non-Zip, recreational or experimental stuff
+      "lzhuf",       --  A simple LZ-Huffman coder/decoder
+      "bwt_demo",    --  Burrows-Wheeler precompression demo
+      "bwt_enc",     --  Burrows-Wheeler file encoder
+      "bwt_dec");    --  Burrows-Wheeler file decoder
+      --  "bzip2_enc");  --  Standalone BZip2 encoder (wip)
 
    case Zip_Build_Mode is
       when "Fast"      =>  for Object_Dir use "obj_opt/test";

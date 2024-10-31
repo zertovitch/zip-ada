@@ -132,7 +132,7 @@ package body BZip2.Decoding is
     selector, selector_mtf : array (0 .. max_selectors) of Byte;
 
     procedure Receive_Selectors is
-      symbol : array (Byte range 0 .. max_entropy_encoders) of Byte;
+      symbol : array (Byte range 0 .. max_entropy_coders) of Byte;
       j, tmp, v : Byte;
     begin
 
@@ -225,9 +225,9 @@ package body BZip2.Decoding is
     alphabet_size_overall : Natural;  --  Alphabet size used for all groups
 
     --  Tables for the Huffman trees used for decoding MTF values.
-    limit, base, perm : array (Byte range 0 .. max_entropy_encoders) of Alphabet_U32_array;
-    min_lens : array (Byte range 0 .. max_entropy_encoders) of Natural;
-    len : array (Byte range 0 .. max_entropy_encoders) of Alphabet_Nat_array;
+    limit, base, perm : array (Byte range 0 .. max_entropy_coders) of Alphabet_U32_array;
+    min_lens : array (Byte range 0 .. max_entropy_coders) of Natural;
+    len : array (Byte range 0 .. max_entropy_coders) of Alphabet_Nat_array;
 
     procedure Receive_Huffman_Bit_Lengths is
       current_bit_length : Natural;

@@ -2,16 +2,19 @@
 
 with BZip2.Decoding;
 
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Ada.Streams.Stream_IO;             use Ada.Streams.Stream_IO;
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Interfaces;                        use Interfaces;
+with Ada.Text_IO,
+     Ada.Streams.Stream_IO,
+     Ada.Command_Line;
 
-procedure bunzip is
+with Interfaces;
+
+procedure BZip2_Dec is
+
+  use Ada.Streams.Stream_IO;
 
   f_in, f_out : Ada.Streams.Stream_IO.File_Type;
 
-  type Buffer is array (Natural range <>) of Unsigned_8;
+  type Buffer is array (Natural range <>) of Interfaces.Unsigned_8;
 
   --  Code with SE_Buffer below:
   --  workaround for the severe xxx'Read xxx'Write performance
@@ -53,26 +56,29 @@ procedure bunzip is
   end BU_Write;
 
   package My_BZip2 is new BZip2.Decoding
-  (
-    input_buffer_size  => 1024,
-    output_buffer_size => 4096,
-    Buffer             => Buffer,
-    check_CRC          => True,
-    Read               => BU_Read,
-    Write              => BU_Write
-  );
+    (input_buffer_size  => 1024,
+     output_buffer_size => 4096,
+     Buffer             => Buffer,
+     check_CRC          => True,
+     Read               => BU_Read,
+     Write              => BU_Write);
+
+  use Ada.Command_Line, Ada.Text_IO;
+
+  default : constant String := "bunzip.out";
 
 begin
   if Argument_Count = 0 then
-    Put_Line ("Usage: bunzip <file>");
+    Put_Line ("BZip2_Dec: a standalone BZip2 decoder.");
+    New_Line;
+    Put_Line ("Usage: bzip2_dec infile.bz2 {outfile}");
     New_Line;
     Put_Line ("Decompresses a bzip2 compressed file (.bz2)");
-    New_Line;
-    Put_Line ("Output is written in the file: bunzip.out");
+    Put_Line ("Output: if outfile is not given, the name """ & default & """ will be used");
   else
     Open (f_in, In_File, Argument (1));
-    Create (f_out, Out_File, "bunzip.out");
+    Create (f_out, Out_File, (if Argument_Count > 1 then Argument (2) else default));
     My_BZip2.Decompress;
     Close (f_out);
   end if;
-end bunzip;
+end BZip2_Dec;
