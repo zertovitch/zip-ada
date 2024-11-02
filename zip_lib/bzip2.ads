@@ -67,15 +67,22 @@ private
   --  BZ_* names as in bzlib_private.h.                       --
   --------------------------------------------------------------
 
-  max_alphabet_size  : constant := 258;  --  BZ_MAX_ALPHA_SIZE
-  max_code_len       : constant := 23;   --  BZ_MAX_CODE_LEN
-
   --  The run_a and run_b symbols are used to encode
   --  the run-lengths in the 2nd RLE phase (the encoding
   --  of MTF indices).
 
   run_a              : constant := 0;    --  BZ_RUNA
   run_b              : constant := 1;    --  BZ_RUNB
+
+  --  If all byte values are used, the MTF & RLE_2 encoding
+  --  needs this amount of symbols:
+  --     *   2  for run_a, run_b
+  --     * 255  for non-zero MTF indices
+  --     *   1  for EOB.
+  --
+  max_alphabet_size  : constant := 258;  --  BZ_MAX_ALPHA_SIZE
+
+  max_code_len       : constant := 23;   --  BZ_MAX_CODE_LEN
 
   --  Each group of data can use one of up to 7 different
   --  entropy coders (for BZip2: Huffman tables).
@@ -89,7 +96,8 @@ private
   sub_block_size     : constant := 100_000;
   max_selectors      : constant := 2 + ((max_block_size * sub_block_size) / group_size);  --  BZ_MAX_SELECTORS
 
-  subtype Natural_32 is Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;
+  subtype Natural_32  is Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;
+  subtype Positive_32 is Interfaces.Integer_32 range 1 .. Interfaces.Integer_32'Last;
 
   ---------------------------------------------------------------------------
   --  Cyclic redundancy check to verify uncompressed block data integrity  --

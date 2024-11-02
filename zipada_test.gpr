@@ -31,8 +31,8 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
       "lzhuf",       --  A simple LZ-Huffman coder/decoder
       "bwt_demo",    --  Burrows-Wheeler precompression demo
       "bwt_enc",     --  Burrows-Wheeler file encoder
-      "bwt_dec");    --  Burrows-Wheeler file decoder
-      --  "bzip2_enc");  --  Standalone BZip2 encoder (wip)
+      "bwt_dec",     --  Burrows-Wheeler file decoder
+      "bzip2_enc");  --  Standalone BZip2 encoder (work in progress)
 
    case Zip_Build_Mode is
       when "Fast"      =>  for Object_Dir use "obj_opt/test";
