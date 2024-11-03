@@ -464,7 +464,7 @@ package body BZip2.Decoding is
       for i in 1 .. 6 loop
         magic (i) := Character'Val (Get_Byte);
       end loop;
-      if magic = "1AY&SY" then
+      if magic = "1AY&SY" then  --  pi digits in hexadecimal!
         if check_CRC then
           if compare_final_CRC then
             null;  --  initialisation is delayed until the rle buffer is empty

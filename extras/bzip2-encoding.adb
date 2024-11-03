@@ -11,6 +11,11 @@ with Ada.Containers.Generic_Constrained_Array_Sort,
 
 package body BZip2.Encoding is
 
+  procedure Put_Byte (b : Byte) is
+  begin
+    null;  --  !! Stuff this byte into the bit buffer...
+  end Put_Byte;
+
   procedure Encode (level : Compression_Level := 1) is
     use Interfaces;
 
@@ -226,7 +231,7 @@ package body BZip2.Encoding is
         mtf_symbol : array (0 .. 255) of Byte;
         idx : Natural;
       begin
-        mtf_data := new MTF_Array (1 .. block_size);  --  Check worst case !!
+        mtf_data := new MTF_Array (1 .. 2 * block_size);  --  Check real worst case capacity !!
 
         for i in mtf_symbol'Range loop
           mtf_symbol (i) := Byte (i);
@@ -272,7 +277,7 @@ package body BZip2.Encoding is
       --  Entropy Encoding and output of the compressed block  --
       -----------------------------------------------------------
 
-      procedure Entropy_Output is
+      procedure Entropy is
 
         type Huffman_Length_Array is array (Max_Alphabet) of Natural;
 
@@ -291,16 +296,37 @@ package body BZip2.Encoding is
         --           the groups and the 7 possible tables !!
         LLHCL (freq, len (0));
 
-      end Entropy_Output;
+      end Entropy;
+
+      procedure Put_Block_Header is
+        block_magic : constant String := "1AY&SY";  --  pi digits in hexadecimal!
+      begin
+        for c of block_magic loop
+          Put_Byte (Character'Pos (c));
+        end loop;
+        --  !! CRC
+      end Put_Block_Header;
 
     begin
       RLE_1;
       BWT;
       MTF_and_RLE_2;
-      Entropy_Output;
+      Entropy;
+      --  Now we output the block's compressed data:
+      Put_Block_Header;
     end Encode_Block;
 
+    procedure Write_Stream_Header is
+      stream_magic : String := "BZh0";
+    begin
+      stream_magic (stream_magic'Last) := Character'Val (Character'Pos ('0') + level);
+      for c of stream_magic loop
+        Write_Byte (Character'Pos (c));  --  Last direct write.
+      end loop;
+    end Write_Stream_Header;
+
   begin
+    Write_Stream_Header;
     data := new Buffer (1 .. block_capacity);
     loop
       Encode_Block;
