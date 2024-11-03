@@ -370,8 +370,6 @@ package body BZip2.Encoding is
       end Entropy_Output;
 
       procedure Put_Block_Header is
-        --  pi (decimal) digits visible in hexadecimal representation!
-        block_magic : constant String := "1AY&SY";
       begin
         for c of block_magic loop
           Put (c);
@@ -423,12 +421,15 @@ package body BZip2.Encoding is
               if current_bit_length = new_bit_length then
                 Put_Bits (0, 1);
                 exit Adjust_Bit_length;
-              elsif current_bit_length < new_bit_length then
-                current_bit_length := current_bit_length + 1;
-                Put_Bits (0, 1);
               else
-                current_bit_length := current_bit_length - 1;
                 Put_Bits (1, 1);
+                if current_bit_length < new_bit_length then
+                  current_bit_length := current_bit_length + 1;
+                  Put_Bits (0, 1);
+                else
+                  current_bit_length := current_bit_length - 1;
+                  Put_Bits (1, 1);
+                end if;
               end if;
             end loop Adjust_Bit_length;
           end loop;
@@ -461,6 +462,15 @@ package body BZip2.Encoding is
       end loop;
     end Write_Stream_Header;
 
+    procedure Write_Stream_Footer is
+    begin
+      for c of stream_footer_magic loop
+        Put (c);
+      end loop;
+      --  !!  Stream CRC
+      --  !!  Padding
+    end Write_Stream_Footer;
+
   begin
     Write_Stream_Header;
     data := new Buffer (1 .. block_capacity);
@@ -469,6 +479,7 @@ package body BZip2.Encoding is
       exit when not More_Bytes;
     end loop;
     Unchecked_Free (data);
+    Write_Stream_Footer;
     Flush_Bit_Buffer;
   end Encode;
 

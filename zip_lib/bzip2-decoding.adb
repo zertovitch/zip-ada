@@ -489,8 +489,7 @@ package body BZip2.Decoding is
       for i in 1 .. 6 loop
         magic (i) := Character'Val (Get_Byte);
       end loop;
-      if magic = "1AY&SY" then
-        --  ^ pi (decimal) digits visible in hexadecimal representation!
+      if magic = block_magic then
         if check_CRC then
           if compare_final_CRC then
             null;  --  initialisation is delayed until the rle buffer is empty
@@ -512,7 +511,7 @@ package body BZip2.Decoding is
         BWT_Detransform;
         decode_available := tt_count;
         return True;
-      elsif magic = Character'Val (16#17#) & "rE8P" & Character'Val (16#90#) then
+      elsif magic = stream_footer_magic then
         return False;
       else
         raise bad_block_magic;
