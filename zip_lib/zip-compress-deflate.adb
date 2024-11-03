@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2023 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -59,9 +59,8 @@
 --  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
 --  17-Feb-2011: Created (single-block, "fixed" Huffman encoding).
 
-with Huffman.Encoding;
+with Huffman.Encoding.Length_Limited_Coding;
 with LZ77;
-with Length_Limited_Huffman_Code_Lengths;
 
 with Ada.Text_IO,
      Ada.Unchecked_Deallocation;
@@ -332,13 +331,11 @@ is
     bl_for_lit_len : Bit_length_array_lit_len;
     bl_for_dis     : Bit_length_array_dis;
     procedure LLHCL_lit_len is new
-      Length_Limited_Huffman_Code_Lengths (
-        Alphabet_lit_len, Count_type, Stats_lit_len_type, Bit_length_array_lit_len, 15
-      );
+      Huffman.Encoding.Length_Limited_Coding
+        (Alphabet_lit_len, Count_type, Stats_lit_len_type, Bit_length_array_lit_len, 15);
     procedure LLHCL_dis is new
-      Length_Limited_Huffman_Code_Lengths (
-        Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15
-      );
+      Huffman.Encoding.Length_Limited_Coding
+        (Alphabet_dis, Count_type, Stats_dis_type, Bit_length_array_dis, 15);
     stats_dis_copy : Stats_dis_type := stats_dis;
     --
     procedure Patch_statistics_for_buggy_decoders is
@@ -661,7 +658,7 @@ is
     alphabet_permutation : constant array (Alphabet) of Natural :=
        (16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15);
     procedure LLHCL is new
-      Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
+      Huffman.Encoding.Length_Limited_Coding (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
     a_non_zero : Alphabet;
   begin
     Concatenate_all_bit_lengths;

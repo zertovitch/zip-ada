@@ -2,7 +2,7 @@
 --  WORK IN PROGRESS!  --
 -------------------------
 
-with Length_Limited_Huffman_Code_Lengths;
+with Huffman.Encoding.Length_Limited_Coding;
 
 with Ada.Containers.Generic_Constrained_Array_Sort,
      Ada.Strings.Unbounded,
@@ -277,19 +277,20 @@ package body BZip2.Encoding is
         type Huffman_Length_Array is array (Max_Alphabet) of Natural;
 
         procedure LLHCL is new
-          Length_Limited_Huffman_Code_Lengths
+          Huffman.Encoding.Length_Limited_Coding
             (Alphabet     => Max_Alphabet,  --  !! Here use the packed alphabet (using unseq_to_seq)
              Count_Type   => Natural_32,
              Count_Array  => Frequency_Array,
              Length_Array => Huffman_Length_Array,
              max_bits     => max_code_len);
 
-        len : Huffman_Length_Array;
+        len : array (0 .. max_entropy_coders) of Huffman_Length_Array;
 
       begin
         --  !! Here: have fun with partial sets of frequencies,
         --           the groups and the 7 possible tables !!
-        LLHCL (freq, len);
+        LLHCL (freq, len (0));
+
       end Entropy_Output;
 
     begin

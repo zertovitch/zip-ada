@@ -1,4 +1,4 @@
-with Length_Limited_Huffman_Code_Lengths;
+with Huffman.Encoding.Length_Limited_Coding;
 
 with Ada.Text_IO;
 
@@ -16,7 +16,7 @@ procedure Test_LLHC is
     for m in 4 .. 5 loop
       declare
         procedure LLHCL is new
-          Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, m);
+          Huffman.Encoding.Length_Limited_Coding (Alphabet, Natural, Alpha_Array, Alpha_Array, m);
       begin
         LLHCL (freq, len);
       end;
@@ -40,7 +40,7 @@ procedure Test_LLHC is
     type Alpha_Array is array (Alphabet) of Natural;
     freq, len : Alpha_Array;
     procedure LLHCL is new
-      Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
+      Huffman.Encoding.Length_Limited_Coding (Alphabet, Natural, Alpha_Array, Alpha_Array, 7);
   begin
     --  freq:= (11, 1, 1, 1, 13, 15, 16, 23, 42, 72, 94, 33, 3, 4, 2, 3, 1, 1, 1);  --  OK with max=7
     freq := (6, 1, 1, 2, 10, 13, 19, 33, 41, 78, 89, 25, 7, 4, 2, 3, 1, 1, 1);  --  OK after fixing LLHC
@@ -64,7 +64,7 @@ procedure Test_LLHC is
     type Alpha_Array is array (Alphabet) of Natural;
     freq, len : Alpha_Array;
     procedure LLHCL is new
-      Length_Limited_Huffman_Code_Lengths (Alphabet, Natural, Alpha_Array, Alpha_Array, 15);
+      Huffman.Encoding.Length_Limited_Coding (Alphabet, Natural, Alpha_Array, Alpha_Array, 15);
   begin
     freq :=
          (0 => 1277,        1 => 163,         2 => 118,         3 => 152,         4 => 123,

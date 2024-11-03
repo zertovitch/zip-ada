@@ -1,5 +1,5 @@
---  Length_Limited_Huffman_Code_Lengths
----------------------------------------
+--  Huffman.Encoding.Length_Limited_Coding
+------------------------------------------
 --    This algorithm builds optimal Huffman codes for a given alphabet
 --    and occurrence counts (frequencies) of this alphabet. These occurrences
 --    are supposed to have been counted in a message to be sent in a
@@ -57,6 +57,6 @@ generic
   type Length_Array is array (Alphabet) of Natural;
   max_bits : Positive;  --  Length limit in Huffman codes
 
-procedure Length_Limited_Huffman_Code_Lengths
-  (frequencies : in  Count_Array;
-   bit_lengths : out Length_Array);
+procedure Huffman.Encoding.Length_Limited_Coding
+  (frequencies : in     Count_Array;
+   bit_lengths :    out Length_Array);

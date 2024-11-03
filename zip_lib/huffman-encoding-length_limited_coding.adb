@@ -1,3 +1,5 @@
+--  Huffman.Encoding.Length_Limited_Coding
+------------------------------------------
 --  Legal licensing note:
 
 --  Copyright (c) 2016 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
@@ -41,10 +43,9 @@
 --    - all structures are allocated on stack
 --    - sub-programs are nested, then unneeded parameters are removed
 
-procedure Length_Limited_Huffman_Code_Lengths (
-  frequencies : in  Count_Array;
-  bit_lengths : out Length_Array
-)
+procedure Huffman.Encoding.Length_Limited_Coding
+  (frequencies : in     Count_Array;
+   bit_lengths :    out Length_Array)
 is
   subtype Index_Type is Count_Type;
 
@@ -276,4 +277,4 @@ begin
       end if;
     end loop;
   end if;
-end Length_Limited_Huffman_Code_Lengths;
+end Huffman.Encoding.Length_Limited_Coding;
