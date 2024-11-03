@@ -127,7 +127,7 @@ package body BZip2.Decoding is
       end loop;
     end Receive_Mapping_Table;
 
-    group_count : Byte;
+    entropy_coder_count : Byte;
     selector_count : Natural;
     selector, selector_mtf : array (0 .. max_selectors) of Byte;
 
@@ -136,7 +136,7 @@ package body BZip2.Decoding is
       j, tmp, v : Byte;
     begin
 
-      group_count := Get_Bits (3);  --  Up to 7.
+      entropy_coder_count := Get_Bits (3);  --  Up to 7.
       selector_count := Natural (Shift_Left (Get_Bits_32 (8), 7) or Get_Bits_32 (7));  --  Up to 32767.
       if selector_count > max_selectors then
         raise data_error with "Invalid BZip2 selector count, maximum is" & max_selectors'Image;
@@ -156,7 +156,7 @@ package body BZip2.Decoding is
       end loop;
 
       --  2) De-transform selectors list:
-      for w in Byte range 0 .. group_count - 1 loop
+      for w in Byte range 0 .. entropy_coder_count - 1 loop
         --  We start with 0, 1, 2, 3, ...:
         symbol (w) := w;
       end loop;
@@ -232,13 +232,15 @@ package body BZip2.Decoding is
     procedure Receive_Huffman_Bit_Lengths is
       current_bit_length : Natural;
     begin
-      for t in 0 .. group_count - 1 loop
+      for t in 0 .. entropy_coder_count - 1 loop
         current_bit_length := Natural (Get_Bits (5));
+        if current_bit_length not in 1 .. 20 then
+          raise data_error with
+            "In BZip2 data, invalid initial bit length for a Huffman tree: got length" &
+            current_bit_length'Image & "; range should be 1 .. 20";
+        end if;
         for symbol in 0 .. alphabet_size_overall - 1 loop
           loop
-            if current_bit_length not in 1 .. 20 then
-              raise data_error with "In BZip2, invalid bit length for a Huffman tree";
-            end if;
             exit when not Get_Boolean;
             if Get_Boolean then
               current_bit_length := current_bit_length - 1;
@@ -246,6 +248,12 @@ package body BZip2.Decoding is
               current_bit_length := current_bit_length + 1;
             end if;
           end loop;
+          if current_bit_length not in 1 .. 20 then
+            raise data_error with
+              "In BZip2 data, invalid bit length for a Huffman tree: for symbol " &
+              symbol'Image & " got length" &
+              current_bit_length'Image & "; range should be 1 .. 20";
+          end if;
           len (t)(symbol) := current_bit_length;
         end loop;
       end loop;
@@ -254,7 +262,7 @@ package body BZip2.Decoding is
     procedure Make_Huffman_Tables is
       min_len, max_len : Natural;
     begin
-      for t in 0 .. group_count - 1 loop
+      for t in 0 .. entropy_coder_count - 1 loop
         min_len := 32;
         max_len := 0;
         for i in 0 .. alphabet_size_overall - 1 loop
@@ -307,11 +315,18 @@ package body BZip2.Decoding is
       function Get_MTF_Value return Unsigned_32 is
         z_n : Natural;
         z_vec : Unsigned_32;
+        perm_index : Integer;
       begin
         if group_pos_countdown = 0 then
-          group_no := group_no + 1;
           group_pos_countdown := group_size;
+          group_no := group_no + 1;
+          if group_no > selector_count - 1 then
+            raise data_error with "In BZip2 data, selector index exceeds selector count";
+          end if;
           g_sel := selector (group_no);
+          if g_sel not in base'Range then
+            raise data_error with "In BZip2 data, invalid selector";
+          end if;
           g_min_len := min_lens (g_sel);
         end if;
         group_pos_countdown := group_pos_countdown - 1;
@@ -321,7 +336,17 @@ package body BZip2.Decoding is
           z_n := z_n + 1;
           z_vec := Shift_Left (z_vec, 1) or Get_Bits_32 (1);
         end loop;
-        return perm (g_sel)(Natural (z_vec - base (g_sel)(z_n)));
+        if z_n not in Alphabet_U32_array'Range then
+          raise data_error with "In BZip2 data, invalid data in Huffman decoding [1]";
+        end if;
+        if z_vec > 2 ** (Integer'Size - 1) - 1 then
+          raise data_error with "In BZip2 data, invalid data in Huffman decoding [2]";
+        end if;
+        perm_index := Integer (z_vec - base (g_sel)(z_n));
+        if perm_index not in Alphabet_U32_array'Range then
+          raise data_error with "In BZip2 data, invalid data in Huffman decoding [3]";
+        end if;
+        return perm (g_sel)(perm_index);
       end Get_MTF_Value;
       --
       procedure Move_MTF_Block is

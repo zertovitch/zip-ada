@@ -44,6 +44,11 @@ package body BZip2.Encoding is
     --    Put_Bits (Unsigned_32 (b), 8);
     --  end Put;
 
+    procedure Put (b : Boolean) is
+    begin
+      Put_Bits (Boolean'Pos (b), 1);
+    end Put;
+
     procedure Put (c : Character) is
     begin
       Put_Bits (Character'Pos (c), 8);
@@ -231,9 +236,9 @@ package body BZip2.Encoding is
       mtf_data : MTF_Array_Access;
       mtf_last : Natural_32 := 0;
 
-      in_use : constant := max_alphabet_size; --  !!  TBD: pack numbering with unseq_to_seq.
+      symb_in_use : constant := max_alphabet_size; --  !!  TBD: pack numbering with unseq_to_seq.
 
-      EOB    : constant := in_use - 1;  --  Encoding is 0-based.
+      EOB : constant := symb_in_use - 1;  --  Encoding is 0-based.
 
       procedure MTF_and_RLE_2 is
 
@@ -311,7 +316,10 @@ package body BZip2.Encoding is
       --  Entropy Encoding and output of the compressed block  --
       -----------------------------------------------------------
 
-      procedure Entropy is
+      descr : Huffman.Encoding.Descriptor (Max_Alphabet);
+      --  array (0 .. max_entropy_coders) of Huffman.Encoding.Descriptor (Max_Alphabet);
+
+      procedure Entropy_Calculations is
 
         type Huffman_Length_Array is array (Max_Alphabet) of Natural;
 
@@ -326,12 +334,17 @@ package body BZip2.Encoding is
         len : Huffman_Length_Array;
         --  array (0 .. max_entropy_coders) of Huffman_Length_Array;
 
-        descr : Huffman.Encoding.Descriptor (Max_Alphabet);
-        --  array (0 .. max_entropy_coders) of Huffman.Encoding.Descriptor (Max_Alphabet);
-
       begin
         --  !! Here: have fun with partial sets of frequencies,
         --           the groups and the 7 possible tables !!
+
+        --  !! TBD: pack the alphabet (unseq_to_seq)
+        --          Absent this, we ballot-box-stuff the frequencies
+        --          in order to have bit length >= 1.
+        for a in Max_Alphabet loop
+          freq (a) := freq (a) + 1;
+        end loop;
+
         LLHCL (freq, len);
         for symbol in len'Range loop
           descr (symbol).bit_length := len (symbol);
@@ -344,14 +357,17 @@ package body BZip2.Encoding is
         --    end loop;
         --  end if;
 
+      end Entropy_Calculations;
+
+      procedure Entropy_Output is
+      begin
         for symbol of mtf_data (1 .. mtf_last) loop
           Put_Bits
             (Unsigned_32
               (descr (symbol).code),
                descr (symbol).bit_length);
         end loop;
-
-      end Entropy;
+      end Entropy_Output;
 
       procedure Put_Block_Header is
         --  pi (decimal) digits visible in hexadecimal representation!
@@ -366,18 +382,74 @@ package body BZip2.Encoding is
       end Put_Block_Header;
 
       procedure Put_Block_Trees_Descriptors is
+
+        procedure Put_Mapping_Table is
+          in_use : constant array (0 .. 15) of Boolean := (others => True);  --  !!
+        begin
+          --  Send the first 16 bits which tell which pieces are stored.
+          for i in in_use'Range loop
+            Put (in_use (i));
+          end loop;
+          --  Send detail of the used pieces.
+          for i in in_use'Range loop
+            if in_use (i) then
+              for j in 0 .. 15 loop
+                Put (True);  --  !!
+              end loop;
+            end if;
+          end loop;
+        end Put_Mapping_Table;
+
+        procedure Put_Selectors is
+          selector_count : constant Unsigned_32 := 1 + Unsigned_32 (mtf_last) / group_size;
+        begin
+          Put_Bits (selector_count, 15);
+          for i in 1 .. selector_count loop
+            Put_Bits (0, 1);  --  MTF-transformed index for the selected entropy coder
+            --  !! Output 1's for non-zero index.
+          end loop;
+        end Put_Selectors;
+
+        procedure Put_Huffman_Bit_Lengths is
+          current_bit_length, new_bit_length : Natural;
+        begin
+          --  !!  Loop over the list of used entropy coders.
+          current_bit_length := descr (0).bit_length;
+          Put_Bits (Unsigned_32 (current_bit_length), 5);
+          for i in descr'Range loop
+            new_bit_length := descr (i).bit_length;
+            Adjust_Bit_length :
+            loop
+              if current_bit_length = new_bit_length then
+                Put_Bits (0, 1);
+                exit Adjust_Bit_length;
+              elsif current_bit_length < new_bit_length then
+                current_bit_length := current_bit_length + 1;
+                Put_Bits (0, 1);
+              else
+                current_bit_length := current_bit_length - 1;
+                Put_Bits (1, 1);
+              end if;
+            end loop Adjust_Bit_length;
+          end loop;
+        end Put_Huffman_Bit_Lengths;
+
       begin
-        null;  --  !!! w.i.p.
+        Put_Mapping_Table;
+        Put_Bits (1, 3);  --  !! Number of trees (entropy coders)
+        Put_Selectors;
+        Put_Huffman_Bit_Lengths;
       end Put_Block_Trees_Descriptors;
 
     begin
       RLE_1;
       BWT;
       MTF_and_RLE_2;
+      Entropy_Calculations;
       --  Now we output the block's compressed data:
       Put_Block_Header;
       Put_Block_Trees_Descriptors;
-      Entropy;
+      Entropy_Output;
     end Encode_Block;
 
     procedure Write_Stream_Header is
