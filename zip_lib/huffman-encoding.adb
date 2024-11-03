@@ -1,4 +1,4 @@
---  Huffman_Encoding
+--  Huffman.Encoding
 --------------------
 --
 --  Legal licensing note:
@@ -27,7 +27,7 @@
 --  NB: this is the MIT License, as found 03-Nov-2024 on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-package body Huffman_Encoding is
+package body Huffman.Encoding is
 
   procedure Invert (lc : in out Length_Code_Pair) is
     a : Natural := lc.code;
@@ -73,4 +73,4 @@ package body Huffman_Encoding is
     end loop;
   end Prepare_Huffman_Codes;
 
-end Huffman_Encoding;
+end Huffman.Encoding;

@@ -59,7 +59,7 @@
 --  18-Feb-2011: First version working with Deflate fixed and restricted distance & length codes.
 --  17-Feb-2011: Created (single-block, "fixed" Huffman encoding).
 
-with Huffman_Encoding;
+with Huffman.Encoding;
 with LZ77;
 with Length_Limited_Huffman_Code_Lengths;
 
@@ -188,9 +188,9 @@ is
 
   type Deflate_Huff_Descriptors is record
     --  Tree descriptor for Literal, EOB or Length encoding
-    lit_len : Huffman_Encoding.Huffman_Descriptor (0 .. 287);
+    lit_len : Huffman.Encoding.Huffman_Descriptor (0 .. 287);
     --  Tree descriptor for Distance encoding
-    dis : Huffman_Encoding.Huffman_Descriptor (0 .. 31);
+    dis : Huffman.Encoding.Huffman_Descriptor (0 .. 31);
   end record;
   --  NB: Appnote: "Literal codes 286-287 and distance codes 30-31 are never used
   --                  but participate in the Huffman construction."
@@ -207,13 +207,13 @@ is
     new_d : Deflate_Huff_Descriptors;
   begin
     for i in new_d.lit_len'Range loop
-      new_d.lit_len (i) := (bit_length => bl_for_lit_len (i), code => Huffman_Encoding.invalid);
+      new_d.lit_len (i) := (bit_length => bl_for_lit_len (i), code => Huffman.Encoding.invalid);
       if trace_descriptors and then trace and then Is_Open (log) then
         Put (log, Integer'Image (bl_for_lit_len (i)) & sep);
       end if;
     end loop;
     for i in new_d.dis'Range loop
-      new_d.dis (i) := (bit_length => bl_for_dis (i), code => Huffman_Encoding.invalid);
+      new_d.dis (i) := (bit_length => bl_for_dis (i), code => Huffman.Encoding.invalid);
       if trace_descriptors and then trace and then Is_Open (log) then
         Put (log, Integer'Image (bl_for_dis (i)) & sep);
       end if;
@@ -518,13 +518,13 @@ is
   is
     dhd_var : Deflate_Huff_Descriptors := dhd;
   begin
-    Huffman_Encoding.Prepare_Huffman_Codes (dhd_var.lit_len);
-    Huffman_Encoding.Prepare_Huffman_Codes (dhd_var.dis);
+    Huffman.Encoding.Prepare_Huffman_Codes (dhd_var.lit_len);
+    Huffman.Encoding.Prepare_Huffman_Codes (dhd_var.dis);
     return dhd_var;
   end Prepare_Huffman_Codes;
 
   --  Emit a variable length Huffman code
-  procedure Put_Huffman_Code (lc : Huffman_Encoding.Length_Code_Pair) is
+  procedure Put_Huffman_Code (lc : Huffman.Encoding.Length_Code_Pair) is
   pragma Inline (Put_Huffman_Code);
   begin
     --  Huffman code of length 0 should never occur: when constructing
@@ -558,7 +558,7 @@ is
     subtype Alphabet is Integer range 0 .. 18;
     type Alpha_Array is new Bit_Length_Array (Alphabet);
     truc_freq, truc_bl : Alpha_Array;
-    truc : Huffman_Encoding.Huffman_Descriptor (Alphabet);
+    truc : Huffman.Encoding.Huffman_Descriptor (Alphabet);
     --  Compression structure: cs_bl is the "big" array with all bit lengths
     --  for compressing data. cs_bl will be sent compressed, too.
     cs_bl : array (1 .. dhd.lit_len'Length + dhd.dis'Length) of Natural;
@@ -692,7 +692,7 @@ is
       for a in Alphabet loop
         truc (a).bit_length := truc_bl (a);
       end loop;
-      Huffman_Encoding.Prepare_Huffman_Codes (truc);
+      Huffman.Encoding.Prepare_Huffman_Codes (truc);
       --  Output of the compression structure
       Put_Binary_Code (U32 (max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
       Put_Binary_Code (U32 (max_used_dis_code), 5);
@@ -791,7 +791,7 @@ is
      );
 
   extra_bits_for_lz_length_offset : constant array (Length_range) of Integer :=
-      (3 ..  10 | 258 =>  Huffman_Encoding.invalid,  --  just a placeholder, there is no extra bit there!
+      (3 ..  10 | 258 =>  Huffman.Encoding.invalid,  --  just a placeholder, there is no extra bit there!
       11 ..  18       =>  11,
       19 ..  34       =>  19,
       35 ..  66       =>  35,

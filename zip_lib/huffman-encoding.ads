@@ -1,4 +1,4 @@
---  Huffman_Encoding
+--  Huffman.Encoding
 --------------------
 --
 --  Legal licensing note:
@@ -27,7 +27,7 @@
 --  NB: this is the MIT License, as found 03-Nov-2024 on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-package Huffman_Encoding is
+package Huffman.Encoding is
 
   invalid : constant := -1;
 
@@ -40,9 +40,9 @@ package Huffman_Encoding is
 
   type Huffman_Descriptor is array (Natural range <>) of Length_Code_Pair;
 
-  --  The Prepare_Huffman_codes procedure finds the Huffman
-  --  code for each value, given the bit_length imposed as input.
-
+  --  The Prepare_Huffman_Codes procedure finds the Huffman
+  --  code for all values, given the bit_length imposed as input.
+  --
   procedure Prepare_Huffman_Codes (hd : in out Huffman_Descriptor);
 
-end Huffman_Encoding;
+end Huffman.Encoding;
