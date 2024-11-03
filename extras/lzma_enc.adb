@@ -23,7 +23,7 @@ procedure LZMA_Enc is
     --  You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
     --  For instance, see the BlockRead in the Zip package for how to do it.
 
-    function Read_byte return Byte is  --  One dummy call to Read_byte is needed before compression
+    function Read_Byte return Byte is  --  One dummy call to Read_byte is needed before compression
       prev_b : Byte;
     begin
       prev_b := mem_b;
@@ -33,21 +33,21 @@ procedure LZMA_Enc is
       when Ada.Streams.Stream_IO.End_Error =>
         EOS := True;
         return prev_b;
-    end Read_byte;
+    end Read_Byte;
 
-    function More_bytes return Boolean is
+    function More_Bytes return Boolean is
     begin
       return not EOS;
-    end More_bytes;
+    end More_Bytes;
 
-    procedure Put_byte (b : Byte) is
+    procedure Put_Byte (b : Byte) is
     begin
       Byte'Write (s_out, b);
-    end Put_byte;
+    end Put_Byte;
 
-    procedure LZMA_Encode is new LZMA.Encoding.Encode (Read_byte, More_bytes, Put_byte);
+    procedure LZMA_Encode is new LZMA.Encoding.Encode (Read_Byte, More_Bytes, Put_Byte);
 
-    dummy : Byte := Read_byte;  --  Consume the initial 'X'
+    dummy : Byte := Read_Byte;  --  Consume the initial 'X'
 
   begin
     --  Whole processing is done here:
@@ -58,7 +58,7 @@ procedure LZMA_Enc is
        position_bits,
        dictionary_size => 2**20,
        uncompressed_size_info => True);
-  end Encode_LZMA_stream;
+  end Encode_LZMA_Stream;
 
   use Ada.Streams.Stream_IO;
 
@@ -115,7 +115,7 @@ begin
             literal_position_bits := lp;
             position_bits         := pb;
             level                 := lv;
-            Encode_LZMA_stream (Stream (f_in), Stream (f_out));
+            Encode_LZMA_Stream (Stream (f_in), Stream (f_out));
             Close (f_in);
             Close (f_out);
           end loop;
@@ -125,7 +125,7 @@ begin
   else
     Open (f_in, In_File, Argument (1));
     Create (f_out, Out_File, Argument (2) & ".lzma");
-    Encode_LZMA_stream (Stream (f_in), Stream (f_out));
+    Encode_LZMA_Stream (Stream (f_in), Stream (f_out));
     New_Line;
     Print_Data_Bytes_Count ("Read    ", Data_Bytes_Count (Index (f_in) - 1));
     Print_Data_Bytes_Count ("Written ", Data_Bytes_Count (Index (f_out) - 1));
