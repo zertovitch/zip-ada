@@ -29,9 +29,11 @@
 
 package body Huffman.Encoding is
 
+  use Interfaces;
+
   procedure Invert (lc : in out Length_Code_Pair) is
-    a : Natural := lc.code;
-    b : Natural := 0;
+    a : Code_Range := lc.code;
+    b : Code_Range := 0;
   begin
     for i in 1 .. lc.bit_length loop
       b := b * 2 + a mod 2;
@@ -42,8 +44,8 @@ package body Huffman.Encoding is
 
   procedure Prepare_Codes (hd : in out Descriptor) is
     max_huffman_bits : constant := 15;
-    bl_count, next_code : array (0 .. max_huffman_bits) of Natural := (others => 0);
-    code : Natural := 0;
+    bl_count, next_code : array (0 .. max_huffman_bits) of Code_Range := (others => 0);
+    code : Code_Range := 0;
     bl : Natural;
   begin
     --  Algorithm from RFC 1951, section 3.2.2.

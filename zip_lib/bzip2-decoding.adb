@@ -464,12 +464,13 @@ package body BZip2.Decoding is
       for i in 1 .. 6 loop
         magic (i) := Character'Val (Get_Byte);
       end loop;
-      if magic = "1AY&SY" then  --  pi digits in hexadecimal!
+      if magic = "1AY&SY" then
+        --  ^ pi (decimal) digits visible in hexadecimal representation!
         if check_CRC then
           if compare_final_CRC then
             null;  --  initialisation is delayed until the rle buffer is empty
           else
-            CRC.Init (computed_crc);  --  Initialize for next block.
+            CRC.Init (computed_crc);
           end if;
         end if;
         stored_blockcrc := Get_Cardinal_32;

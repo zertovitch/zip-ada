@@ -11,13 +11,43 @@ with Ada.Containers.Generic_Constrained_Array_Sort,
 
 package body BZip2.Encoding is
 
-  procedure Put_Byte (b : Byte) is
-  begin
-    null;  --  !! Stuff this byte into the bit buffer...
-  end Put_Byte;
-
   procedure Encode (level : Compression_Level := 1) is
     use Interfaces;
+
+    subtype Bit_Pos_Type is Natural range 0 .. 7;
+    bit_buffer : Byte := 0;
+    bit_pos : Bit_Pos_Type := 7;
+
+    procedure Flush_Bit_Buffer is
+    begin
+      bit_pos := 7;
+      Write_Byte (bit_buffer);
+      bit_buffer := 0;
+    end Flush_Bit_Buffer;
+
+    procedure Put_Bits (data : Unsigned_32; amount : Positive) is
+    begin
+      for count in reverse 1 .. amount loop
+        if (data and Shift_Left (Unsigned_32'(1), count - 1)) /= 0 then
+          bit_buffer := bit_buffer or Shift_Left (Unsigned_8'(1), bit_pos);
+        end if;
+        if bit_pos = 0 then
+          Flush_Bit_Buffer;
+        else
+          bit_pos := bit_pos - 1;
+        end if;
+      end loop;
+    end Put_Bits;
+
+    --  procedure Put (b : Byte) is
+    --  begin
+    --    Put_Bits (Unsigned_32 (b), 8);
+    --  end Put;
+
+    procedure Put (c : Character) is
+    begin
+      Put_Bits (Character'Pos (c), 8);
+    end Put;
 
     block_capacity : constant Natural_32 := Natural_32 (level) * sub_block_size;
     block_size : Natural_32 := 0;
@@ -70,6 +100,8 @@ package body BZip2.Encoding is
       --  Initial Run-Length Encoding  --
       -----------------------------------
 
+      computed_crc : Unsigned_32;
+
       procedure RLE_1 is
 
         procedure Store (x : Byte) with Inline is
@@ -96,9 +128,11 @@ package body BZip2.Encoding is
 
         start : Boolean := True;
       begin
+        CRC.Init (computed_crc);
         while More_Bytes and block_size + 5 < block_capacity loop
           --  The +1 is because sometimes a pair of bytes are sent.
           b := Read_Byte;
+          CRC.Update (computed_crc, b);
           if start or else b /= b_prev then
             --  Startup or Run break:
             Store_Run;
@@ -289,31 +323,61 @@ package body BZip2.Encoding is
              Length_Array => Huffman_Length_Array,
              max_bits     => max_code_len);
 
-        len : array (0 .. max_entropy_coders) of Huffman_Length_Array;
+        len : Huffman_Length_Array;
+        --  array (0 .. max_entropy_coders) of Huffman_Length_Array;
+
+        descr : Huffman.Encoding.Descriptor (Max_Alphabet);
+        --  array (0 .. max_entropy_coders) of Huffman.Encoding.Descriptor (Max_Alphabet);
 
       begin
         --  !! Here: have fun with partial sets of frequencies,
         --           the groups and the 7 possible tables !!
-        LLHCL (freq, len (0));
+        LLHCL (freq, len);
+        for symbol in len'Range loop
+          descr (symbol).bit_length := len (symbol);
+        end loop;
+        Huffman.Encoding.Prepare_Codes (descr);
+
+        --  if verbosity_level >= detailed_verbose then
+        --    for symbol in Max_Alphabet loop
+        --      Trace ("Huff:" & symbol'Image & len (symbol)'Image, detailed_verbose);
+        --    end loop;
+        --  end if;
+
+        for symbol of mtf_data (1 .. mtf_last) loop
+          Put_Bits
+            (Unsigned_32
+              (descr (symbol).code),
+               descr (symbol).bit_length);
+        end loop;
 
       end Entropy;
 
       procedure Put_Block_Header is
-        block_magic : constant String := "1AY&SY";  --  pi digits in hexadecimal!
+        --  pi (decimal) digits visible in hexadecimal representation!
+        block_magic : constant String := "1AY&SY";
       begin
         for c of block_magic loop
-          Put_Byte (Character'Pos (c));
+          Put (c);
         end loop;
-        --  !! CRC
+        Put_Bits (CRC.Final (computed_crc), 32);
+        Put_Bits (0, 1);  --  Randomized flag, always False.
+        Put_Bits (Unsigned_32 (bwt_index), 24);
       end Put_Block_Header;
+
+      procedure Put_Block_Trees_Descriptors is
+      begin
+        null;  --  !!! w.i.p.
+      end Put_Block_Trees_Descriptors;
 
     begin
       RLE_1;
       BWT;
       MTF_and_RLE_2;
-      Entropy;
       --  Now we output the block's compressed data:
       Put_Block_Header;
+      Put_Block_Trees_Descriptors;
+      Entropy;
     end Encode_Block;
 
     procedure Write_Stream_Header is
@@ -333,6 +397,7 @@ package body BZip2.Encoding is
       exit when not More_Bytes;
     end loop;
     Unchecked_Free (data);
+    Flush_Bit_Buffer;
   end Encode;
 
 end BZip2.Encoding;

@@ -27,11 +27,13 @@
 --  NB: this is the MIT License, as found 03-Nov-2024 on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
+with Interfaces;
+
 package Huffman.Encoding is
 
   invalid : constant := -1;
 
-  subtype Code_Range is Integer range invalid .. Integer'Last;
+  subtype Code_Range is Interfaces.Integer_32 range invalid .. Interfaces.Integer_32'Last;
 
   type Length_Code_Pair is record
     bit_length : Natural;                --  Huffman code length, in bits
