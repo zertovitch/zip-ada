@@ -188,9 +188,9 @@ is
 
   type Deflate_Huff_Descriptors is record
     --  Tree descriptor for Literal, EOB or Length encoding
-    lit_len : Huffman.Encoding.Huffman_Descriptor (0 .. 287);
+    lit_len : Huffman.Encoding.Descriptor (0 .. 287);
     --  Tree descriptor for Distance encoding
-    dis : Huffman.Encoding.Huffman_Descriptor (0 .. 31);
+    dis : Huffman.Encoding.Descriptor (0 .. 31);
   end record;
   --  NB: Appnote: "Literal codes 286-287 and distance codes 30-31 are never used
   --                  but participate in the Huffman construction."
@@ -518,8 +518,8 @@ is
   is
     dhd_var : Deflate_Huff_Descriptors := dhd;
   begin
-    Huffman.Encoding.Prepare_Huffman_Codes (dhd_var.lit_len);
-    Huffman.Encoding.Prepare_Huffman_Codes (dhd_var.dis);
+    Huffman.Encoding.Prepare_Codes (dhd_var.lit_len);
+    Huffman.Encoding.Prepare_Codes (dhd_var.dis);
     return dhd_var;
   end Prepare_Huffman_Codes;
 
@@ -558,7 +558,7 @@ is
     subtype Alphabet is Integer range 0 .. 18;
     type Alpha_Array is new Bit_Length_Array (Alphabet);
     truc_freq, truc_bl : Alpha_Array;
-    truc : Huffman.Encoding.Huffman_Descriptor (Alphabet);
+    truc : Huffman.Encoding.Descriptor (Alphabet);
     --  Compression structure: cs_bl is the "big" array with all bit lengths
     --  for compressing data. cs_bl will be sent compressed, too.
     cs_bl : array (1 .. dhd.lit_len'Length + dhd.dis'Length) of Natural;
@@ -692,7 +692,7 @@ is
       for a in Alphabet loop
         truc (a).bit_length := truc_bl (a);
       end loop;
-      Huffman.Encoding.Prepare_Huffman_Codes (truc);
+      Huffman.Encoding.Prepare_Codes (truc);
       --  Output of the compression structure
       Put_Binary_Code (U32 (max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
       Put_Binary_Code (U32 (max_used_dis_code), 5);

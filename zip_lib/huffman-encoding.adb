@@ -40,7 +40,7 @@ package body Huffman.Encoding is
     lc.code := b;
   end Invert;
 
-  procedure Prepare_Huffman_Codes (hd : in out Huffman_Descriptor) is
+  procedure Prepare_Codes (hd : in out Descriptor) is
     max_huffman_bits : constant := 15;
     bl_count, next_code : array (0 .. max_huffman_bits) of Natural := (others => 0);
     code : Natural := 0;
@@ -71,6 +71,6 @@ package body Huffman.Encoding is
     for i in hd'Range loop
       Invert (hd (i));
     end loop;
-  end Prepare_Huffman_Codes;
+  end Prepare_Codes;
 
 end Huffman.Encoding;

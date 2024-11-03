@@ -31,18 +31,18 @@ package Huffman.Encoding is
 
   invalid : constant := -1;
 
-  subtype Huffman_Code_Range is Integer range invalid .. Integer'Last;
+  subtype Code_Range is Integer range invalid .. Integer'Last;
 
   type Length_Code_Pair is record
-    bit_length : Natural;                        --  Huffman code length, in bits
-    code       : Huffman_Code_Range := invalid;  --  The code itself (the 0's and 1's)
+    bit_length : Natural;                --  Huffman code length, in bits
+    code       : Code_Range := invalid;  --  The code itself (the 0's and 1's)
   end record;
 
-  type Huffman_Descriptor is array (Natural range <>) of Length_Code_Pair;
+  type Descriptor is array (Natural range <>) of Length_Code_Pair;
 
   --  The Prepare_Huffman_Codes procedure finds the Huffman
   --  code for all values, given the bit_length imposed as input.
   --
-  procedure Prepare_Huffman_Codes (hd : in out Huffman_Descriptor);
+  procedure Prepare_Codes (hd : in out Descriptor);
 
 end Huffman.Encoding;
