@@ -5,7 +5,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2023 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -49,26 +49,27 @@ with Ada.Strings.Unbounded;
 
 private package UnZip.Decompress is
 
-   procedure Decompress_Data
-     (zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
-      --  zip_file must be open and its index is meant
-      --  to point to the beginning of compressed data
-      format                     : Zip.PKZip_method;
-      write_mode                 : Write_Mode_Type;
-      output_file_name           : String; -- relevant only if mode = write_to_file
-      output_memory_access       : out p_Stream_Element_Array; -- \ = write_to_memory
-      output_stream_access       : p_Stream;                   -- \ = write_to_stream
-      feedback                   : Zip.Feedback_Proc;
-      explode_literal_tree       : Boolean; -- relevant for the "explode" format
-      explode_slide_8KB_LZMA_EOS : Boolean; -- relevant for the "explode" and "LZMA" formats
-      data_descriptor_after_data : Boolean;
-      is_encrypted               : Boolean;
-      password                   : in out Ada.Strings.Unbounded.Unbounded_String;
-      get_new_password           : Get_Password_Proc; -- if null, initial pwd must fit
-      hint                       : in out Zip.Headers.Local_File_Header);
-      --  Values are known, or smart fakes, and are later corrected if a closing
-      --  Data_descriptor is appended to the compressed data (1-pass written
-      --  zip files, like JAR, OpenDocument, etc.)
+  procedure Decompress_Data
+    (zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
+     --  zip_file must be open and its index is meant
+     --  to point to the beginning of compressed data
+     format                     : in     Zip.PKZip_method;
+     write_mode                 : in     Write_Mode_Type;
+     output_file_name           : in     String;  --  relevant only if mode = write_to_file
+     output_memory_access       :    out p_Stream_Element_Array;  -- \ = write_to_memory
+     output_stream_access       : in     p_Stream;                -- \ = write_to_stream
+     feedback                   : in     Zip.Feedback_Proc;
+     explode_literal_tree       : in     Boolean;  --  relevant for the "explode" format
+     explode_slide_8KB_LZMA_EOS : in     Boolean;  --  relevant for the "explode" and "LZMA" formats
+     data_descriptor_after_data : in     Boolean;
+     is_encrypted               : in     Boolean;
+     password                   : in out Ada.Strings.Unbounded.Unbounded_String;
+     get_new_password           : in     Get_Password_Proc;  --  if null, initial pwd must fit
+     hint                       : in out Zip.Headers.Local_File_Header);
+     --
+     --  Values are known, or smart fakes, and are later corrected if a closing
+     --  Data_descriptor is appended to the compressed data (1-pass written
+     --  zip files, like JAR, OpenDocument, etc.)
 
 private
 
