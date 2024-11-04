@@ -83,21 +83,20 @@ private
   max_alphabet_size        : constant := 258;  --  BZ_MAX_ALPHA_SIZE
 
   max_code_len             : constant := 23;   --  BZ_MAX_CODE_LEN
-
-  max_code_len_bzip2_1_0_2 : constant := 20;
-  max_code_len_bzip2_1_0_3 : constant := 17;
-  --  ^ See comments in huffman.c and the hardcoded limit
-  --    in decompress.c.
+  max_code_len_bzip2_1_0_2 : constant := 20;   --  Actual maximum in bzip2 1.0.2
+  max_code_len_bzip2_1_0_3 : constant := 17;   --  Actual maximum in bzip2 1.0.3+
+  --
+  --  ^ See comments in huffman.c and the hardcoded limit in decompress.c.
   --    Longer codes will trigger a BZ_DATA_ERROR in the latter.
-  --    The related C-compiled bzip2 executable shows:
-  --      "data integrity (CRC) error in data"
+  --    NB: the related C-compiled bzip2 executable shows:
+  --         "data integrity (CRC) error in data"
   --    for all kinds of data errors, most of them unrelated to CRC checks!
 
-  --  Each group of data comprise 50 symbols and can use one of up
+  --  Each group of data comprises 50 symbols and can use one of up
   --  to 6 different entropy coders (for BZip2: Huffman tables).
 
   min_entropy_coders : constant := 2;    --  Magic number found in a check in decompress.c ...
-  max_entropy_coders : constant := 6;    --  BZ_N_GROUPS
+  max_entropy_coders : constant := 6;    --  BZ_N_GROUPS (this C name is very confusing!)
   group_size         : constant := 50;   --  BZ_G_SIZE
 
   --  Constants used to calibrate the main memory pool.
