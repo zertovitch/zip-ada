@@ -420,40 +420,45 @@ package body BZip2.Encoding is
           Put_Bits (selector_count, 15);
           for i in 1 .. selector_count loop
             Put_Bits (0, 1);  --  MTF-transformed index for the selected entropy coder
-            --  !! Output 1's for non-zero index.
+            --  !! Output 1's for non-zero MTF indices.
           end loop;
         end Put_Selectors;
 
         procedure Put_Huffman_Bit_Lengths is
           current_bit_length, new_bit_length : Natural;
         begin
-          --  !!  Loop over the list of used entropy coders.
-          current_bit_length := descr (0).bit_length;
-          Put_Bits (Unsigned_32 (current_bit_length), 5);
-          for i in descr'Range loop
-            new_bit_length := descr (i).bit_length;
-            Adjust_Bit_length :
-            loop
-              if current_bit_length = new_bit_length then
-                Put_Bits (0, 1);
-                exit Adjust_Bit_length;
-              else
-                Put_Bits (1, 1);
-                if current_bit_length < new_bit_length then
-                  current_bit_length := current_bit_length + 1;
+          --  !!  Loop over the list of actually used entropy coders.
+          --      Here, we output two copies of the same coder.
+          --      Reason: the canonical bzip2 tool wants two
+          --      or more entropy coders.
+          for repeat in 1 .. 2 loop
+            current_bit_length := descr (0).bit_length;
+            Put_Bits (Unsigned_32 (current_bit_length), 5);
+            for i in descr'Range loop
+              new_bit_length := descr (i).bit_length;
+              Adjust_Bit_length :
+              loop
+                if current_bit_length = new_bit_length then
                   Put_Bits (0, 1);
+                  exit Adjust_Bit_length;
                 else
-                  current_bit_length := current_bit_length - 1;
                   Put_Bits (1, 1);
+                  if current_bit_length < new_bit_length then
+                    current_bit_length := current_bit_length + 1;
+                    Put_Bits (0, 1);
+                  else
+                    current_bit_length := current_bit_length - 1;
+                    Put_Bits (1, 1);
+                  end if;
                 end if;
-              end if;
-            end loop Adjust_Bit_length;
+              end loop Adjust_Bit_length;
+            end loop;
           end loop;
         end Put_Huffman_Bit_Lengths;
 
       begin
         Put_Mapping_Table;
-        Put_Bits (1, 3);  --  !! Number of trees (entropy coders)
+        Put_Bits (2, 3);  --  !! Number of trees (currently, 2 identical entropy coders)
         Put_Selectors;
         Put_Huffman_Bit_Lengths;
       end Put_Block_Trees_Descriptors;
