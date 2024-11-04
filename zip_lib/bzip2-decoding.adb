@@ -514,7 +514,7 @@ package body BZip2.Decoding is
       elsif magic = stream_footer_magic then
         return False;
       else
-        raise bad_block_magic;
+        raise bad_block_magic with "BZip2: expecting block magic or stream footer";
       end if;
     end Decode_Block;
 

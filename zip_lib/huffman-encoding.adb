@@ -42,7 +42,7 @@ package body Huffman.Encoding is
     lc.code := b;
   end Invert;
 
-  procedure Prepare_Codes (hd : in out Descriptor) is
+  procedure Prepare_Codes (hd : in out Descriptor; inverted : Boolean := True) is
     max_huffman_bits : constant := 15;
     bl_count, next_code : array (0 .. max_huffman_bits) of Code_Range := (others => 0);
     code : Code_Range := 0;
@@ -69,10 +69,12 @@ package body Huffman.Encoding is
         hd (n).code := 0;
       end if;
     end loop;
-    --  Invert bit order for output:
-    for i in hd'Range loop
-      Invert (hd (i));
-    end loop;
+    if inverted then
+      --  Invert bit order for output:
+      for i in hd'Range loop
+        Invert (hd (i));
+      end loop;
+    end if;
   end Prepare_Codes;
 
 end Huffman.Encoding;

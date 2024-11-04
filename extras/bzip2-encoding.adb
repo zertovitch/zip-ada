@@ -54,6 +54,13 @@ package body BZip2.Encoding is
       Put_Bits (Character'Pos (c), 8);
     end Put;
 
+    procedure Put (s : String) is
+    begin
+      for c of s loop
+        Put (c);
+      end loop;
+    end Put;
+
     block_capacity : constant Natural_32 := Natural_32 (level) * sub_block_size;
     block_size : Natural_32 := 0;
 
@@ -134,8 +141,8 @@ package body BZip2.Encoding is
         start : Boolean := True;
       begin
         CRC.Init (computed_crc);
-        while More_Bytes and block_size + 5 < block_capacity loop
-          --  The +1 is because sometimes a pair of bytes are sent.
+        while block_size + 5 < block_capacity and then More_Bytes loop
+          --  ^ The +5 is because sometimes a pack of max 5 bytes is sent by Store_Run.
           b := Read_Byte;
           CRC.Update (computed_crc, b);
           if start or else b /= b_prev then
@@ -349,7 +356,7 @@ package body BZip2.Encoding is
         for symbol in len'Range loop
           descr (symbol).bit_length := len (symbol);
         end loop;
-        Huffman.Encoding.Prepare_Codes (descr);
+        Huffman.Encoding.Prepare_Codes (descr, True);
 
         --  if verbosity_level >= detailed_verbose then
         --    for symbol in Max_Alphabet loop
@@ -371,9 +378,7 @@ package body BZip2.Encoding is
 
       procedure Put_Block_Header is
       begin
-        for c of block_magic loop
-          Put (c);
-        end loop;
+        Put (block_magic);
         Put_Bits (CRC.Final (computed_crc), 32);
         Put_Bits (0, 1);  --  Randomized flag, always False.
         Put_Bits (Unsigned_32 (bwt_index), 24);
@@ -457,16 +462,12 @@ package body BZip2.Encoding is
       stream_magic : String := "BZh0";
     begin
       stream_magic (stream_magic'Last) := Character'Val (Character'Pos ('0') + level);
-      for c of stream_magic loop
-        Write_Byte (Character'Pos (c));  --  Last direct write.
-      end loop;
+      Put (stream_magic);
     end Write_Stream_Header;
 
     procedure Write_Stream_Footer is
     begin
-      for c of stream_footer_magic loop
-        Put (c);
-      end loop;
+      Put (stream_footer_magic);
       --  !!  Stream CRC
       --  !!  Padding
     end Write_Stream_Footer;
