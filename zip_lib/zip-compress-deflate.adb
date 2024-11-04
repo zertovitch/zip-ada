@@ -138,11 +138,10 @@ is
 
   --  Bit codes are at most 15 bits for Huffman codes,
   --  or 13 for explicit codes (distance extra bits).
-  subtype Code_size_type is Integer range 1 .. 15;
+  subtype Code_Size_Type is Integer range 1 .. 15;
 
   --  Send a value on a given number of bits.
-  procedure Put_Binary_Code (code : U32; code_size : Code_size_type) is
-  pragma Inline (Put_Binary_Code);
+  procedure Put_Bits (code : U32; code_size : Code_Size_Type) with Inline is
   begin
     --  Put bits from code at the left of existing ones. They might be shifted away
     --  partially on the left side (or even entirely if valid_bits is already = 32).
@@ -158,7 +157,7 @@ is
       --  Empty buffer and put on it the rest of the code
       bit_buffer := Shift_Right (code, code_size - valid_bits);
     end if;
-  end Put_Binary_Code;
+  end Put_Bits;
 
   ------------------------------------------------------
   -- Deflate, post LZ encoding, with Huffman encoding --
@@ -515,8 +514,8 @@ is
   is
     dhd_var : Deflate_Huff_Descriptors := dhd;
   begin
-    Huffman.Encoding.Prepare_Codes (dhd_var.lit_len);
-    Huffman.Encoding.Prepare_Codes (dhd_var.dis);
+    Huffman.Encoding.Prepare_Codes (dhd_var.lit_len, Code_Size_Type'Last, True);
+    Huffman.Encoding.Prepare_Codes (dhd_var.dis, Code_Size_Type'Last, True);
     return dhd_var;
   end Prepare_Huffman_Codes;
 
@@ -527,9 +526,9 @@ is
     --  Huffman code of length 0 should never occur: when constructing
     --  the code lengths (LLHCL) any single occurrence in the statistics
     --  will trigger the build of a code length of 1 or more.
-    Put_Binary_Code
+    Put_Bits
       (code      => U32 (lc.code),
-       code_size => Code_size_type (lc.bit_length));  --  Range check for length 0 (if enabled).
+       code_size => Code_Size_Type (lc.bit_length));  --  Range check for length 0 (if enabled).
   end Put_Huffman_Code;
 
   --  This is where the "dynamic" Huffman trees are sent before the block's data are sent.
@@ -608,7 +607,7 @@ is
               extra_bits : constant Natural := extra_bits_needed (x);
             begin
               if extra_bits > 0 then
-                Put_Binary_Code (extra_code, extra_bits);
+                Put_Bits (extra_code, extra_bits);
               end if;
             end;
         end case;
@@ -689,15 +688,15 @@ is
       for a in Alphabet loop
         truc (a).bit_length := truc_bl (a);
       end loop;
-      Huffman.Encoding.Prepare_Codes (truc);
+      Huffman.Encoding.Prepare_Codes (truc, Code_Size_Type'Last, True);
       --  Output of the compression structure
-      Put_Binary_Code (U32 (max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
-      Put_Binary_Code (U32 (max_used_dis_code), 5);
-      Put_Binary_Code (U32 (a_non_zero - 3), 4);
+      Put_Bits (U32 (max_used_lln_code - 256), 5);  --  max_used_lln_code is always >= 256 = EOB code
+      Put_Bits (U32 (max_used_dis_code), 5);
+      Put_Bits (U32 (a_non_zero - 3), 4);
       --  Save the local alphabet's Huffman lengths. It's the compression structure
       --  for compressing the data compression structure. Easy, isn't it ?
       for a in 0 .. a_non_zero loop
-        Put_Binary_Code (U32 (truc (alphabet_permutation (a)).bit_length), 3);
+        Put_Bits (U32 (truc (alphabet_permutation (a)).bit_length), 3);
       end loop;
       --  Emit the Huffman lengths for encoding the data, in the local Huffman-encoded fashion.
       Emit_data_compression_structures (effective);
@@ -814,7 +813,7 @@ is
       --  Example: if extra_bits = 1, only the parity is sent (0 or 1);
       --  the rest has been already sent with Put_Huffman_code above.
       --  Equivalent: x:= x mod (2 ** extra_bits);
-      Put_Binary_Code (
+      Put_Bits (
         U32 (length - extra_bits_for_lz_length_offset (length))
           and
         (Shift_Left (U32'(1), extra_bits) - 1),
@@ -844,43 +843,43 @@ is
         Put_Huffman_Code (curr_descr.dis (distance - 1));
       when 5 .. 8 =>          --  Codes 4..5, with 1 extra bit
         Put_Huffman_Code (curr_descr.dis (4 + (distance - 5) / 2));
-        Put_Binary_Code (U32 ((distance - 5) mod 2), 1);
+        Put_Bits (U32 ((distance - 5) mod 2), 1);
       when 9 .. 16 =>         --  Codes 6..7, with 2 extra bits
         Put_Huffman_Code (curr_descr.dis (6 + (distance - 9) / 4));
-        Put_Binary_Code (U32 ((distance - 9) mod 4), 2);
+        Put_Bits (U32 ((distance - 9) mod 4), 2);
       when 17 .. 32 =>        --  Codes 8..9, with 3 extra bits
         Put_Huffman_Code (curr_descr.dis (8 + (distance - 17) / 8));
-        Put_Binary_Code (U32 ((distance - 17) mod 8), 3);
+        Put_Bits (U32 ((distance - 17) mod 8), 3);
       when 33 .. 64 =>        --  Codes 10..11, with 4 extra bits
         Put_Huffman_Code (curr_descr.dis (10 + (distance - 33) / 16));
-        Put_Binary_Code (U32 ((distance - 33) mod 16), 4);
+        Put_Bits (U32 ((distance - 33) mod 16), 4);
       when 65 .. 128 =>       --  Codes 12..13, with 5 extra bits
         Put_Huffman_Code (curr_descr.dis (12 + (distance - 65) / 32));
-        Put_Binary_Code (U32 ((distance - 65) mod 32), 5);
+        Put_Bits (U32 ((distance - 65) mod 32), 5);
       when 129 .. 256 =>      --  Codes 14..15, with 6 extra bits
         Put_Huffman_Code (curr_descr.dis (14 + (distance - 129) / 64));
-        Put_Binary_Code (U32 ((distance - 129) mod 64), 6);
+        Put_Bits (U32 ((distance - 129) mod 64), 6);
       when 257 .. 512 =>      --  Codes 16..17, with 7 extra bits
         Put_Huffman_Code (curr_descr.dis (16 + (distance - 257) / 128));
-        Put_Binary_Code (U32 ((distance - 257) mod 128), 7);
+        Put_Bits (U32 ((distance - 257) mod 128), 7);
       when 513 .. 1024 =>     --  Codes 18..19, with 8 extra bits
         Put_Huffman_Code (curr_descr.dis (18 + (distance - 513) / 256));
-        Put_Binary_Code (U32 ((distance - 513) mod 256), 8);
+        Put_Bits (U32 ((distance - 513) mod 256), 8);
       when 1025 .. 2048 =>    --  Codes 20..21, with 9 extra bits
         Put_Huffman_Code (curr_descr.dis (20 + (distance - 1025) / 512));
-        Put_Binary_Code (U32 ((distance - 1025) mod 512), 9);
+        Put_Bits (U32 ((distance - 1025) mod 512), 9);
       when 2049 .. 4096 =>    --  Codes 22..23, with 10 extra bits
         Put_Huffman_Code (curr_descr.dis (22 + (distance - 2049) / 1024));
-        Put_Binary_Code (U32 ((distance - 2049) mod 1024), 10);
+        Put_Bits (U32 ((distance - 2049) mod 1024), 10);
       when 4097 .. 8192 =>    --  Codes 24..25, with 11 extra bits
         Put_Huffman_Code (curr_descr.dis (24 + (distance - 4097) / 2048));
-        Put_Binary_Code (U32 ((distance - 4097) mod 2048), 11);
+        Put_Bits (U32 ((distance - 4097) mod 2048), 11);
       when 8193 .. 16384 =>   --  Codes 26..27, with 12 extra bits
         Put_Huffman_Code (curr_descr.dis (26 + (distance - 8193) / 4096));
-        Put_Binary_Code (U32 ((distance - 8193) mod 4096), 12);
+        Put_Bits (U32 ((distance - 8193) mod 4096), 12);
       when 16385 .. 32768 =>  --  Codes 28..29, with 13 extra bits
         Put_Huffman_Code (curr_descr.dis (28 + (distance - 16385) / 8192));
-        Put_Binary_Code (U32 ((distance - 16385) mod 8192), 13);
+        Put_Bits (U32 ((distance - 16385) mod 8192), 13);
     end case;
   end Put_DL_code;
 
@@ -1003,7 +1002,7 @@ is
       Put_Huffman_Code (curr_descr.lit_len (End_Of_Block));  --  Finish previous block
     end if;
     block_to_finish := True;
-    Put_Binary_Code (code => Boolean'Pos (last_block_for_stream), code_size => 1);
+    Put_Bits (code => Boolean'Pos (last_block_for_stream), code_size => 1);
     last_block_marked := last_block_for_stream;
   end Mark_new_block;
 
@@ -1044,7 +1043,7 @@ is
     b2 := Byte (to_be_sent  /  256);
     Mark_new_block (last_block_for_stream => last_block);
     last_block_type := stored;
-    Put_Binary_Code (code => 0, code_size => 2);  --  Signals a "stored" block
+    Put_Bits (code => 0, code_size => 2);  --  Signals a "stored" block
     Flush_bit_buffer;  --  Go to byte boundary
     Put_byte (b1);
     Put_byte (b2);
@@ -1115,7 +1114,7 @@ is
       else
         Mark_new_block (last_block_for_stream => last_block);
         curr_descr := Deflate_fixed_descriptors;
-        Put_Binary_Code (code => 1, code_size => 2);  --  Signals a "fixed" block
+        Put_Bits (code => 1, code_size => 2);  --  Signals a "fixed" block
         last_block_type := fixed;
       end if;
       Put_LZ_buffer (lzb);
@@ -1129,7 +1128,7 @@ is
     begin
       Mark_new_block (last_block_for_stream => last_block);
       curr_descr := Prepare_Huffman_Codes (dyn);
-      Put_Binary_Code (code => 2, code_size => 2);  --  Signals a "dynamic" block
+      Put_Bits (code => 2, code_size => 2);  --  Signals a "dynamic" block
       Put_Compression_Structure (curr_descr, cost_analysis => False, bits => dummy);
       Put_LZ_buffer (lzb);
       last_block_type := dynamic;
@@ -1601,8 +1600,8 @@ is
     case method is
       when Deflate_Fixed =>  --  "Fixed" (predefined) compression structure
         --  We have only one compressed data block, then it is already the last one.
-        Put_Binary_Code (code => 1, code_size => 1);  --  Signals last block
-        Put_Binary_Code (code => 1, code_size => 2);  --  Signals a "fixed" block
+        Put_Bits (code => 1, code_size => 1);  --  Signals last block
+        Put_Bits (code => 1, code_size => 2);  --  Signals a "fixed" block
       when Taillaule_Deflation_Method =>
         null;  --  No start data sent, all is delayed
     end case;
@@ -1627,8 +1626,8 @@ is
         end if;
         if not last_block_marked then
           --  Add a fake fixed block, just to have a final block...
-          Put_Binary_Code (code => 1, code_size => 1);  --  Signals last block
-          Put_Binary_Code (code => 1, code_size => 2);  --  Signals a "fixed" block
+          Put_Bits (code => 1, code_size => 1);  --  Signals last block
+          Put_Bits (code => 1, code_size => 2);  --  Signals a "fixed" block
           curr_descr := Deflate_fixed_descriptors;
           Put_Huffman_Code (curr_descr.lit_len (End_Of_Block));
         end if;

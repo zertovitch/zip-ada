@@ -78,19 +78,25 @@ begin
     Put_Line ("NB: - The "".bz2"" extension is automatically added to outfile.");
     Put_Line ("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
     New_Line;
-    Put_Line ("Options: -1 : fast compression");
-    Put_Line ("         -9 : best compression");
+    Put_Line ("Options: -1 : block size 100_000");
+    Put_Line ("         -9 : block size 900_000");
     return;
   elsif Argument_Count < 2 then
     Put_Line ("You must specify at least two parameters");
     return;
   end if;
-  for i in 3 .. Argument_Count loop
+  for i in 2 .. Argument_Count loop
     declare
       arg : constant String := Argument (i);
     begin
-      if arg (arg'First) = '-' and then arg (arg'Last) in '0' .. '9' then
-        level := Character'Pos (arg (arg'Last)) - Character'Pos ('0');
+      if arg (arg'First) = '-' then
+        if i = 2 then
+          Put_Line ("Option needs to be 3rd or later parameter");
+          return;
+        end if;
+        if arg (arg'Last) in '0' .. '9' then
+          level := Character'Pos (arg (arg'Last)) - Character'Pos ('0');
+        end if;
       end if;
     end;
   end loop;

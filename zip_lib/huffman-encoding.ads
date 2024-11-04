@@ -45,6 +45,9 @@ package Huffman.Encoding is
   --  The Prepare_Huffman_Codes procedure finds the Huffman
   --  code for all values, given the bit_length imposed as input.
   --
-  procedure Prepare_Codes (hd : in out Descriptor; inverted : Boolean := True);
+  procedure Prepare_Codes
+    (hd               : in out Descriptor;
+     max_huffman_bits : in     Positive;
+     invert_bit_order : in     Boolean);
 
 end Huffman.Encoding;

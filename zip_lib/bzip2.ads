@@ -71,8 +71,8 @@ private
   --  the run-lengths in the 2nd RLE phase (the encoding
   --  of MTF indices).
 
-  run_a              : constant := 0;    --  BZ_RUNA
-  run_b              : constant := 1;    --  BZ_RUNB
+  run_a : constant := 0;    --  BZ_RUNA
+  run_b : constant := 1;    --  BZ_RUNB
 
   --  If all byte values are used, the MTF & RLE_2 encoding
   --  needs this amount of symbols:
@@ -80,31 +80,41 @@ private
   --     * 255  for non-zero MTF indices
   --     *   1  for EOB.
   --
-  max_alphabet_size  : constant := 258;  --  BZ_MAX_ALPHA_SIZE
+  max_alphabet_size        : constant := 258;  --  BZ_MAX_ALPHA_SIZE
 
-  max_code_len       : constant := 23;   --  BZ_MAX_CODE_LEN
+  max_code_len             : constant := 23;   --  BZ_MAX_CODE_LEN
 
-  --  Each group of data can use one of up to 7 different
+  max_code_len_bzip2_1_0_2 : constant := 20;
+  max_code_len_bzip2_1_0_3 : constant := 17;
+  --  ^ See comments in huffman.c and the hardcoded limit
+  --    in decompress.c.
+  --    Longer codes will trigger a BZ_DATA_ERROR in the latter.
+  --    The related C-compiled bzip2 executable shows:
+  --      "data integrity (CRC) error in data"
+  --    for all kinds of data errors, most of them unrelated to CRC checks!
+
+  --  Each group of data can use one of up to 6 different
   --  entropy coders (for BZip2: Huffman tables).
 
+  min_entropy_coders : constant := 1;    --  !! 2 !! Magic number in decompress.c ...
   max_entropy_coders : constant := 6;    --  BZ_N_GROUPS
   group_size         : constant := 50;   --  BZ_G_SIZE
 
   --  Constants used to calibrate the main memory pool.
 
-  max_block_size     : constant := 9;
-  sub_block_size     : constant := 100_000;
-  max_selectors      : constant := 2 + ((max_block_size * sub_block_size) / group_size);  --  BZ_MAX_SELECTORS
+  max_block_size : constant := 9;
+  sub_block_size : constant := 100_000;
+  max_selectors  : constant := 2 + ((max_block_size * sub_block_size) / group_size);  --  BZ_MAX_SELECTORS
 
   subtype Natural_32  is Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;
   subtype Positive_32 is Interfaces.Integer_32 range 1 .. Interfaces.Integer_32'Last;
 
   block_magic : constant String := "1AY&SY";
-  --  ^ pi (decimal) digits, visible in hexadecimal representation!
+  --  ^ pi "decimal" digits, visible in hexadecimal representation!
 
   stream_footer_magic  : constant String :=
     Character'Val (16#17#) & "rE8P" & Character'Val (16#90#);
-  --  ^ sqrt (pi) digits, visible in hexadecimal representation!
+  --  ^ sqrt (pi) "decimal" digits, visible in hexadecimal representation!
 
   ---------------------------------------------------------------------------
   --  Cyclic redundancy check to verify uncompressed block data integrity  --

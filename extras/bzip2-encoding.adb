@@ -20,9 +20,9 @@ package body BZip2.Encoding is
 
     procedure Flush_Bit_Buffer is
     begin
-      bit_pos := 7;
       Write_Byte (bit_buffer);
       bit_buffer := 0;
+      bit_pos := 7;
     end Flush_Bit_Buffer;
 
     procedure Put_Bits (data : Unsigned_32; amount : Positive) is
@@ -38,11 +38,6 @@ package body BZip2.Encoding is
         end if;
       end loop;
     end Put_Bits;
-
-    --  procedure Put (b : Byte) is
-    --  begin
-    --    Put_Bits (Unsigned_32 (b), 8);
-    --  end Put;
 
     procedure Put (b : Boolean) is
     begin
@@ -62,7 +57,6 @@ package body BZip2.Encoding is
     end Put;
 
     block_capacity : constant Natural_32 := Natural_32 (level) * sub_block_size;
-    block_size : Natural_32 := 0;
 
     type Buffer is array (Natural_32 range <>) of Byte;
     type Buffer_Access is access Buffer;
@@ -70,6 +64,10 @@ package body BZip2.Encoding is
     procedure Unchecked_Free is new Ada.Unchecked_Deallocation (Buffer, Buffer_Access);
 
     data : Buffer_Access;
+
+    combined_crc : Unsigned_32 := 0;
+
+    block_counter : Natural := 0;
 
     --  Each block is limited either by the data available
     --  (More_Bytes = False) or by the block capacity.
@@ -79,17 +77,21 @@ package body BZip2.Encoding is
 
     procedure Encode_Block is
 
-      detailed_verbose : constant := 2;
-      verbosity_level : constant := detailed_verbose;
+      --  quiet     : constant := 0;
+      headlines       : constant := 1;
+      detailed        : constant := 2;
+      super_detailed  : constant := 3;  --  Details down to symbols.
 
-      procedure Trace (msg : String; verbosity : Positive) is
+      verbosity_level  : constant := detailed;
+
+      procedure Trace (msg : String; verbosity : Natural) with Inline is
       begin
         if verbosity_level >= verbosity then
-          Ada.Text_IO.Put_Line (msg);
+          Ada.Text_IO.Put_Line ("BZip2: " & msg);
         end if;
       end Trace;
 
-      procedure Trace (prefix : String; b : Buffer; verbosity : Positive) is
+      procedure Trace (prefix : String; b : Buffer; verbosity : Natural) with Inline is
       begin
         if verbosity_level >= verbosity then
           declare
@@ -112,7 +114,8 @@ package body BZip2.Encoding is
       --  Initial Run-Length Encoding  --
       -----------------------------------
 
-      computed_crc : Unsigned_32;
+      block_size : Natural_32 := 0;
+      block_crc : Unsigned_32;
 
       procedure RLE_1 is
 
@@ -140,11 +143,11 @@ package body BZip2.Encoding is
 
         start : Boolean := True;
       begin
-        CRC.Init (computed_crc);
+        CRC.Init (block_crc);
         while block_size + 5 < block_capacity and then More_Bytes loop
           --  ^ The +5 is because sometimes a pack of max 5 bytes is sent by Store_Run.
           b := Read_Byte;
-          CRC.Update (computed_crc, b);
+          CRC.Update (block_crc, b);
           if start or else b /= b_prev then
             --  Startup or Run break:
             Store_Run;
@@ -158,8 +161,8 @@ package body BZip2.Encoding is
           b_prev := b;
         end loop;
         Store_Run;
-        if verbosity_level >= detailed_verbose then
-          Trace ("RLE_1: ", data (1 .. block_size), detailed_verbose);
+        if verbosity_level >= super_detailed then
+          Trace ("RLE_1: ", data (1 .. block_size), super_detailed);
         end if;
       end RLE_1;
 
@@ -168,7 +171,7 @@ package body BZip2.Encoding is
       ---------------------------------
 
       bwt_data : Buffer_Access;
-      bwt_index : Natural_32;  --  0-based.
+      bwt_index : Natural_32 := 0;  --  0-based.
 
       procedure BWT is
 
@@ -209,11 +212,11 @@ package body BZip2.Encoding is
           offset (i) := i;
         end loop;
 
-        Offset_Sort (offset.all);
+        Offset_Sort (offset.all);  --  <--- The BW Transform is done here.
 
         bwt_data := new Buffer (1 .. block_size);
         for i in Offset_Range loop
-          --  Copy last column into transformed message:
+          --  Copy last column of the matrix into transformed message:
           bwt_data (1 + i) := data (1 + (block_size - 1 - offset (i)) mod block_size);
           if offset (i) = 0 then
             --  Found the row index of the original message.
@@ -221,9 +224,13 @@ package body BZip2.Encoding is
           end if;
         end loop;
 
-        if verbosity_level >= detailed_verbose then
-          Trace ("BWT:   ", bwt_data.all, detailed_verbose);
-          Trace ("BWT index:" & bwt_index'Image, detailed_verbose);
+        if verbosity_level >= super_detailed then
+          if block_size = 0 then
+            Trace ("BWT:   emtpy block", super_detailed);
+          else
+            Trace ("BWT:   ", bwt_data.all, super_detailed);
+            Trace ("BWT index:" & bwt_index'Image, super_detailed);
+          end if;
         end if;
         Unchecked_Free (offset);
       end BWT;
@@ -277,7 +284,7 @@ package body BZip2.Encoding is
         mtf_symbol : array (0 .. 255) of Byte;
         idx : Natural;
       begin
-        mtf_data := new MTF_Array (1 .. 2 * block_size);  --  Check real worst case capacity !!
+        mtf_data := new MTF_Array (1 .. 1 + 2 * block_size);  --  Check real worst case capacity !!
 
         for i in mtf_symbol'Range loop
           mtf_symbol (i) := Byte (i);
@@ -336,14 +343,14 @@ package body BZip2.Encoding is
              Count_Type   => Natural_32,
              Count_Array  => Frequency_Array,
              Length_Array => Huffman_Length_Array,
-             max_bits     => max_code_len);
+             max_bits     => max_code_len_bzip2_1_0_3);
 
         len : Huffman_Length_Array;
         --  array (0 .. max_entropy_coders) of Huffman_Length_Array;
 
       begin
         --  !! Here: have fun with partial sets of frequencies,
-        --           the groups and the 7 possible tables !!
+        --           the groups and the 6 possible tables !!
 
         --  !! TBD: pack the alphabet (unseq_to_seq)
         --          Absent this, we ballot-box-stuff the frequencies
@@ -356,7 +363,7 @@ package body BZip2.Encoding is
         for symbol in len'Range loop
           descr (symbol).bit_length := len (symbol);
         end loop;
-        Huffman.Encoding.Prepare_Codes (descr, True);
+        Huffman.Encoding.Prepare_Codes (descr, max_code_len_bzip2_1_0_3, False);
 
         --  if verbosity_level >= detailed_verbose then
         --    for symbol in Max_Alphabet loop
@@ -379,7 +386,11 @@ package body BZip2.Encoding is
       procedure Put_Block_Header is
       begin
         Put (block_magic);
-        Put_Bits (CRC.Final (computed_crc), 32);
+        block_crc := CRC.Final (block_crc);
+        Put_Bits (block_crc, 32);
+        Trace ("Block CRC:   " & block_crc'Image, detailed);
+        combined_crc := Rotate_Left (combined_crc, 1) xor block_crc;
+        Trace ("Combined CRC:" & combined_crc'Image, detailed);
         Put_Bits (0, 1);  --  Randomized flag, always False.
         Put_Bits (Unsigned_32 (bwt_index), 24);
       end Put_Block_Header;
@@ -448,6 +459,8 @@ package body BZip2.Encoding is
       end Put_Block_Trees_Descriptors;
 
     begin
+      block_counter := block_counter + 1;
+      Trace ("Block" & block_counter'Image, headlines);
       RLE_1;
       BWT;
       MTF_and_RLE_2;
@@ -468,8 +481,8 @@ package body BZip2.Encoding is
     procedure Write_Stream_Footer is
     begin
       Put (stream_footer_magic);
-      --  !!  Stream CRC
-      --  !!  Padding
+      Put_Bits (combined_crc, 32);
+      Flush_Bit_Buffer;
     end Write_Stream_Footer;
 
   begin
@@ -481,7 +494,6 @@ package body BZip2.Encoding is
     end loop;
     Unchecked_Free (data);
     Write_Stream_Footer;
-    Flush_Bit_Buffer;
   end Encode;
 
 end BZip2.Encoding;

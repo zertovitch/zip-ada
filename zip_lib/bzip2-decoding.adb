@@ -27,7 +27,7 @@
 --  Translated on 20-Oct-2009 by (New) P2Ada v. 15-Nov-2006
 --  Rework by G. de Montmollin (see spec. for details)
 
-with Ada.Unchecked_Deallocation;
+with Ada.Text_IO, Ada.Unchecked_Deallocation;
 
 package body BZip2.Decoding is
 
@@ -132,11 +132,14 @@ package body BZip2.Decoding is
     selector, selector_mtf : array (0 .. max_selectors) of Byte;
 
     procedure Receive_Selectors is
-      symbol : array (Byte range 0 .. max_entropy_coders) of Byte;
+      symbol : array (Byte range 0 .. max_entropy_coders - 1) of Byte;
       j, tmp, v : Byte;
     begin
 
-      entropy_coder_count := Get_Bits (3);  --  Up to 7.
+      entropy_coder_count := Get_Bits (3);
+      if entropy_coder_count not in min_entropy_coders .. max_entropy_coders then
+        raise data_error with "Invalid BZip2 entropy coder count, got " & entropy_coder_count'Image;
+      end if;
       selector_count := Natural (Shift_Left (Get_Bits_32 (8), 7) or Get_Bits_32 (7));  --  Up to 32767.
       if selector_count > max_selectors then
         raise data_error with "Invalid BZip2 selector count, maximum is" & max_selectors'Image;
@@ -225,19 +228,19 @@ package body BZip2.Decoding is
     alphabet_size_overall : Natural;  --  Alphabet size used for all groups
 
     --  Tables for the Huffman trees used for decoding MTF values.
-    limit, base, perm : array (Byte range 0 .. max_entropy_coders) of Alphabet_U32_array;
-    min_lens : array (Byte range 0 .. max_entropy_coders) of Natural;
-    len : array (Byte range 0 .. max_entropy_coders) of Alphabet_Nat_array;
+    limit, base, perm : array (Byte range 0 .. max_entropy_coders - 1) of Alphabet_U32_array;
+    min_lens : array (Byte range 0 .. max_entropy_coders - 1) of Natural;
+    len : array (Byte range 0 .. max_entropy_coders - 1) of Alphabet_Nat_array;
 
     procedure Receive_Huffman_Bit_Lengths is
       current_bit_length : Natural;
     begin
       for t in 0 .. entropy_coder_count - 1 loop
         current_bit_length := Natural (Get_Bits (5));
-        if current_bit_length not in 1 .. 20 then
+        if current_bit_length not in 1 .. max_code_len_bzip2_1_0_2 then
           raise data_error with
             "In BZip2 data, invalid initial bit length for a Huffman tree: got length" &
-            current_bit_length'Image & "; range should be 1 .. 20";
+            current_bit_length'Image & "; range should be 1 .." & max_code_len_bzip2_1_0_2'Image;
         end if;
         for symbol in 0 .. alphabet_size_overall - 1 loop
           loop
@@ -248,11 +251,11 @@ package body BZip2.Decoding is
               current_bit_length := current_bit_length + 1;
             end if;
           end loop;
-          if current_bit_length not in 1 .. 20 then
+          if current_bit_length not in 1 .. max_code_len_bzip2_1_0_2 then
             raise data_error with
               "In BZip2 data, invalid bit length for a Huffman tree: for symbol " &
               symbol'Image & " got length" &
-              current_bit_length'Image & "; range should be 1 .. 20";
+              current_bit_length'Image & "; range should be 1 .." & max_code_len_bzip2_1_0_2'Image;
           end if;
           len (t)(symbol) := current_bit_length;
         end loop;
@@ -478,9 +481,15 @@ package body BZip2.Decoding is
 
     compare_final_CRC : Boolean := False;
     stored_blockcrc, mem_stored_blockcrc, computed_crc : Unsigned_32;
+    combined_crc : Unsigned_32 := 0;
+    stored_combined_crc : Unsigned_32;
     block_randomized : Boolean := False;
     block_origin : Natural_32 := 0;
     decode_available : Natural_32 := Natural_32'Last;
+    end_of_stream_reached : Boolean := False;
+
+    trace_crc : constant Boolean := False;
+    block_counter : Natural := 0;
 
     --  Decode a new compressed block.
     function Decode_Block return Boolean is
@@ -490,6 +499,7 @@ package body BZip2.Decoding is
         magic (i) := Character'Val (Get_Byte);
       end loop;
       if magic = block_magic then
+        block_counter := block_counter + 1;
         if check_CRC then
           if compare_final_CRC then
             null;  --  initialisation is delayed until the rle buffer is empty
@@ -498,6 +508,9 @@ package body BZip2.Decoding is
           end if;
         end if;
         stored_blockcrc := Get_Cardinal_32;
+        if trace_crc then
+          Ada.Text_IO.Put_Line ("Block CRC (stored):       " & stored_blockcrc'Image);
+        end if;
         block_randomized := Get_Boolean;
         block_origin := Natural_32 (Get_Cardinal_24);
         Receive_Mapping_Table;
@@ -512,6 +525,11 @@ package body BZip2.Decoding is
         decode_available := tt_count;
         return True;
       elsif magic = stream_footer_magic then
+        stored_combined_crc := Get_Cardinal_32;
+        end_of_stream_reached := True;
+        if trace_crc then
+          Ada.Text_IO.Put_Line ("Combined CRC (stored):    " & stored_combined_crc'Image);
+        end if;
         return False;
       else
         raise bad_block_magic with "BZip2: expecting block magic or stream footer";
@@ -536,6 +554,7 @@ package body BZip2.Decoding is
         --
         procedure RLE_Write is
           pragma Inline (RLE_Write);
+          block_crc : Unsigned_32;
         begin
           loop
             buf (idx) := data;
@@ -545,11 +564,26 @@ package body BZip2.Decoding is
             if check_CRC then
               CRC.Update (computed_crc, data);
               if rle_len = 0 and then compare_final_CRC then
-                if CRC.Final (computed_crc) /= mem_stored_blockcrc then
-                  raise block_crc_check_failed;
+                block_crc := CRC.Final (computed_crc);
+                if trace_crc then
+                  Ada.Text_IO.Put_Line ("Block CRC (computed):     " & block_crc'Image);
+                end if;
+                if block_crc /= mem_stored_blockcrc then
+                  raise block_crc_check_failed
+                    with "BZip2: block" & block_counter'Image & "'s CRC is wrong";
+                end if;
+                combined_crc := Rotate_Left (combined_crc, 1) xor block_crc;
+                if trace_crc then
+                  Ada.Text_IO.Put_Line ("Combined CRC (computed):  " & combined_crc'Image);
                 end if;
                 compare_final_CRC := False;
                 CRC.Init (computed_crc);  --  Initialize for next block.
+                if end_of_stream_reached and then stored_combined_crc /= combined_crc then
+                  raise block_crc_check_failed
+                    with
+                      "BZip2: combined blocks' CRC is wrong: computed =" &
+                      combined_crc'Image & "; stored =" & stored_combined_crc'Image;
+                end if;
               end if;
             end if;
             exit when rle_len = 0 or count = 0;
