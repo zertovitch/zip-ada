@@ -398,7 +398,8 @@ package body BZip2.Encoding is
       procedure Put_Block_Trees_Descriptors is
 
         procedure Put_Mapping_Table is
-          in_use : constant array (0 .. 15) of Boolean := (others => True);  --  !!
+          in_use : constant array (0 .. 15) of Boolean := (others => True);
+          --  !!  Currently: full; use unseq_to_seq instead.
         begin
           --  Send the first 16 bits which tell which pieces are stored.
           for i in in_use'Range loop
@@ -408,7 +409,7 @@ package body BZip2.Encoding is
           for i in in_use'Range loop
             if in_use (i) then
               for j in 0 .. 15 loop
-                Put (True);  --  !!
+                Put (True);  --  !!  Currently: full; use unseq_to_seq instead.
               end loop;
             end if;
           end loop;
@@ -419,8 +420,10 @@ package body BZip2.Encoding is
         begin
           Put_Bits (selector_count, 15);
           for i in 1 .. selector_count loop
-            Put_Bits (0, 1);  --  MTF-transformed index for the selected entropy coder
-            --  !! Output 1's for non-zero MTF indices.
+            --  MTF-transformed index for the selected entropy coder.
+            Put_Bits (0, 1);
+            --  !! Currently, we use only the first coder.
+            --     Output 1's for non-zero MTF indices.
           end loop;
         end Put_Selectors;
 
@@ -466,6 +469,7 @@ package body BZip2.Encoding is
     begin
       block_counter := block_counter + 1;
       Trace ("Block" & block_counter'Image, headlines);
+      --  Data acquisition and transformation:
       RLE_1;
       BWT;
       MTF_and_RLE_2;
@@ -487,7 +491,9 @@ package body BZip2.Encoding is
     begin
       Put (stream_footer_magic);
       Put_Bits (combined_crc, 32);
-      Flush_Bit_Buffer;
+      if bit_pos < 7 then
+        Flush_Bit_Buffer;
+      end if;
     end Write_Stream_Footer;
 
   begin
