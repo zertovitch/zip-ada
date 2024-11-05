@@ -138,7 +138,10 @@ package body BZip2.Decoding is
 
       entropy_coder_count := Get_Bits (3);
       if entropy_coder_count not in min_entropy_coders .. max_entropy_coders then
-        raise data_error with "Invalid BZip2 entropy coder count, got " & entropy_coder_count'Image;
+        raise data_error
+          with
+            "Invalid BZip2 entropy coder count:" & entropy_coder_count'Image &
+            ", should be between" & min_entropy_coders'Image & " and" & max_entropy_coders'Image;
       end if;
       selector_count := Natural (Shift_Left (Get_Bits_32 (8), 7) or Get_Bits_32 (7));  --  Up to 32767.
       if selector_count > max_selectors then
@@ -479,9 +482,9 @@ package body BZip2.Decoding is
       end loop;
     end BWT_Detransform;
 
-    compare_final_CRC : Boolean := False;
-    stored_blockcrc, mem_stored_blockcrc, computed_crc : Unsigned_32;
-    combined_crc : Unsigned_32 := 0;
+    compare_block_final_crc : Boolean := False;
+    stored_block_crc, computed_crc,
+    mem_stored_block_crc, combined_crc : Unsigned_32 := 0;
     stored_combined_crc : Unsigned_32;
     block_randomized : Boolean := False;
     block_origin : Natural_32 := 0;
@@ -501,15 +504,15 @@ package body BZip2.Decoding is
       if magic = block_magic then
         block_counter := block_counter + 1;
         if check_CRC then
-          if compare_final_CRC then
+          if compare_block_final_crc then
             null;  --  initialisation is delayed until the rle buffer is empty
           else
             CRC.Init (computed_crc);
           end if;
         end if;
-        stored_blockcrc := Get_Cardinal_32;
+        stored_block_crc := Get_Cardinal_32;
         if trace_crc then
-          Ada.Text_IO.Put_Line ("Block CRC (stored):       " & stored_blockcrc'Image);
+          Ada.Text_IO.Put_Line ("Block CRC (stored):       " & stored_block_crc'Image);
         end if;
         block_randomized := Get_Boolean;
         block_origin := Natural_32 (Get_Cardinal_24);
@@ -537,9 +540,20 @@ package body BZip2.Decoding is
     end Decode_Block;
 
     next_rle_idx : Integer_32 := -2;
+    end_reached : Boolean := False;
+
+    procedure Call_Decode_Block is
+    begin
+      if Decode_Block then
+        next_rle_idx := Natural_32 (Shift_Right (tt (block_origin), 8));
+      else
+        next_rle_idx := -1;
+        end_reached := True;
+      end if;
+    end Call_Decode_Block;
+
     buf : Buffer (1 .. output_buffer_size);
     last : Natural;
-    end_reached : Boolean := False;
     rle_run_left : Natural := 0;
     rle_run_data : Byte := 0;
 
@@ -563,20 +577,23 @@ package body BZip2.Decoding is
             rle_len := rle_len - 1;
             if check_CRC then
               CRC.Update (computed_crc, data);
-              if rle_len = 0 and then compare_final_CRC then
+              if rle_len = 0 and then compare_block_final_crc then
                 block_crc := CRC.Final (computed_crc);
                 if trace_crc then
                   Ada.Text_IO.Put_Line ("Block CRC (computed):     " & block_crc'Image);
                 end if;
-                if block_crc /= mem_stored_blockcrc then
+                if block_crc /= mem_stored_block_crc then
                   raise block_crc_check_failed
-                    with "BZip2: block" & block_counter'Image & "'s CRC is wrong";
+                    with
+                      "BZip2: mismatch in block" & block_counter'Image &
+                      "'s CRC: computed:" & block_crc'Image &
+                      ", stored:" & mem_stored_block_crc'Image;
                 end if;
                 combined_crc := Rotate_Left (combined_crc, 1) xor block_crc;
                 if trace_crc then
                   Ada.Text_IO.Put_Line ("Combined CRC (computed):  " & combined_crc'Image);
                 end if;
-                compare_final_CRC := False;
+                compare_block_final_crc := False;
                 CRC.Init (computed_crc);  --  Initialize for next block.
                 if end_of_stream_reached and then stored_combined_crc /= combined_crc then
                   raise block_crc_check_failed
@@ -604,19 +621,13 @@ package body BZip2.Decoding is
           next_rle_idx := Natural_32 (Shift_Right (tt (next_rle_idx), 8));
           decode_available := decode_available - 1;
           if decode_available = 0 then
-            compare_final_CRC := True;
-            mem_stored_blockcrc := stored_blockcrc;
+            compare_block_final_crc := True;
+            mem_stored_block_crc := stored_block_crc;
             --  ^ There might be a new block when last block's
             --    rle is finally emptied.
             --
-            --  ** New block
-            if Decode_Block then
-              next_rle_idx := Natural_32 (Shift_Right (tt (block_origin), 8));
-            else
-              next_rle_idx := -1;
-              end_reached := True;
-            end if;
-            --  **
+            --  New block:
+            Call_Decode_Block;
             if end_reached then
               raise input_dried;
             end if;
@@ -626,6 +637,9 @@ package body BZip2.Decoding is
         function RLE_Byte return Byte is
           pragma Inline (RLE_Byte);
         begin
+          if next_rle_idx not in tt'Range then
+            raise data_error with "BZip2: invalid index for data output";
+          end if;
           return Byte (tt (next_rle_idx) and 16#FF#);
         end RLE_Byte;
         --
@@ -686,12 +700,8 @@ package body BZip2.Decoding is
     begin
       last := buf'Last;
       if decode_available = Natural_32'Last then
-        if Decode_Block then
-          next_rle_idx := Natural_32 (Shift_Right (tt (block_origin), 8));
-        else
-          next_rle_idx := -1;
-          end_reached := True;
-        end if;
+        --  First block:
+        Call_Decode_Block;
       end if;
       RLE_Read;
       last := last - shorten;

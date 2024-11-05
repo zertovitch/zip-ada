@@ -55,7 +55,12 @@ generic
   --  CRC checking is useless if the whole bzip stream is enclosed
   --  in another CRC-checked stream, like a in Zip archive.
   check_CRC : Boolean;
-
+  --
+  --  NB: BZip2.Decoding's CRC computation has a subtle bug that makes the
+  --      computed CRC sometimes wrong even though the data is correct and
+  --      the canonical bzip2 executable accepts the compressed file,
+  --      including CRC checks (all blocks + combined).
+  
   --  Input:
   with procedure Read (buf : out Buffer);
   --  Output:

@@ -59,9 +59,14 @@ procedure BZip2_Dec is
     (input_buffer_size  => 1024,
      output_buffer_size => 4096,
      Buffer             => Buffer,
-     check_CRC          => True,
+     check_CRC          => False,  --  (*)
      Read               => BU_Read,
      Write              => BU_Write);
+
+  --  (*) BZip2.Decoding's CRC computation has a subtle bug that makes the
+  --      computed CRC sometimes wrong even though the data is correct and
+  --      the canonical bzip2 executable accepts the compressed file,
+  --      including CRC checks (all blocks + combined).
 
   use Ada.Command_Line, Ada.Text_IO;
 
