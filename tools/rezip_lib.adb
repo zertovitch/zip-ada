@@ -56,16 +56,16 @@ package body Rezip_lib is
 
   --  This info might be better read from a config file...
   --
-  type Zipper_specification is record
+  type Zipper_Specification is record
     name, title, URL, options : Unbounded_String;
     expanded_options    : Unbounded_String;
-    --  options with dynamically expanded tokens
+    --  ^ Options with dynamically expanded tokens
     made_by_version     : Unsigned_16;
     pkzm                : Zip.PKZip_method;
     limit               : Zip.Zip_64_Data_Size_Type;
-    --  Compression is considered too slow or unefficient beyond limit
-    --  E.g., kzip's algorithm might be O(N^2) or worse; on large files,
-    --   deflate_e or other methods are better anyway
+    --  ^ Compression is considered too slow or unefficient beyond limit (if not 0).
+    --    E.g., kzip's algorithm might be O(N^2) or worse; on large files,
+    --    deflate_e or other methods are better anyway
     randomized          : Boolean;
   end record;
 
@@ -76,26 +76,25 @@ package body Rezip_lib is
   --
   kzip_zopfli_limit : constant := 2_000_000;
 
-  type Approach is (
-    original,
-    shrink,
-    reduce_4,
-    deflate_3,
-    deflate_r,
-    lzma_2, lzma_3,
-    presel_1, presel_2,
-    external_1, external_2, external_3, external_4,
-    external_5, external_6, external_7, external_8,
-    external_9, external_10, external_11, external_12,
-    external_13
-  );
+  type Approach is
+    (original,
+     shrink,
+     reduce_4,
+     deflate_3,
+     deflate_r,
+     lzma_2, lzma_3,
+     presel_1, presel_2,
+     external_01, external_02, external_03, external_04,
+     external_05, external_06, external_07, external_08,
+     external_09, external_10, external_11, external_12,
+     external_13, external_14, external_15);
 
   subtype Internal is Approach
-    range Approach'Succ (Approach'First) .. Approach'Pred (external_1);
+    range Approach'Succ (Approach'First) .. Approach'Pred (external_01);
   subtype External is Approach
-    range external_1 .. Approach'Last;
+    range external_01 .. Approach'Last;
 
-  ext : array (External) of Zipper_specification :=
+  ext : array (External) of Zipper_Specification :=
     ( --  Zip 2.32 or later:
       (U ("zip"), U ("Zip"), U ("http://info-zip.org/"),
          U ("-9"), NN, 20, Zip.deflate, 0, False),
@@ -134,10 +133,13 @@ package body Rezip_lib is
          NN, 63, Zip.lzma_meth, 0, True),
       --  AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U ("advzip"), U ("AdvZip"), U ("http://advancemame.sf.net/comp-readme.html"),
-         U ("-a -4"), NN, 20, Zip.deflate, kzip_zopfli_limit, False)
-    );
+         U ("-a -2"), NN, 20, Zip.deflate, 0, False),
+      (U ("advzip"), U ("AdvZip"), NN,
+         U ("-a -3"), NN, 20, Zip.deflate, 0, False),
+      (U ("advzip"), U ("AdvZip"), NN,
+         U ("-a -4"), NN, 20, Zip.deflate, kzip_zopfli_limit, False));
 
-  defl_opt : constant Zipper_specification :=
+  defl_opt : constant Zipper_Specification :=
     (U ("deflopt"), U ("DeflOpt"), U ("http://www.walbeehm.com/download/"),
      NN, NN, 0, Zip.deflate, 0, False);
 
@@ -1386,7 +1388,7 @@ package body Rezip_lib is
   end Rezip;
 
   procedure Show_external_packer_list is
-    procedure Display (p : Zipper_specification) is
+    procedure Display (p : Zipper_Specification) is
       fix : String (1 .. 8) := (others => ' ');
     begin
       Insert (fix, fix'First, S (p.title));
