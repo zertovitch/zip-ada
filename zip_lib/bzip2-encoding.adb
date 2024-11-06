@@ -40,7 +40,7 @@ with Ada.Containers.Generic_Constrained_Array_Sort,
 
 package body BZip2.Encoding is
 
-  procedure Encode (level : Compression_Level := 1) is
+  procedure Encode (option : Compression_Option := block_900k) is
     use Interfaces;
 
     subtype Bit_Pos_Type is Natural range 0 .. 7;
@@ -85,7 +85,17 @@ package body BZip2.Encoding is
       end loop;
     end Put;
 
-    block_capacity : constant Natural_32 := Natural_32 (level) * sub_block_size;
+    level : constant Natural_32 :=
+      (case option is
+         when block_50k  => 1,
+         when block_100k => 1,
+         when block_400k => 4,
+         when block_900k => 9);
+
+    block_capacity : constant Natural_32 :=
+      (case option is
+         when block_50k => sub_block_size / 2,
+         when others    => sub_block_size * level);
 
     type Buffer is array (Natural_32 range <>) of Byte;
     type Buffer_Access is access Buffer;

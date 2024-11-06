@@ -50,7 +50,7 @@ private
     (Zip.store | Zip.deflate => True, others => False);
   fast_decompression : constant Zip_format_set :=
     (Zip.store .. Zip.deflate_e | Zip.lzma_meth => True,
-     Zip.bzip2 => False,
+     Zip.bzip2_meth => False,
      others => False);
 
 end Rezip_lib;

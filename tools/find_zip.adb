@@ -206,6 +206,9 @@ procedure Find_Zip is
     Put_Line ("URL: " & Zip.web);
     Show_License (Current_Output, "zip.ads");
     Put_Line ("Usage: find_zip archive[.zip] [""]text[""]");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
   end Blurb;
 
   T0, T1, T2 : Ada.Calendar.Time;

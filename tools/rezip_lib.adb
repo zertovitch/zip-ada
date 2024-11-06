@@ -82,6 +82,7 @@ package body Rezip_lib is
      reduce_4,
      deflate_3,
      deflate_r,
+     bzip_1, bzip_4,
      lzma_2, lzma_3,
      presel_1, presel_2,
      external_01, external_02, external_03, external_04,
@@ -114,10 +115,10 @@ package body Rezip_lib is
          U ("/rn /b#RAND_EXP#(1,2048)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       --  Zip 3.0 or later; BZip2:
       (U ("zip"), U ("Zip"), NN,
-         U ("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2, 0, True),
+         U ("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2_meth, 0, True),
       --  7z:
       (U ("7z"), U ("7-Zip"), NN,
-         U ("a -tzip -mm=BZip2:d=#RAND#(1,9)00k:pass=7"), NN, 46, Zip.bzip2, 0, True),
+         U ("a -tzip -mm=BZip2:d=#RAND#(1,9)00k:pass=7"), NN, 46, Zip.bzip2_meth, 0, True),
       --  7-Zip 9.20 or later; LZMA:
       (U ("7z"), U ("7-Zip"), NN,
          U ("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma_meth, 0, False),
@@ -239,6 +240,8 @@ package body Rezip_lib is
        reduce_4  => Zip.Compress.Reduce_4,
        deflate_3 => Zip.Compress.Deflate_3,
        deflate_r => Zip.Compress.Deflate_R,
+       bzip_1    => Zip.Compress.BZip2_1,
+       bzip_4    => Zip.Compress.BZip2_4,
        lzma_2    => Zip.Compress.LZMA_2,
        lzma_3    => Zip.Compress.LZMA_3,
        presel_1  => Zip.Compress.Preselection_1,

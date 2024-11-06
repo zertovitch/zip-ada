@@ -240,6 +240,13 @@ procedure ZipAda is
             when 'r'    => method := Deflate_R;
             when others => method := Deflate_3;
           end case;
+        elsif eX = "eb" then
+          case opt (opt'First + 2) is
+            when '1'    => method := BZip2_1;
+            when '2'    => method := BZip2_2;
+            when '3'    => method := BZip2_3;
+            when others => method := BZip2_4;
+          end case;
         elsif eX = "el" then
           case opt (opt'First + 2) is
             when '0'    => method := LZMA_0;
@@ -339,6 +346,7 @@ begin
     Put_Line ("          -es    : ""Shrink"" method (LZW algorithm)");
     Put_Line ("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
     Put_Line ("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 0..3");
+    Put_Line ("          -ebN   : ""BZip2"" method, option N = 1..4");
     Put_Line ("          -elN   : ""LZMA"" method, strength N = 0..3");
     Put_Line ("          -epN   : preselection of an appropriate method, strength N = 1..2");
     New_Line;
@@ -353,5 +361,8 @@ begin
     Put_Line ("                      single quotes, for example: '*.adb'");
     Put_Line ("          -p     : define a password for encryption (user is prompted)");
     Put_Line ("          -pPwd  : define a password for encryption (e.g. ""Pwd"")");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
   end if;
 end ZipAda;

@@ -2023,7 +2023,7 @@ package body UnZip.Decompress is
         when deflate | deflate_e =>
           UnZ_Meth.deflate_e_mode := format = deflate_e;
           UnZ_Meth.Inflate;
-        when Zip.bzip2      => UnZ_Meth.Bunzip2;
+        when Zip.bzip2_meth => UnZ_Meth.Bunzip2;
         when Zip.lzma_meth  => UnZ_Meth.LZMA_Decode;
         when others =>
           raise Unsupported_method with

@@ -91,6 +91,9 @@ begin
     Put_Line ("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
     New_Line;
     Put_Line ("Options: -b: benchmark LZ77's and the context parameters (900 .lzma output files!)");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
     return;
   elsif Argument_Count < 2 then
     Put_Line ("You must specify at least two parameters");

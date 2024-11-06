@@ -50,6 +50,8 @@ procedure ReZip is
     New_Line;
     Rezip_lib.Show_external_packer_list;
     New_Line;
+    Put ("Press Return");
+    Skip_Line;
   end Usage;
 
   function Add_zip_ext (s : String) return String is

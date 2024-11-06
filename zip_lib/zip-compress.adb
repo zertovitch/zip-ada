@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2022 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2024 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,6 +28,7 @@ with Zip.Create,
      Zip.Compress.Shrink,
      Zip.Compress.Reduce,
      Zip.Compress.Deflate,
+     Zip.Compress.BZip2_E,
      Zip.Compress.LZMA_E;
 
 with Ada.Characters.Handling,
@@ -175,41 +176,45 @@ package body Zip.Compress is
       --  logically call Zip.Compress.LZMA_E for the job.
       --
       case actual_method is
-        --
+
         when Store =>
           Store_data (do_write => True);
-        --
+
         when Shrink =>
-          Zip.Compress.Shrink (
-            input, output, input_size_known, input_size, feedback,
-            CRC, encrypt_pack, output_size, compression_ok
-          );
+          Zip.Compress.Shrink
+            (input, output, input_size_known, input_size, feedback,
+             CRC, encrypt_pack, output_size, compression_ok);
           zip_type := Compression_format_code.shrink_code;
-        --
+
         when Reduction_Method =>
-          Zip.Compress.Reduce (
-            input, output, input_size_known, input_size, feedback,
-            actual_method,
-            CRC, encrypt_pack, output_size, compression_ok
-          );
+          Zip.Compress.Reduce
+            (input, output, input_size_known, input_size, feedback,
+             actual_method,
+             CRC, encrypt_pack, output_size, compression_ok);
           zip_type := Compression_format_code.reduce_code +
-            Unsigned_16 (
-              Compression_Method'Pos (actual_method) -
-              Compression_Method'Pos (Reduce_1)
-            );
+            Unsigned_16
+              (Compression_Method'Pos (actual_method) -
+               Compression_Method'Pos (Reduce_1));
+
         when Deflation_Method =>
-          Zip.Compress.Deflate (
-            input, output, input_size_known, input_size, feedback,
-            actual_method,
-            CRC, encrypt_pack, output_size, compression_ok
-          );
+          Zip.Compress.Deflate
+            (input, output, input_size_known, input_size, feedback,
+             actual_method,
+             CRC, encrypt_pack, output_size, compression_ok);
           zip_type := Compression_format_code.deflate_code;
+
+        when BZip2_Method =>
+          Zip.Compress.BZip2_E
+            (input, output, input_size_known, input_size, feedback,
+             actual_method,
+             CRC, encrypt_pack, output_size, compression_ok);
+          zip_type := Compression_format_code.bzip2_code;
+
         when LZMA_Method =>
-          Zip.Compress.LZMA_E (
-            input, output, input_size_known, input_size, feedback,
-            actual_method,
-            CRC, encrypt_pack, output_size, compression_ok
-          );
+          Zip.Compress.LZMA_E
+            (input, output, input_size_known, input_size, feedback,
+             actual_method,
+             CRC, encrypt_pack, output_size, compression_ok);
           zip_type := Compression_format_code.lzma_code;
       end case;
       CRC := Final (CRC);

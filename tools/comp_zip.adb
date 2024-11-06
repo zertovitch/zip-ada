@@ -35,6 +35,9 @@ procedure Comp_Zip is
     Put_Line ("Library version " & Zip.version & " dated " & Zip.reference);
     Put_Line ("URL: " & Zip.web);
     Show_License (Current_Output, "zip.ads");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
   end Blurb;
 
   use Ada.Calendar, Ada.Command_Line, Ada.Strings.Unbounded;

@@ -73,6 +73,11 @@ package Zip.Compress is
      Deflate_2,
      Deflate_3,
      Deflate_R,
+     --  BZip2:
+     BZip2_1,
+     BZip2_2,
+     BZip2_3,
+     BZip2_4,
      --  LZMA:
      LZMA_0,           --  0: No LZ77, only "MA" part.
      LZMA_1,
@@ -113,6 +118,8 @@ package Zip.Compress is
   --  The multi-block Deflate methods use refined techniques to decide when to
   --  start a new block and what sort of block to put next.
   subtype Taillaule_Deflation_Method is Compression_Method range Deflate_0 .. Deflation_Method'Last;
+
+  subtype BZip2_Method is Compression_Method range BZip2_1 .. BZip2_4;
 
   subtype LZMA_Method is Compression_Method range LZMA_0 .. LZMA_for_AU;
 
@@ -169,6 +176,7 @@ private
      Reduce_3          => reduce_3,
      Reduce_4          => reduce_4,
      Deflation_Method  => deflate,
+     BZip2_Method      => bzip2_meth,
      LZMA_Method       => lzma_meth,
      Multi_Method      => unknown);
 

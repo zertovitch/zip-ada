@@ -127,6 +127,9 @@ procedure UnZipAda is
     Put_Line ("          -z     : display .zip archive comment only");
     Put_Line ("          -p Pwd : define a password for decryption (e.g. ""Pwd"")");
     Put_Line ("          -q     : quiet mode");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
   end Help;
 
   zi : Zip.Zip_Info;

@@ -61,6 +61,9 @@ begin
     New_Line;
     Put_Line ("NB: The I/O is not buffered => may be slow.");
     Put_Line ("    Consider the UnZipAda tool for a LZMA demo with fast I/O.");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
     return;
   elsif Argument_Count /= 2 then
     Put_Line ("You must specify two parameters");

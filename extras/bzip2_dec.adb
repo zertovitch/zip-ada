@@ -43,6 +43,9 @@ begin
     New_Line;
     Put_Line ("Decompresses a bzip2 compressed file (.bz2)");
     Put_Line ("Output: if outfile is not given, the name """ & default & """ will be used");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
   else
     Open (f_in, In_File, Argument (1));
     Create (f_out, Out_File, (if Argument_Count > 1 then Argument (2) else default));

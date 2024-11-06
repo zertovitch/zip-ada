@@ -10,7 +10,7 @@ procedure BZip2_Enc is
 
   use BZip2, BZip2.Encoding;
 
-  level : Compression_Level := 1;
+  level : Positive := 4;
 
   procedure Encode_BZip2_Stream (s_in, s_out : Ada.Streams.Stream_IO.Stream_Access) is
     EOS : Boolean := False;
@@ -48,7 +48,12 @@ procedure BZip2_Enc is
 
   begin
     --  Whole processing is done here:
-    BZip2_Encode (level);
+    BZip2_Encode
+      (case level is
+         when 1      => block_50k,
+         when 2      => block_100k,
+         when 3      => block_400k,
+         when others => block_900k);
   end Encode_BZip2_Stream;
 
   use Ada.Streams.Stream_IO;
@@ -78,8 +83,10 @@ begin
     Put_Line ("NB: - The "".bz2"" extension is automatically added to outfile.");
     Put_Line ("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
     New_Line;
-    Put_Line ("Options: -1 : block size 100_000");
-    Put_Line ("         -9 : block size 900_000");
+    Put_Line ("Options: -n, n in 1 .. 4 : strength");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
     return;
   elsif Argument_Count < 2 then
     Put_Line ("You must specify at least two parameters");
@@ -94,7 +101,7 @@ begin
           Put_Line ("Option needs to be 3rd or later parameter");
           return;
         end if;
-        if arg (arg'Last) in '0' .. '9' then
+        if arg (arg'Last) in '1' .. '4' then
           level := Character'Pos (arg (arg'Last)) - Character'Pos ('0');
         end if;
       end if;

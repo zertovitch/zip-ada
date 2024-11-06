@@ -120,18 +120,18 @@ package Zip is
   --     D : supported by Zip-Ada for decompressing
 
   type PKZip_method is
-    (store,     --  C, D
-     shrink,    --  C, D
-     reduce_1,  --  C, D
-     reduce_2,  --  C, D
-     reduce_3,  --  C, D
-     reduce_4,  --  C, D
-     implode,   --     D
+    (store,       --  C, D
+     shrink,      --  C, D
+     reduce_1,    --  C, D
+     reduce_2,    --  C, D
+     reduce_3,    --  C, D
+     reduce_4,    --  C, D
+     implode,     --     D
      tokenize,
-     deflate,   --  C, D
-     deflate_e, --     D  -  "Enhanced deflate" or "Deflate64"
-     bzip2,     --     D
-     lzma_meth, --  C, D
+     deflate,     --  C, D
+     deflate_e,   --     D  -  "Enhanced deflate" or "Deflate64"
+     bzip2_meth,  --  C, D
+     lzma_meth,   --  C, D
      zstandard,
      mp3_recomp,
      xz_recomp,
@@ -377,7 +377,7 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String := "59";
+  version   : constant String := "60, preview 1";
   reference : constant String := "06-Nov-2024";
   --  Hopefully the latest version can be acquired from one of those URLs:
   web       : constant String := "https://unzip-ada.sourceforge.io/";

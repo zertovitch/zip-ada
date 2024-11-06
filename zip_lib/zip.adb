@@ -950,7 +950,7 @@ package body Zip is
       when tokenize    => return "Tokenize";
       when deflate     => return "Deflate";
       when deflate_e   => return "Deflate64";
-      when bzip2       => return "BZip2";
+      when bzip2_meth       => return "BZip2";
       when lzma_meth   => return "LZMA";
       when zstandard   => return "Zstandard";
       when mp3_recomp  => return "MP3 recompression";
@@ -978,7 +978,7 @@ package body Zip is
       when tokenize_code   => return tokenize;
       when deflate_code    => return deflate;
       when deflate_e_code  => return deflate_e;
-      when bzip2_code      => return bzip2;
+      when bzip2_code      => return bzip2_meth;
       when lzma_code       => return lzma_meth;
       when zstandard_code  => return zstandard;
       when mp3_code        => return mp3_recomp;

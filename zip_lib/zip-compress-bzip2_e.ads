@@ -1,10 +1,3 @@
---  BZip2.Encoding - a standalone, generic BZip2 encoder.
-------------------
---
---  Examples of use:
---    BZip2_Enc, a standalone encoder to .bz2 files
---    Zip.Compress.BZip2_E, creates Zip files entries with BZip2 encoding
-
 --  Legal licensing note:
 
 --  Copyright (c) 2024 Gautier de Montmollin
@@ -31,21 +24,16 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-package BZip2.Encoding is
+with Zip.CRC_Crypto;
 
-  type Compression_Option is
-    (block_50k,
-     block_100k,
-     block_400k,
-     block_900k);
-
-  generic
-    --  Input of data:
-    with function  Read_Byte return Byte;
-    with function  More_Bytes return Boolean;
-    --  Output of LZMA-compressed data:
-    with procedure Write_Byte (b : Byte);
-    --
-  procedure Encode (option : Compression_Option := block_900k);
-
-end BZip2.Encoding;
+private procedure Zip.Compress.BZip2_E
+  (input,
+   output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+   input_size_known :        Boolean;
+   input_size       :        Zip_64_Data_Size_Type;   --  ignored if unknown
+   feedback         :        Feedback_Proc;
+   method           :        BZip2_Method;
+   CRC              : in out Interfaces.Unsigned_32;  --  only updated here
+   crypto           : in out CRC_Crypto.Crypto_pack;
+   output_size      :    out Zip_64_Data_Size_Type;
+   compression_ok   :    out Boolean);  --  indicates compressed < uncompressed
