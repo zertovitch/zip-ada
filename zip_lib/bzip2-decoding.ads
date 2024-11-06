@@ -3,7 +3,7 @@
 --
 --  Legal licensing note:
 --
---  Copyright (c) 2009 .. 2019 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2009 .. 2024 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,8 +29,8 @@
 
 --------------------------------------------------------------
 --  This Ada code is a reworked translation of a Pascal version,
---  by Daniel Mantione, of the decompression code of libbzip2
---  by Julian Seward.
+--  bzip2.pas, by Daniel Mantione, of the decompression code of libbzip2
+--  by Julian Seward. bzip2.pas is part of the FreePascal sources.
 --
 --  Translated on 20-Oct-2009 by (New) P2Ada v. 15-Nov-2006
 --  Rework by G. de Montmollin
@@ -60,7 +60,7 @@ generic
   --      computed CRC sometimes wrong even though the data is correct and
   --      the canonical bzip2 executable accepts the compressed file,
   --      including CRC checks (all blocks + combined).
-  
+
   --  Input:
   with procedure Read (buf : out Buffer);
   --  Output:
