@@ -36,9 +36,10 @@ project ZipAda is
       "zip_dir_list.adb",
       --  Miscellaneous
       "touch2.adb",
-      "bzip2_dec",   --  Standalone BZip2 decoder (for .bz2 files)
-      "lzma_dec",    --  Standalone LZMA decoder
-      "lzma_enc");   --  Standalone LZMA encoder
+      "bzip2_dec",   --  Standalone BZip2 decoder for .bz2 files
+      "bzip2_enc",   --  Standalone BZip2 encoder for .bz2 files
+      "lzma_dec",    --  Standalone LZMA decoder for .lzma files
+      "lzma_enc");   --  Standalone LZMA encoder for .lzma files
 
    for Source_Dirs use ("zip_lib", "extras", "tools", "demo");
    for Exec_Dir use ".";
