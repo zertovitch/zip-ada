@@ -153,7 +153,7 @@ package body BZip2.Encoding is
             Store_Run;
             start := False;
           elsif run = 259 then
-            --  Force a break even though b = b_prev:
+            --  Force a run break, even though b = b_prev:
             Store_Run;
           else
             run := run + 1;

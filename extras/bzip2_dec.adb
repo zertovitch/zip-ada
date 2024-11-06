@@ -31,14 +31,6 @@ procedure BZip2_Dec is
   package My_BZip2 is new BZip2.Decoding
     (Demo_Read_Byte, Demo_Write_Byte, check_CRC => True);
 
-  --  ^ BZip2.Decoding's CRC computation has a subtle bug that makes the
-  --    computed CRC sometimes wrong even though the data is correct and
-  --    the canonical bzip2 executable accepts the compressed file,
-  --    including CRC checks (all blocks + combined).
-  --
-  --    So far this issue was observed only with data compressed by our
-  --    BZip2_Enc (using BZip2.Encoding). Data encoded with bzip2[lib] are OK.
-
   use Ada.Command_Line, Ada.Text_IO;
 
   default : constant String := "bunzip.out";

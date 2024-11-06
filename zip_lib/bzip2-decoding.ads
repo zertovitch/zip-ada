@@ -28,16 +28,21 @@
 --  http://www.opensource.org/licenses/mit-license.php
 
 --------------------------------------------------------------
---  This Ada code is a reworked translation of a Pascal version,
---  bzip2.pas, by Daniel Mantione, of the decompression code of libbzip2
---  by Julian Seward. bzip2.pas is part of the FreePascal sources.
+--  | This Ada code is a reworked 2009 translation of a Pascal version,
+--  | bzip2.pas, by Daniel Mantione, of the decompression code of libbzip2
+--  | by Julian Seward. bzip2.pas is part of the FreePascal sources.
 --
 --  Translated on 20-Oct-2009 by (New) P2Ada v. 15-Nov-2006
 --  Rework by G. de Montmollin
 --
---  Main difference over the FreePascal version: there is no more pointer
---  arithmetics. The only pointer is tt, for dynamically allocating the biggest
---  decoding array.
+--  Main differences over the FreePascal version:
+--
+--  * There is no more pointer arithmetics.
+--    The only pointer is tt, for dynamically allocating the biggest
+--    decoding array.
+--
+--  * In 2024 the overcomplicated and buggy RLE_1 part was rewritten.
+--
 --  With the appropriate options, the performance is very close to
 --  the bzip2 tool in C: it takes around 7%-11% more time depending on data
 --  to be decompressed (tested in 2009). Add some 5% when CRC checking is enabled.
