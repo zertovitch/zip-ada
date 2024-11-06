@@ -92,11 +92,11 @@ package body UnZip.Decompress is
 
       procedure Init_Buffers;
 
-      procedure Read_byte_no_decrypt (bt : out Zip.Byte);
-        pragma Inline (Read_byte_no_decrypt);
+      procedure Read_Byte_no_Decrypt (bt : out Zip.Byte);
+        pragma Inline (Read_Byte_no_Decrypt);
 
-      function Read_byte_decrypted return Unsigned_8;  --  NB: reading goes on a while even if
-        pragma Inline (Read_byte_decrypted);           --  Zip_EOF is set: just gives garbage
+      function Read_Byte_Decrypted return Unsigned_8;  --  NB: reading goes on a while even if
+        pragma Inline (Read_Byte_Decrypted);           --  Zip_EOF is set: just gives garbage
 
       package Bit_buffer is
         procedure Init;
@@ -246,22 +246,22 @@ package body UnZip.Decompress is
         end if;
       end Read_buffer;
 
-      procedure Read_byte_no_decrypt (bt : out Zip.Byte) is
+      procedure Read_Byte_no_Decrypt (bt : out Zip.Byte) is
       begin
         if UnZ_Glob.inpos > UnZ_Glob.readpos then
           Read_buffer;
         end if;
         bt := UnZ_Glob.inbuf (UnZ_Glob.inpos);
         UnZ_Glob.inpos := UnZ_Glob.inpos + 1;
-      end Read_byte_no_decrypt;
+      end Read_Byte_no_Decrypt;
 
-      function Read_byte_decrypted return Unsigned_8 is
+      function Read_Byte_Decrypted return Unsigned_8 is
         bt : Zip.Byte;
       begin
-        Read_byte_no_decrypt (bt);
+        Read_Byte_no_Decrypt (bt);
         Decode (local_crypto_pack, bt);
         return bt;
-      end Read_byte_decrypted;
+      end Read_Byte_Decrypted;
 
       package body Bit_buffer is
         B : Unsigned_32;
@@ -277,7 +277,7 @@ package body UnZip.Decompress is
           pragma Inline (Need);
         begin
           while K < n loop
-            B := B or Shift_Left (Unsigned_32 (Read_byte_decrypted), K);
+            B := B or Shift_Left (Unsigned_32 (Read_Byte_Decrypted), K);
             K := K + 8;
           end loop;
         end Need;
@@ -512,7 +512,7 @@ package body UnZip.Decompress is
       --           just to shuffle the keys, 1 byte is from the CRC value.
       Set_Mode (local_crypto_pack, encrypted);
       for i in 1 .. 12 loop
-        UnZ_IO.Read_byte_no_decrypt (c);
+        UnZ_IO.Read_Byte_no_Decrypt (c);
         Decode (local_crypto_pack, c);
       end loop;
       t := Zip_Streams.Calendar.Convert (hint.file_timedate);
@@ -968,11 +968,11 @@ package body UnZip.Decompress is
           Ada.Text_IO.Put_Line ("Begin UnZ_Expl.Get_tree");
         end if;
 
-        I := Unsigned_32 (UnZ_IO.Read_byte_decrypted) + 1;
+        I := Unsigned_32 (UnZ_IO.Read_Byte_Decrypted) + 1;
         K := 0;
 
         loop
-          J := Unsigned_32 (UnZ_IO.Read_byte_decrypted);
+          J := Unsigned_32 (UnZ_IO.Read_Byte_Decrypted);
           B := (J  and  16#0F#) + 1;
           J := (J  and  16#F0#) / 16 + 1;
           if  K + J > N then
@@ -1423,7 +1423,7 @@ package body UnZip.Decompress is
           end if;
           begin
             for I in 0 .. read_in - 1 loop
-              UnZ_Glob.slide (Natural (I)) := UnZ_IO.Read_byte_decrypted;
+              UnZ_Glob.slide (Natural (I)) := UnZ_IO.Read_Byte_Decrypted;
             end loop;
           exception
             when others =>
@@ -1877,32 +1877,20 @@ package body UnZip.Decompress is
         end if;
       end Inflate;
 
+      procedure Write_Single_Byte (b : Unsigned_8) with Inline is
+      begin
+        UnZ_Glob.slide (UnZ_Glob.slide_index) := b;
+        UnZ_Glob.slide_index := UnZ_Glob.slide_index + 1;
+        UnZ_IO.Flush_if_full (UnZ_Glob.slide_index);
+      end Write_Single_Byte;
+
       --------[ Method: BZip2 ]--------
 
       procedure Bunzip2 is
-        type BZ_Buffer is array (Natural range <>) of Interfaces.Unsigned_8;
-        procedure UD_Read (b : out BZ_Buffer) is
-        pragma Inline (UD_Read);
-        begin
-          for i in b'Range loop
-            b (i) := UnZ_IO.Read_byte_decrypted;
-          end loop;
-        end UD_Read;
-        procedure UD_Write (b : in BZ_Buffer) is
-        pragma Inline (UD_Write);
-        begin
-          for i in b'Range loop
-            UnZ_Glob.slide (UnZ_Glob.slide_index) := b (i);
-            UnZ_Glob.slide_index := UnZ_Glob.slide_index + 1;
-            UnZ_IO.Flush_if_full (UnZ_Glob.slide_index);
-          end loop;
-        end UD_Write;
         package My_BZip2 is new BZip2.Decoding
-           (Buffer    => BZ_Buffer,
-            check_CRC => False,  --  CRC check is already done by UnZ_IO
-            Read      => UD_Read,
-            Write     => UD_Write
-          );
+          (Read_Byte  => UnZ_IO.Read_Byte_Decrypted,
+           Write_Byte => Write_Single_Byte,
+           check_CRC  => False);  --  CRC check is already done by UnZ_IO
       begin
         My_BZip2.Decompress;
         UnZ_IO.Flush (UnZ_Glob.slide_index);
@@ -1918,31 +1906,21 @@ package body UnZip.Decompress is
       --------[ Method: LZMA ]--------
 
       procedure LZMA_Decode is
-        --
-        procedure Write_Single_Byte (b : Unsigned_8) is
-        pragma Inline (Write_Single_Byte);
-        begin
-          UnZ_Glob.slide (UnZ_Glob.slide_index) := b;
-          UnZ_Glob.slide_index := UnZ_Glob.slide_index + 1;
-          UnZ_IO.Flush_if_full (UnZ_Glob.slide_index);
-        end Write_Single_Byte;
-        --
-        package My_LZMA_Decoding is new LZMA.Decoding (UnZ_IO.Read_byte_decrypted, Write_Single_Byte);
+        package My_LZMA_Decoding is new LZMA.Decoding (UnZ_IO.Read_Byte_Decrypted, Write_Single_Byte);
         b3, b4 : Unsigned_8;
       begin
-        b3 := UnZ_IO.Read_byte_decrypted;  --  LZMA SDK major version (e.g.: 9)
-        b3 := UnZ_IO.Read_byte_decrypted;  --  LZMA SDK minor version (e.g.: 20)
-        b3 := UnZ_IO.Read_byte_decrypted;  --  LZMA properties size low byte
-        b4 := UnZ_IO.Read_byte_decrypted;  --  LZMA properties size high byte
+        b3 := UnZ_IO.Read_Byte_Decrypted;  --  LZMA SDK major version (e.g.: 9)
+        b3 := UnZ_IO.Read_Byte_Decrypted;  --  LZMA SDK minor version (e.g.: 20)
+        b3 := UnZ_IO.Read_Byte_Decrypted;  --  LZMA properties size low byte
+        b4 := UnZ_IO.Read_Byte_Decrypted;  --  LZMA properties size high byte
         if Natural (b3) + 256 * Natural (b4) /= 5 then
           raise Zip.Archive_corrupted with "Unexpected LZMA properties block size";
         end if;
-        My_LZMA_Decoding.Decompress (
-          (has_size               => False,  --  Data size is not part of the LZMA header.
-           given_size             => LZMA.Data_Bytes_Count (UnZ_Glob.uncompsize),
-           marker_expected        => explode_slide_8KB_LZMA_EOS,  --  End-Of-Stream marker?
-           fail_on_bad_range_code => True)
-        );
+        My_LZMA_Decoding.Decompress
+          ((has_size               => False,  --  Data size is not part of the LZMA header.
+            given_size             => LZMA.Data_Bytes_Count (UnZ_Glob.uncompsize),
+            marker_expected        => explode_slide_8KB_LZMA_EOS,  --  End-Of-Stream marker?
+            fail_on_bad_range_code => True));
         UnZ_IO.Flush (UnZ_Glob.slide_index);
       exception
         when E : My_LZMA_Decoding.LZMA_Error =>
@@ -1959,7 +1937,7 @@ package body UnZip.Decompress is
     begin
       UnZ_IO.Bit_buffer.Dump_to_byte_boundary;
       Set_Mode (local_crypto_pack, clear); -- We are after compressed data, switch off decryption.
-      b := UnZ_IO.Read_byte_decrypted;
+      b := UnZ_IO.Read_Byte_Decrypted;
       if b = 75 then -- 'K' ('P' is before, this is a Java/JAR bug!)
         dd_buffer (1) := 80;
         dd_buffer (2) := 75;
@@ -1969,7 +1947,7 @@ package body UnZip.Decompress is
         start := 2;
       end if;
       for i in start .. 16 loop
-        dd_buffer (i) := UnZ_IO.Read_byte_decrypted;
+        dd_buffer (i) := UnZ_IO.Read_Byte_Decrypted;
       end loop;
       Zip.Headers.Copy_and_Check (dd_buffer, dd);
     exception

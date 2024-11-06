@@ -6,67 +6,38 @@ with Ada.Text_IO,
      Ada.Streams.Stream_IO,
      Ada.Command_Line;
 
-with Interfaces;
-
 procedure BZip2_Dec is
 
-  use Ada.Streams.Stream_IO;
+  use Ada.Streams.Stream_IO, BZip2;
 
   f_in, f_out : Ada.Streams.Stream_IO.File_Type;
 
-  type Buffer is array (Natural range <>) of Interfaces.Unsigned_8;
+  --  NB: The Byte I/O below is not buffered, so it is very slow.
+  --  You need to implement a circular buffer of type Stream_Element_Array for a fast I/O.
+  --  For instance, see the BlockRead in the Zip package for how to do it.
 
-  --  Code with SE_Buffer below:
-  --  workaround for the severe xxx'Read xxx'Write performance
-  --  problems in the GNAT and ObjectAda compilers (as in 2009)
-  --  This possible if and only if Byte = Stream_Element and
-  --  arrays types are both packed.
-
-  procedure BU_Read (b : out Buffer) is
-    use Ada.Streams;
-    Last : Stream_Element_Offset;
-    SE_Buffer : Stream_Element_Array (1 .. b'Length);
-    for SE_Buffer'Address use b'Address;
-    pragma Import (Ada, SE_Buffer);
+  function Demo_Read_Byte return Byte is
+    b : Byte;
   begin
-    --    Buffer'Read(Stream(f_in), b);
-    --  exception
-    --    when Ada.Streams.Stream_IO.End_Error =>
-    --      null;
-    --      -- Nothing bad, just some garbage in the buffer
-    --      -- after end of compressed code
-    --
-    Read (Stream (f_in).all, SE_Buffer, Last);
-  end BU_Read;
+    Byte'Read (Stream (f_in), b);
+    return b;
+  end Demo_Read_Byte;
 
-  procedure BU_Write (b : in Buffer) is
-    use Ada.Streams;
-    SE_Buffer : Stream_Element_Array (1 .. b'Length);
-    for SE_Buffer'Address use b'Address;
-    pragma Import (Ada, SE_Buffer);
+  procedure Demo_Write_Byte (b : Byte) is
   begin
-    --
-    --  Buffer'Write(Stream(f_out), b);
-    --
-    --  ^ Using this, instead of the lines below, more than doubles
-    --  the whole run time (incl. decompression and slow reading!) on GNAT 2008
-    --  and makes +60% more time on ObjectAda 7.2.2
-    --
-    Write (Stream (f_out).all, SE_Buffer);
-  end BU_Write;
+    Byte'Write (Stream (f_out), b);
+  end Demo_Write_Byte;
 
   package My_BZip2 is new BZip2.Decoding
-    (input_buffer_size  => 1024,
-     output_buffer_size => 4096,
-     Buffer             => Buffer,
-     check_CRC          => False,  --  (*)
-     Read               => BU_Read,
-     Write              => BU_Write);
+    (Demo_Read_Byte, Demo_Write_Byte, check_CRC => True);
 
-  --  (*) BZip2.Decoding's CRC computation has a subtle bug that makes the
-  --      computed CRC sometimes wrong even though the data is correct and
-  --      the canonical bzip2 executable accepts the compressed file,
-  --      including CRC checks (all blocks + combined).
+  --  ^ BZip2.Decoding's CRC computation has a subtle bug that makes the
+  --    computed CRC sometimes wrong even though the data is correct and
+  --    the canonical bzip2 executable accepts the compressed file,
+  --    including CRC checks (all blocks + combined).
+  --
+  --    So far this issue was observed only with data compressed by our
+  --    BZip2_Enc (using BZip2.Encoding). Data encoded with bzip2[lib] are OK.
 
   use Ada.Command_Line, Ada.Text_IO;
 

@@ -37,21 +37,6 @@ package body BZip2.Decoding is
     --  Byte & Bit buffers  --
     --------------------------
 
-    in_buf : Buffer (1 .. input_buffer_size);
-    in_idx : Natural := in_buf'Last + 1;
-
-    function Read_Byte return Byte is
-      res : Byte;
-    begin
-      if in_idx > in_buf'Last then
-        Read (in_buf);
-        in_idx := in_buf'First;
-      end if;
-      res := in_buf (in_idx);
-      in_idx := in_idx + 1;
-      return res;
-    end Read_Byte;
-
     bits_available : Natural := 0;
     read_data : Byte := 0;
     use Interfaces;
@@ -503,7 +488,7 @@ package body BZip2.Decoding is
       end loop;
       if magic = block_magic then
         block_counter := block_counter + 1;
-        if check_CRC then
+        if check_crc then
           if compare_block_final_crc then
             null;  --  initialisation is delayed until the rle buffer is empty
           else
@@ -552,29 +537,22 @@ package body BZip2.Decoding is
       end if;
     end Call_Decode_Block;
 
-    out_buf : Buffer (1 .. output_buffer_size);
-    last : Natural;
     rle_run_left : Natural := 0;
     rle_run_data : Byte := 0;
 
     procedure Read_Chunk is
-      shorten : Natural := 0;
 
       procedure RLE_Read is
         rle_len : Natural;
         data : Byte;
-        out_idx : Integer := out_buf'First;
-        out_countdown : Integer := out_buf'Length;
         --
         procedure RLE_Write is
           block_crc : Unsigned_32;
         begin
           loop
-            out_buf (out_idx) := data;
-            out_idx := out_idx + 1;
-            out_countdown := out_countdown - 1;
+            Write_Byte (data);
             rle_len := rle_len - 1;
-            if check_CRC then
+            if check_crc then
               CRC.Update (computed_crc, data);
               if rle_len = 0 and then compare_block_final_crc then
                 block_crc := CRC.Final (computed_crc);
@@ -602,7 +580,7 @@ package body BZip2.Decoding is
                 end if;
               end if;
             end if;
-            exit when rle_len = 0 or out_countdown = 0;
+            exit when rle_len = 0;
           end loop;
         end RLE_Write;
         --
@@ -658,19 +636,10 @@ package body BZip2.Decoding is
         end if;
         if rle_len /= 0 then
           RLE_Write;
-          if out_countdown = 0 then
-            shorten := 0;
-            rle_run_data := data;
-            rle_run_left := rle_len;
-            return;
-          end if;
         end if;
         begin
           Big_RLE_Loop :
-          loop
-            if decode_available = 0 or end_reached then
-              exit Big_RLE_Loop;
-            end if;
+          while not (decode_available = 0 or end_reached) loop
             rle_len := 1;
             data := RLE_Byte;
             Consume_RLE;
@@ -688,24 +657,20 @@ package body BZip2.Decoding is
               end if;
             end if;
             RLE_Write;
-            exit Big_RLE_Loop when out_countdown = 0;
           end loop Big_RLE_Loop;
         exception
           when input_dried => RLE_Write;
         end;
-        shorten := out_countdown;
         rle_run_data := data;
         rle_run_left := rle_len;
       end RLE_Read;
 
     begin
-      last := out_buf'Last;
       if decode_available = Natural_32'Last then
         --  First block:
         Call_Decode_Block;
       end if;
       RLE_Read;
-      last := last - shorten;
     end Read_Chunk;
 
     procedure Init_Stream_Decompression is
@@ -733,7 +698,6 @@ package body BZip2.Decoding is
     Init_Stream_Decompression;
     loop
       Read_Chunk;
-      Write (out_buf (1 .. last));
       exit when end_reached and rle_run_left = 0;
     end loop;
     Dispose (tt);

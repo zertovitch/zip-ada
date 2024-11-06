@@ -46,25 +46,14 @@
 --  options, average on several runs (see bz_test.cmd).
 
 generic
-
-  input_buffer_size  : Integer := 1024;
-  output_buffer_size : Integer := 4096;
-
-  type Buffer is array (Natural range <>) of Interfaces.Unsigned_8;
+  --  Input:
+  with function Read_Byte return Byte;
+  --  Output:
+  with procedure Write_Byte (b : Byte);
 
   --  CRC checking is useless if the whole bzip stream is enclosed
   --  in another CRC-checked stream, like a in Zip archive.
-  check_CRC : Boolean;
-  --
-  --  NB: BZip2.Decoding's CRC computation has a subtle bug that makes the
-  --      computed CRC sometimes wrong even though the data is correct and
-  --      the canonical bzip2 executable accepts the compressed file,
-  --      including CRC checks (all blocks + combined).
-
-  --  Input:
-  with procedure Read (buf : out Buffer);
-  --  Output:
-  with procedure Write (buf : in Buffer);
+  check_crc : Boolean;
 
 package BZip2.Decoding is
 
