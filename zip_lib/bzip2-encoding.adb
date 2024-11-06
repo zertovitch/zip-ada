@@ -106,12 +106,12 @@ package body BZip2.Encoding is
 
     procedure Encode_Block is
 
-      --  quiet     : constant := 0;
-      headlines       : constant := 1;
-      detailed        : constant := 2;
-      super_detailed  : constant := 3;  --  Details down to symbols.
+      quiet          : constant := 0;
+      headlines      : constant := 1;
+      detailed       : constant := 2;
+      super_detailed : constant := 3;  --  Details down to symbols.
 
-      verbosity_level  : constant := detailed;
+      verbosity_level  : constant := quiet;
 
       procedure Trace (msg : String; verbosity : Natural) with Inline is
       begin
