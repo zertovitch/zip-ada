@@ -49,8 +49,11 @@ begin
                  "rezip -int " & Gather_Arguments & " " & test_rz_name & "");
 
   --  Show recompression report.
-  Shell_Execute ("firefox " & test_rz_name & ".ReZip.html");  --  Linux
-  Shell_Execute ("start   " & test_rz_name & ".ReZip.html");  --  Windows
+  if Directory_Separator = '/' then
+    Shell_Execute ("firefox " & test_rz_name & ".ReZip.html");  --  Linux, MacOS, ...
+  else
+    Shell_Execute ("start   " & test_rz_name & ".ReZip.html");  --  Windows
+  end if;
 
   --  Compare before vs. after.
   Shell_Execute (+".." & Directory_Separator &

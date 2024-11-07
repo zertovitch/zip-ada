@@ -148,25 +148,42 @@ begin
   Smuggle (+"zip_lib", +"unzip-decompress.adb");
   Smuggle (+"zip_lib", +"zip-compress-deflate.adb");
   Smuggle (+"zip_lib", +"lzma-encoding.adb");
-  --
+  Smuggle (+"zip_lib", +"zip.adb");
+  Smuggle (+"zip_lib", +"unzip.adb");
+  Smuggle (+"zip_lib", +"zip-create.adb");
+  Smuggle (+"zip_lib", +"lzma-decoding.adb");
+  Smuggle (+"zip_lib", +"zip-headers.adb");
+
+  Pass_Loop :
   for action in Action_Type loop
     if slow then
       --  If you need a coffee now, it's the right time to have one or two...
+      --  Reduce
       Process_Archive (+".." & Directory_Separator & "zipada -er1", +"$mth_zar1", action);
       Process_Archive (+".." & Directory_Separator & "zipada -er2", +"$mth_zar2", action);
       Process_Archive (+".." & Directory_Separator & "zipada -er3", +"$mth_zar3", action);
       Process_Archive (+".." & Directory_Separator & "zipada -er4", +"$mth_zar4", action);
     end if;
+    --  Shrink (LZW)
     Process_Archive   (+".." & Directory_Separator & "zipada -esh", +"$mth_zash", action);
+    --  Deflate
     Process_Archive   (+".." & Directory_Separator & "zipada -edf", +"$mth_zadf", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -ed1", +"$mth_zad1", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -ed2", +"$mth_zad2", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -ed3", +"$mth_zad3", action);
+    --  BZip2
+    Process_Archive   (+".." & Directory_Separator & "zipada -eb1", +"$mth_zab1", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -eb2", +"$mth_zab2", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -eb3", +"$mth_zab3", action);
+    Process_Archive   (+".." & Directory_Separator & "zipada -eb4", +"$mth_zab4", action);
+    --  LZMA
     Process_Archive   (+".." & Directory_Separator & "zipada -el1", +"$mth_zal1", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -el2", +"$mth_zal2", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -el3", +"$mth_zal3", action);
+    --  Multi-Format
     Process_Archive   (+".." & Directory_Separator & "zipada -ep1", +"$mth_zap1", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -ep2", +"$mth_zap2", action);
+    --  External
     Process_Archive   (+"zip           -1              ",           +"$mth_izd1", action);
     Process_Archive   (+"zip           -6              ",           +"$mth_izd6", action);
     Process_Archive   (+"zip           -9              ",           +"$mth_izd9", action);
@@ -187,7 +204,8 @@ begin
       Shell_Execute  (+"7z a -mx=9 $mth_7z_l.7z " & test_files);
     end if;
     New_Line;
-  end loop;
+  end loop Pass_Loop;
+  
   Create_List;
   Put_Line ("Archive comparisons:");
   Put_Line (+"   " & successes & " successes");
