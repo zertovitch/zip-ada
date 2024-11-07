@@ -78,7 +78,7 @@ package body Rezip_lib is
 
   type Approach is
     (original,
-     presel_1, presel_2,
+     presel_2, presel_1,
      shrink,
      reduce_4,
      deflate_3,

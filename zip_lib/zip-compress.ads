@@ -133,8 +133,9 @@ package Zip.Compress is
   User_abort : exception;
 
   type Data_Content_Type is
-    (Neutral,
-     Source_code,
+    (neutral,
+     source_code,
+     text_html,
      JPEG,
      ARW_RW2,     --  Raw digital camera image
      ORF_CR2,     --  Raw digital camera image

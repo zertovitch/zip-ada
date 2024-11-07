@@ -242,8 +242,11 @@ package body Zip.Compress is
       end if;
     end Compress_data_single_method;
 
+    fast_presel_threshold : constant := 22_805;
+    bzip2_threshold       : constant := 30_000;
+
     fast_presel : constant Boolean :=
-      method = Preselection_1 or (input_size_known and then input_size < 22_805);
+      method = Preselection_1 or (input_size_known and then input_size < fast_presel_threshold);
 
     data_type_to_LZMA_method : constant array (Data_Content_Type) of LZMA_Method :=
       (JPEG    => LZMA_for_JPEG,
@@ -256,8 +259,7 @@ package body Zip.Compress is
        PNG     => LZMA_for_PNG,
        WAV     => LZMA_for_WAV,
        AU      => LZMA_for_AU,
-       others  => LZMA_1  --  Fake, should be unused as such.
-      );
+       others  => LZMA_1);  --  Fake, should be unused as such.
 
   begin
     case method is
@@ -267,7 +269,7 @@ package body Zip.Compress is
       --
       when Preselection_Method =>
         case content_hint is
-          when Neutral =>  --  No clue about what kind of data
+          when neutral =>  --  No clue about what kind of data
             if input_size_known and then input_size < 9_000 then
               Compress_data_single_method (Deflate_3);  --  Deflate
             elsif fast_presel then
@@ -277,18 +279,21 @@ package body Zip.Compress is
             else
               Compress_data_single_method (LZMA_3);                 --  LZMA with BT4 match finder
             end if;
+
           when ARW_RW2 | ORF_CR2 | MP3 | MP4 | JPEG | PGM | PPM | PNG | WAV | AU =>
             if input_size_known and then input_size < 2_250 then
               Compress_data_single_method (Deflate_3);  --  Deflate
             else
               Compress_data_single_method (data_type_to_LZMA_method (content_hint));
             end if;
+
           when GIF =>
             if input_size_known and then input_size < 350 then
               Compress_data_single_method (Deflate_1);
             else
               Compress_data_single_method (LZMA_for_GIF);
             end if;
+
           when Zip_in_Zip =>
             if input_size_known and then input_size < 1_000 then
               Compress_data_single_method (Deflate_3);  --  Deflate
@@ -297,14 +302,29 @@ package body Zip.Compress is
             else
               Compress_data_single_method (LZMA_3_for_Zip_in_Zip);
             end if;
-          when Source_code =>
+
+          when source_code =>
             if input_size_known and then input_size < 8_000 then
               Compress_data_single_method (Deflate_3);  --  Deflate
             elsif fast_presel then
               Compress_data_single_method (LZMA_2_for_Source);
-            else
+            elsif input_size_known and then input_size < bzip2_threshold then
               Compress_data_single_method (LZMA_3_for_Source);
+            else
+              Compress_data_single_method (BZip2_Method'Last);
             end if;
+
+          when text_html =>
+            if input_size_known and then input_size < 9_000 then
+              Compress_data_single_method (Deflate_3);
+            elsif fast_presel then
+              Compress_data_single_method (LZMA_2);
+            elsif input_size_known and then input_size < bzip2_threshold then
+              Compress_data_single_method (LZMA_3);
+            else
+              Compress_data_single_method (BZip2_Method'Last);
+            end if;
+
         end case;
     end case;
   end Compress_Data;
@@ -334,7 +354,12 @@ package body Zip.Compress is
       or else ext_2 = ".JS" or else ext_3 = ".LSP"
       or else ext_3 in ".CSV" | ".SQL"
     then
-      return Source_code;
+      return source_code;
+    end if;
+    if ext_3 = ".HTM" or else ext_4 = ".HTML"
+      or else ext_3 = ".TXT"
+    then
+      return text_html;
     end if;
     --  Zip archives happen to be zipped...
     if ext_4 = ".EPUB"  --  EPUB: e-book reader format
@@ -385,7 +410,7 @@ package body Zip.Compress is
     if ext_2 = ".AU" then  --  Audacity raw data
       return AU;
     end if;
-    return Neutral;
+    return neutral;
   end Guess_Type_from_Name;
 
   -----------------------------------
