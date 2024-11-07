@@ -121,7 +121,7 @@ package body BZip2.Encoding is
       detailed       : constant := 2;
       super_detailed : constant := 3;  --  Details down to symbols.
 
-      verbosity_level  : constant := quiet;
+      verbosity_level : constant := quiet;
 
       procedure Trace (msg : String; verbosity : Natural) with Inline is
       begin
@@ -155,6 +155,7 @@ package body BZip2.Encoding is
 
       block_size : Natural_32 := 0;
       block_crc : Unsigned_32;
+      in_use : array (Byte) of Boolean := (others => False);
 
       procedure RLE_1 is
 
@@ -162,6 +163,7 @@ package body BZip2.Encoding is
         begin
           block_size := block_size + 1;
           data (block_size) := x;
+          in_use (x) := True;
         end Store;
 
         b : Byte;
@@ -289,11 +291,32 @@ package body BZip2.Encoding is
       mtf_data : MTF_Array_Access;
       mtf_last : Natural_32 := 0;
 
-      symb_in_use : constant := max_alphabet_size; --  !!  TBD: pack numbering with unseq_to_seq.
+      unseq_to_seq : array (Byte) of Byte;
 
-      EOB : constant := symb_in_use - 1;  --  Encoding is 0-based.
+      normal_symbols_in_use : Natural;
+      last_symbol_in_use : Natural;
+      EOB : Natural;
 
       procedure MTF_and_RLE_2 is
+
+        procedure Prepare_Mapping is
+        begin
+          normal_symbols_in_use := 0;
+          for i in Byte loop
+            if in_use (i) then
+              unseq_to_seq (i) := Byte (normal_symbols_in_use);
+              normal_symbols_in_use := normal_symbols_in_use + 1;
+            end if;
+          end loop;
+          last_symbol_in_use := normal_symbols_in_use + 3 - 1 - 1;
+          --  + 3 : the special symbols RUN_A, RUN_B, EOB
+          --  - 1 : value 0 has no symbol (RUN_A and RUN_B are used for the runs of 0)
+          --  - 1 : zero-based
+
+          EOB := last_symbol_in_use;
+
+          Trace ("Normal symbols in use:" & normal_symbols_in_use'Image, detailed);
+        end Prepare_Mapping;
 
         procedure Store (a : Max_Alphabet) is
         begin
@@ -322,7 +345,10 @@ package body BZip2.Encoding is
 
         mtf_symbol : array (0 .. 255) of Byte;
         idx : Natural;
+        bt_seq : Byte;
       begin
+        Prepare_Mapping;
+
         mtf_data := new MTF_Array (1 .. 1 + 2 * block_size);  --  Check real worst case capacity !!
 
         for i in mtf_symbol'Range loop
@@ -331,12 +357,13 @@ package body BZip2.Encoding is
 
         Big_MTF_RLE_2_Loop :
         for bt of bwt_data.all loop
+          bt_seq := unseq_to_seq (bt);
 
           --  MTF part:
 
           Search_Value :
           for search in mtf_symbol'Range loop
-            if mtf_symbol (search) = bt then
+            if mtf_symbol (search) = bt_seq then
               idx := search;
               exit Search_Value;
             end if;
@@ -346,7 +373,7 @@ package body BZip2.Encoding is
           for i in reverse 1 .. idx loop
             mtf_symbol (i) := mtf_symbol (i - 1);
           end loop Move_Value_to_Front;
-          mtf_symbol (0) := bt;
+          mtf_symbol (0) := bt_seq;
 
           --  RLE part:
 
@@ -374,13 +401,19 @@ package body BZip2.Encoding is
 
       procedure Entropy_Calculations is
 
-        type Huffman_Length_Array is array (Max_Alphabet) of Natural;
+        subtype Alphabet_in_Use is Integer range 0 .. last_symbol_in_use;
+
+        type Huffman_Length_Array is array (Alphabet_in_Use) of Natural;
+
+        type Count_Array is array (Alphabet_in_Use) of Natural_32;
+
+        freq_in_use : Count_Array;
 
         procedure LLHCL is new
           Huffman.Encoding.Length_Limited_Coding
-            (Alphabet     => Max_Alphabet,  --  !! Here use the packed alphabet (using unseq_to_seq)
+            (Alphabet     => Alphabet_in_Use,
              Count_Type   => Natural_32,
-             Count_Array  => Frequency_Array,
+             Count_Array  => Count_Array,
              Length_Array => Huffman_Length_Array,
              max_bits     => max_code_len_bzip2_1_0_3);
 
@@ -391,24 +424,21 @@ package body BZip2.Encoding is
         --  !! Here: have fun with partial sets of frequencies,
         --           the groups and the 6 possible tables !!
 
-        --  !! TBD: pack the alphabet (unseq_to_seq)
-        --          Absent this, we ballot-box-stuff the frequencies
-        --          in order to have bit length >= 1.
-        for a in Max_Alphabet loop
-          freq (a) := freq (a) + 1;
+        for a in Alphabet_in_Use loop
+          if freq (a) = 0 then
+            --  Avoid 0 lengths.
+            freq_in_use (a) := 1;
+          else
+            freq_in_use (a) := freq (a);
+          end if;
         end loop;
 
-        LLHCL (freq, len);
+        LLHCL (freq_in_use, len);
         for symbol in len'Range loop
           descr (symbol).bit_length := len (symbol);
         end loop;
-        Huffman.Encoding.Prepare_Codes (descr, max_code_len_bzip2_1_0_3, False);
-
-        --  if verbosity_level >= detailed_verbose then
-        --    for symbol in Max_Alphabet loop
-        --      Trace ("Huff:" & symbol'Image & len (symbol)'Image, detailed_verbose);
-        --    end loop;
-        --  end if;
+        Huffman.Encoding.Prepare_Codes
+          (descr (Alphabet_in_Use), max_code_len_bzip2_1_0_3, False);
 
       end Entropy_Calculations;
 
@@ -437,18 +467,25 @@ package body BZip2.Encoding is
       procedure Put_Block_Trees_Descriptors is
 
         procedure Put_Mapping_Table is
-          in_use : constant array (0 .. 15) of Boolean := (others => True);
-          --  !!  Currently: full; use unseq_to_seq instead.
+          in_use_16 : array (Byte range 0 .. 15) of Boolean := (others => False);
         begin
+          for i in in_use_16'Range loop
+            for j in in_use_16'Range loop
+              if in_use (i * 16 + j) then
+                in_use_16 (i) := True;
+              end if;
+            end loop;
+          end loop;
+
           --  Send the first 16 bits which tell which pieces are stored.
-          for i in in_use'Range loop
-            Put (in_use (i));
+          for i in in_use_16'Range loop
+            Put (in_use_16 (i));
           end loop;
           --  Send detail of the used pieces.
-          for i in in_use'Range loop
-            if in_use (i) then
-              for j in 0 .. 15 loop
-                Put (True);  --  !!  Currently: full; use unseq_to_seq instead.
+          for i in in_use_16'Range loop
+            if in_use_16 (i) then
+              for j in in_use_16'Range loop
+                Put (in_use (i * 16 + j));
               end loop;
             end if;
           end loop;
@@ -476,7 +513,7 @@ package body BZip2.Encoding is
           for repeat in 1 .. 2 loop
             current_bit_length := descr (0).bit_length;
             Put_Bits (Unsigned_32 (current_bit_length), 5);
-            for i in descr'Range loop
+            for i in 0 .. last_symbol_in_use loop
               new_bit_length := descr (i).bit_length;
               Adjust_Bit_length :
               loop
