@@ -504,7 +504,8 @@ package body BZip2.Decoding is
       next_rle_idx := Natural_32 (Shift_Right (tt (block_origin), 8));
 
       while decode_available > 0 loop
-        old_data := data;
+        --  On first iteration, because rle_len = 0, the run won't be
+        --  flushed, then old_data being undefined is not an issue.
         data := RLE_Byte;
         if rle_len > 0 and then data /= old_data then
           --  Run break.
@@ -521,8 +522,8 @@ package body BZip2.Decoding is
             rle_len := 0;  --  Run is empty at this point.
           end if;
         end if;
+        old_data := data;
       end loop;
-      old_data := data;
       Flush_Run;
     end RLE_1;
 

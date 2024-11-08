@@ -282,9 +282,6 @@ package body BZip2.Encoding is
 
       subtype Max_Alphabet is Integer range 0 .. max_alphabet_size - 1;
 
-      type Frequency_Array is array (Max_Alphabet) of Natural_32;
-      freq : Frequency_Array := (others => 0);
-
       type MTF_Array is array (Positive_32 range <>) of Max_Alphabet;
       type MTF_Array_Access is access MTF_Array;
 
@@ -322,7 +319,6 @@ package body BZip2.Encoding is
         begin
           mtf_last := mtf_last + 1;
           mtf_data (mtf_last) := a;
-          freq (a) := freq (a) + 1;
         end Store;
 
         run : Natural_32 := 0;
@@ -396,8 +392,16 @@ package body BZip2.Encoding is
       --  Entropy Encoding and output of the compressed block  --
       -----------------------------------------------------------
 
-      descr : Huffman.Encoding.Descriptor (Max_Alphabet);
-      --  array (0 .. max_entropy_coders) of Huffman.Encoding.Descriptor (Max_Alphabet);
+      subtype Entropy_Coder_Range is Integer range 1 .. max_entropy_coders;
+
+      descr :
+        array (Entropy_Coder_Range) of
+          Huffman.Encoding.Descriptor (Max_Alphabet);
+
+      entropy_coder_count : Positive;
+      selector_count : Integer_32;
+
+      selector : array (1 .. 1 + block_capacity / group_size) of Entropy_Coder_Range;
 
       procedure Entropy_Calculations is
 
@@ -407,7 +411,17 @@ package body BZip2.Encoding is
 
         type Count_Array is array (Alphabet_in_Use) of Natural_32;
 
-        freq_in_use : Count_Array;
+        procedure Avoid_Zeros (freq : in out Count_Array) is
+        begin
+          for a in Alphabet_in_Use loop
+            if freq (a) = 0 then
+              --  Avoid 0 lengths (the canonical BZip2 wants that).
+              freq (a) := 1;
+            end if;
+          end loop;
+        end Avoid_Zeros;
+
+        max_code_len_agreed : constant := max_code_len_bzip2_1_0_3;
 
         procedure LLHCL is new
           Huffman.Encoding.Length_Limited_Coding
@@ -415,40 +429,51 @@ package body BZip2.Encoding is
              Count_Type   => Natural_32,
              Count_Array  => Count_Array,
              Length_Array => Huffman_Length_Array,
-             max_bits     => max_code_len_bzip2_1_0_3);
+             max_bits     => max_code_len_agreed);
 
-        len : Huffman_Length_Array;
-        --  array (0 .. max_entropy_coders) of Huffman_Length_Array;
+        procedure Single_Entropy_Coder is
+          len : Huffman_Length_Array;
+          freq : Count_Array := (others => 0);
+        begin
+          for symbol of mtf_data (1 .. mtf_last) loop
+            freq (symbol) := freq (symbol) + 1;
+          end loop;
+          Avoid_Zeros (freq);
+          LLHCL (freq, len);
+          for symbol in len'Range loop
+            descr (1)(symbol).bit_length := len (symbol);
+          end loop;
+          Huffman.Encoding.Prepare_Codes
+            (descr (1)(Alphabet_in_Use), max_code_len_agreed, False);
+          entropy_coder_count := 2;  --  The canonical BZip2 decoder requires that.
+          descr (2) := descr (1);    --  We actually don't use the copy (psssht), but need to define it!
+          for i in 1 .. selector_count loop
+            selector (Integer_32 (i)) := 1;
+          end loop;
+        end Single_Entropy_Coder;
 
       begin
-        --  !! Here: have fun with partial sets of frequencies,
-        --           the groups and the 6 possible tables !!
+        selector_count := 1 + (mtf_last - 1) / group_size;
 
-        for a in Alphabet_in_Use loop
-          if freq (a) = 0 then
-            --  Avoid 0 lengths.
-            freq_in_use (a) := 1;
-          else
-            freq_in_use (a) := freq (a);
-          end if;
-        end loop;
-
-        LLHCL (freq_in_use, len);
-        for symbol in len'Range loop
-          descr (symbol).bit_length := len (symbol);
-        end loop;
-        Huffman.Encoding.Prepare_Codes
-          (descr (Alphabet_in_Use), max_code_len_bzip2_1_0_3, False);
+        Single_Entropy_Coder;
+        --  !! Here: as an alternative, have fun with partial sets
+        --     of frequencies, the groups and the 6 possible tables.
 
       end Entropy_Calculations;
 
       procedure Entropy_Output is
+        sel_idx : Positive_32;
+        sel : Positive;
+        symbol : Max_Alphabet;
       begin
-        for symbol of mtf_data (1 .. mtf_last) loop
+        for mtf_idx in 1 .. mtf_last loop
+          sel_idx := 1 + (mtf_idx - 1) / group_size;
+          sel := selector (sel_idx);
+          symbol := mtf_data (mtf_idx);
           Put_Bits
             (Unsigned_32
-              (descr (symbol).code),
-               descr (symbol).bit_length);
+              (descr (sel) (symbol).code),
+               descr (sel) (symbol).bit_length);
         end loop;
       end Entropy_Output;
 
@@ -492,29 +517,26 @@ package body BZip2.Encoding is
         end Put_Mapping_Table;
 
         procedure Put_Selectors is
-          selector_count : constant Unsigned_32 := 1 + Unsigned_32 (mtf_last) / group_size;
         begin
-          Put_Bits (selector_count, 15);
+          Put_Bits (Unsigned_32 (selector_count), 15);
           for i in 1 .. selector_count loop
             --  MTF-transformed index for the selected entropy coder.
+            for bar in 1 .. selector (i) - 1 loop
+              --  Output as many '1' bit as the value of selector (i) - 1:
+              Put_Bits (1, 1);
+            end loop;
             Put_Bits (0, 1);
-            --  !! Currently, we use only the first coder.
-            --     Output 1's for non-zero MTF indices.
           end loop;
         end Put_Selectors;
 
         procedure Put_Huffman_Bit_Lengths is
           current_bit_length, new_bit_length : Natural;
         begin
-          --  !!  Loop over the list of actually used entropy coders.
-          --      Here, we output two copies of the same coder.
-          --      Reason: the canonical bzip2 tool wants two
-          --      or more entropy coders.
-          for repeat in 1 .. 2 loop
-            current_bit_length := descr (0).bit_length;
+          for coder in 1 .. entropy_coder_count loop
+            current_bit_length := descr (coder)(0).bit_length;
             Put_Bits (Unsigned_32 (current_bit_length), 5);
             for i in 0 .. last_symbol_in_use loop
-              new_bit_length := descr (i).bit_length;
+              new_bit_length := descr (coder)(i).bit_length;
               Adjust_Bit_length :
               loop
                 if current_bit_length = new_bit_length then
@@ -537,7 +559,7 @@ package body BZip2.Encoding is
 
       begin
         Put_Mapping_Table;
-        Put_Bits (2, 3);  --  !! Number of trees (currently, 2 identical entropy coders)
+        Put_Bits (Unsigned_32 (entropy_coder_count), 3);
         Put_Selectors;
         Put_Huffman_Bit_Lengths;
       end Put_Block_Trees_Descriptors;
