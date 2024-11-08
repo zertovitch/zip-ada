@@ -431,6 +431,33 @@ package body BZip2.Encoding is
              Length_Array => Huffman_Length_Array,
              max_bits     => max_code_len_agreed);
 
+        trace_frequency_matrix : constant Boolean := False;
+
+        procedure Output_Frequency_Matrix is
+          use Ada.Text_IO;
+          f : File_Type;
+          freq : Count_Array := (others => 0);
+          symbol : Alphabet_in_Use;
+          sep : constant Character := ';';
+        begin
+          --  In this file, rows represent groups of data,
+          --  columns represent the frequencies of each symbol.
+          Create (f, Out_File, "freq.csv");
+          for mtf_idx in 1 .. mtf_last loop
+            symbol := mtf_data (mtf_idx);
+            freq (symbol) := freq (symbol) + 1;
+            if mtf_idx rem group_size = 0 or else mtf_idx = mtf_last then
+              --  Dump group's statistics:
+              for s in Alphabet_in_Use loop
+                Put (f, freq (s)'Image & sep);
+              end loop;
+              New_Line (f);
+              freq := (others => 0);
+            end if;
+          end loop;
+          Close (f);
+        end Output_Frequency_Matrix;
+
         procedure Single_Entropy_Coder is
           len : Huffman_Length_Array;
           freq : Count_Array := (others => 0);
@@ -454,6 +481,9 @@ package body BZip2.Encoding is
 
       begin
         selector_count := 1 + (mtf_last - 1) / group_size;
+        if trace_frequency_matrix then
+          Output_Frequency_Matrix;
+        end if;
 
         Single_Entropy_Coder;
         --  !! Here: as an alternative, have fun with partial sets
