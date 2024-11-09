@@ -35,9 +35,6 @@ procedure Comp_Zip is
     Put_Line ("Library version " & Zip.version & " dated " & Zip.reference);
     Put_Line ("URL: " & Zip.web);
     Show_License (Current_Output, "zip.ads");
-    New_Line;
-    Put ("Press Return");
-    Skip_Line;
   end Blurb;
 
   use Ada.Calendar, Ada.Command_Line, Ada.Strings.Unbounded;
@@ -52,16 +49,19 @@ begin
     Blurb;
     Put_Line ("Usage: comp_zip archive1[.zip] archive2[.zip] [options]");
     New_Line;
-    Put_Line ("Options: -q1   : (quiet level 1): summary only");
-    Put_Line ("         -q2   : (quiet level 2): shorter summary only");
-    Put_Line ("         -q3   : (quiet level 3): 1 line per archive");
-    Put_Line ("         -q4   : (quiet level 4): no console output, only exit code");
+    Put_Line ("Options: -q1   : (quieter level 1): summary only");
+    Put_Line ("         -q2   : (quieter level 2): shorter summary only");
+    Put_Line ("         -q3   : (quieter level 3): 1 line per archive");
+    Put_Line ("         -q4   : (quieter level 4): no console output, only exit code");
     Put_Line ("         -pPwd : define a password for decryption (e.g. ""Pwd"")");
     New_Line;
     Put_Line ("The exit code is the number of mismatching entries:");
     Put_Line ("  - entry name is in both archives, but contents are different (+1)");
     Put_Line ("  - entry name is only in one archive but absent in the other one (+1)");
-    Put_Line ("The code 0 means that both archives have identical contents.");
+    Put_Line ("The exit code 0 means that both archives have identical contents.");
+    New_Line;
+    Put ("Press Return");
+    Skip_Line;
     return;
   end if;
   T0 := Clock;
