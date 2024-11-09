@@ -108,12 +108,14 @@ private
   subtype Natural_32  is Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;
   subtype Positive_32 is Interfaces.Integer_32 range 1 .. Interfaces.Integer_32'Last;
 
-  block_magic : constant String := "1AY&SY";
-  --  ^ pi "decimal" digits, visible in hexadecimal representation!
+  stream_header_magic : constant String := "BZh0";
 
   stream_footer_magic  : constant String :=
     Character'Val (16#17#) & "rE8P" & Character'Val (16#90#);
   --  ^ sqrt (pi) "decimal" digits, visible in hexadecimal representation!
+
+  block_header_magic : constant String := "1AY&SY";
+  --  ^ pi "decimal" digits, visible in hexadecimal representation!
 
   ---------------------------------------------------------------------------
   --  Cyclic redundancy check to verify uncompressed block data integrity  --

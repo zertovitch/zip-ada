@@ -68,22 +68,17 @@ package body BZip2.Encoding is
       end loop;
     end Put_Bits;
 
-    procedure Put (b : Boolean) is
+    procedure Put_Bits (b : Boolean) is
     begin
       Put_Bits (Boolean'Pos (b), 1);
-    end Put;
+    end Put_Bits;
 
-    procedure Put (c : Character) is
-    begin
-      Put_Bits (Character'Pos (c), 8);
-    end Put;
-
-    procedure Put (s : String) is
+    procedure Put_Bits (s : String) is
     begin
       for c of s loop
-        Put (c);
+        Put_Bits (Character'Pos (c), 8);
       end loop;
-    end Put;
+    end Put_Bits;
 
     level : constant Natural_32 :=
       (case option is
@@ -436,13 +431,15 @@ package body BZip2.Encoding is
         procedure Output_Frequency_Matrix is
           use Ada.Text_IO;
           f : File_Type;
+          file_name : String := "freq" & block_counter'Image & ".csv";
           freq : Count_Array := (others => 0);
           symbol : Alphabet_in_Use;
           sep : constant Character := ';';
         begin
           --  In this file, rows represent groups of data,
           --  columns represent the frequencies of each symbol.
-          Create (f, Out_File, "freq.csv");
+          file_name (file_name'First + 4) := '_';
+          Create (f, Out_File, file_name);
           for mtf_idx in 1 .. mtf_last loop
             symbol := mtf_data (mtf_idx);
             freq (symbol) := freq (symbol) + 1;
@@ -509,7 +506,7 @@ package body BZip2.Encoding is
 
       procedure Put_Block_Header is
       begin
-        Put (block_magic);
+        Put_Bits (block_header_magic);
         block_crc := CRC.Final (block_crc);
         Put_Bits (block_crc, 32);
         Trace ("Block CRC:   " & block_crc'Image, detailed);
@@ -534,13 +531,13 @@ package body BZip2.Encoding is
 
           --  Send the first 16 bits which tell which pieces are stored.
           for i in in_use_16'Range loop
-            Put (in_use_16 (i));
+            Put_Bits (in_use_16 (i));
           end loop;
           --  Send detail of the used pieces.
           for i in in_use_16'Range loop
             if in_use_16 (i) then
               for j in in_use_16'Range loop
-                Put (in_use (i * 16 + j));
+                Put_Bits (in_use (i * 16 + j));
               end loop;
             end if;
           end loop;
@@ -609,15 +606,15 @@ package body BZip2.Encoding is
     end Encode_Block;
 
     procedure Write_Stream_Header is
-      stream_magic : String := "BZh0";
+      magic : String := stream_header_magic;
     begin
-      stream_magic (stream_magic'Last) := Character'Val (Character'Pos ('0') + level);
-      Put (stream_magic);
+      magic (magic'Last) := Character'Val (Character'Pos ('0') + level);
+      Put_Bits (magic);
     end Write_Stream_Header;
 
     procedure Write_Stream_Footer is
     begin
-      Put (stream_footer_magic);
+      Put_Bits (stream_footer_magic);
       Put_Bits (combined_crc, 32);
       if bit_pos < 7 then
         Flush_Bit_Buffer;

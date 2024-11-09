@@ -537,7 +537,7 @@ package body BZip2.Decoding is
       for i in 1 .. 6 loop
         magic (i) := Character'Val (Get_Byte);
       end loop;
-      if magic = block_magic then
+      if magic = block_header_magic then
         block_counter := block_counter + 1;
         if check_crc then
           CRC.Init (computed_block_crc);
