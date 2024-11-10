@@ -393,7 +393,7 @@ package body BZip2.Encoding is
         array (Entropy_Coder_Range) of
           Huffman.Encoding.Descriptor (Max_Alphabet);
 
-      entropy_coder_count : Positive;
+      entropy_coder_count : Entropy_Coder_Range;
       selector_count : Integer_32;
 
       selector : array (1 .. 1 + block_capacity / group_size) of Entropy_Coder_Range;
@@ -460,7 +460,7 @@ package body BZip2.Encoding is
           Close (f);
         end Output_Frequency_Matrix;
 
-        procedure Set_Descriptor (freq : in out Count_Array; des : Entropy_Coder_Range) is
+        procedure Define_Descriptor (freq : in out Count_Array; des : Entropy_Coder_Range) is
           len : Huffman_Length_Array;
         begin
           Avoid_Zeros (freq);
@@ -470,7 +470,7 @@ package body BZip2.Encoding is
           end loop;
           Huffman.Encoding.Prepare_Codes
             (descr (des)(Alphabet_in_Use), max_code_len_agreed, False);
-        end Set_Descriptor;
+        end Define_Descriptor;
 
         procedure Single_Entropy_Coder is
           freq : Count_Array := (others => 0);
@@ -478,7 +478,7 @@ package body BZip2.Encoding is
           for symbol of mtf_data (1 .. mtf_last) loop
             freq (symbol) := freq (symbol) + 1;
           end loop;
-          Set_Descriptor (freq, 1);
+          Define_Descriptor (freq, 1);
           entropy_coder_count := 2;  --  The canonical BZip2 decoder requires >= 2 coders.
           descr (2) := descr (1);    --  We actually don't use the copy (psssht), but need to define it!
           for i in 1 .. selector_count loop
@@ -565,7 +565,7 @@ package body BZip2.Encoding is
             end loop;
 
             for cl in 1 .. entropy_coder_count loop
-              Set_Descriptor (freq_cluster (cl), cl);
+              Define_Descriptor (freq_cluster (cl), cl);
             end loop;
 
             --  Cost analysis and re-classification
@@ -622,45 +622,57 @@ package body BZip2.Encoding is
             Ranking_Sort (ranking);
           end Do_Ranking;
 
+          type Cluster_Attribution is array (Positive range <>) of Entropy_Coder_Range;
+
+          procedure Initial_Clustering (attr : Cluster_Attribution) is
+            ne : constant Positive_32 := Positive_32 (entropy_coder_count);
+            ns : constant Positive_32 := selector_count;
+            e32 : Positive_32;
+          begin
+            for e in 1 .. entropy_coder_count loop
+              e32 := Positive_32 (e);
+              for i in 1 + (e32 - 1) * ns / ne .. e32 * ns / ne loop
+                selector (ranking (i).index) := attr (e + 1 - attr'First);
+              end loop;
+            end loop;
+          end Initial_Clustering;
+
+          factor : constant := 50;
+
         begin
-          --  Empirical entropy coder counts as in compress.c:
+          --  Entropy coder counts depending on empirical sizes.
+          --  Magic numbers as in compress.c, factor is ours.
           --
-          if mtf_last < 200 then
+          if mtf_last < 200 * factor then
             entropy_coder_count := 2;
-          elsif mtf_last < 600 then
+          elsif mtf_last < 600 * factor then
             entropy_coder_count := 3;
-          elsif mtf_last < 1200 then
+          elsif mtf_last < 1200 * factor then
             entropy_coder_count := 4;
-          elsif mtf_last < 2400 then
+          elsif mtf_last < 2400 * factor then
             entropy_coder_count := 5;
           else
             entropy_coder_count := 6;
           end if;
 
-          --  !! First prototype with 2 clusters
-          entropy_coder_count := 2;
-
           Do_Ranking;
 
-          --  Create an initial clustering.
+          --  Create an initial clustering depending on a mix
+          --  of RUN_A, RUN_B, low-index MTF occurrences.
+          --  Example with two clusters:
+          --   - Low values (more random data) for the cluster #2.
+          --   - High values (more redundant data) for #1.
           --
           case entropy_coder_count is
-            when 2 =>
-              for i in 1 .. selector_count / 2 loop
-                --  Low RUN_A, RUN_B, low-index MTF occurrences -> more random data:
-                selector (ranking (i).index) := 2;
-              end loop;
-              for i in selector_count / 2 + 1 .. selector_count loop
-                --  High RUN_A, RUN_B, low-index MTF occurrences -> more redundant data:
-                selector (ranking (i).index) := 1;
-              end loop;
-
-            when others =>
-              null;  --  !! TBD
-
+            when 1 => null;  --  Not supported by canonical BZip2.
+            when 2 => Initial_Clustering ((2, 1));
+            when 3 => Initial_Clustering ((3, 1, 2));
+            when 4 => Initial_Clustering ((4, 2, 1, 3));
+            when 5 => Initial_Clustering ((5, 3, 1, 2, 4));
+            when 6 => Initial_Clustering ((6, 4, 2, 1, 3, 5));
           end case;
 
-          for iteration in 1 .. 5 loop
+          for iteration in 1 .. 6 loop
             defectors := 0;
             Define_Simulate_and_Reclassify;
             Trace ("Defectors:" & defectors'Image, detailed);
