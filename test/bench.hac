@@ -38,18 +38,18 @@ procedure Bench is
     Put_Line ("     tar   : test tar + various one-file compressors");
   end Blurb;
 
-  type Category is (
-    Reduce_Shrink,
-    Deflate,
-    Deflate_External,
-    BZip2_External,
-    PPMd_External,
-    LZMA_7z,
-    LZMA_1_2,
-    LZMA_3,
-    TAR,
-    Preselection
-  );
+  type Category is
+    (Reduce_Shrink,
+     Deflate,
+     Deflate_External,
+     BZip2,
+     BZip2_External,
+     PPMd_External,
+     LZMA_7z,
+     LZMA_1_2,
+     LZMA_3,
+     TAR,
+     Preselection);
 
   cat_set : array (Category) of Boolean;
 
@@ -78,6 +78,7 @@ procedure Bench is
       elsif Argument (a) = "ppmd" then
         cat_set (PPMd_External) := True;
       elsif Argument (a) = "bzip2" then
+        cat_set (BZip2) := True;
         cat_set (BZip2_External) := True;
       elsif Argument (a) = "ps" then
         cat_set (Preselection) := True;
@@ -136,8 +137,12 @@ begin
     Shell_Execute (+"advzip -a -4 ../bench_" & bn & "_zopfli.zip *");
   end if;
   if cat_set (BZip2_External) then
-    Timing (+"zip -9 -Z bzip2                    ../bench_" & bn & "_bzip2_9 *");
+    Timing (+"zip -9 -Z bzip2                    ../bench_" & bn & "_iz_bzip2_9 *");
     Timing (+"7z a -tzip -mm=BZip2:d=900k:pass=7 ../bench_" & bn & "_7z_bzip2_9 *");
+  end if;
+  if cat_set (BZip2) then
+    Shell_Execute (za & " -eb3 ../bench_" & bn & "_bzip2_3 *");
+    Shell_Execute (za & " -eb4 ../bench_" & bn & "_bzip2_4 *");
   end if;
   if cat_set (PPMd_External) then
     Timing (+"7z a -tzip -mmt1 -mm=PPMd -mx9 ../bench_" & bn & "_7z_ppmd_mx9 *");
