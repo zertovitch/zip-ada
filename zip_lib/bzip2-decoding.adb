@@ -117,7 +117,7 @@ package body BZip2.Decoding is
     selector, selector_mtf : array (0 .. max_selectors) of Byte;
 
     procedure Receive_Selectors is
-      symbol : array (Byte range 0 .. max_entropy_coders - 1) of Byte;
+      value : array (Byte range 0 .. max_entropy_coders - 1) of Byte;
       j, tmp, v : Byte;
     begin
 
@@ -140,7 +140,10 @@ package body BZip2.Decoding is
         while Get_Boolean loop
           j := j + 1;
           if j > 5 then
-            raise data_error;
+            raise data_error
+              with
+                "Invalid BZip2 entropy coder index, maximum is" &
+                Integer'Image (max_entropy_coders - 1);
           end if;
         end loop;
         selector_mtf (i) := j;
@@ -149,18 +152,18 @@ package body BZip2.Decoding is
       --  2) De-transform selectors list:
       for w in Byte range 0 .. entropy_coder_count - 1 loop
         --  We start with 0, 1, 2, 3, ...:
-        symbol (w) := w;
+        value (w) := w;
       end loop;
       Undo_MTF_Values_For_Selectors :
       for i in 0 .. selector_count - 1 loop
         v := selector_mtf (i);
         --  Move pos (v) to the front.
-        tmp := symbol (v);
+        tmp := value (v);
         while v /= 0 loop
-          symbol (v) := symbol (v - 1);
+          value (v) := value (v - 1);
           v := v - 1;
         end loop;
-        symbol (0) := tmp;
+        value (0) := tmp;
         selector (i) := tmp;
       end loop Undo_MTF_Values_For_Selectors;
 
@@ -312,11 +315,15 @@ package body BZip2.Decoding is
           group_pos_countdown := group_size;
           group_no := group_no + 1;
           if group_no > selector_count - 1 then
-            raise data_error with "In BZip2 data, selector index exceeds selector count";
+            raise data_error
+              with
+                "In BZip2 data, selector index exceeds selector count," &
+                selector_count'Image;
           end if;
           g_sel := selector (group_no);
           if g_sel not in base'Range then
-            raise data_error with "In BZip2 data, invalid selector";
+            raise data_error
+              with "In BZip2 data, invalid selector value," & g_sel'Image;
           end if;
           g_min_len := min_lens (g_sel);
         end if;

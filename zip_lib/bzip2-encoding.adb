@@ -410,8 +410,13 @@ package body BZip2.Encoding is
         begin
           for a in Alphabet_in_Use loop
             if freq (a) = 0 then
-              --  Avoid 0 lengths (the canonical BZip2 wants that).
-              freq (a) := 1;
+              --  Tweak the stats to avoid zeros...
+              for aa in Alphabet_in_Use loop
+                --  Inrease each count by 1 to avoid 0 lengths
+                --  (the canonical BZip2 wants that).
+                freq (aa) := freq (aa) + 1;
+              end loop;
+              return;
             end if;
           end loop;
         end Avoid_Zeros;
@@ -455,26 +460,144 @@ package body BZip2.Encoding is
           Close (f);
         end Output_Frequency_Matrix;
 
-        procedure Single_Entropy_Coder is
+        procedure Set_Descriptor (freq : in out Count_Array; des : Entropy_Coder_Range) is
           len : Huffman_Length_Array;
+        begin
+          Avoid_Zeros (freq);
+          LLHCL (freq, len);
+          for symbol in Alphabet_in_Use loop
+            descr (des)(symbol).bit_length := len (symbol);
+          end loop;
+          Huffman.Encoding.Prepare_Codes
+            (descr (des)(Alphabet_in_Use), max_code_len_agreed, False);
+        end Set_Descriptor;
+
+        procedure Single_Entropy_Coder is
           freq : Count_Array := (others => 0);
         begin
           for symbol of mtf_data (1 .. mtf_last) loop
             freq (symbol) := freq (symbol) + 1;
           end loop;
-          Avoid_Zeros (freq);
-          LLHCL (freq, len);
-          for symbol in len'Range loop
-            descr (1)(symbol).bit_length := len (symbol);
-          end loop;
-          Huffman.Encoding.Prepare_Codes
-            (descr (1)(Alphabet_in_Use), max_code_len_agreed, False);
-          entropy_coder_count := 2;  --  The canonical BZip2 decoder requires that.
+          Set_Descriptor (freq, 1);
+          entropy_coder_count := 2;  --  The canonical BZip2 decoder requires >= 2 coders.
           descr (2) := descr (1);    --  We actually don't use the copy (psssht), but need to define it!
           for i in 1 .. selector_count loop
             selector (Integer_32 (i)) := 1;
           end loop;
         end Single_Entropy_Coder;
+
+        procedure Multiple_Entropy_Coders is
+          --  Frequency matrix: rows represent groups of data,
+          --  columns represent the frequencies of each symbol.
+          --  !!  Seems we don't need an explicit matrix.
+          subtype Selector_Range is Positive_32 range 1 .. selector_count;
+          type Freq_Matrix_Type is array (Selector_Range) of Count_Array;
+          type Freq_Matrix_Access is access Freq_Matrix_Type;
+          procedure Unchecked_Free is
+            new Ada.Unchecked_Deallocation (Freq_Matrix_Type, Freq_Matrix_Access);
+          --  We want a heap allocation since the matrix may reach ~16MB.
+          freq_matrix : Freq_Matrix_Access := new Freq_Matrix_Type'(others => (others => 0));
+
+          --  We create a ranking using the first symbol (RUN_A).
+          --  Looke at outputs of Output_Frequency_Matrix to find why.
+          type Pair is record
+            key   : Natural_32;   --  Occurrences of symbol RUN_A.
+            index : Positive_32;  --  Group number.
+          end record;
+          type Ranking_Array is array (Selector_Range) of Pair;
+
+          ranking : Ranking_Array;
+
+          function Smaller_Key (left, right : Pair) return Boolean is (left.key < right.key);
+
+          procedure Ranking_Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+            (Index_Type   => Selector_Range,
+             Element_Type => Pair,
+             Array_Type   => Ranking_Array,
+             "<"          => Smaller_Key);
+
+          --  Frequencies grouped by selected entropy coder.
+          freq_cluster : array (Entropy_Coder_Range) of Count_Array;
+
+          sel_idx : Positive_32;
+          symbol : Alphabet_in_Use;
+          cluster : Entropy_Coder_Range;
+
+          procedure Define_Simulate_and_Reclassify is
+          begin
+            --  Populate the frequency stats grouped by entropy coder cluster.
+            --
+            freq_cluster := (others => (others => 0));
+            for mtf_idx in 1 .. mtf_last loop
+              --  !! use a counter to avoid division.
+              sel_idx := 1 + (mtf_idx - 1) / group_size;
+              cluster := selector (sel_idx);
+              symbol := mtf_data (mtf_idx);
+              freq_cluster (cluster)(symbol) := freq_cluster (cluster)(symbol) + 1;
+            end loop;
+
+            for cl in 1 .. entropy_coder_count loop
+              Set_Descriptor (freq_cluster (cl), cl);
+            end loop;
+
+            --  !!  Cost analysis and re-classification
+          end Define_Simulate_and_Reclassify;
+
+        begin
+          --  Populate the frequency stats grouped by data group.
+          --
+          for mtf_idx in 1 .. mtf_last loop
+            --  !! use a counter to avoid division.
+            sel_idx := 1 + (mtf_idx - 1) / group_size;
+            symbol := mtf_data (mtf_idx);
+            freq_matrix (sel_idx)(symbol) := freq_matrix (sel_idx)(symbol) + 1;
+          end loop;
+
+          --  Empirical entropy coder counts as in compress.c:
+          --
+          if mtf_last < 200 then
+            entropy_coder_count := 2;
+          elsif mtf_last < 600 then
+            entropy_coder_count := 3;
+          elsif mtf_last < 1200 then
+            entropy_coder_count := 4;
+          elsif mtf_last < 2400 then
+            entropy_coder_count := 5;
+          else
+            entropy_coder_count := 6;
+          end if;
+          --  !! First prototype with 2 clusters
+          entropy_coder_count := 2;
+
+          --  Create an initial set of coders.
+          --
+          for s in Selector_Range loop
+            ranking (s) := (key => freq_matrix (s)(run_a), index => s);
+          end loop;
+          Ranking_Sort (ranking);
+
+          case entropy_coder_count is
+            when 2 =>
+              for i in 1 .. selector_count / 2 loop
+                --  Low RUN_A occurrences -> more random data:
+                selector (ranking (i).index) := 2;
+              end loop;
+              for i in selector_count / 2 + 1 .. selector_count loop
+                --  High RUN_A occurrences -> more redundant data:
+                selector (ranking (i).index) := 1;
+              end loop;
+
+            when others =>
+              null;  --  !! TBD
+
+          end case;
+
+          for iteration in 1 .. 1 loop
+            Define_Simulate_and_Reclassify;
+          end loop;
+
+          Unchecked_Free (freq_matrix);
+        end Multiple_Entropy_Coders;
 
       begin
         selector_count := 1 + (mtf_last - 1) / group_size;
@@ -482,10 +605,11 @@ package body BZip2.Encoding is
           Output_Frequency_Matrix;
         end if;
 
-        Single_Entropy_Coder;
-        --  !! Here: as an alternative, have fun with partial sets
-        --     of frequencies, the groups and the 6 possible tables.
-
+        if mtf_last < 100 then
+          Single_Entropy_Coder;
+        else
+          Multiple_Entropy_Coders;
+        end if;
       end Entropy_Calculations;
 
       procedure Entropy_Output is
@@ -494,6 +618,7 @@ package body BZip2.Encoding is
         symbol : Max_Alphabet;
       begin
         for mtf_idx in 1 .. mtf_last loop
+          --  !! use a counter to avoid division.
           sel_idx := 1 + (mtf_idx - 1) / group_size;
           sel := selector (sel_idx);
           symbol := mtf_data (mtf_idx);
@@ -544,12 +669,29 @@ package body BZip2.Encoding is
         end Put_Mapping_Table;
 
         procedure Put_Selectors is
+          value : array (1 .. entropy_coder_count) of Positive;
+          mtf_idx : Positive;
         begin
           Put_Bits (Unsigned_32 (selector_count), 15);
+          for w in value'Range loop
+            --  We start with 1, 2, 3, ...:
+            value (w) := w;
+          end loop;
           for i in 1 .. selector_count loop
+            for search in value'Range loop
+              if value (search) = selector (i) then
+                mtf_idx := search;
+                exit;
+              end if;
+            end loop;
+            --  Move the value to the first place.
+            for j in reverse 2 .. mtf_idx loop
+              value (j) := value (j - 1);
+            end loop;
+            value (1) := selector (i);
             --  MTF-transformed index for the selected entropy coder.
-            for bar in 1 .. selector (i) - 1 loop
-              --  Output as many '1' bit as the value of selector (i) - 1:
+            for bar in 1 .. mtf_idx  - 1 loop
+              --  Output as many '1' bit as the value of mtf_idx - 1:
               Put_Bits (1, 1);
             end loop;
             Put_Bits (0, 1);
