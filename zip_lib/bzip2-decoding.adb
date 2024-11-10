@@ -302,7 +302,7 @@ package body BZip2.Decoding is
         end loop;
       end Init_MTF;
       --
-      group_pos_countdown, group_no : Integer;
+      pos_countdown, group_no : Integer;
       g_sel : Byte;
       g_min_len : Natural;
       --
@@ -311,8 +311,8 @@ package body BZip2.Decoding is
         z_vec : Unsigned_32;
         perm_index : Integer;
       begin
-        if group_pos_countdown = 0 then
-          group_pos_countdown := group_size;
+        if pos_countdown = 0 then
+          pos_countdown := group_size;
           group_no := group_no + 1;
           if group_no > selector_count - 1 then
             raise data_error
@@ -327,7 +327,7 @@ package body BZip2.Decoding is
           end if;
           g_min_len := min_lens (g_sel);
         end if;
-        group_pos_countdown := group_pos_countdown - 1;
+        pos_countdown := pos_countdown - 1;
         z_n := g_min_len;
         z_vec := Get_Bits_32 (z_n);
         while z_vec > limit (g_sel)(z_n) loop
@@ -383,7 +383,7 @@ package body BZip2.Decoding is
 
     begin  --  Receive_MTF_Values
       group_no := -1;
-      group_pos_countdown := 0;
+      pos_countdown := 0;
       t := 0;
       cf_tab := (others => 0);
       Init_MTF;

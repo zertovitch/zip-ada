@@ -512,11 +512,43 @@ package body BZip2.Encoding is
           --  Frequencies grouped by selected entropy coder.
           freq_cluster : array (Entropy_Coder_Range) of Count_Array;
 
+          defectors : Natural;
+
           procedure Define_Simulate_and_Reclassify is
-            group_pos_countdown : Natural := group_size;
+            pos_countdown : Natural := group_size;
             sel_idx : Positive_32 := 1;
             symbol : Alphabet_in_Use;
             cluster : Entropy_Coder_Range;
+            bits : array (1 .. entropy_coder_count) of Natural := (others => 0);
+
+            procedure Optimize_Group is
+              min_bits : Natural := Natural'Last;
+              best : Entropy_Coder_Range;
+              cost : Natural;
+            begin
+              --  Now we have the costs in bits for the whole group
+              --  of data.
+              for cl in 1 .. entropy_coder_count loop
+                cost := bits (cl);
+                if sel_idx > 1 and then selector (sel_idx - 1) /= cl then
+                  --  Here we account the mtf encoding of the selectors.
+                  --  !! Approximate (only change/no change)...
+                  cost := cost + 1;
+                end if;
+                if cost < min_bits then
+                  min_bits := cost;
+                  best := cl;
+                end if;
+              end loop;
+              if best /= cluster then
+                --  We have found a better fit.
+                --  -> the group #sel_idx changes party.
+                selector (sel_idx) := best;
+                defectors := defectors + 1;
+              end if;
+              bits := (others => 0);
+            end Optimize_Group;
+
           begin
             --  Populate the frequency stats grouped by entropy coder cluster.
             --
@@ -525,9 +557,9 @@ package body BZip2.Encoding is
               cluster := selector (sel_idx);
               symbol := mtf_data (mtf_idx);
               freq_cluster (cluster)(symbol) := freq_cluster (cluster)(symbol) + 1;
-              group_pos_countdown := group_pos_countdown - 1;
-              if group_pos_countdown = 0 then
-                group_pos_countdown := group_size;
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
+                pos_countdown := group_size;
                 sel_idx := sel_idx + 1;
               end if;
             end loop;
@@ -536,11 +568,33 @@ package body BZip2.Encoding is
               Set_Descriptor (freq_cluster (cl), cl);
             end loop;
 
-            --  !!  Cost analysis and re-classification
+            --  Cost analysis and re-classification
+            --
+            pos_countdown := group_size;
+            sel_idx := 1;
+            for mtf_idx in 1 .. mtf_last loop
+              cluster := selector (sel_idx);
+              symbol := mtf_data (mtf_idx);
+              for cl in 1 .. entropy_coder_count loop
+                 --  Simulate output assuming the current group
+                 --  belongs to cluster cl.
+                 bits (cl) := bits (cl) + descr (cl) (symbol).bit_length;
+              end loop;
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
+                Optimize_Group;
+                pos_countdown := group_size;
+                sel_idx := sel_idx + 1;
+              end if;
+            end loop;
+            if pos_countdown < group_size then
+              --  Optimize last, incomplete group.
+              Optimize_Group;
+            end if;
           end Define_Simulate_and_Reclassify;
 
           procedure Do_Ranking is
-            group_pos_countdown : Natural := group_size;
+            pos_countdown : Natural := group_size;
             sel_idx : Positive_32 := 1;
             key : Natural_32 := 0;
             symbol : Alphabet_in_Use;
@@ -549,20 +603,20 @@ package body BZip2.Encoding is
             --
             for mtf_idx in 1 .. mtf_last loop
               symbol := mtf_data (mtf_idx);
-              --  Establish a key using the first columns.
+              --  Establish a key using the first few columns.
               if symbol in run_a .. Integer'Min (EOB - 1, run_a + 3) then
                 key := key + 1;
               end if;
-              group_pos_countdown := group_pos_countdown - 1;
-              if group_pos_countdown = 0 then
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
                 ranking (sel_idx) := (key => key, index => sel_idx);
-                group_pos_countdown := group_size;
+                pos_countdown := group_size;
                 sel_idx := sel_idx + 1;
                 key := 0;
               end if;
             end loop;
-            if group_pos_countdown < group_size then
-              --  Finish last incomplete group.
+            if pos_countdown < group_size then
+              --  Finish last, incomplete group.
               ranking (sel_idx) := (key => key, index => sel_idx);
             end if;
             Ranking_Sort (ranking);
@@ -606,8 +660,11 @@ package body BZip2.Encoding is
 
           end case;
 
-          for iteration in 1 .. 1 loop
+          for iteration in 1 .. 5 loop
+            defectors := 0;
             Define_Simulate_and_Reclassify;
+            Trace ("Defectors:" & defectors'Image, detailed);
+            exit when defectors = 0;
           end loop;
 
         end Multiple_Entropy_Coders;
@@ -626,7 +683,7 @@ package body BZip2.Encoding is
       end Entropy_Calculations;
 
       procedure Entropy_Output is
-        group_pos_countdown : Natural := group_size;
+        pos_countdown : Natural := group_size;
         sel_idx : Positive_32 := 1;
         cluster : Positive;
         symbol : Max_Alphabet;
@@ -640,9 +697,9 @@ package body BZip2.Encoding is
               (descr (cluster) (symbol).code),
                descr (cluster) (symbol).bit_length);
 
-          group_pos_countdown := group_pos_countdown - 1;
-          if group_pos_countdown = 0 then
-            group_pos_countdown := group_size;
+          pos_countdown := pos_countdown - 1;
+          if pos_countdown = 0 then
+            pos_countdown := group_size;
             sel_idx := sel_idx + 1;
           end if;
         end loop;
