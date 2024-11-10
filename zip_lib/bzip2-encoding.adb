@@ -543,6 +543,8 @@ package body BZip2.Encoding is
             --  !!  Cost analysis and re-classification
           end Define_Simulate_and_Reclassify;
 
+          key : Natural_32;
+
         begin
           --  Populate the frequency stats grouped by data group.
           --
@@ -550,6 +552,7 @@ package body BZip2.Encoding is
             --  !! use a counter to avoid division.
             sel_idx := 1 + (mtf_idx - 1) / group_size;
             symbol := mtf_data (mtf_idx);
+            --  !!  feed the ranking array directly.
             freq_matrix (sel_idx)(symbol) := freq_matrix (sel_idx)(symbol) + 1;
           end loop;
 
@@ -569,21 +572,26 @@ package body BZip2.Encoding is
           --  !! First prototype with 2 clusters
           entropy_coder_count := 2;
 
-          --  Create an initial set of coders.
-          --
           for s in Selector_Range loop
-            ranking (s) := (key => freq_matrix (s)(run_a), index => s);
+            --  Establish a key using the first columns.
+            key := 0;
+            for i in run_a .. Integer'Min (EOB - 1, run_a + 3) loop
+              key := key + freq_matrix (s)(i);
+            end loop;
+            ranking (s) := (key => key, index => s);
           end loop;
           Ranking_Sort (ranking);
 
+          --  Create an initial clustering.
+          --
           case entropy_coder_count is
             when 2 =>
               for i in 1 .. selector_count / 2 loop
-                --  Low RUN_A occurrences -> more random data:
+                --  Low RUN_A, RUN_B, low-index MTF occurrences -> more random data:
                 selector (ranking (i).index) := 2;
               end loop;
               for i in selector_count / 2 + 1 .. selector_count loop
-                --  High RUN_A occurrences -> more redundant data:
+                --  High RUN_A, RUN_B, low-index MTF occurrences -> more redundant data:
                 selector (ranking (i).index) := 1;
               end loop;
 
