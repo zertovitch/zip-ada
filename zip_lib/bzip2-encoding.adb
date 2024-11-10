@@ -487,23 +487,16 @@ package body BZip2.Encoding is
         end Single_Entropy_Coder;
 
         procedure Multiple_Entropy_Coders is
-          --  Frequency matrix: rows represent groups of data,
-          --  columns represent the frequencies of each symbol.
-          --  !!  Seems we don't need an explicit matrix.
-          subtype Selector_Range is Positive_32 range 1 .. selector_count;
-          type Freq_Matrix_Type is array (Selector_Range) of Count_Array;
-          type Freq_Matrix_Access is access Freq_Matrix_Type;
-          procedure Unchecked_Free is
-            new Ada.Unchecked_Deallocation (Freq_Matrix_Type, Freq_Matrix_Access);
-          --  We want a heap allocation since the matrix may reach ~16MB.
-          freq_matrix : Freq_Matrix_Access := new Freq_Matrix_Type'(others => (others => 0));
 
-          --  We create a ranking using the first symbol (RUN_A).
+          subtype Selector_Range is Positive_32 range 1 .. selector_count;
+
+          --  We create a ranking using the first symbols (RUN_A, RUN_B, ...).
           --  Looke at outputs of Output_Frequency_Matrix to find why.
           type Pair is record
-            key   : Natural_32;   --  Occurrences of symbol RUN_A.
+            key   : Natural_32;   --  Occurrences of interesting symbols.
             index : Positive_32;  --  Group number.
           end record;
+
           type Ranking_Array is array (Selector_Range) of Pair;
 
           ranking : Ranking_Array;
@@ -519,21 +512,24 @@ package body BZip2.Encoding is
           --  Frequencies grouped by selected entropy coder.
           freq_cluster : array (Entropy_Coder_Range) of Count_Array;
 
-          sel_idx : Positive_32;
-          symbol : Alphabet_in_Use;
-          cluster : Entropy_Coder_Range;
-
           procedure Define_Simulate_and_Reclassify is
+            group_pos_countdown : Natural := group_size;
+            sel_idx : Positive_32 := 1;
+            symbol : Alphabet_in_Use;
+            cluster : Entropy_Coder_Range;
           begin
             --  Populate the frequency stats grouped by entropy coder cluster.
             --
             freq_cluster := (others => (others => 0));
             for mtf_idx in 1 .. mtf_last loop
-              --  !! use a counter to avoid division.
-              sel_idx := 1 + (mtf_idx - 1) / group_size;
               cluster := selector (sel_idx);
               symbol := mtf_data (mtf_idx);
               freq_cluster (cluster)(symbol) := freq_cluster (cluster)(symbol) + 1;
+              group_pos_countdown := group_pos_countdown - 1;
+              if group_pos_countdown = 0 then
+                group_pos_countdown := group_size;
+                sel_idx := sel_idx + 1;
+              end if;
             end loop;
 
             for cl in 1 .. entropy_coder_count loop
@@ -543,19 +539,36 @@ package body BZip2.Encoding is
             --  !!  Cost analysis and re-classification
           end Define_Simulate_and_Reclassify;
 
-          key : Natural_32;
+          procedure Do_Ranking is
+            group_pos_countdown : Natural := group_size;
+            sel_idx : Positive_32 := 1;
+            key : Natural_32 := 0;
+            symbol : Alphabet_in_Use;
+          begin
+            --  Populate the frequency stats grouped by data group.
+            --
+            for mtf_idx in 1 .. mtf_last loop
+              symbol := mtf_data (mtf_idx);
+              --  Establish a key using the first columns.
+              if symbol in run_a .. Integer'Min (EOB - 1, run_a + 3) then
+                key := key + 1;
+              end if;
+              group_pos_countdown := group_pos_countdown - 1;
+              if group_pos_countdown = 0 then
+                ranking (sel_idx) := (key => key, index => sel_idx);
+                group_pos_countdown := group_size;
+                sel_idx := sel_idx + 1;
+                key := 0;
+              end if;
+            end loop;
+            if group_pos_countdown < group_size then
+              --  Finish last incomplete group.
+              ranking (sel_idx) := (key => key, index => sel_idx);
+            end if;
+            Ranking_Sort (ranking);
+          end Do_Ranking;
 
         begin
-          --  Populate the frequency stats grouped by data group.
-          --
-          for mtf_idx in 1 .. mtf_last loop
-            --  !! use a counter to avoid division.
-            sel_idx := 1 + (mtf_idx - 1) / group_size;
-            symbol := mtf_data (mtf_idx);
-            --  !!  feed the ranking array directly.
-            freq_matrix (sel_idx)(symbol) := freq_matrix (sel_idx)(symbol) + 1;
-          end loop;
-
           --  Empirical entropy coder counts as in compress.c:
           --
           if mtf_last < 200 then
@@ -569,18 +582,11 @@ package body BZip2.Encoding is
           else
             entropy_coder_count := 6;
           end if;
+
           --  !! First prototype with 2 clusters
           entropy_coder_count := 2;
 
-          for s in Selector_Range loop
-            --  Establish a key using the first columns.
-            key := 0;
-            for i in run_a .. Integer'Min (EOB - 1, run_a + 3) loop
-              key := key + freq_matrix (s)(i);
-            end loop;
-            ranking (s) := (key => key, index => s);
-          end loop;
-          Ranking_Sort (ranking);
+          Do_Ranking;
 
           --  Create an initial clustering.
           --
@@ -604,7 +610,6 @@ package body BZip2.Encoding is
             Define_Simulate_and_Reclassify;
           end loop;
 
-          Unchecked_Free (freq_matrix);
         end Multiple_Entropy_Coders;
 
       begin
@@ -621,19 +626,25 @@ package body BZip2.Encoding is
       end Entropy_Calculations;
 
       procedure Entropy_Output is
-        sel_idx : Positive_32;
-        sel : Positive;
+        group_pos_countdown : Natural := group_size;
+        sel_idx : Positive_32 := 1;
+        cluster : Positive;
         symbol : Max_Alphabet;
       begin
         for mtf_idx in 1 .. mtf_last loop
-          --  !! use a counter to avoid division.
-          sel_idx := 1 + (mtf_idx - 1) / group_size;
-          sel := selector (sel_idx);
+          cluster := selector (sel_idx);
           symbol := mtf_data (mtf_idx);
+
           Put_Bits
             (Unsigned_32
-              (descr (sel) (symbol).code),
-               descr (sel) (symbol).bit_length);
+              (descr (cluster) (symbol).code),
+               descr (cluster) (symbol).bit_length);
+
+          group_pos_countdown := group_pos_countdown - 1;
+          if group_pos_countdown = 0 then
+            group_pos_countdown := group_size;
+            sel_idx := sel_idx + 1;
+          end if;
         end loop;
       end Entropy_Output;
 
