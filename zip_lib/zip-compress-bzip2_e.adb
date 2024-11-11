@@ -120,10 +120,9 @@ begin
     end if;
     BZip2_Encode
       (case method is
-         when BZip2_1 => block_50k,
-         when BZip2_2 => block_100k,
-         when BZip2_3 => block_400k,
-         when BZip2_4 => block_900k);
+         when BZip2_1 => block_100k,
+         when BZip2_2 => block_400k,
+         when BZip2_3 => block_900k);
     Flush_Output;
     compression_ok := True;
   exception

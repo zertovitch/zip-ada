@@ -242,8 +242,8 @@ package body Zip.Compress is
       end if;
     end Compress_data_single_method;
 
-    fast_presel_threshold : constant := 22_805;
-    bzip2_threshold       : constant := 30_000;
+    fast_presel_threshold : constant := 10_000;
+    bzip2_threshold       : constant := 16_000;
 
     fast_presel : constant Boolean :=
       method = Preselection_1 or (input_size_known and then input_size < fast_presel_threshold);

@@ -82,15 +82,11 @@ package body BZip2.Encoding is
 
     level : constant Natural_32 :=
       (case option is
-         when block_50k  => 1,
          when block_100k => 1,
          when block_400k => 4,
          when block_900k => 9);
 
-    block_capacity : constant Natural_32 :=
-      (case option is
-         when block_50k => sub_block_size / 2,
-         when others    => sub_block_size * level);
+    block_capacity : constant Natural_32 := sub_block_size * level;
 
     type Buffer is array (Natural_32 range <>) of Byte;
     type Buffer_Access is access Buffer;
@@ -472,6 +468,10 @@ package body BZip2.Encoding is
             (descr (des)(Alphabet_in_Use), max_code_len_agreed, False);
         end Define_Descriptor;
 
+        -----------------------------------------------
+        --  Radically simple but functional encoder  --
+        -----------------------------------------------
+
         procedure Single_Entropy_Coder is
           freq : Count_Array := (others => 0);
         begin
@@ -486,12 +486,18 @@ package body BZip2.Encoding is
           end loop;
         end Single_Entropy_Coder;
 
+        -----------------------------------------------------------------------
+        --  Define multiple encoders (max 6) and assign them to the various  --
+        --  groups of data (max 18000, with 50 symbols in each group).       --
+        --  The art is to divide the groups in meaningful clusters.          --
+        -----------------------------------------------------------------------
+
         procedure Multiple_Entropy_Coders is
 
           subtype Selector_Range is Positive_32 range 1 .. selector_count;
 
           --  We create a ranking using the first symbols (RUN_A, RUN_B, ...).
-          --  Looke at outputs of Output_Frequency_Matrix to find why.
+          --  Look at outputs of Output_Frequency_Matrix to find why.
           type Pair is record
             key   : Natural_32;   --  Occurrences of interesting symbols.
             index : Positive_32;  --  Group number.
@@ -509,7 +515,7 @@ package body BZip2.Encoding is
              Array_Type   => Ranking_Array,
              "<"          => Smaller_Key);
 
-          --  Frequencies grouped by selected entropy coder.
+          --  Frequencies, grouped by cluster (i.e. by selected entropy coder).
           freq_cluster : array (Entropy_Coder_Range) of Count_Array;
 
           defectors : Natural;
@@ -549,7 +555,7 @@ package body BZip2.Encoding is
             end Optimize_Group;
 
           begin
-            --  Populate the frequency stats grouped by entropy coder cluster.
+            --  Populate the frequency stats, grouped by cluster (entropy coder choice).
             --
             freq_cluster := (others => (others => 0));
             for mtf_idx in 1 .. mtf_last loop
@@ -599,7 +605,7 @@ package body BZip2.Encoding is
             key : Natural_32 := 0;
             symbol : Alphabet_in_Use;
           begin
-            --  Populate the frequency stats grouped by data group.
+            --  Populate the frequency stats, grouped by data group.
             --
             for mtf_idx in 1 .. mtf_last loop
               symbol := mtf_data (mtf_idx);
@@ -631,31 +637,31 @@ package body BZip2.Encoding is
           type Cluster_Attribution is array (Positive range <>) of Entropy_Coder_Range;
 
           procedure Initial_Clustering (attr : Cluster_Attribution) is
-            ne : constant Positive_32 := Positive_32 (entropy_coder_count);
+            na : constant Positive_32 := attr'Length;
             ns : constant Positive_32 := selector_count;
-            e32 : Positive_32;
+            a32 : Positive_32;
           begin
-            for e in 1 .. entropy_coder_count loop
-              e32 := Positive_32 (e);
-              for i in 1 + (e32 - 1) * ns / ne .. e32 * ns / ne loop
-                selector (ranking (i).index) := attr (e + 1 - attr'First);
+            for attr_idx in attr'Range loop
+              a32 := Integer_32 (attr_idx) - Integer_32 (attr'First) + 1;
+              for i in 1 + (a32 - 1) * ns / na .. a32 * ns / na loop
+                selector (ranking (i).index) := attr (attr_idx);
               end loop;
             end loop;
           end Initial_Clustering;
 
-          factor : constant := 50;
+          size_threshold_factor : constant := 50;
 
         begin
           --  Entropy coder counts depending on empirical sizes.
           --  Magic numbers as in compress.c, factor is ours.
           --
-          if mtf_last < 200 * factor then
+          if mtf_last < 200 * size_threshold_factor then
             entropy_coder_count := 2;
-          elsif mtf_last < 600 * factor then
+          elsif mtf_last < 600 * size_threshold_factor then
             entropy_coder_count := 3;
-          elsif mtf_last < 1200 * factor then
+          elsif mtf_last < 1200 * size_threshold_factor then
             entropy_coder_count := 4;
-          elsif mtf_last < 2400 * factor then
+          elsif mtf_last < 2400 * size_threshold_factor then
             entropy_coder_count := 5;
           else
             entropy_coder_count := 6;
@@ -671,14 +677,15 @@ package body BZip2.Encoding is
           --
           case entropy_coder_count is
             when 1 => null;  --  Not supported by canonical BZip2.
-            when 2 => Initial_Clustering ((2, 1));
-            when 3 => Initial_Clustering ((3, 1, 2));
-            when 4 => Initial_Clustering ((4, 2, 1, 3));
-            when 5 => Initial_Clustering ((5, 3, 1, 2, 4));
-            when 6 => Initial_Clustering ((6, 4, 2, 1, 3, 5));
+            when 2 => Initial_Clustering ((2, 1, 1));
+            when 3 => Initial_Clustering ((3, 1, 1, 2));
+            when 4 => Initial_Clustering ((4, 2, 1, 1, 3));
+            when 5 => Initial_Clustering ((5, 3, 1, 1, 2, 4));
+            when 6 => Initial_Clustering ((6, 4, 2, 1, 1, 3, 5));
           end case;
 
-          for iteration in 1 .. 6 loop
+          Trace ("Coders:" & entropy_coder_count'Image, detailed);
+          for iteration in 1 .. 10 loop
             defectors := 0;
             Define_Simulate_and_Reclassify;
             Trace ("Defectors:" & defectors'Image, detailed);
@@ -687,18 +694,24 @@ package body BZip2.Encoding is
 
         end Multiple_Entropy_Coders;
 
+        use_single_coder : constant Boolean := False;
+
       begin
         selector_count := 1 + (mtf_last - 1) / group_size;
         if trace_frequency_matrix then
           Output_Frequency_Matrix;
         end if;
 
-        if mtf_last < 100 then
+        if use_single_coder then
           Single_Entropy_Coder;
         else
           Multiple_Entropy_Coders;
         end if;
       end Entropy_Calculations;
+
+      ---------------------------------
+      --  Output of compressed data  --
+      ---------------------------------
 
       procedure Entropy_Output is
         pos_countdown : Natural := group_size;

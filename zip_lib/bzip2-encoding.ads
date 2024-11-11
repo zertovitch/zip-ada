@@ -34,8 +34,7 @@
 package BZip2.Encoding is
 
   type Compression_Option is
-    (block_50k,
-     block_100k,
+    (block_100k,
      block_400k,
      block_900k);
 

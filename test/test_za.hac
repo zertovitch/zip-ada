@@ -175,7 +175,6 @@ begin
     Process_Archive   (+".." & Directory_Separator & "zipada -eb1", +"$mth_zab1", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -eb2", +"$mth_zab2", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -eb3", +"$mth_zab3", action);
-    Process_Archive   (+".." & Directory_Separator & "zipada -eb4", +"$mth_zab4", action);
     --  LZMA
     Process_Archive   (+".." & Directory_Separator & "zipada -el1", +"$mth_zal1", action);
     Process_Archive   (+".." & Directory_Separator & "zipada -el2", +"$mth_zal2", action);
@@ -189,6 +188,7 @@ begin
     Process_Archive   (+"zip           -9              ",           +"$mth_izd9", action);
     Process_Archive   (+"zip           -9 -Z bzip2     ",           +"$mth_izb9", action);
     Process_Archive   (+"7z a -tzip -mx=9 -mm=deflate  ",           +"$mth_7z_d", action);
+    Process_Archive   (+"7z a -tzip -mm=BZip2:d=900k   ",           +"$mth_7zb9", action);
     Process_Archive   (+"7z a -tzip -mx=9 -mm=LZMA     ",           +"$mth_7z_l", action);
     if full then
       --  Now, a good lunch is recommended...

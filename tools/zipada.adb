@@ -244,8 +244,7 @@ procedure ZipAda is
           case opt (opt'First + 2) is
             when '1'    => method := BZip2_1;
             when '2'    => method := BZip2_2;
-            when '3'    => method := BZip2_3;
-            when others => method := BZip2_4;
+            when others => method := BZip2_3;
           end case;
         elsif eX = "el" then
           case opt (opt'First + 2) is
@@ -342,13 +341,13 @@ begin
     Put_Line ("Usage: zipada [options] archive[.zip] name(s)");
     New_Line;
     Put_Line ("Options:  -e0    : ""Store"": zero compression, archiving only (like tar)");
-    Put_Line ("          -erN   : ""Reduce"" 2-pass method, factor N = 1..4");
+    Put_Line ("          -erN   : ""Reduce"" 2-pass method, factor N = 1 .. 4");
     Put_Line ("          -es    : ""Shrink"" method (LZW algorithm)");
     Put_Line ("          -edf   : ""Deflate"" method, with one ""fixed"" block (weak)");
-    Put_Line ("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 0..3");
-    Put_Line ("          -ebN   : ""BZip2"" method, option N = 1..4");
-    Put_Line ("          -elN   : ""LZMA"" method, strength N = 0..3");
-    Put_Line ("          -epN   : preselection of an appropriate method, strength N = 1..2");
+    Put_Line ("          -edN   : ""Deflate"" method, ""dynamic"" compression, strength N = 0 .. 3");
+    Put_Line ("          -ebN   : ""BZip2"" method, strength N = 1 .. 3");
+    Put_Line ("          -elN   : ""LZMA"" method, strength N = 0 .. 3");
+    Put_Line ("          -epN   : preselection of an appropriate method, strength N = 1 .. 2");
     New_Line;
     Put_Line ("      NB: default method is ""Deflate"", strength 1 (-ed1)");
     New_Line;
