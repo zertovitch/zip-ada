@@ -677,11 +677,11 @@ package body BZip2.Encoding is
           --
           case entropy_coder_count is
             when 1 => null;  --  Not supported by canonical BZip2.
-            when 2 => Initial_Clustering ((2, 1, 1));
-            when 3 => Initial_Clustering ((3, 1, 1, 2));
-            when 4 => Initial_Clustering ((4, 2, 1, 1, 3));
-            when 5 => Initial_Clustering ((5, 3, 1, 1, 2, 4));
-            when 6 => Initial_Clustering ((6, 4, 2, 1, 1, 3, 5));
+            when 2 => Initial_Clustering ((2, 1));
+            when 3 => Initial_Clustering ((3, 1, 2));
+            when 4 => Initial_Clustering ((4, 2, 1, 3));
+            when 5 => Initial_Clustering ((5, 3, 1, 2, 4));
+            when 6 => Initial_Clustering ((6, 4, 2, 1, 3, 5));
           end case;
 
           Trace ("Coders:" & entropy_coder_count'Image, detailed);

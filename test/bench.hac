@@ -141,8 +141,8 @@ begin
     Timing (+"7z a -tzip -mm=BZip2:d=900k:pass=7 ../bench_" & bn & "_7z_bzip2_9 *");
   end if;
   if cat_set (BZip2) then
+    Shell_Execute (za & " -eb2 ../bench_" & bn & "_bzip2_2 *");
     Shell_Execute (za & " -eb3 ../bench_" & bn & "_bzip2_3 *");
-    Shell_Execute (za & " -eb4 ../bench_" & bn & "_bzip2_4 *");
   end if;
   if cat_set (PPMd_External) then
     Timing (+"7z a -tzip -mmt1 -mm=PPMd -mx9 ../bench_" & bn & "_7z_ppmd_mx9 *");

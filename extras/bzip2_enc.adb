@@ -50,8 +50,7 @@ procedure BZip2_Enc is
     --  Whole processing is done here:
     BZip2_Encode
       (case level is
-         when 1      => block_50k,
-         when 2      => block_100k,
+         when 1      => block_100k,
          when 3      => block_400k,
          when others => block_900k);
   end Encode_BZip2_Stream;
