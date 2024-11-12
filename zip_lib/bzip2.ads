@@ -64,15 +64,15 @@ private
 
   --------------------------------------------------------------
   --  Constants used for both compression and decompression.  --
-  --  BZ_* names as in bzlib_private.h.                       --
+  --  BZ_* names are as found in bzlib_private.h.             --
   --------------------------------------------------------------
 
   --  The run_a and run_b symbols are used to encode
-  --  the run-lengths in the 2nd RLE phase (the encoding
-  --  of MTF indices).
+  --  the run-lengths in the 2nd RLE phase (the
+  --  encoding of MTF indices).
 
-  run_a : constant := 0;    --  BZ_RUNA
-  run_b : constant := 1;    --  BZ_RUNB
+  run_a : constant := 0;  --  BZ_RUNA
+  run_b : constant := 1;  --  BZ_RUNB
 
   --  If all byte values are used, the MTF & RLE_2 encoding
   --  needs this amount of symbols:
@@ -96,7 +96,7 @@ private
   --  to 6 different entropy coders (for BZip2: Huffman tables).
 
   min_entropy_coders : constant := 2;    --  Magic number found in a check in decompress.c ...
-  max_entropy_coders : constant := 6;    --  BZ_N_GROUPS (this C name is very confusing!)
+  max_entropy_coders : constant := 6;    --  BZ_N_GROUPS (this name is very confusing!)
   group_size         : constant := 50;   --  BZ_G_SIZE
 
   --  Constants used to calibrate the main memory pool.

@@ -51,7 +51,7 @@ procedure BZip2_Enc is
     BZip2_Encode
       (case level is
          when 1      => block_100k,
-         when 3      => block_400k,
+         when 2      => block_400k,
          when others => block_900k);
   end Encode_BZip2_Stream;
 
@@ -82,7 +82,7 @@ begin
     Put_Line ("NB: - The "".bz2"" extension is automatically added to outfile.");
     Put_Line ("    - The I/O is not buffered => may be slow. Use the ZipAda tool for fast I/O.");
     New_Line;
-    Put_Line ("Options: -n, n in 1 .. 4 : strength");
+    Put_Line ("Options: -n, n in 1 .. 3 : strength");
     New_Line;
     Put ("Press Return");
     Skip_Line;
