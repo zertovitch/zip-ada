@@ -336,7 +336,8 @@ package body BZip2.Encoding is
       begin
         Prepare_Mapping;
 
-        mtf_data := new MTF_Array (1 .. 1 + 2 * block_size);  --  Check real worst case capacity !!
+        mtf_data := new MTF_Array (1 .. 1 + 2 * block_size);
+        --  ^ Check real worst case capacity !!
 
         for i in mtf_symbol'Range loop
           mtf_symbol (i) := Byte (i);
@@ -403,14 +404,25 @@ package body BZip2.Encoding is
         type Count_Array is array (Alphabet_in_Use) of Natural_32;
 
         procedure Avoid_Zeros (freq : in out Count_Array) is
+          --  factor : constant := 2;
         begin
           for a in Alphabet_in_Use loop
             if freq (a) = 0 then
-              --  Tweak the stats to avoid zeros...
+              --  Tweak the stats to avoid zeros
+              --  (the canonical BZip2 wants that)...
               for aa in Alphabet_in_Use loop
                 --  Inrease each count by 1 to avoid 0 lengths
-                --  (the canonical BZip2 wants that).
                 freq (aa) := freq (aa) + 1;
+
+                --  Alternative idea: turn the "0"'s into actual "1/factor".
+                --  Curiously, the compression is worse despite a tweak
+                --  that is closer to the actual proportions.
+                --
+                --  if freq (aa) = 0 then
+                --    freq (aa) := 1;
+                --  else
+                --    freq (aa) := freq (aa) * factor;
+                --  end if;
               end loop;
               return;
             end if;
@@ -569,6 +581,8 @@ package body BZip2.Encoding is
               end if;
             end loop;
 
+            --  Create Huffman codes based on the said frequencies.
+            --
             for cl in 1 .. entropy_coder_count loop
               Define_Descriptor (freq_cluster (cl), cl);
             end loop;
@@ -713,29 +727,6 @@ package body BZip2.Encoding is
       --  Output of compressed data  --
       ---------------------------------
 
-      procedure Entropy_Output is
-        pos_countdown : Natural := group_size;
-        sel_idx : Positive_32 := 1;
-        cluster : Positive;
-        symbol : Max_Alphabet;
-      begin
-        for mtf_idx in 1 .. mtf_last loop
-          cluster := selector (sel_idx);
-          symbol := mtf_data (mtf_idx);
-
-          Put_Bits
-            (Unsigned_32
-              (descr (cluster) (symbol).code),
-               descr (cluster) (symbol).bit_length);
-
-          pos_countdown := pos_countdown - 1;
-          if pos_countdown = 0 then
-            pos_countdown := group_size;
-            sel_idx := sel_idx + 1;
-          end if;
-        end loop;
-      end Entropy_Output;
-
       procedure Put_Block_Header is
       begin
         Put_Bits (block_header_magic);
@@ -840,18 +831,44 @@ package body BZip2.Encoding is
         Put_Huffman_Bit_Lengths;
       end Put_Block_Trees_Descriptors;
 
+      procedure Entropy_Output is
+        pos_countdown : Natural := group_size;
+        sel_idx : Positive_32 := 1;
+        cluster : Positive;
+        symbol : Max_Alphabet;
+      begin
+        for mtf_idx in 1 .. mtf_last loop
+          cluster := selector (sel_idx);
+          symbol := mtf_data (mtf_idx);
+
+          Put_Bits
+            (Unsigned_32
+              (descr (cluster) (symbol).code),
+               descr (cluster) (symbol).bit_length);
+
+          pos_countdown := pos_countdown - 1;
+          if pos_countdown = 0 then
+            pos_countdown := group_size;
+            sel_idx := sel_idx + 1;
+          end if;
+        end loop;
+      end Entropy_Output;
+
     begin
       block_counter := block_counter + 1;
       Trace ("Block" & block_counter'Image, headlines);
+
       --  Data acquisition and transformation:
       RLE_1;
       BWT;
       MTF_and_RLE_2;
       Entropy_Calculations;
+
       --  Now we output the block's compressed data:
       Put_Block_Header;
       Put_Block_Trees_Descriptors;
       Entropy_Output;
+
     end Encode_Block;
 
     procedure Write_Stream_Header is

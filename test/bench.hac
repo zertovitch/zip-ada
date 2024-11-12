@@ -27,15 +27,16 @@ procedure Bench is
     Put_Line ("Usage:  hac bench.hac benchmark_name {option}");
     New_Line;
     Put_Line ("Options:");
-    Put_Line ("     full  : test everything (long!)");
-    Put_Line ("     ------:----------------------------------------");
-    Put_Line ("     7z    : test 7z's LZMA with various parameters");
-    Put_Line ("     lzma  : test Zip-Ada's LZMA level 1 to 3");
-    Put_Line ("     lzma3 : test Zip-Ada's LZMA level 3 (default)");
-    Put_Line ("     ppmd  : test PPMd");
-    Put_Line ("     bzip2 : test BZip2");
-    Put_Line ("     ps    : test Zip-Ada's Preselection");
-    Put_Line ("     tar   : test tar + various one-file compressors");
+    Put_Line ("     full    : test everything (long!)");
+    Put_Line ("     --------:----------------------------------------");
+    Put_Line ("     7z      : test 7z's LZMA with various parameters");
+    Put_Line ("     lzma    : test Zip-Ada's LZMA level 1 to 3");
+    Put_Line ("     lzma3   : test Zip-Ada's LZMA level 3 (default)");
+    Put_Line ("     deflate : test Deflate");
+    Put_Line ("     ppmd    : test PPMd");
+    Put_Line ("     bzip2   : test BZip2");
+    Put_Line ("     ps      : test Zip-Ada's Preselection");
+    Put_Line ("     tar     : test tar + various one-file compressors");
   end Blurb;
 
   type Category is
@@ -77,6 +78,9 @@ procedure Bench is
         cat_set (LZMA_3) := True;
       elsif Argument (a) = "ppmd" then
         cat_set (PPMd_External) := True;
+      elsif Argument (a) = "deflate" then
+        cat_set (Deflate) := True;
+        cat_set (Deflate_External) := True;
       elsif Argument (a) = "bzip2" then
         cat_set (BZip2) := True;
         cat_set (BZip2_External) := True;
