@@ -218,9 +218,10 @@ package body BZip2.Encoding is
         function Lexicographically_Smaller (left, right : Offset_Range) return Boolean with Inline is
           l, r : Byte;
         begin
+          pragma Assert (data'First = 1);
           for i in Offset_Range loop
-            l := data (data'First + (i - left)  mod block_size);
-            r := data (data'First + (i - right) mod block_size);
+            l := data (1 + (i - left)  mod block_size);
+            r := data (1 + (i - right) mod block_size);
             if l < r then
               return True;
             elsif l > r then
@@ -499,7 +500,7 @@ package body BZip2.Encoding is
         -----------------------------------------------------------------------
         --  Define multiple encoders (max 6) and assign them to the various  --
         --  groups of data (max 18000, with 50 symbols in each group).       --
-        --  The art is to gather the groups in meaningful clusters.          --
+        --  The art is to gather the groups into meaningful clusters.        --
         -----------------------------------------------------------------------
 
         procedure Multiple_Entropy_Coders is
@@ -615,6 +616,7 @@ package body BZip2.Encoding is
               mtf_cluster_value (w) := w;
             end loop;
 
+            defectors := 0;
             pos_countdown := group_size;
             sel_idx := 1;
             for mtf_idx in 1 .. mtf_last loop
@@ -689,16 +691,23 @@ package body BZip2.Encoding is
             end loop;
           end Initial_Clustering;
 
-          procedure Show_Cluster_Statistics with Inline is
-            stat_cluster : array (Entropy_Coder_Range) of Natural;
+          type Cluster_Statistics is array (Entropy_Coder_Range) of Natural;
+
+          procedure Compute (stat_cluster : out Cluster_Statistics) is
             cl : Entropy_Coder_Range;
           begin
+            stat_cluster := (others => 0);
+            for i in 1 .. selector_count loop
+              cl := selector (i);
+              stat_cluster (cl) := stat_cluster (cl) + 1;
+            end loop;
+          end Compute;
+
+          procedure Show_Cluster_Statistics with Inline is
+            stat_cluster : Cluster_Statistics;
+          begin
             if verbosity_level >= detailed then
-              stat_cluster := (others => 0);
-              for i in 1 .. selector_count loop
-                cl := selector (i);
-                stat_cluster (cl) := stat_cluster (cl) + 1;
-              end loop;
+              Compute (stat_cluster);
               for c in 1 .. entropy_coder_count loop
                 Trace
                   ("          Cluster" & c'Image & " is used by" &
@@ -707,8 +716,94 @@ package body BZip2.Encoding is
             end if;
           end Show_Cluster_Statistics;
 
-          size_threshold_factor : constant := 50;
-          reclassification_limit : constant := 10;
+          --  Empirical number used for setting the initial number of coders.
+          --  The higher, the more difficult to climb up for more initial coders.
+          --  Value 50 OK, absent coder merging tactics.
+          --  Value 1 corresponds to original BZip2 program.
+          --
+          size_threshold_factor : constant := 1;
+
+          --  Another empirical number, this time for reducing the number of coders,
+          --  once the data is known. The higher, the easier to merge coders,
+          --  at the expense of accuracy.
+          --  Value 0 OK (catches pairs of identical coders, always a win).
+          --
+          coder_difference_limit : constant := 8000;
+
+          reclassification_iteration_limit : constant := 10;
+
+          procedure Handle_Similar_Coders is
+
+            function Distance (c1, c2 : Huffman.Encoding.Descriptor) return Natural_32 is
+              d : Natural := 0;
+            begin
+              for i in Alphabet_in_Use loop
+                d := d + abs (c1 (i).bit_length - c2 (i).bit_length);
+              end loop;
+              return Natural_32 (d);
+            end Distance;
+
+            stat_cluster : Cluster_Statistics;
+            width : constant Natural_32 := Natural_32 (last_symbol_in_use + 1);
+            e, f : Natural;
+            dist : Natural_32;  --  Distance between two coders. 0 = identical.
+            combined_usage : Natural_32;  --  How many groups belong to pair of clusters (a, b)?
+            --
+            --  Criterion for merging: (dist/width) * (combined_usage * group_size) <= limit
+            --
+            --  (dist/width) is a proportion
+            --  (combined_usage * group_size) is the number of symbols using
+            --  the coders associated to the clusters a or b.
+          begin
+            --  The canoncial BZip2 decoder wants at least two encoders:
+            while entropy_coder_count > 2 loop
+              Compute (stat_cluster);
+              e := 0;
+              for a in 1 .. entropy_coder_count loop
+                for b in a + 1 .. entropy_coder_count loop
+                  dist := Distance (descr (a), descr (b));
+                  combined_usage := Natural_32 (stat_cluster (a) + stat_cluster (b));
+                  if dist * (combined_usage * group_size) <= width * coder_difference_limit then
+                    --  Descriptors e and f are very similar.
+                    --  It could be worth to merge them.
+                    e := a;
+                    f := b;
+                    Trace
+                      ("Merge OK dist="         & dist'Image &
+                       ", width="               & width'Image &
+                       ", combined_usage="      & combined_usage'Image &
+                       " of #groups="           & selector_count'Image &
+                       ", entropy_coder_count=" & entropy_coder_count'Image, detailed);
+                    exit;
+                  end if;
+                end loop;
+              end loop;
+
+              exit when e = 0;
+
+              --  Merge cluster f into cluster e.
+              for i in 1 .. selector_count loop
+                if selector (i) = f then
+                  selector (i) := e;
+                elsif selector (i) > f then
+                  selector (i) := selector (i) - 1;
+                end if;
+              end loop;
+              entropy_coder_count := entropy_coder_count - 1;
+              Define_Simulate_and_Reclassify;
+
+              for iteration in 1 .. reclassification_iteration_limit loop
+                exit when defectors = 0;
+                Define_Simulate_and_Reclassify;
+                if verbosity_level >= detailed then
+                  Trace
+                    ("   After cluster merge. Iteration" & iteration'Image &
+                       ". Defector groups:" & defectors'Image, detailed);
+                end if;
+              end loop;
+            end loop;
+
+          end Handle_Similar_Coders;
 
         begin
           --  Entropy coder counts depending on empirical sizes.
@@ -751,10 +846,8 @@ package body BZip2.Encoding is
           --  in output is smaller. However, it will influence the
           --  frequencies of both affected clusters.
           --
-          for iteration in 1 .. reclassification_limit loop
+          for iteration in 1 .. reclassification_iteration_limit loop
             Show_Cluster_Statistics;
-
-            defectors := 0;
             Define_Simulate_and_Reclassify;
 
             if verbosity_level >= detailed then
@@ -768,6 +861,9 @@ package body BZip2.Encoding is
           Show_Cluster_Statistics;
 
           --  Here, the clustering should be convenient (local optimium).
+
+          --  Final touch spot similarities between coders.
+          Handle_Similar_Coders;
 
         end Multiple_Entropy_Coders;
 
