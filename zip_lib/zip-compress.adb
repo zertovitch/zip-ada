@@ -45,10 +45,9 @@ package body Zip.Compress is
   --  the situation where data is random and the compressed output size
   --  overflows.
 
-  procedure Increment (
-    out_size : in out Zip_64_Data_Size_Type;
-    by       : in     Natural
-  )
+  procedure Increment
+    (out_size : in out Zip_64_Data_Size_Type;
+     by       : in     Natural)
   is
     temp_by : constant ZS_Size_Type := ZS_Size_Type (by);
     use type Zip_64_Data_Size_Type, ZS_Size_Type;
@@ -67,18 +66,17 @@ package body Zip.Compress is
   -------------------
 
   procedure Compress_Data
-   (input,
-    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    input_size_known : Boolean;
-    input_size       : Zip_64_Data_Size_Type;
-    method           : Compression_Method;
-    feedback         : Feedback_Proc;
-    password         : String;
-    content_hint     : Data_Content_Type;
-    CRC              : out Interfaces.Unsigned_32;
-    output_size      : out Zip_64_Data_Size_Type;
-    zip_type         : out Interfaces.Unsigned_16
-   )
+    (input,
+     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+     input_size_known : in     Boolean;
+     input_size       : in     Zip_64_Data_Size_Type;  --  ignored if input_size_known = False
+     method           : in     Compression_Method;
+     feedback         : in     Feedback_Proc;
+     password         : in     String;
+     content_hint     : in     Data_Content_Type;
+     CRC              :    out Interfaces.Unsigned_32;
+     output_size      :    out Zip_64_Data_Size_Type;
+     zip_type         :    out Interfaces.Unsigned_16)
   is
     use Interfaces;
     user_aborting : Boolean;
@@ -330,86 +328,89 @@ package body Zip.Compress is
   end Compress_Data;
 
   function Guess_Type_from_Name (name : String) return Data_Content_Type is
-    use Ada.Characters.Handling, Ada.Strings.Fixed;
+    use Ada.Characters.Handling, Ada.Strings, Ada.Strings.Fixed;
     up : constant String := To_Upper (name);
-    ext_1 : constant String := Tail (up, 2);
-    ext_2 : constant String := Tail (up, 3);
-    ext_3 : constant String := Tail (up, 4);
-    ext_4 : constant String := Tail (up, 5);
+    dot : constant Natural := Index (up, ".", Backward);
   begin
-    if ext_3 = ".JPG" or else ext_4 = ".JPEG" then
-      return JPEG;
+    if dot = 0 then
+      return neutral;
     end if;
-    if ext_3 in ".ADA" | ".ADS" | ".ADB"
-      or else ext_1 in ".C" | ".H"
-      or else ext_3 in ".CPP" | ".HPP" | ".DEF" | ".ASM"
-      or else ext_4 = ".JAVA" or else ext_2 = ".CS"
-      or else ext_3 in ".PAS" | ".INC" | ".LPR" or else ext_2 = ".PP"
-      or else ext_3 = ".MAK" or else ext_2 = ".IN"
-      or else ext_2 = ".SH" or else ext_3 in ".BAT" | ".CMD"
-      or else ext_3 in ".XML" | ".XSL"
-      or else ext_4 = ".SGML"
-      or else ext_3 = ".AUP"  --  Audacity project (XML)
-      or else ext_3 = ".HTM" or else ext_4 = ".HTML"
-      or else ext_2 = ".JS" or else ext_3 = ".LSP"
-      or else ext_3 in ".CSV" | ".SQL"
-    then
-      return source_code;
-    end if;
-    if ext_3 = ".HTM" or else ext_4 = ".HTML"
-      or else ext_3 = ".TXT"
-    then
-      return text_html;
-    end if;
-    --  Zip archives happen to be zipped...
-    if ext_4 = ".EPUB"  --  EPUB: e-book reader format
-      or else ext_3 in ".ZIP" | ".JAR" |
-                       ".ODB" | ".ODS" | ".ODT" | ".OTR" | ".OTS" | ".OTT" |
-                       ".CRX" | ".NTH"
-      or else ext_4 in ".DOCX" | ".PPTX" | ".XLSX" | ".XLSB" | ".XLSM"
-    then
-      return Zip_in_Zip;
-    end if;
-    --  Some raw camera picture data
-    if ext_3 in ".ORF" |  --  Raw Olympus
-                ".CR2" |  --  Raw Canon
-                ".RAF" |  --  Raw Fujifilm
-                ".SRW"    --  Raw Samsung
-    then
-      return ORF_CR2;
-    end if;
-    if ext_3 in ".ARW" |  --  Raw Sony
-                ".RW2" |  --  Raw Panasonic
-                ".NEF" |  --  Raw Nikon
-                ".DNG" |  --  Raw Leica, Pentax
-                ".X3F"    --  Raw Sigma
-    then
-      return ARW_RW2;
-    end if;
-    if ext_3 = ".PGM" then
-      return PGM;
-    end if;
-    if ext_3 = ".PPM" then
-      return PPM;
-    end if;
-    if ext_3 = ".MP3" then
-      return MP3;
-    end if;
-    if ext_3 in ".MTS" | ".MP4" | ".M4A" | ".M4P" then
-      return MP4;
-    end if;
-    if ext_3 = ".PNG" then
-      return PNG;
-    end if;
-    if ext_3 = ".GIF" then
-      return GIF;
-    end if;
-    if ext_3 in ".WAV" | ".UAX" then
-      return WAV;
-    end if;
-    if ext_2 = ".AU" then  --  Audacity raw data
-      return AU;
-    end if;
+    declare
+      ext : constant String := up (dot + 1 .. up'Last);
+    begin
+      if ext in "JPG" | "JPEG" then
+        return JPEG;
+      end if;
+      if ext in "ADA" | "ADS" | "ADB" |
+        "C" | "H" |
+        "CPP" | "HPP" | "DEF" | "ASM" |
+        "JAVA" | "CS" |
+        "PAS" | "INC" | "LPR" | "PP" |
+        "MAK" | "IN" |
+        "SH" | "BAT" | "CMD" |
+        "XML" | "XSL" |
+        "SGML" |
+        "AUP" |  --  Audacity project (XML)
+        "HTM" | "HTML" |
+        "JS" | "LSP" |
+        "CSV" | "SQL"
+      then
+        return source_code;
+      end if;
+      if ext in "HTM" | "HTML" | "TXT"
+      then
+        return text_html;
+      end if;
+      --  Zip archives happen to be zipped...
+      if ext in "EPUB" |  --  EPUB: e-book reader format
+        "ZIP" | "JAR" |
+        "ODB" | "ODS" | "ODT" | "OTR" | "OTS" | "OTT" |
+        "CRX" | "NTH" |
+        "DOCX" | "PPTX" | "XLSX" | "XLSB" | "XLSM"
+      then
+        return Zip_in_Zip;
+      end if;
+      --  Some raw camera picture data
+      if ext in "ORF" |  --  Raw Olympus
+                "CR2" |  --  Raw Canon
+                "RAF" |  --  Raw Fujifilm
+                "SRW"    --  Raw Samsung
+      then
+        return ORF_CR2;
+      end if;
+      if ext in "ARW" |  --  Raw Sony
+                "RW2" |  --  Raw Panasonic
+                "NEF" |  --  Raw Nikon
+                "DNG" |  --  Raw Leica, Pentax
+                "X3F"    --  Raw Sigma
+      then
+        return ARW_RW2;
+      end if;
+      if ext = "PGM" then
+        return PGM;
+      end if;
+      if ext = "PPM" then
+        return PPM;
+      end if;
+      if ext = "MP3" then
+        return MP3;
+      end if;
+      if ext in "MTS" | "MP4" | "M4A" | "M4P" then
+        return MP4;
+      end if;
+      if ext = "PNG" then
+        return PNG;
+      end if;
+      if ext = "GIF" then
+        return GIF;
+      end if;
+      if ext in "WAV" | "UAX" then
+        return WAV;
+      end if;
+      if ext = "AU" then  --  Audacity raw data
+        return AU;
+      end if;
+    end;
     return neutral;
   end Guess_Type_from_Name;
 
@@ -417,20 +418,18 @@ package body Zip.Compress is
   --  I/O buffers for compression  --
   -----------------------------------
 
-  procedure Allocate_Buffers (
-    b                : in out IO_Buffers_Type;
-    input_size_known :        Boolean;
-    input_size       :        Zip_64_Data_Size_Type
-  )
+  procedure Allocate_Buffers
+    (b                : in out IO_Buffers_Type;
+     input_size_known :        Boolean;
+     input_size       :        Zip_64_Data_Size_Type)
   is
     calibration : Zip_64_Data_Size_Type := default_byte_IO_buffer_size;
   begin
     if input_size_known then
       calibration :=
-        Zip_64_Data_Size_Type'Min (
-          default_byte_IO_buffer_size,
-          Zip_64_Data_Size_Type'Max (8, input_size)
-        );
+        Zip_64_Data_Size_Type'Min
+          (default_byte_IO_buffer_size,
+           Zip_64_Data_Size_Type'Max (8, input_size));
     end if;
     b.InBuf  := new Byte_Buffer (1 .. Integer (calibration));
     b.OutBuf := new Byte_Buffer (1 .. default_byte_IO_buffer_size);
@@ -444,29 +443,26 @@ package body Zip.Compress is
     Dispose_Buffer (b.OutBuf);
   end Deallocate_Buffers;
 
-  procedure Read_Block (
-    b     : in out IO_Buffers_Type;
-    input : in out Zip_Streams.Root_Zipstream_Type'Class
-  )
+  procedure Read_Block
+    (b     : in out IO_Buffers_Type;
+     input : in out Zip_Streams.Root_Zipstream_Type'Class)
   is
   begin
-    Zip.Block_Read (
-      stream        => input,
-      buffer        => b.InBuf.all,
-      actually_read => b.MaxInBufIdx
-    );
+    Zip.Block_Read
+      (stream        => input,
+       buffer        => b.InBuf.all,
+       actually_read => b.MaxInBufIdx);
     b.InputEoF := b.MaxInBufIdx = 0;
     b.InBufIdx := 1;
   end Read_Block;
 
-  procedure Write_Block (
-    b                : in out IO_Buffers_Type;
-    input_size_known :        Boolean;
-    input_size       :        Zip_64_Data_Size_Type;
-    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    output_size      : in out Zip_64_Data_Size_Type;
-    crypto           : in out Zip.CRC_Crypto.Crypto_pack
-  )
+  procedure Write_Block
+    (b                : in out IO_Buffers_Type;
+     input_size_known :        Boolean;
+     input_size       :        Zip_64_Data_Size_Type;
+     output           : in out Zip_Streams.Root_Zipstream_Type'Class;
+     output_size      : in out Zip_64_Data_Size_Type;
+     crypto           : in out Zip.CRC_Crypto.Crypto_pack)
   is
     amount : constant Integer := b.OutBufIdx - 1;
     use type Zip_64_Data_Size_Type;
