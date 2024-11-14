@@ -1,6 +1,10 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '60', xx-Nov-2024 [rev. 10xx]:
+  - Added compression for the BZip2 format
+       for .bz2 and .zip files or streams
+
 * Changes in '59', 25-May-2024 [rev. 946]:
   - UnZip.Streams: added Set_Index & Index subprograms for inward
         streams from Zip archives.

@@ -5,7 +5,7 @@ Zip-Ada is a pure Ada library for dealing with the Zip compressed archive
 file format. It supplies:
 
  - compression with the following sub-formats ("methods"):
-     Store, Reduce, Shrink (LZW), Deflate and LZMA
+     Store, Reduce, Shrink (LZW), Deflate, BZip2 and LZMA
  - decompression for the following sub-formats ("methods"):
      Store, Reduce, Shrink (LZW), Implode, Deflate, Deflate64, BZip2 and LZMA
  - encryption and decryption (portable Zip 2.0 encryption scheme)
@@ -26,7 +26,7 @@ file format. It supplies:
  - task safety: this library can be used ad libitum in parallel processing
  - endian-neutral I/O
 
-The full source is in Ada: pure Ada 2005, not even a single dependency
+The full source is in Ada: pure Ada 2012, not even a single dependency
 to a compiler, a CPU architecture, an OS or an external package or library.
 The price for the *unconditional* portability of Zip-Ada hold in these details:
   - archive creation: attributes (read-only, system etc.) are not stored
@@ -53,7 +53,7 @@ Contents
 
 * The subdirectory "zip_lib" contains the full source of the Zip-Ada library.
   All you need is there.
-  These library sources are in Ada 2005, so any Ada 2005 and above compiler
+  These library sources are in Ada 2012, so any Ada 2012 and above compiler
   will like them, provided it supports integer types up to 64 bit.
   I suggest to simply copy this Zip_Lib folder as a sub-folder of your
   project's sources.
@@ -104,7 +104,8 @@ Contents
 *  In the "doc" subdirectory you'll find documentation, and research data in za_work.xls .
 
 *  In the "extras" subdirectory, there is
-  - bunzip    : a standalone decompressor for BZip2 files (.bz2)
+  - bzip2_dec : a standalone decompressor for BZip2 files (.bz2)
+  - bzip2_enc : a standalone compressor for BZip2 files (.bz2)
   - lzma_dec  : a standalone decompressor for LZMA files (.lzma)
   - lzma_enc  : a standalone compressor for LZMA files (.lzma)
 
@@ -178,7 +179,7 @@ Manuel Op de Coul, Huygens-Fokker Foundation
 
 Stephan Busch (Squeeze Chart - http://www.squeezechart.com/),
    for encouragements and remarks on special LZMA / PPMd settings for
-   specific data types (applied so far: see function Guess_type_from_name
+   specific data types (applied so far: see function Guess_Type_from_Name
    in package Zip.Compress)
 
 Lionel Matias, for performing extensive fuzzing attacks with "american fuzzy lop"
