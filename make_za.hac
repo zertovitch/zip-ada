@@ -47,16 +47,10 @@ begin
   end if;
   case k is
     when Windoze =>
-      --  Currently Win32 and Win64 options are common.
       gprbuild_options := gprbuild_options & " -XZip_OS=Win64";
     when others =>
       null;
   end case;
-
-  --  For Windows binary distribution with icons and Set_Modification_Time in UnZipAda:
-  --
-  --  -largs extras/zip_icons.rbj
-  --  copy /b extras\lib*.a obj_[mode]
 
   Build_with_nice_title (+"zipada", +"Command-line Tools and Demos");
   

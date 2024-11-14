@@ -18,6 +18,7 @@ project ZipAda is
    type Zip_Build_Mode_Type is
       ("Debug", 
        "Fast", 
+       "Fast_Unchecked",  --  Faster, at the price of less safety.
        "Small",
        "Profiling",
        "Coverage");
@@ -45,14 +46,15 @@ project ZipAda is
    for Exec_Dir use ".";
 
    case Zip_Build_Mode is
-      when "Fast"      => for Object_Dir use "obj_opt";
-      when "Small"     => for Object_Dir use "obj_small";
-      when "Profiling" => for Object_Dir use "obj_pro";
-      when "Coverage"  => for Object_Dir use "obj_cov";
-      when others      => for Object_Dir use "obj_dbg";
+      when "Fast"           => for Object_Dir use "obj/fast";
+      when "Fast_Unchecked" => for Object_Dir use "obj/fast_unchecked";
+      when "Small"          => for Object_Dir use "obj/small";
+      when "Profiling"      => for Object_Dir use "obj/profiling";
+      when "Coverage"       => for Object_Dir use "obj/cov";
+      when others           => for Object_Dir use "obj/dbg";
    end case;
 
-   Common_Compiler_Options :=
+   Compiler_Common_Options :=
     ("-gnatwa",                      --  Warnings switches (a:turn on all info/warnings marked with +)
      "-gnatwh",                      --  Warnings switches (h:turn on warnings for hiding declarations)
      "-gnatwCijkmopruvz.c.p.t.w.x",  --  Warnings switches (run "gnatmake" for full list)
@@ -76,22 +78,38 @@ project ZipAda is
 
    case Zip_Styles_Checks is
       when "Off" => null;
-      when "On"  => Common_Compiler_Options := Common_Compiler_Options & Style_Checks;
+      when "On"  => Compiler_Common_Options := Compiler_Common_Options & Style_Checks;
    end case;
 
-   Debug_Compiler_Options  :=
-     Common_Compiler_Options &
+   Compiler_Debug_Options  :=
+     Compiler_Common_Options &
       ("-gnatVa",  --  Turn on all validity checking options
        "-gnato",   --  Enable overflow checking in STRICT (-gnato1) mode
        "-gnata",   --  Assertions enabled. Pragma Assert and pragma Debug to be activated.
        "-fno-inline", "-fstack-check");
 
-   Fast_Compiler_Options_Inlining_Neutral :=
-     Common_Compiler_Options & ("-Ofast");
+   Compiler_Fast_Options_Inlining_Neutral :=
+     Compiler_Common_Options &
+     ("-O2", --  -Ofast: issue with 11.3.1 20220922 / GNAT 23.2
+      "-fipa-cp-clone",
+      "-fgcse-after-reload", 
+      "-funroll-loops",
+      "-fpeel-loops", 
+      "-funswitch-loops", 
+      "-ftracer",
+      "-fweb",
+      "-ftree-vectorize",
+      "-frename-registers",
+      "-ffunction-sections",
+      "-fdata-sections");
 
-   Fast_Compiler_Options :=
-     Fast_Compiler_Options_Inlining_Neutral &
+   Compiler_Fast_Options :=
+     Compiler_Fast_Options_Inlining_Neutral &
        ("-gnatn");  --  Cross-unit inlining
+
+   Compiler_Fast_Unchecked_Options :=
+     Compiler_Fast_Options &
+       ("-gnatp");
 
    type Zip_OS_Kind is
       ("Win32", "Win64", "Linux", "MacOSX", "Any");
@@ -104,31 +122,40 @@ project ZipAda is
 
          when "Debug" =>
             for Local_Configuration_Pragmas use project'Project_Dir & "debug.pra";
-            for Default_Switches ("ada") use Debug_Compiler_Options ;
+            for Default_Switches ("ada") use Compiler_Debug_Options ;
 
          when "Fast" =>
             case Zip_OS is
               when "Win32" | "Win64" =>
                 for Default_Switches ("ada") use
-                  Fast_Compiler_Options & ("-mfpmath=sse", "-msse3");
+                  Compiler_Fast_Options & ("-mfpmath=sse", "-msse3");
               when others =>
-                for Default_Switches ("ada") use Fast_Compiler_Options;
+                for Default_Switches ("ada") use Compiler_Fast_Options;
+            end case;
+
+         when "Fast_Unchecked" =>
+            case Zip_OS is
+              when "Win32" | "Win64" =>
+                for Default_Switches ("ada") use
+                  Compiler_Fast_Unchecked_Options & ("-mfpmath=sse", "-msse3");
+              when others =>
+                for Default_Switches ("ada") use Compiler_Fast_Unchecked_Options;
             end case;
 
          when "Small" =>
             for Default_Switches ("ada") use
-              Common_Compiler_Options & (
+              Compiler_Common_Options & (
                 "-Os", "-gnatp",
                 "-ffunction-sections"
               );
 
          when "Profiling" =>
             for Default_Switches ("ada") use
-              Fast_Compiler_Options_Inlining_Neutral & ("-fno-inline", "-pg");
+              Compiler_Fast_Options_Inlining_Neutral & ("-fno-inline", "-pg");
 
          when "Coverage" =>
             for Default_Switches ("ada") use
-              Common_Compiler_Options & ("-fprofile-arcs", "-ftest-coverage");
+              Compiler_Common_Options & ("-fprofile-arcs", "-ftest-coverage");
       end case;
    end Compiler;
 
@@ -147,16 +174,24 @@ project ZipAda is
        null;
    end case;
 
+   case Zip_OS is
+     when "Win64" =>
+       Common_Linker_Options :=
+         Common_Linker_Options & ("extras/zip_icons.rbj");
+     when others =>
+       null;
+   end case;
+
    package Linker is
       case Zip_Build_Mode is
-         when "Fast"      =>
+         when "Fast" | "Fast_Unchecked" =>
             case Zip_OS is
                when "MacOSX" =>
                   for Default_Switches ("ada") use ("-Wl,-dead_strip")   & Common_Linker_Options;
                when others =>
                   for Default_Switches ("ada") use ("-Wl,--gc-sections") & Common_Linker_Options;
             end case;
-         when "Small"     =>
+         when "Small" =>
             case Zip_OS is
                when "MacOSX" =>
                   for Default_Switches ("ada") use ("-s", "-Wl,-dead_strip")   & Common_Linker_Options;
