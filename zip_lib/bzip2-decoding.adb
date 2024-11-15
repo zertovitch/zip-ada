@@ -116,6 +116,8 @@ package body BZip2.Decoding is
     selector_count : Natural;
     selector, selector_mtf : array (0 .. max_selectors) of Byte;
 
+    trace : constant Boolean := False;
+
     procedure Receive_Selectors is
       value : array (Byte range 0 .. max_entropy_coders - 1) of Byte;
       j, tmp, v : Byte;
@@ -132,6 +134,11 @@ package body BZip2.Decoding is
       if selector_count > max_selectors then
         raise data_error with "Invalid BZip2 selector count, maximum is" & max_selectors'Image;
         --  With standard settings, the maximum value is 18002.
+      end if;
+
+      if trace then
+        Ada.Text_IO.Put_Line ("Entropy coders:" & entropy_coder_count'Image);
+        Ada.Text_IO.Put_Line ("Selectors: . . " & selector_count'Image);
       end if;
 
       --  1) Receive selector list, MTF-transformed:
@@ -536,7 +543,6 @@ package body BZip2.Decoding is
 
     --  Decode a new compressed block.
     function Decode_Block return Boolean is
-      trace_crc : constant Boolean := False;
       magic : String (1 .. 6);
       stored_crc : Unsigned_32;
       dummy : Boolean;
@@ -550,7 +556,7 @@ package body BZip2.Decoding is
           CRC.Init (computed_block_crc);
         end if;
         stored_crc := Get_Cardinal_32;
-        if trace_crc then
+        if trace then
           Ada.Text_IO.Put_Line ("Block CRC (stored):       " & stored_crc'Image);
         end if;
         dummy := Get_Boolean;  --  Randomized flag.
@@ -567,7 +573,7 @@ package body BZip2.Decoding is
         --
         RLE_1;
         --
-        if trace_crc then
+        if trace then
           Ada.Text_IO.Put_Line ("Block CRC (computed):     " & computed_block_crc'Image);
         end if;
         if check_crc then
@@ -580,7 +586,7 @@ package body BZip2.Decoding is
                 ", stored =" & stored_crc'Image;
           end if;
           computed_combined_crc := Rotate_Left (computed_combined_crc, 1) xor computed_block_crc;
-          if trace_crc then
+          if trace then
             Ada.Text_IO.Put_Line ("Combined CRC (computed):  " & computed_combined_crc'Image);
           end if;
         end if;
@@ -593,7 +599,7 @@ package body BZip2.Decoding is
               "BZip2: mismatch in combined blocks' CRC: computed =" &
               computed_combined_crc'Image & "; stored =" & stored_crc'Image;
         end if;
-        if trace_crc then
+        if trace then
           Ada.Text_IO.Put_Line ("Combined CRC (stored):    " & stored_crc'Image);
         end if;
         return False;
