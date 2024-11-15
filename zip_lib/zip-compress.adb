@@ -267,7 +267,7 @@ package body Zip.Compress is
       --
       when Preselection_Method =>
         case content_hint is
-          when neutral =>  --  No clue about what kind of data
+          when neutral | text_data =>
             if input_size_known and then input_size < 9_000 then
               Compress_data_single_method (Deflate_3);  --  Deflate
             elsif fast_presel then
@@ -312,7 +312,7 @@ package body Zip.Compress is
               Compress_data_single_method (BZip2_Method'Last);
             end if;
 
-          when text_html =>
+          when text_or_formatted_text =>
             if input_size_known and then input_size < 9_000 then
               Compress_data_single_method (Deflate_3);
             elsif fast_presel then
@@ -341,31 +341,39 @@ package body Zip.Compress is
       if ext in "JPG" | "JPEG" then
         return JPEG;
       end if;
-      if ext in "ADA" | "ADS" | "ADB" |
-        "C" | "H" |
-        "CPP" | "HPP" | "DEF" | "ASM" |
+      if ext in
+        "A"    | "ADA" | "ADS" | "ADB" |     --  Ada
+        "PRC"  | "PKG" | "HAC" |
+        "F"    | "FOR" |                     --  Fortran
+        "C"    | "H"   | "CPP" | "HPP" |     --  C/C++
+        "DEF"  | "ASM" |
         "JAVA" | "CS" |
-        "PAS" | "INC" | "LPR" | "PP" |
+        "PAS" | "INC" | "LPR" | "PP" |       --  Pascal
+        "M" |                                --  Matlab
         "MAK" | "IN" |
         "SH" | "BAT" | "CMD" |
         "XML" | "XSL" |
         "SGML" |
-        "AUP" |  --  Audacity project (XML)
+        "AUP" |                              --  Audacity project (XML)
         "HTM" | "HTML" |
         "JS" | "LSP" |
-        "CSV" | "SQL"
+        "SQL"
       then
         return source_code;
       end if;
-      if ext in "HTM" | "HTML" | "TXT"
-      then
-        return text_html;
+      if ext in "CFG" | "INI" | "CSV" | "SVG" | "JSON" then
+        return text_data;
+      end if;
+      if ext in "TXT" | "RTF" | "HTM" | "HTML" then
+        return text_or_formatted_text;
       end if;
       --  Zip archives happen to be zipped...
-      if ext in "EPUB" |  --  EPUB: e-book reader format
-        "ZIP" | "JAR" |
-        "ODB" | "ODS" | "ODT" | "OTR" | "OTS" | "OTT" |
-        "CRX" | "NTH" |
+      if ext in
+        "EPUB" |  --  EPUB: e-book reader format
+        "ZIP"  |
+        "JAR"  |
+        "ODB"  | "ODS"  | "ODT" | "OTR" | "OTS" | "OTT" |
+        "CRX"  | "NTH"  |
         "DOCX" | "PPTX" | "XLSX" | "XLSB" | "XLSM"
       then
         return Zip_in_Zip;
