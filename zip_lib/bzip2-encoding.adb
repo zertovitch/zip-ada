@@ -214,18 +214,29 @@ package body BZip2.Encoding is
 
         procedure Unchecked_Free is new Ada.Unchecked_Deallocation (Offset_Table, Offset_Table_Access);
 
-        --  Compare the message, rotated with two (possibly different) offsets.
+        --  Compare the message, rotated with two different offsets.
         function Lexicographically_Smaller (left, right : Offset_Range) return Boolean with Inline is
+          il, ir : Integer_32;
           l, r : Byte;
         begin
           pragma Assert (data'First = 1);
+          il := 1 + ((-left)  mod block_size);
+          ir := 1 + ((-right) mod block_size);
           for i in Offset_Range loop
-            l := data (1 + (i - left)  mod block_size);
-            r := data (1 + (i - right) mod block_size);
+            l := data (il);
+            r := data (ir);
             if l < r then
               return True;
             elsif l > r then
               return False;
+            end if;
+            il := il + 1;
+            if il > block_size then
+              il := 1;
+            end if;
+            ir := ir + 1;
+            if ir > block_size then
+              ir := 1;
             end if;
           end loop;
           --  Equality.
