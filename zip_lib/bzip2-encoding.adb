@@ -381,9 +381,9 @@ package body BZip2.Encoding is
         Unchecked_Free (bwt_data);
       end MTF_and_RLE_2;
 
-      -----------------------------------------------------------
-      --  Entropy Encoding and output of the compressed block  --
-      -----------------------------------------------------------
+      ----------------------
+      --  Entropy Coding  --
+      ----------------------
 
       subtype Entropy_Coder_Range is Integer range 1 .. max_entropy_coders;
 
@@ -432,6 +432,8 @@ package body BZip2.Encoding is
 
         max_code_len_agreed : constant := max_code_len_bzip2_1_0_3;
 
+        pragma Assert (max_code_len_agreed <= max_code_len_bzip2_1_0_2);
+
         procedure LLHCL is new
           Huffman.Encoding.Length_Limited_Coding
             (Alphabet     => Alphabet_in_Use,
@@ -479,9 +481,9 @@ package body BZip2.Encoding is
             (descr (des)(Alphabet_in_Use), max_code_len_agreed, False);
         end Define_Descriptor;
 
-        -----------------------------------------------
-        --  Radically simple but functional encoder  --
-        -----------------------------------------------
+        -----------------------------------------------------
+        --  Radically simple but functional entropy coder  --
+        -----------------------------------------------------
 
         procedure Single_Entropy_Coder is
           freq : Count_Array := (others => 0);
@@ -497,34 +499,16 @@ package body BZip2.Encoding is
           end loop;
         end Single_Entropy_Coder;
 
-        -----------------------------------------------------------------------
-        --  Define multiple encoders (max 6) and assign them to the various  --
-        --  groups of data (max 18000, with 50 symbols in each group).       --
-        --  The art is to gather the groups into meaningful clusters.        --
-        -----------------------------------------------------------------------
+        --------------------------------------------------------------------------
+        --  Define multiple entropy coders (max 6) and assign them to the       --
+        --  various groups of data (max 18000, with 50 symbols in each group).  --
+        --  The art is to gather the groups into meaningful clusters.           --
+        --  Each cluster will use one of the entropy coders.                    --
+        --------------------------------------------------------------------------
 
         procedure Multiple_Entropy_Coders is
 
           subtype Selector_Range is Positive_32 range 1 .. selector_count;
-
-          --  We create a ranking using the first symbols (RUN_A, RUN_B, ...).
-          --  Look at outputs of Output_Frequency_Matrix to find why.
-          type Pair is record
-            key   : Natural_32;   --  Occurrences of interesting symbols.
-            index : Positive_32;  --  Group number.
-          end record;
-
-          type Ranking_Array is array (Selector_Range) of Pair;
-
-          ranking : Ranking_Array;
-
-          function Smaller_Key (left, right : Pair) return Boolean is (left.key < right.key);
-
-          procedure Ranking_Sort is new Ada.Containers.Generic_Constrained_Array_Sort
-            (Index_Type   => Selector_Range,
-             Element_Type => Pair,
-             Array_Type   => Ranking_Array,
-             "<"          => Smaller_Key);
 
           --  Frequencies, grouped by cluster (i.e. by selected entropy coder).
           freq_cluster : array (Entropy_Coder_Range) of Count_Array;
@@ -641,18 +625,53 @@ package body BZip2.Encoding is
             end if;
           end Define_Simulate_and_Reclassify;
 
-          procedure Do_Ranking is
+          --  Create an initial clustering depending on a subset
+          --  of the alphabet (RUN_A, RUN_B, low-index MTF values).
+          --  Look at the first few columns of Output_Frequency_Matrix to find why.
+          --
+          procedure Initial_Clustering_Statistical_Method is
+
+            type Pair is record
+              key   : Natural_32;   --  Occurrences of symbols that are in the subset.
+              index : Positive_32;  --  Group number.
+            end record;
+
+            type Ranking_Array is array (Selector_Range) of Pair;
+
+            ranking : Ranking_Array;
+
+            function Smaller_Key (left, right : Pair) return Boolean is (left.key < right.key);
+
+            procedure Ranking_Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+              (Index_Type   => Selector_Range,
+               Element_Type => Pair,
+               Array_Type   => Ranking_Array,
+               "<"          => Smaller_Key);
+
+            type Cluster_Attribution is array (Positive range <>) of Entropy_Coder_Range;
+
+            procedure Initial_Clustering_by_Rank (attr : Cluster_Attribution) is
+              na : constant Positive_32 := attr'Length;
+              ns : constant Positive_32 := selector_count;
+              a32 : Positive_32;
+            begin
+              for attr_idx in attr'Range loop
+                a32 := Integer_32 (attr_idx) - Integer_32 (attr'First) + 1;
+                for i in 1 + (a32 - 1) * ns / na .. a32 * ns / na loop
+                  selector (ranking (i).index) := attr (attr_idx);
+                end loop;
+              end loop;
+            end Initial_Clustering_by_Rank;
+
             pos_countdown : Natural := group_size;
             sel_idx : Positive_32 := 1;
             key : Natural_32 := 0;
             symbol : Alphabet_in_Use;
           begin
-            --  Populate the frequency stats, grouped by data group.
+            --  Populate the frequency stats for the ranking, grouped by data group.
             --
             for mtf_idx in 1 .. mtf_last loop
               symbol := mtf_data (mtf_idx);
-              --  Establish a key using the first few columns of the frequency
-              --  matrix (see files generated by Output_Frequency_Matrix):
               if symbol in run_a .. Integer'Min (EOB - 1, run_a + 3) then
                 key := key + 1;
               end if;
@@ -669,27 +688,27 @@ package body BZip2.Encoding is
               ranking (sel_idx) := (key => key, index => sel_idx);
             end if;
 
-            --  The construction of initial clusters can be done easily
-            --  using the following sorting:
+            --  The construction of initial clusters can now be
+            --  done easily using the following sorting:
             --
             Ranking_Sort (ranking);
 
-          end Do_Ranking;
+            --  Create an initial clustering depending on a mix
+            --  of RUN_A, RUN_B, low-index MTF occurrences.
+            --  Example with two clusters:
+            --   - Low values (more random data) for the cluster #2.
+            --   - High values (more redundant data) for #1.
+            --
+            case entropy_coder_count is
+              when 1 => null;  --  Not supported by canonical BZip2.
+              when 2 => Initial_Clustering_by_Rank ((2, 1));
+              when 3 => Initial_Clustering_by_Rank ((3, 1, 2));
+              when 4 => Initial_Clustering_by_Rank ((4, 2, 1, 3));
+              when 5 => Initial_Clustering_by_Rank ((5, 3, 1, 2, 4));
+              when 6 => Initial_Clustering_by_Rank ((6, 4, 2, 1, 3, 5));
+            end case;
 
-          type Cluster_Attribution is array (Positive range <>) of Entropy_Coder_Range;
-
-          procedure Initial_Clustering (attr : Cluster_Attribution) is
-            na : constant Positive_32 := attr'Length;
-            ns : constant Positive_32 := selector_count;
-            a32 : Positive_32;
-          begin
-            for attr_idx in attr'Range loop
-              a32 := Integer_32 (attr_idx) - Integer_32 (attr'First) + 1;
-              for i in 1 + (a32 - 1) * ns / na .. a32 * ns / na loop
-                selector (ranking (i).index) := attr (attr_idx);
-              end loop;
-            end loop;
-          end Initial_Clustering;
+          end Initial_Clustering_Statistical_Method;
 
           type Cluster_Statistics is array (Entropy_Coder_Range) of Natural;
 
@@ -716,155 +735,122 @@ package body BZip2.Encoding is
             end if;
           end Show_Cluster_Statistics;
 
-          --  Empirical number used for setting the initial number of coders.
-          --  The higher, the more difficult to climb up for more initial coders.
-          --  Value 50 OK, absent coder merging tactics.
-          --  Value 1 corresponds to original BZip2 program.
-          --
-          size_threshold_factor : constant := 1;
-
-          --  Another empirical number, this time for reducing the number of coders,
-          --  once the data is known. The higher, the easier to merge coders,
-          --  at the expense of accuracy.
-          --  Value 0 OK (catches pairs of identical coders, always a win).
-          --
-          coder_difference_limit : constant := 8000;
-
-          reclassification_iteration_limit : constant := 10;
-
-          procedure Handle_Similar_Coders is
-
-            function Distance (c1, c2 : Huffman.Encoding.Descriptor) return Natural_32 is
-              d : Natural := 0;
-            begin
-              for i in Alphabet_in_Use loop
-                d := d + abs (c1 (i).bit_length - c2 (i).bit_length);
-              end loop;
-              return Natural_32 (d);
-            end Distance;
-
-            stat_cluster : Cluster_Statistics;
-            width : constant Natural_32 := Natural_32 (last_symbol_in_use + 1);
-            e, f : Natural;
-            dist : Natural_32;  --  Distance between two coders. 0 = identical.
-            combined_usage : Natural_32;  --  How many groups belong to pair of clusters (a, b)?
-            --
-            --  Criterion for merging: (dist/width) * (combined_usage * group_size) <= limit
-            --
-            --  (dist/width) is a proportion
-            --  (combined_usage * group_size) is the number of symbols using
-            --  the coders associated to the clusters a or b.
+          procedure Construct is
+            reclassification_iteration_limit : constant := 10;
           begin
-            --  The canoncial BZip2 decoder wants at least two encoders:
-            while entropy_coder_count > 2 loop
-              Compute (stat_cluster);
-              e := 0;
-              for a in 1 .. entropy_coder_count loop
-                for b in a + 1 .. entropy_coder_count loop
-                  dist := Distance (descr (a), descr (b));
-                  combined_usage := Natural_32 (stat_cluster (a) + stat_cluster (b));
-                  if dist * (combined_usage * group_size) <= width * coder_difference_limit then
-                    --  Descriptors e and f are very similar.
-                    --  It could be worth to merge them.
-                    e := a;
-                    f := b;
-                    Trace
-                      ("Merge OK dist="         & dist'Image &
-                       ", width="               & width'Image &
-                       ", combined_usage="      & combined_usage'Image &
-                       " of #groups="           & selector_count'Image &
-                       ", entropy_coder_count=" & entropy_coder_count'Image, detailed);
-                    exit;
-                  end if;
-                end loop;
-              end loop;
+            Initial_Clustering_Statistical_Method;
+            Trace ("   Coders:" & entropy_coder_count'Image, detailed);
 
-              exit when e = 0;
-
-              --  Merge cluster f into cluster e.
-              for i in 1 .. selector_count loop
-                if selector (i) = f then
-                  selector (i) := e;
-                elsif selector (i) > f then
-                  selector (i) := selector (i) - 1;
-                end if;
-              end loop;
-              entropy_coder_count := entropy_coder_count - 1;
+            --  Compute the entropy coders based on the initial
+            --  clustering, then refine the (group -> cluster) attribution.
+            --  A group can join another cluster if the number of bits
+            --  in output is smaller. However, it will influence the
+            --  frequencies of both affected clusters.
+            --
+            for iteration in 1 .. reclassification_iteration_limit loop
+              Show_Cluster_Statistics;
               Define_Simulate_and_Reclassify;
-
-              for iteration in 1 .. reclassification_iteration_limit loop
-                exit when defectors = 0;
-                Define_Simulate_and_Reclassify;
-                if verbosity_level >= detailed then
-                  Trace
-                    ("   After cluster merge. Iteration" & iteration'Image &
-                       ". Defector groups:" & defectors'Image, detailed);
-                end if;
-              end loop;
-            end loop;
-
-          end Handle_Similar_Coders;
-
-        begin
-          --  Entropy coder counts depending on empirical sizes.
-          --  Magic numbers as in compress.c, factor is ours.
-          --
-          if mtf_last < 200 * size_threshold_factor then
-            entropy_coder_count := 2;
-          elsif mtf_last < 600 * size_threshold_factor then
-            entropy_coder_count := 3;
-          elsif mtf_last < 1200 * size_threshold_factor then
-            entropy_coder_count := 4;
-          elsif mtf_last < 2400 * size_threshold_factor then
-            entropy_coder_count := 5;
-          else
-            entropy_coder_count := 6;
-          end if;
-
-          Do_Ranking;
-
-          --  Create an initial clustering depending on a mix
-          --  of RUN_A, RUN_B, low-index MTF occurrences.
-          --  Example with two clusters:
-          --   - Low values (more random data) for the cluster #2.
-          --   - High values (more redundant data) for #1.
-          --
-          case entropy_coder_count is
-            when 1 => null;  --  Not supported by canonical BZip2.
-            when 2 => Initial_Clustering ((2, 1));
-            when 3 => Initial_Clustering ((3, 1, 2));
-            when 4 => Initial_Clustering ((4, 2, 1, 3));
-            when 5 => Initial_Clustering ((5, 3, 1, 2, 4));
-            when 6 => Initial_Clustering ((6, 4, 2, 1, 3, 5));
-          end case;
-
-          Trace ("   Coders:" & entropy_coder_count'Image, detailed);
-
-          --  Compute the entropy coders based on the initial
-          --  clustering, then refine the group -> cluster attribution:
-          --  a group can join another cluster if the number of bits
-          --  in output is smaller. However, it will influence the
-          --  frequencies of both affected clusters.
-          --
-          for iteration in 1 .. reclassification_iteration_limit loop
-            Show_Cluster_Statistics;
-            Define_Simulate_and_Reclassify;
-
-            if verbosity_level >= detailed then
               Trace
                 ("   Iteration" & iteration'Image &
-                 ". Defector groups:" & defectors'Image, detailed);
+                 ". Defector groups:" & defectors'Image,
+                 detailed);
+              exit when defectors = 0;
+            end loop;
+            Show_Cluster_Statistics;
+          end Construct;
+
+          function Compute_Selectors_Cost return Natural_32 is
+            value : array (1 .. entropy_coder_count) of Positive;
+            mtf_idx : Positive;
+            bits : Natural_32 := 0;
+          begin
+            for w in value'Range loop
+              value (w) := w;
+            end loop;
+            for i in 1 .. selector_count loop
+              for search in value'Range loop
+                if value (search) = selector (i) then
+                  mtf_idx := search;
+                  exit;
+                end if;
+              end loop;
+              for j in reverse 2 .. mtf_idx loop
+                value (j) := value (j - 1);
+              end loop;
+              value (1) := selector (i);
+              bits := bits + Integer_32 (mtf_idx);
+            end loop;
+            return bits;
+          end Compute_Selectors_Cost;
+
+          function Compute_Huffman_Bit_Lengths_Cost return Natural_32 is
+            current_bit_length, new_bit_length : Natural;
+            bits : Natural_32 := 0;
+          begin
+            for coder in 1 .. entropy_coder_count loop
+              current_bit_length := descr (coder)(0).bit_length;
+              bits := bits +  5;
+              for i in 0 .. last_symbol_in_use loop
+                new_bit_length := descr (coder)(i).bit_length;
+                Adjust_Bit_length :
+                loop
+                  if current_bit_length = new_bit_length then
+                    bits := bits + 1;
+                    exit Adjust_Bit_length;
+                  else
+                    bits := bits + 2;
+                    if current_bit_length < new_bit_length then
+                      current_bit_length := current_bit_length + 1;
+                    else
+                      current_bit_length := current_bit_length - 1;
+                    end if;
+                  end if;
+                end loop Adjust_Bit_length;
+              end loop;
+            end loop;
+            return bits;
+          end Compute_Huffman_Bit_Lengths_Cost;
+
+          function Compute_Total_Cost return Natural_32 is
+            --  We simulate the sending of the whole block, except the fixed costs.
+            pos_countdown : Natural := group_size;
+            sel_idx : Positive_32 := 1;
+            cluster : Entropy_Coder_Range := selector (sel_idx);
+            bits : Natural_32 := 0;
+          begin
+            --  Simulate the sending of the data itself:
+            for mtf_idx in 1 .. mtf_last loop
+              bits := bits + Natural_32 (descr (cluster)(mtf_data (mtf_idx)).bit_length);
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
+                pos_countdown := group_size;
+                sel_idx := sel_idx + 1;
+                if mtf_idx < mtf_last then
+                  cluster := selector (sel_idx);
+                end if;
+              end if;
+            end loop;
+            bits := bits + Compute_Selectors_Cost + Compute_Huffman_Bit_Lengths_Cost;
+            return bits;
+          end Compute_Total_Cost;
+
+          best_ec_cost  : Natural_32 := Natural_32'Last;
+          ec_cost       : Natural_32;
+          best_ec_count : Entropy_Coder_Range;
+
+        begin
+          --  Test each possible number of entropy coders.
+          for ec_test in 2 .. max_entropy_coders loop
+            entropy_coder_count := ec_test;
+            Construct;
+            ec_cost := Compute_Total_Cost;
+            if ec_cost < best_ec_cost then
+              best_ec_cost  := ec_cost;
+              best_ec_count := ec_test;
             end if;
-
-            exit when defectors = 0;
           end loop;
-          Show_Cluster_Statistics;
-
-          --  Here, the clustering should be convenient (local optimium).
-
-          --  Final touch spot similarities between coders.
-          Handle_Similar_Coders;
-
+          entropy_coder_count := best_ec_count;
+          Construct;
         end Multiple_Entropy_Coders;
 
         trace_frequency_matrix : constant Boolean := False;

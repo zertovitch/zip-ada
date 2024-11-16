@@ -145,6 +145,7 @@ begin
     Timing (+"7z a -tzip -mm=BZip2:d=900k:pass=7 ../bench_" & bn & "_7z_bzip2_9 *");
   end if;
   if cat_set (BZip2) then
+    Shell_Execute (za & " -eb1 ../bench_" & bn & "_bzip2_1 *");
     Shell_Execute (za & " -eb2 ../bench_" & bn & "_bzip2_2 *");
     Shell_Execute (za & " -eb3 ../bench_" & bn & "_bzip2_3 *");
   end if;

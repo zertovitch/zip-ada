@@ -83,8 +83,8 @@ package body Rezip_lib is
      reduce_4,
      deflate_3,
      deflate_r,
-     bzip2_2, bzip2_3,
-     lzma_2, lzma_3,
+     bzip2_3, bzip2_2, bzip2_1,
+     lzma_3, lzma_2,
      external_01, external_02, external_03, external_04,
      external_05, external_06, external_07, external_08,
      external_09, external_10, external_11, external_12,
@@ -240,13 +240,13 @@ package body Rezip_lib is
        reduce_4  => Zip.Compress.Reduce_4,
        deflate_3 => Zip.Compress.Deflate_3,
        deflate_r => Zip.Compress.Deflate_R,
+       bzip2_1   => Zip.Compress.BZip2_1,
        bzip2_2   => Zip.Compress.BZip2_2,
        bzip2_3   => Zip.Compress.BZip2_3,
        lzma_2    => Zip.Compress.LZMA_2,
        lzma_3    => Zip.Compress.LZMA_3,
        presel_1  => Zip.Compress.Preselection_1,
-       presel_2  => Zip.Compress.Preselection_2
-      );
+       presel_2  => Zip.Compress.Preselection_2);
 
     type Packer_info is record
       size             : Zip.Zip_64_Data_Size_Type;
