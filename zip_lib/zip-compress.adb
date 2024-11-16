@@ -241,7 +241,7 @@ package body Zip.Compress is
     end Compress_data_single_method;
 
     fast_presel_threshold : constant := 10_000;
-    bzip2_threshold       : constant := 16_000;
+    bzip2_threshold       : constant := 15_000;
 
     fast_presel : constant Boolean :=
       method = Preselection_1 or (input_size_known and then input_size < fast_presel_threshold);
@@ -342,21 +342,22 @@ package body Zip.Compress is
         return JPEG;
       end if;
       if ext in
-        "A"    | "ADA" | "ADS" | "ADB" |     --  Ada
-        "PRC"  | "PKG" | "HAC" |
-        "F"    | "FOR" |                     --  Fortran
-        "C"    | "H"   | "CPP" | "HPP" |     --  C/C++
-        "DEF"  | "ASM" |
-        "JAVA" | "CS" |
-        "PAS" | "INC" | "LPR" | "PP" |       --  Pascal
-        "M" |                                --  Matlab
-        "MAK" | "IN" |
-        "SH" | "BAT" | "CMD" |
-        "XML" | "XSL" |
+        "A"    | "ADA"  | "ADS" | "ADB" |     --  Ada
+        "PRC"  | "PKG"  | "HAC" |
+        "F"    | "FOR"  |                     --  Fortran
+        "C"    | "H"    | "CPP" | "HPP" |     --  C/C++
+        "DEF"  | "ASM"  |                     --  Assembler
+        "JAVA" | "CS"   |
+        "PAS"  | "INC"  | "LPR" | "PP" |      --  Pascal
+        "M"    |                              --  Matlab
+        "M4"   | "MAK"  | "IN"  |             --  Macro assembler
+        "SH"   | "BAT"  | "CMD" |             --  Operating System Script
+        "PO"   |                              --  GNU PO
+        "XML"  | "XSL"  |
         "SGML" |
-        "AUP" |                              --  Audacity project (XML)
-        "HTM" | "HTML" |
-        "JS" | "LSP" |
+        "AUP"  |                              --  Audacity project (XML)
+        "HTM"  | "HTML" |
+        "JS"   | "LSP"  | "SCM" |
         "SQL"
       then
         return source_code;
