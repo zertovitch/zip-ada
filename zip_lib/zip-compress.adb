@@ -312,7 +312,7 @@ package body Zip.Compress is
               Compress_data_single_method (BZip2_Method'Last);
             end if;
 
-          when text_or_formatted_text =>
+          when text_formatted_text_or_dna =>
             if input_size_known and then input_size < 9_000 then
               Compress_data_single_method (Deflate_3);
             elsif fast_presel then
@@ -343,7 +343,7 @@ package body Zip.Compress is
       end if;
       if ext in
         "A"    | "ADA"  | "ADS" | "ADB" |     --  Ada
-        "PRC"  | "PKG"  | "HAC" |
+        "PRC"  | "PKG"  | "HAC" | "GPR" |
         "F"    | "FOR"  |                     --  Fortran
         "C"    | "H"    | "CPP" | "HPP" |     --  C/C++
         "DEF"  | "ASM"  |                     --  Assembler
@@ -358,15 +358,15 @@ package body Zip.Compress is
         "AUP"  |                              --  Audacity project (XML)
         "HTM"  | "HTML" |
         "JS"   | "LSP"  | "SCM" |
-        "SQL"
+        "SQL"  | "PDB"  | "PL"
       then
         return source_code;
       end if;
       if ext in "CFG" | "INI" | "CSV" | "SVG" | "JSON" then
         return text_data;
       end if;
-      if ext in "TXT" | "RTF" | "HTM" | "HTML" then
-        return text_or_formatted_text;
+      if ext in "TXT" | "RTF" | "HTM" | "HTML" | "GB" | "FASTA" then
+        return text_formatted_text_or_dna;
       end if;
       --  Zip archives happen to be zipped...
       if ext in

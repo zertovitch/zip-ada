@@ -82,7 +82,7 @@ private
   --
   max_alphabet_size        : constant := 258;  --  BZ_MAX_ALPHA_SIZE
 
-  max_code_len             : constant := 23;   --  BZ_MAX_CODE_LEN
+  max_code_len_max         : constant := 23;   --  BZ_MAX_CODE_LEN
   max_code_len_bzip2_1_0_2 : constant := 20;   --  Actual maximum in bzip2 1.0.2
   max_code_len_bzip2_1_0_3 : constant := 17;   --  Actual maximum in bzip2 1.0.3+
   --

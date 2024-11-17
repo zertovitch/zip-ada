@@ -441,17 +441,7 @@ package body BZip2.Encoding is
           end loop;
         end Avoid_Zeros;
 
-        max_code_len_agreed : constant := max_code_len_bzip2_1_0_3;
-
-        pragma Assert (max_code_len_agreed <= max_code_len_bzip2_1_0_2);
-
-        procedure LLHCL is new
-          Huffman.Encoding.Length_Limited_Coding
-            (Alphabet     => Alphabet_in_Use,
-             Count_Type   => Natural_32,
-             Count_Array  => Count_Array,
-             Length_Array => Huffman_Length_Array,
-             max_bits     => max_code_len_agreed);
+        max_code_len : Positive;
 
         procedure Output_Frequency_Matrix is
           use Ada.Text_IO;
@@ -481,7 +471,15 @@ package body BZip2.Encoding is
         end Output_Frequency_Matrix;
 
         procedure Define_Descriptor (freq : in out Count_Array; des : Entropy_Coder_Range) is
+          procedure LLHCL is new
+            Huffman.Encoding.Length_Limited_Coding
+              (Alphabet     => Alphabet_in_Use,
+               Count_Type   => Natural_32,
+               Count_Array  => Count_Array,
+               Length_Array => Huffman_Length_Array,
+               max_bits     => max_code_len);
           len : Huffman_Length_Array;
+          pragma Assert (max_code_len <= max_code_len_bzip2_1_0_2);
         begin
           Avoid_Zeros (freq);
           LLHCL (freq, len);
@@ -489,7 +487,7 @@ package body BZip2.Encoding is
             descr (des)(symbol).bit_length := len (symbol);
           end loop;
           Huffman.Encoding.Prepare_Codes
-            (descr (des)(Alphabet_in_Use), max_code_len_agreed, False);
+            (descr (des)(Alphabet_in_Use), max_code_len, False);
         end Define_Descriptor;
 
         -----------------------------------------------------
@@ -502,6 +500,7 @@ package body BZip2.Encoding is
           for symbol of mtf_data (1 .. mtf_last) loop
             freq (symbol) := freq (symbol) + 1;
           end loop;
+          max_code_len := max_code_len_bzip2_1_0_3;
           Define_Descriptor (freq, 1);
           entropy_coder_count := 2;  --  The canonical BZip2 decoder requires >= 2 coders.
           descr (2) := descr (1);    --  We actually don't use the copy (psssht), but need to define it!
@@ -845,22 +844,33 @@ package body BZip2.Encoding is
             return bits;
           end Compute_Total_Cost;
 
-          best_ec_cost  : Natural_32 := Natural_32'Last;
-          ec_cost       : Natural_32;
+          best_cost  : Natural_32 := Natural_32'Last;
+          cost       : Natural_32;
           best_ec_count : Entropy_Coder_Range;
+          best_max_cl   : Positive;
 
         begin
-          --  Test each possible number of entropy coders.
-          for ec_test in 2 .. max_entropy_coders loop
-            entropy_coder_count := ec_test;
-            Construct;
-            ec_cost := Compute_Total_Cost;
-            if ec_cost < best_ec_cost then
-              best_ec_cost  := ec_cost;
-              best_ec_count := ec_test;
-            end if;
+          --  Test various max code lengths:
+          for cl_test in 9 .. 17 loop
+            max_code_len := cl_test;
+            --  Test each possible number of entropy coders:
+            for ec_test in 2 .. max_entropy_coders loop
+              entropy_coder_count := ec_test;
+              Construct;
+              cost := Compute_Total_Cost;
+              if cost < best_cost then
+                best_cost     := cost;
+                best_ec_count := ec_test;
+                best_max_cl   := cl_test;
+              end if;
+            end loop;
           end loop;
+          max_code_len        := best_max_cl;
           entropy_coder_count := best_ec_count;
+          Trace
+            ("Max len:" & max_code_len'Image &
+             ", coders:" & entropy_coder_count'Image,
+             detailed);
           Construct;
         end Multiple_Entropy_Coders;
 

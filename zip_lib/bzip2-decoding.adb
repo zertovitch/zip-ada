@@ -197,7 +197,7 @@ package body BZip2.Decoding is
           end if;
         end loop;
       end loop;
-      for i in 0 .. max_code_len - 1 loop
+      for i in 0 .. max_code_len_max - 1 loop
         base (i) := 0;
         limit (i) := 0;
       end loop;
@@ -205,7 +205,7 @@ package body BZip2.Decoding is
         idx := length (i) + 1;
         base (idx) := base (idx) + 1;
       end loop;
-      for i in 1 .. max_code_len - 1 loop
+      for i in 1 .. max_code_len_max - 1 loop
         base (i) := base (i) + base (i - 1);
       end loop;
       vec := 0;

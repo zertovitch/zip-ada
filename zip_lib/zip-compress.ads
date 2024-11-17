@@ -134,7 +134,7 @@ package Zip.Compress is
   type Data_Content_Type is
     (neutral,     --  No clue about what kind of data
      source_code,
-     text_or_formatted_text,
+     text_formatted_text_or_dna,
      text_data,
      JPEG,
      ARW_RW2,     --  Raw digital camera image
