@@ -4,7 +4,8 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
 
    for Main use
       --  Tests
-     ("fuzzip.adb",
+     ("lz77_segmentation.adb",
+      "fuzzip.adb",
       "lz77_stats.adb",     --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
       "random_data.adb",    --  Produces n bytes of pseudo-random data
       "several_sizes.adb",  --  Truncates a file into partial copies of several sizes
@@ -28,10 +29,10 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
       "demo_zip.adb",
       "demo_unzip.adb",
       --  Miscellaneous, non-Zip, recreational or experimental stuff
-      "lzhuf",       --  A simple LZ-Huffman coder/decoder
-      "bwt_demo",    --  Burrows-Wheeler precompression demo
-      "bwt_enc",     --  Burrows-Wheeler file encoder
-      "bwt_dec");    --  Burrows-Wheeler file decoder
+      "lzhuf.adb",              --  A simple LZ-Huffman coder/decoder
+      "bwt_demo.adb",           --  Burrows-Wheeler precompression demo
+      "bwt_enc.adb",            --  Burrows-Wheeler file encoder
+      "bwt_dec.adb");           --  Burrows-Wheeler file decoder
 
    case Zip_Build_Mode is
       when "Fast"           => for Object_Dir use "obj/fast/test";

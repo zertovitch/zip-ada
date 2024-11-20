@@ -5,10 +5,10 @@
 --   - which distances and lengths are used, and how often ?
 --   - which distance and length *pairs* are used, and how often ?
 
-with Ada.Integer_Text_IO;               use Ada.Integer_Text_IO;
-with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Integer_Text_IO, Ada.Text_IO;
 
 procedure LZ77_Stats is
+  use Ada.Integer_Text_IO, Ada.Text_IO;
   LZ77_dump : File_Type;
   tag : String (1 .. 3);
   wrong_LZ77_tag : exception;
@@ -26,9 +26,11 @@ procedure LZ77_Stats is
   type p_DL_matrix is access DL_matrix;
   dl_stats : constant p_DL_matrix := new DL_matrix'(others => (others => 0));
   total : Natural := 0;
-
 begin
-  Open (LZ77_dump, In_File, "dump.lz77");  --  File from UnZip.Decompress, some_trace mode
+  --
+  --  Read file from UnZip.Decompress, some_trace mode
+  --
+  Open (LZ77_dump, In_File, "dump.lz77");
   while not End_Of_File (LZ77_dump) loop
     Get (LZ77_dump, tag);
     if tag = "Lit" then

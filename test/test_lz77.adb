@@ -5,17 +5,18 @@
 --  - LZ77 stream is decoded and written as .out for checking integrity:
 --      should be identical to input file.
 
-with Ada.Characters.Handling;           use Ada.Characters.Handling;
-with Ada.Command_Line;                  use Ada.Command_Line;
-with Ada.Sequential_IO;
-with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Characters.Handling,
+     Ada.Command_Line,
+     Ada.Sequential_IO,
+     Ada.Text_IO;
+
 with LZ77;
 
 procedure Test_LZ77 is
 
   package BIO is new Ada.Sequential_IO (LZ77.Byte);
 
-  use LZ77, BIO;
+  use LZ77, Ada.Text_IO, BIO;
 
   f_in, f_out : BIO.File_Type;
   f_dump : Ada.Text_IO.File_Type;
@@ -88,21 +89,20 @@ procedure Test_LZ77 is
     end loop;
   end Emit_DL_code;
 
-  procedure Dummy_Estimate_DL_Codes (
-    matches          : in out LZ77.Matches_Array;
-    old_match_index  : in     Natural;
-    prefixes         : in     LZ77.Byte_Array;
-    best_score_index :    out Positive;
-    best_score_set   :    out LZ77.Prefetch_Index_Type;
-    match_trace      :    out LZ77.DLP_Array
-  )
+  procedure Dummy_Estimate_DL_Codes
+    (matches          : in out LZ77.Matches_Array;
+     old_match_index  : in     Natural;
+     prefixes         : in     LZ77.Byte_Array;
+     best_score_index :    out Positive;
+     best_score_set   :    out LZ77.Prefetch_Index_Type;
+     match_trace      :    out LZ77.DLP_Array)
   is null;
 
   type Method_Set is array (Method_Type) of Boolean;
 
   --  consider: constant Method_Set:= (others => True);
   --  consider: constant Method_Set:= (IZ_5 | IZ_7 | IZ_8 => False, others => True);
-  consider : constant Method_Set := (LZHuf | IZ_10 | Rich | BT4 => True, others => False);
+  consider : constant Method_Set := (LZHuf | IZ_10 | Rich => True, others => False);
 
 begin
   Put_Line ("Test_LZ77");
@@ -123,14 +123,14 @@ begin
       sum_dist := 0;
       len_258  := 0;
       declare
+        use Ada.Characters.Handling, Ada.Command_Line;
         procedure My_LZ77 is
-          new LZ77.Encode (
-            String_buffer_size, Look_Ahead_Test, Threshold,
-            m,
-            Read_byte, More_bytes,
-            Emit_literal, Emit_DL_code,
-            False, Dummy_Estimate_DL_Codes
-          );
+          new LZ77.Encode
+            (String_buffer_size, Look_Ahead_Test, Threshold,
+             m,
+             Read_byte, More_bytes,
+             Emit_literal, Emit_DL_code,
+             False, Dummy_Estimate_DL_Codes);
       begin
         if Argument_Count < 1 then
           Open (f_in, In_File, "test/test_lz77.adb");
