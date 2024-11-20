@@ -362,7 +362,7 @@ package body Zip.Compress is
       then
         return source_code;
       end if;
-      if ext in "CFG" | "INI" | "CSV" | "SVG" | "JSON" then
+      if ext in "CFG" | "INI" | "LOG" | "CSV" | "SVG" | "JSON" then
         return text_data;
       end if;
       if ext in "TXT" | "RTF" | "HTM" | "HTML" | "GB" | "FASTA" then
