@@ -31,6 +31,18 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
+-----------------
+
+--  To do:
+--
+--    - Performance: use Suffix-Array-Induced-Sorting for the BWT.
+--        See https://github.com/dsnet/compress/blob/master/bzip2/bwt.go
+--            https://sites.google.com/site/yuta256/sais
+--    - Extra mode: do segment (or not) large blocks. An idea for that:
+--        look for the blog post: "Lempel-Ziv factorisation for file type detection"
+--    - For squeezing a few more bytes: use the optimal permutation of
+--        entropy coders (already tested but not worth the extra complication).
+
 with Huffman.Encoding.Length_Limited_Coding;
 
 with Ada.Containers.Generic_Constrained_Array_Sort,
@@ -239,15 +251,15 @@ package body BZip2.Encoding is
               ir := 1;
             end if;
           end loop;
-          --  Equality.
-          return False;
+          --  Equality in contents.
+          return left < right;  --  Ensures stable sorting.
         end Lexicographically_Smaller;
 
-       procedure Offset_Sort is new Ada.Containers.Generic_Constrained_Array_Sort
-         (Index_Type   => Offset_Range,
-          Element_Type => Offset_Range,
-          Array_Type   => Offset_Table,
-          "<"          => Lexicographically_Smaller);
+        procedure Offset_Sort is new Ada.Containers.Generic_Constrained_Array_Sort
+          (Index_Type   => Offset_Range,
+           Element_Type => Offset_Range,
+           Array_Type   => Offset_Table,
+           "<"          => Lexicographically_Smaller);
 
          offset : Offset_Table_Access := new Offset_Table;
 
@@ -639,7 +651,7 @@ package body BZip2.Encoding is
           --  of the alphabet (RUN_A, RUN_B, low-index MTF values).
           --  Look at the first few columns of Output_Frequency_Matrix to find why.
           --
-          procedure Initial_Clustering_Statistical_Method is
+          procedure Initial_Clustering_Statistical_Method (sample_width : Positive) is
 
             type Pair is record
               key   : Natural_32;   --  Occurrences of symbols that are in the subset.
@@ -676,13 +688,14 @@ package body BZip2.Encoding is
             pos_countdown : Natural := group_size;
             sel_idx : Positive_32 := 1;
             key : Natural_32 := 0;
+            last_symbol_sampled : constant Natural := Integer'Min (EOB - 1, run_a + sample_width - 1);
             symbol : Alphabet_in_Use;
           begin
             --  Populate the frequency stats for the ranking, grouped by data group.
             --
             for mtf_idx in 1 .. mtf_last loop
               symbol := mtf_data (mtf_idx);
-              if symbol in run_a .. Integer'Min (EOB - 1, run_a + 3) then
+              if symbol in run_a .. last_symbol_sampled then
                 key := key + 1;
               end if;
               pos_countdown := pos_countdown - 1;
@@ -745,10 +758,10 @@ package body BZip2.Encoding is
             end if;
           end Show_Cluster_Statistics;
 
-          procedure Construct is
+          procedure Construct (sample_width : Positive) is
             reclassification_iteration_limit : constant := 10;
           begin
-            Initial_Clustering_Statistical_Method;
+            Initial_Clustering_Statistical_Method (sample_width);
             Trace ("   Coders:" & entropy_coder_count'Image, detailed);
 
             --  Compute the entropy coders based on the initial
@@ -844,34 +857,56 @@ package body BZip2.Encoding is
             return bits;
           end Compute_Total_Cost;
 
-          best_cost  : Natural_32 := Natural_32'Last;
-          cost       : Natural_32;
-          best_ec_count : Entropy_Coder_Range;
-          best_max_cl   : Positive;
+          cost              : Natural_32;
+          best_cost         : Natural_32 := Natural_32'Last;
+          best_ec_count     : Entropy_Coder_Range;
+          best_max_code_len : Positive;
+          best_sample_width : Positive;
+
+          type Value_Array is array (Positive range <>) of Natural;
+
+          function Max_Code_Len_Choices return Value_Array is
+          (case option is
+             when block_100k => (1 => 16),
+             when block_400k => (1 => 16),
+             when block_900k => (9, 11, 13, 15, 16, 17));
+
+          function Sample_Width_Choices return Value_Array is
+          (case option is
+             when block_100k => (1 => 4),
+             when block_400k => (1 => 4),
+             when block_900k => (2, 3, 4, 6, 9, 12));
 
         begin
-          --  Test various max code lengths:
-          for cl_test in 9 .. 17 loop
-            max_code_len := cl_test;
+          --  Test some max code lengths (no all, not to make
+          --  the run time explode too much):
+          --
+          for max_code_len_test of Max_Code_Len_Choices loop
+            max_code_len := max_code_len_test;
             --  Test each possible number of entropy coders:
             for ec_test in 2 .. max_entropy_coders loop
               entropy_coder_count := ec_test;
-              Construct;
-              cost := Compute_Total_Cost;
-              if cost < best_cost then
-                best_cost     := cost;
-                best_ec_count := ec_test;
-                best_max_cl   := cl_test;
-              end if;
+              --  Test some sample widths:
+              for sample_width_test of Sample_Width_Choices loop
+                Construct (sample_width_test);
+                cost := Compute_Total_Cost;
+                if cost < best_cost then
+                  best_cost         := cost;
+                  best_ec_count     := ec_test;
+                  best_max_code_len := max_code_len;
+                  best_sample_width := sample_width_test;
+                end if;
+              end loop;
             end loop;
           end loop;
-          max_code_len        := best_max_cl;
+          max_code_len        := best_max_code_len;
           entropy_coder_count := best_ec_count;
           Trace
             ("Max len:" & max_code_len'Image &
-             ", coders:" & entropy_coder_count'Image,
+             ", coders:" & entropy_coder_count'Image &
+             ", sample width:" & best_sample_width'Image,
              detailed);
-          Construct;
+          Construct (best_sample_width);
         end Multiple_Entropy_Coders;
 
         trace_frequency_matrix : constant Boolean := False;
