@@ -1,5 +1,6 @@
 --  Output LZ statistics into a .csv file for research purposes.
 --  To do: compute here moving average (size n steps) and regular samples (each n/k step).
+--  Idea: blog post "Lempel-Ziv factorisation for file type detection".
 
 with Ada.Command_Line,
      Ada.Directories,
