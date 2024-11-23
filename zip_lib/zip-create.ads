@@ -70,8 +70,8 @@ package Zip.Create is
    subtype Zip_Memory_Stream is Zip_Streams.Memory_Zipstream;
    --  You can use this type for creating Zip archives in memory.
 
-   --  Create the Zip archive; create the file if the stream is a file
-
+   --  Create the Zip archive; create the Zip file if the stream is a file.
+   --
    procedure Create_Archive
      (Info            : out Zip_Create_Info;
       Z_Stream        : in Zip_Streams.Zipstream_Class_Access;
@@ -81,9 +81,10 @@ package Zip.Create is
 
    function Is_Created (Info : Zip_Create_Info) return Boolean;
 
-   --  Set a new compression format for the next data to be added to the archive.
-   --  Can be useful if data are known to be already compressed - or not.
-
+   --  Set a new compression method for the next data to be added to the archive.
+   --  Can be useful if some knowledge about the data is known in advance:
+   --  its size, contents (text/machine code/random/...), quantity of files.
+   --
    procedure Set (Info       : in out Zip_Create_Info;
                   New_Method :        Zip.Compress.Compression_Method);
 
@@ -103,7 +104,7 @@ package Zip.Create is
                          Compressed_Size :    out Zip.Zip_64_Data_Size_Type;
                          Final_Method    :    out Natural);
 
-   default_creation_time      : Zip_Streams.Time renames Zip_Streams.default_time;
+   default_creation_time : Zip_Streams.Time renames Zip_Streams.default_time;
 
    --  If use_file_modification_time is passed to Add_File, Ada.Directories.Modification_Time
    --  will be called on File_Name and that time will be used for setting the Zip entry's time
