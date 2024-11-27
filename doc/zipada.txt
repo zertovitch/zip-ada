@@ -142,7 +142,8 @@ Contents
   find a fresher version here:
   http://www.pkware.com/business_and_developers/developer/appnote/
 
-* A version of the LZMA specification is to be found in the "doc" directory.
+* A version of the LZMA specification and an unofficial BZip2
+  specification can be found in the "doc" directory.
 
 Other infos are in zip.ads and unzip.ads, specifications of Zip and UnZip
 packages.

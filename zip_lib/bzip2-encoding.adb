@@ -647,11 +647,11 @@ package body BZip2.Encoding is
             end if;
           end Define_Simulate_and_Reclassify;
 
-          --  Create an initial clustering depending on a subset
-          --  of the alphabet (RUN_A, RUN_B, low-index MTF values).
+          --  Create an initial clustering depending on a ranking computed on a
+          --  subset of the alphabet (RUN_A, RUN_B, low-index MTF values).
           --  Look at the first few columns of Output_Frequency_Matrix to find why.
           --
-          procedure Initial_Clustering_Statistical_Method (sample_width : Positive) is
+          procedure Initial_Clustering_Ranking_Method (sample_width : Positive) is
 
             type Pair is record
               key   : Natural_32;   --  Occurrences of symbols that are in the subset.
@@ -731,7 +731,79 @@ package body BZip2.Encoding is
               when 6 => Initial_Clustering_by_Rank ((6, 4, 2, 1, 3, 5));
             end case;
 
-          end Initial_Clustering_Statistical_Method;
+          end Initial_Clustering_Ranking_Method;
+
+          --  Original BZip2 method (reconstructed): slice the global frequency
+          --  histogram "horizontally" (on the symbol axis) to create clusters.
+          --  Works better than the ranking in rare cases.
+          --  Since this initial setup is unlikely to appear in the data,
+          --  reclassification rounds are likely to trap the model into a suboptimal
+          --  local optimum in that 258-dimensional space.
+          --
+          procedure Initial_Clustering_Slicing_Method is
+            global_freq, group_freq : Count_Array := (others => 0);
+            symbol : Alphabet_in_Use;
+            total : Natural_32 := 0;
+            cluster : Entropy_Coder_Range := 1;
+            cluster_by_symbol : array (Alphabet_in_Use) of Entropy_Coder_Range;
+            pos_countdown : Natural := group_size;
+            sel_idx : Positive_32 := 1;
+
+            procedure Allocate_Group is
+              score : array (1 .. entropy_coder_count) of Natural_32 := (others => 0);
+              best_score : Integer_32 := -1;
+              best_cluster : Entropy_Coder_Range;
+            begin
+              for s in Alphabet_in_Use loop
+                cluster := cluster_by_symbol (s);
+                score (cluster) := score (cluster) + group_freq (s);
+              end loop;
+              for cl in 1 .. entropy_coder_count loop
+                if score (cluster) > best_score then
+                  best_score := score (cluster);
+                  best_cluster := cl;
+                end if;
+              end loop;
+              selector (sel_idx) := best_cluster;
+            end Allocate_Group;
+
+          begin
+            --  Populate the global frequency stats.
+            --
+            for mtf_idx in 1 .. mtf_last loop
+              symbol := mtf_data (mtf_idx);
+              global_freq (symbol) := global_freq (symbol) + 1;
+            end loop;
+
+            --  Slice the histogram on the symbol axis in n clusters of +/- equal population.
+            --
+            for s in Alphabet_in_Use loop
+              total := total + global_freq (s);
+              if total > mtf_last / Natural_32 (entropy_coder_count) then
+                total := 0;
+                cluster := Integer'Min (entropy_coder_count, cluster + 1);
+              end if;
+              cluster_by_symbol (s) := cluster;
+            end loop;
+
+            --  Allocate each data group to the frequency slice with the most affinity.
+            --
+            for mtf_idx in 1 .. mtf_last loop
+              symbol := mtf_data (mtf_idx);
+              group_freq (symbol) := group_freq (symbol) + 1;
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
+                Allocate_Group;
+                pos_countdown := group_size;
+                sel_idx := sel_idx + 1;
+                group_freq := (others => 0);
+              end if;
+            end loop;
+            if pos_countdown < group_size then
+              --  Finish last, incomplete group.
+              Allocate_Group;
+            end if;
+          end Initial_Clustering_Slicing_Method;
 
           type Cluster_Statistics is array (Entropy_Coder_Range) of Natural;
 
@@ -758,10 +830,16 @@ package body BZip2.Encoding is
             end if;
           end Show_Cluster_Statistics;
 
-          procedure Construct (sample_width : Positive) is
+          use_slicing_method : constant := 0;
+
+          procedure Construct (sample_width : Natural) is
             reclassification_iteration_limit : constant := 10;
           begin
-            Initial_Clustering_Statistical_Method (sample_width);
+            if sample_width = use_slicing_method then
+              Initial_Clustering_Slicing_Method;
+            else
+              Initial_Clustering_Ranking_Method (sample_width);
+            end if;
             Trace ("   Coders:" & entropy_coder_count'Image, detailed);
 
             --  Compute the entropy coders based on the initial
@@ -861,33 +939,33 @@ package body BZip2.Encoding is
           best_cost         : Natural_32 := Natural_32'Last;
           best_ec_count     : Entropy_Coder_Range;
           best_max_code_len : Positive;
-          best_sample_width : Positive;
+          best_sample_width : Natural;
 
           type Value_Array is array (Positive range <>) of Natural;
 
-          function Max_Code_Len_Choices return Value_Array is
+          max_code_len_choices : constant Value_Array :=
           (case option is
              when block_100k => (1 => 16),
              when block_400k => (1 => 16),
              when block_900k => (9, 11, 13, 15, 16, 17));
 
-          function Sample_Width_Choices return Value_Array is
+          sample_width_choices : constant  Value_Array :=
           (case option is
              when block_100k => (1 => 4),
              when block_400k => (1 => 4),
-             when block_900k => (2, 3, 4, 6, 9, 12));
+             when block_900k => (use_slicing_method, 2, 3, 4, 6, 9, 12));
 
         begin
           --  Test some max code lengths (no all, not to make
           --  the run time explode too much):
           --
-          for max_code_len_test of Max_Code_Len_Choices loop
+          for max_code_len_test of max_code_len_choices loop
             max_code_len := max_code_len_test;
             --  Test each possible number of entropy coders:
             for ec_test in 2 .. max_entropy_coders loop
               entropy_coder_count := ec_test;
               --  Test some sample widths:
-              for sample_width_test of Sample_Width_Choices loop
+              for sample_width_test of sample_width_choices loop
                 Construct (sample_width_test);
                 cost := Compute_Total_Cost;
                 if cost < best_cost then
