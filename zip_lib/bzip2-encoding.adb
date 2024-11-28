@@ -38,8 +38,11 @@
 --    - Performance: use Suffix-Array-Induced-Sorting for the BWT.
 --        See https://github.com/dsnet/compress/blob/master/bzip2/bwt.go
 --            https://sites.google.com/site/yuta256/sais
---    - Extra mode: do segment (or not) large blocks. An idea for that:
+--    - Segmentation: do segment (or not) large blocks. An idea for that:
 --        look for the blog post: "Lempel-Ziv factorisation for file type detection"
+--    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in 
+--        7-Zip's BZip2Encoder.cpp .
+--    - Use tasking to parallelize the block compression jobs.
 --    - For squeezing a few more bytes: use the optimal permutation of
 --        entropy coders (already tested but not worth the extra complication).
 
@@ -648,8 +651,9 @@ package body BZip2.Encoding is
           end Define_Simulate_and_Reclassify;
 
           --  Create an initial clustering depending on a ranking computed on a
-          --  subset of the alphabet (RUN_A, RUN_B, low-index MTF values).
+          --  subset of the alphabet (a mix of RUN_A, RUN_B, low-index MTF values).
           --  Look at the first few columns of Output_Frequency_Matrix to find why.
+          --  The initial clustering matches the statistics used to build it. 
           --
           procedure Initial_Clustering_Ranking_Method (sample_width : Positive) is
 
@@ -716,8 +720,6 @@ package body BZip2.Encoding is
             --
             Ranking_Sort (ranking);
 
-            --  Create an initial clustering depending on a mix
-            --  of RUN_A, RUN_B, low-index MTF occurrences.
             --  Example with two clusters:
             --   - Low values (more random data) for the cluster #2.
             --   - High values (more redundant data) for #1.
@@ -734,8 +736,10 @@ package body BZip2.Encoding is
           end Initial_Clustering_Ranking_Method;
 
           --  Original BZip2 method (reconstructed): slice the global frequency
-          --  histogram "horizontally" (on the symbol axis) to create clusters.
-          --  Works better than the ranking in rare cases.
+          --  histogram "horizontally" (on the symbol axis) to create artificial
+          --  truncated histograms and allocate them to the data groups, in order
+          --  to form the initial clusters.
+          --  It works better than the ranking only in rare cases.
           --  Since this initial setup is unlikely to appear in the data,
           --  reclassification rounds are likely to trap the model into a suboptimal
           --  local optimum in that 258-dimensional space.
@@ -743,7 +747,6 @@ package body BZip2.Encoding is
           procedure Initial_Clustering_Slicing_Method is
             global_freq, group_freq : Count_Array := (others => 0);
             symbol : Alphabet_in_Use;
-            total : Natural_32 := 0;
             cluster : Entropy_Coder_Range := 1;
             cluster_by_symbol : array (Alphabet_in_Use) of Entropy_Coder_Range;
             pos_countdown : Natural := group_size;
@@ -767,6 +770,11 @@ package body BZip2.Encoding is
               selector (sel_idx) := best_cluster;
             end Allocate_Group;
 
+            n : Natural;
+            pop_per_cluster : Natural_32;
+            rest : Natural_32;
+            total_in_cluster : Natural_32 := 0;
+
           begin
             --  Populate the global frequency stats.
             --
@@ -777,11 +785,22 @@ package body BZip2.Encoding is
 
             --  Slice the histogram on the symbol axis in n clusters of +/- equal population.
             --
+            n := entropy_coder_count;
+            rest := mtf_last;
+            pop_per_cluster := rest / Natural_32 (n);
             for s in Alphabet_in_Use loop
-              total := total + global_freq (s);
-              if total > mtf_last / Natural_32 (entropy_coder_count) then
-                total := 0;
+              rest := rest - global_freq (s);
+              total_in_cluster := total_in_cluster + global_freq (s);
+              if total_in_cluster >= pop_per_cluster then
+                --  In case clusters are very crowded
+                --  (especially when total_in_cluster >= 2 * pop_per_cluster),
+                --  we need to recompute the population-per-cluster for the
+                --  rest of the symbols, otherwise we will use less than the
+                --  defined amount of clusters (= entropy_coder_count).
+                pop_per_cluster := rest / Natural_32 (n);
+                total_in_cluster := 0;
                 cluster := Integer'Min (entropy_coder_count, cluster + 1);
+                n := Integer'Max (1, n - 1);
               end if;
               cluster_by_symbol (s) := cluster;
             end loop;
@@ -949,7 +968,7 @@ package body BZip2.Encoding is
              when block_400k => (1 => 16),
              when block_900k => (9, 11, 13, 15, 16, 17));
 
-          sample_width_choices : constant  Value_Array :=
+          sample_width_choices : constant Value_Array :=
           (case option is
              when block_100k => (1 => 4),
              when block_400k => (1 => 4),
