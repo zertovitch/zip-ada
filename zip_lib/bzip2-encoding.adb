@@ -1209,7 +1209,7 @@ package body BZip2.Encoding is
         --  if we can balance the last two blocks.
         --  NB: a more sophisticated balancing using (1.0 - small_block_prop_max)
         --  did not deliver convincing results.
-        Encode_Block (block_capacity / 2);
+        Encode_Block (Natural_32 (stream_rest) / 2);
       else
         Encode_Block (block_capacity);
       end if;
