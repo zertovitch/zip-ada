@@ -31,12 +31,18 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
+with Interfaces;
+
 package BZip2.Encoding is
 
   type Compression_Option is
     (block_100k,
      block_400k,
      block_900k);
+
+  subtype Stream_Size_Type is Interfaces.Integer_64;
+
+  unknown_size : constant := -1;
 
   generic
     --  Input of data:
@@ -45,6 +51,8 @@ package BZip2.Encoding is
     --  Output of LZMA-compressed data:
     with procedure Write_Byte (b : Byte);
     --
-  procedure Encode (option : Compression_Option := block_900k);
+  procedure Encode
+    (option    : Compression_Option := block_900k;
+     size_hint : Stream_Size_Type   := unknown_size);
 
 end BZip2.Encoding;

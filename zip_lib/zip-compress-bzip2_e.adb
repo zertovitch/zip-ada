@@ -118,11 +118,16 @@ begin
     if input_size_known then
       feedback_milestone := Zip_Streams.ZS_Size_Type (input_size / feedback_steps);
     end if;
+
     BZip2_Encode
-      (case method is
+      ((case method is
          when BZip2_1 => block_100k,
          when BZip2_2 => block_400k,
-         when BZip2_3 => block_900k);
+         when BZip2_3 => block_900k),
+       (if input_size_known then
+          BZip2.Encoding.Stream_Size_Type (input_size) else
+          BZip2.Encoding.unknown_size));
+
     Flush_Output;
     compression_ok := True;
   exception

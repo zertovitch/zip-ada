@@ -55,7 +55,10 @@ with Ada.Containers.Generic_Constrained_Array_Sort,
 
 package body BZip2.Encoding is
 
-  procedure Encode (option : Compression_Option := block_900k) is
+  procedure Encode
+    (option    : Compression_Option := block_900k;
+     size_hint : Stream_Size_Type   := unknown_size)
+  is
     use Interfaces;
 
     subtype Bit_Pos_Type is Natural range 0 .. 7;
@@ -113,6 +116,7 @@ package body BZip2.Encoding is
     combined_crc : Unsigned_32 := 0;
 
     block_counter : Natural := 0;
+    stream_rest : Stream_Size_Type := size_hint;
 
     --  Each block is limited either by the data available
     --  (More_Bytes = False) or by the block capacity.
@@ -120,7 +124,7 @@ package body BZip2.Encoding is
     --  that we can theoretically go on with the next step,
     --  perhaps at the price of using more memory.
 
-    procedure Encode_Block is
+    procedure Encode_Block (dyn_block_capacity : Natural_32) is
 
       quiet          : constant := 0;
       headlines      : constant := 1;
@@ -191,9 +195,12 @@ package body BZip2.Encoding is
         start : Boolean := True;
       begin
         CRC.Init (block_crc);
-        while block_size + 5 < block_capacity and then More_Bytes loop
+        while block_size + 5 < dyn_block_capacity and then More_Bytes loop
           --  ^ The +5 is because sometimes a pack of max 5 bytes is sent by Store_Run.
           b := Read_Byte;
+          if stream_rest /= unknown_size then
+            stream_rest := stream_rest - 1;
+          end if;
           CRC.Update (block_crc, b);
           if start or else b /= b_prev then
             --  Startup or Run break:
@@ -1186,11 +1193,26 @@ package body BZip2.Encoding is
       end if;
     end Write_Stream_Footer;
 
+    --  Vertically challenged blocks.
+    small_block_prop_min : constant := 0.05;  --  Below that, not worth the trouble.
+    small_block_prop_max : constant := 0.30;  --  Above that, not worth the trouble either.
+
   begin
     Write_Stream_Header;
     data := new Buffer (1 .. block_capacity);
     loop
-      Encode_Block;
+      if Float (stream_rest) in
+        Float (block_capacity) * (1.0 + small_block_prop_min) ..
+        Float (block_capacity) * (1.0 + small_block_prop_max)
+      then
+        --  Avoid encoding the last block as a "too" small one (poorer compression)
+        --  if we can balance the last two blocks.
+        --  NB: a more sophisticated balancing using (1.0 - small_block_prop_max)
+        --  did not deliver convincing results.
+        Encode_Block (block_capacity / 2);
+      else
+        Encode_Block (block_capacity);
+      end if;
       exit when not More_Bytes;
     end loop;
     Unchecked_Free (data);
