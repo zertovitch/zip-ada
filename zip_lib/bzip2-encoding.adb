@@ -40,7 +40,7 @@
 --            https://sites.google.com/site/yuta256/sais
 --    - Segmentation: do segment (or not) large blocks. An idea for that:
 --        look for the blog post: "Lempel-Ziv factorisation for file type detection"
---    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in 
+--    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in
 --        7-Zip's BZip2Encoder.cpp .
 --    - Use tasking to parallelize the block compression jobs.
 --    - For squeezing a few more bytes: use the optimal permutation of
@@ -653,7 +653,7 @@ package body BZip2.Encoding is
           --  Create an initial clustering depending on a ranking computed on a
           --  subset of the alphabet (a mix of RUN_A, RUN_B, low-index MTF values).
           --  Look at the first few columns of Output_Frequency_Matrix to find why.
-          --  The initial clustering matches the statistics used to build it. 
+          --  The initial clustering matches the statistics used to build it.
           --
           procedure Initial_Clustering_Ranking_Method (sample_width : Positive) is
 

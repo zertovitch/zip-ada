@@ -704,7 +704,11 @@ package body Rezip_lib is
       type Approach_Filtering is array (Approach) of Boolean;
       consider_a_priori : Approach_Filtering;
       --
-      lightred : constant String := "#f43048";
+      lightred    : constant String := "#ff8696";
+      lightorange : constant String := "#ffe0b0";
+
+      color_for_original : constant String := lightorange;
+      color_for_winner   : constant String := "lightgreen";
 
       use Ada.Float_Text_IO, Ada.Integer_Text_IO;
 
@@ -717,23 +721,31 @@ package body Rezip_lib is
         consider : Approach_Filtering;
         gain, gain_a : Integer_64;
         --
-        procedure Winner_color is
+        procedure Winner_Color is
         begin
           if e.info (choice).size < e.info (original).size then
-            Put (summary, "<td bgcolor=lightgreen><b>");
+            Put (summary, "<td bgcolor=" & color_for_winner & "><b>");
             --  We were able to reduce the size. :-)
           elsif e.info (choice).size = e.info (original).size then
-            Put (summary, "<td><b>");
+            if choice = original then
+              Put (summary, "<td bgcolor=" & color_for_original & "><b>");
+            else
+              --  Something else with exactly the same size as the
+              --  original was chosen.
+              --  Happens only if we force another format.
+              Put (summary, "<td bgcolor=lightblue><b>");
+            end if;
             --  Original was already the best.
           else
             Put (summary, "<td bgcolor=" & lightred & "><b>");
             --  Forced to a format with a less efficient compression. :-(
           end if;
-        end Winner_color;
+        end Winner_Color;
         --
         use Zip;
         needs_zip64 : Boolean;
         fh_extra : Zip.Headers.Local_File_Header_Extension;
+        ex_aequo : Boolean;
       begin
         --  Start with the set of approaches that has been decided for all entries.
         consider := consider_a_priori;
@@ -911,37 +923,53 @@ package body Rezip_lib is
           Image_1000 (uncomp_size) & "</td>");
         for a in Approach loop
           if consider_a_priori (a) then
+            ex_aequo := e.info (a).size = e.info (choice).size;
             if not consider (a) then
               Put (summary, "<td bgcolor=lightgray>skipped");
             elsif a = choice then
-              Winner_color;
-            elsif e.info (a).size = e.info (choice).size then -- ex aequo
+              Winner_Color;
+            elsif ex_aequo then
               Put (summary, "<td bgcolor=lightblue><b>");
+            elsif a = original then
+              Put (summary, "<td bgcolor=" & color_for_original & '>');
             else
               Put (summary, "<td>");
             end if;
             if consider (a) then
               Put (summary, Image_1000 (e.info (a).size));
             end if;
-            if choice = a then
+            if ex_aequo then
               Put (summary, "</b>");
             end if;
             Put (summary, "</td>");
           end if;
         end loop;
-        --  Recall winner approach, method and size:
-        Put (summary, "<td>" & Img (choice, html => True) & "</td>");
-        Put (summary,
-          "<td bgcolor=#fafa64>" &
-          Zip.Image (Zip.Method_from_Code (e.info (choice).zfm)) &
-          "</td>"
-        );
-        Put (summary,
-          "<td>" &
-          Zip.Image (Zip.Method_from_Code (e.info (original).zfm)) &
-          "</td>"
-        );
-        Winner_color;
+        --  Recall winner approach:
+        Put
+          (summary,
+           "<td" &
+           (if choice = original then " bgcolor=" & color_for_original else "") & '>' &
+           Img (choice, html => True) & "</td>");
+        --  Recall winner format:
+        Put
+          (summary,
+           "<td" &
+           (if choice = original then
+             " bgcolor=" & color_for_original
+            elsif e.info (choice).size < e.info (original).size then
+              " bgcolor=" & color_for_winner
+            elsif e.info (choice).size > e.info (original).size then
+              " bgcolor=" & lightred
+            else
+              "") &
+           '>' & Zip.Image (Zip.Method_from_Code (e.info (choice).zfm)) & "</td>");
+        --  Recall original format:
+        Put
+          (summary,
+           "<td bgcolor=" & color_for_original & '>' &
+           Zip.Image (Zip.Method_from_Code (e.info (original).zfm)) & "</td>");
+        --  Recall winner size:
+        Winner_Color;
         Put (summary, Image_1000 (e.info (choice).size));
         Put (summary, "</b></td><td>");
         if e.info (original).size > 0 then
@@ -1014,6 +1042,9 @@ package body Rezip_lib is
         v : Float;
         sr, sg, sb : String (1 .. 10);
       begin
+        if a = original then
+          return color_for_original;
+        end if;
         if total_choice.saved > 0 and
           --  with options like -defl ot -fast_dec, we may have
           --  negative values or other strange things:
@@ -1028,6 +1059,7 @@ package body Rezip_lib is
         sb := sr;
         Put (sg, 512 + Integer (238.0 + 17.0 * (1.0 - v)), 16);
         return
+          '#' &
           sr (sr'Last - 2 .. sr'Last - 1) &
           sg (sg'Last - 2 .. sg'Last - 1) &
           sb (sb'Last - 2 .. sb'Last - 1);
@@ -1098,7 +1130,11 @@ package body Rezip_lib is
           if a in External then
             ext (a).expanded_options := ext (a).options;
           end if;
-          Put (summary, "<td valign=top class=""td_approach"">" & Img (a, html => True) & "</td>");
+          Put
+            (summary,
+             "<td valign=top class=""td_approach""" &
+             (if a = original then " bgcolor=" & color_for_original else "") & '>' &
+             Img (a, html => True) & "</td>");
         end if;
       end loop;
       Put_Line (summary, "</tr>");
@@ -1244,17 +1280,15 @@ package body Rezip_lib is
       Put (summary, "<tr><td></td><td><b>T<small>OTAL FILES (of chosen optimal approach)</small></b></td>");
       for a in Approach loop
         if consider_a_priori (a) then
-          Put (summary,
-            "<td bgcolor=#" & Webcolor (a) & ">" &
-            Integer'Image (total (a).count) & "</td>"
-          );
+          Put (summary, "<td bgcolor=" & Webcolor (a) & '>' & total (a).count'Image & "</td>");
         end if;
       end loop;
-      Put (summary,
-        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Integer'Image (total_choice.count) &
-        "</b></td>" &
-        "<td>"
-      );
+      Put
+        (summary,
+         "<td></td><td></td><td></td><td bgcolor=" & color_for_winner & "><b>" &
+         total_choice.count'Image &
+         "</b></td>" &
+         "<td>");
       Put_Line (summary, "</td><td></td><td></td><td></td></tr>");
       --
       --  Report total compressed bytes.
@@ -1262,16 +1296,17 @@ package body Rezip_lib is
       Put (summary, "<tr><td></td><td><b>T<small>OTAL COMPRESSED BYTES</small></b></td>");
       for a in Approach loop
         if consider_a_priori (a) then
-          Put (summary,
-            "<td bgcolor=#" & Webcolor (a) & ">" &
-            Image_1000 (total (a).size) & "</td>"
-          );
+          Put
+            (summary,
+             "<td bgcolor=" & Webcolor (a) & ">" &
+             Image_1000 (total (a).size) & "</td>");
         end if;
       end loop;
-      Put (summary,
-        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" & Image_1000 (total_choice.size) &
-        "</b></td><td>"
-      );
+      Put
+        (summary,
+         "<td></td><td></td><td></td><td bgcolor=" & color_for_winner & "><b>" &
+         Image_1000 (total_choice.size) &
+         "</b></td><td>");
       if total (original).size > 0 then
         Put (summary,
           100.0 * Float (total_choice.size) / Float (total (original).size),
@@ -1294,19 +1329,25 @@ package body Rezip_lib is
       Put (summary, "<tr><td></td><td><b>T<small>OTAL BYTES SAVED (by chosen optimal approach)</small></b></td>");
       for a in Approach loop
         if consider_a_priori (a) then
-          Put (summary, "<td bgcolor=#" & Webcolor (a) & ">" & Image_1000 (total (a).saved) & "</td>");
+          Put (summary, "<td bgcolor=" & Webcolor (a) & '>' & Image_1000 (total (a).saved) & "</td>");
         end if;
       end loop;
-      Put (summary,
-        "<td></td><td></td><td></td><td bgcolor=lightgreen><b>" &
-        Image_1000 (total_choice.saved) & "</b></td>" &
-        "<td>"
-      );
+      Put
+        (summary,
+         "<td></td><td></td><td></td><td" &
+         (if total_choice.saved > 0 then
+            " bgcolor=" & color_for_winner
+          elsif total_choice.saved < 0 then
+            " bgcolor=" & lightred
+          else
+            "") &
+         "><b>" & Image_1000 (total_choice.saved) & "</b></td>" &
+         "<td>");
       if total (original).size > 0 then
-        Put (summary,
-          100.0 * Float (total_choice.saved) / Float (total (original).size),
-          3, 2, 0
-        );
+        Put
+          (summary,
+           100.0 * Float (total_choice.saved) / Float (total (original).size),
+           3, 2, 0);
         Put (summary, "%");
       end if;
       Put (summary, "</td><td>");
@@ -1329,13 +1370,13 @@ package body Rezip_lib is
         if consider_a_priori (a) then
           Put
             (summary,
-             "<td bgcolor=#" & Webcolor (a) & ">" &
+             "<td bgcolor=" & Webcolor (a) & ">" &
              Image_1000 (total (a).saved_ex_aequo) & "</td>");
         end if;
       end loop;
       Put (summary, "<td></td><td></td><td></td><td></td><td></td><td>");
       Put_Line (summary, "</td><td></td><td></td></tr>");
-      Put_Line (summary, "</table></div><br><br>");
+      Put_Line (summary, "</table></div><div><br><br>");
       Put_Line (summary, "<dt>Options used for ReZip</dt>");
       Put_Line (summary, "<dd>Randomized_stable =" & Integer'Image (randomized_stable) & "<br>");
       Put_Line (summary, "    Formats allowed:<br><table border=1 cellpadding=1 cellspacing=1>");
@@ -1345,7 +1386,7 @@ package body Rezip_lib is
           Boolean'Image (format_choice (f)) & "</td></tr>");
       end loop;
       Put_Line (summary, "    </table>");
-      Put_Line (summary, "</dd>");
+      Put_Line (summary, "</dd></div>");
       T1 := Clock;
       repack_duration := T1 - T0;
       Put (summary, "Time elapsed : ");
