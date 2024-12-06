@@ -1,6 +1,8 @@
 with Ada.Containers.Generic_Constrained_Array_Sort;
 with Ada.Unchecked_Deallocation;
 
+with Suffix_Arrays;
+
 package body BWT is
 
   --  "Dumb" encoder corresponding to the academic representation
@@ -108,15 +110,67 @@ package body BWT is
     message := new_message;
   end Encode_Smart;
 
-  procedure Encode (message : in out String; index : out Positive; smart : Boolean := False) is
+  procedure Encode_Smarter (message : in out String; index : out Positive) is
+    type Byte is mod 2 ** 8;
+    type Byte_Array is array (Integer range <>) of Byte;
+
+    package Byte_SA is new
+      Suffix_Arrays
+        (Symbol => Byte, Count_Type => Integer, Symbol_Array => Byte_Array);
+
+    --  We duplicate the message in order to simulate its periodicity.
+    es : Byte_Array (1 .. 2 * message'Length);
+    sa : Byte_SA.Sa_Type (es'Range);
+
+    j, i_first_copy : Integer;
+
+    new_message : String (message'Range);
+
+  begin
+    j := 0;
+    for i in message'Range loop
+      j := j + 1;
+      es (j) := Character'Pos (message (i));
+      --  Duplicate / simulate wrap-around, periodic message for BWT:
+      es (message'Length + j) := es (j);
+    end loop;
+    --
+    Byte_SA.Build_Sa (es, sa);
+    --
+    i_first_copy := 0;
+    for i in sa'Range loop
+      j := Byte_SA.Suffix (sa, i);
+      if j <= message'Length then
+        --  Consider only suffixes starting on the
+        --  first copy of the message.
+        i_first_copy := i_first_copy + 1;
+        --  Now, we jump on the last column of the BWT matrix, from the first column.
+        if j = 1 then
+          --  The column index points to the first element;
+          --  The suffix truncated to message'Length is the whole, original message.
+          j := message'Length;
+          index := i_first_copy;  --  Remember the row index.
+        else
+          j := j - 1;
+        end if;
+        --  BWT-transformed message.
+        new_message (i_first_copy) := message (j);
+      end if;
+    end loop;
+    message := new_message;
+  end Encode_Smarter;
+
+  procedure Encode (message : in out String; index : out Positive; method : Encoding_Method) is
   begin
     if message'Length = 0 then
       index := 1;
       return;
-    elsif smart then
-      Encode_Smart (message, index);
     else
-      Encode_Dumb (message, index);
+      case method is
+        when matrix_sorting => Encode_Dumb (message, index);
+        when index_sorting  => Encode_Smart (message, index);
+        when suffix_array   => Encode_Smarter (message, index);
+      end case;
     end if;
   end Encode;
 

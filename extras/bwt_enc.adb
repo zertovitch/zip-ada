@@ -5,14 +5,16 @@
 
 with BWT;
 
-with Ada.Text_IO,
-     Ada.Streams.Stream_IO,
-     Ada.Command_Line;
+with Ada.Calendar,
+     Ada.Command_Line,
+     Ada.Text_IO,
+     Ada.Streams.Stream_IO;
 
 procedure BWT_Enc is
   use Ada.Streams.Stream_IO;
   fi, fo : File_Type;
-  use Ada.Command_Line, Ada.Text_IO;
+  use Ada.Calendar, Ada.Command_Line, Ada.Text_IO;
+  t0, t1 : Time;
 begin
   if Argument_Count < 2 then
     Put_Line ("Syntax: bwt_enc infile outfile");
@@ -25,9 +27,12 @@ begin
     idx : Positive;
   begin
     String'Read (Stream (fi), msg);
-    BWT.Encode (msg, idx, smart => True);
+    t0 := Clock;
+    BWT.Encode (msg, idx, BWT.suffix_array);
+    t1 := Clock;
     String'Write (Stream (fo), msg);
     Put_Line (Current_Error, "Index: " & idx'Image);
+    Put_Line (Current_Error, "Encoding time:" & Duration'Image (t1 - t0));
   end;
   Close (fi);
   Close (fo);
