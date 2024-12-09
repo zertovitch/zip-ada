@@ -164,20 +164,20 @@ project ZipAda is
       for Default_Switches ("ada") use ("-Es");
    end Binder;
 
-   Common_Linker_Options := ("-g");
+   Linker_Common_Options := ("-g");
 
    case Zip_OS is
      when "Win32" | "Win64" =>
-       Common_Linker_Options :=
-         Common_Linker_Options & ("-Xlinker", "--stack=0x2000000,0x20000");
+       Linker_Common_Options :=
+         Linker_Common_Options & ("-Xlinker", "--stack=0x2000000,0x20000");
      when others =>
        null;
    end case;
 
    case Zip_OS is
      when "Win64" =>
-       Common_Linker_Options :=
-         Common_Linker_Options & ("extras/zip_icons.rbj");
+       Linker_Common_Options :=
+         Linker_Common_Options & ("extras/zip_icons.rbj");
      when others =>
        null;
    end case;
@@ -187,20 +187,20 @@ project ZipAda is
          when "Fast" | "Fast_Unchecked" =>
             case Zip_OS is
                when "MacOSX" =>
-                  for Default_Switches ("ada") use ("-Wl,-dead_strip")   & Common_Linker_Options;
+                  for Default_Switches ("ada") use ("-Wl,-dead_strip")   & Linker_Common_Options;
                when others =>
-                  for Default_Switches ("ada") use ("-Wl,--gc-sections") & Common_Linker_Options;
+                  for Default_Switches ("ada") use ("-Wl,--gc-sections") & Linker_Common_Options;
             end case;
          when "Small" =>
             case Zip_OS is
                when "MacOSX" =>
-                  for Default_Switches ("ada") use ("-s", "-Wl,-dead_strip")   & Common_Linker_Options;
+                  for Default_Switches ("ada") use ("-s", "-Wl,-dead_strip")   & Linker_Common_Options;
                when others =>
-                  for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections") & Common_Linker_Options;
+                  for Default_Switches ("ada") use ("-s", "-Wl,--gc-sections") & Linker_Common_Options;
             end case;
-         when "Profiling" => for Default_Switches ("ada") use ("-pg")                     & Common_Linker_Options;
-         when "Coverage"  => for Default_Switches ("ada") use ("-fprofile-arcs")          & Common_Linker_Options;
-         when others      => for Default_Switches ("ada") use                               Common_Linker_Options;
+         when "Profiling" => for Default_Switches ("ada") use ("-pg")                     & Linker_Common_Options;
+         when "Coverage"  => for Default_Switches ("ada") use ("-fprofile-arcs")          & Linker_Common_Options;
+         when others      => for Default_Switches ("ada") use                               Linker_Common_Options;
       end case;
    end Linker;
 

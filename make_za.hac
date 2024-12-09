@@ -47,7 +47,9 @@ begin
   end if;
   case k is
     when Windoze =>
-      gprbuild_options := gprbuild_options & " -XZip_OS=Win64";
+      if not Ends_With (gprbuild_options, "Profiling") then
+        gprbuild_options := gprbuild_options & " -XZip_OS=Win64";
+      end if;
     when others =>
       null;
   end case;
