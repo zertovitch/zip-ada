@@ -6,7 +6,7 @@
 --  Found @ https://www.dcs.gla.ac.uk/research/algorithms/sbst/software/Ada95/sa/src/
 --  in December 2024.
 --  Read also:
---    https://www.dcs.gla.ac.uk/research/algorithms/sbst/software/Ada95/sa/READ_ME.htm 
+--    https://www.dcs.gla.ac.uk/research/algorithms/sbst/software/Ada95/sa/READ_ME.htm
 
 --  Minor modifications (GdM 2024):
 --    -  Abstracted the string type through generics.

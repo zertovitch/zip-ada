@@ -242,8 +242,8 @@ package body BZip2.Encoding is
           l, r : Byte;
         begin
           pragma Assert (data'First = 1);
-          il := 1 + ((-left)  mod block_size);
-          ir := 1 + ((-right) mod block_size);
+          il := 1 + (if left  = 0 then 0 else block_size - left);
+          ir := 1 + (if right = 0 then 0 else block_size - right);
           for i in Offset_Range loop
             l := data (il);
             r := data (ir);
