@@ -349,17 +349,15 @@ package body BZip2.Encoding is
         run : Natural_32 := 0;
 
         procedure Store_Run with Inline is
+          rc : Unsigned_32;
         begin
           if run > 0 then
-            declare
-              rc : Unsigned_32 := Unsigned_32 (run + 1);
-            begin
-              loop
-                Store (Max_Alphabet (rc and 1));  --  Emit run_a or run_b.
-                rc := Shift_Right (rc, 1);
-                exit when rc < 2;
-              end loop;
-            end;
+            rc := Unsigned_32 (run + 1);
+            loop
+              Store (Max_Alphabet (rc and 1));  --  Emit run_a or run_b.
+              rc := Shift_Right (rc, 1);
+              exit when rc < 2;
+            end loop;
             run := 0;
           end if;
         end Store_Run;
@@ -659,8 +657,9 @@ package body BZip2.Encoding is
 
           --  Create an initial clustering depending on a ranking computed on a
           --  subset of the alphabet (a mix of RUN_A, RUN_B, low-index MTF values).
-          --  Look at the first few columns of Output_Frequency_Matrix to find why.
-          --  The initial clustering matches the statistics used to build it.
+          --  Look at the first few columns of some output of Output_Frequency_Matrix
+          --  to find why. This initial clustering method matches the statistics
+          --  used to build it.
           --
           procedure Initial_Clustering_Ranking_Method (sample_width : Positive) is
 
