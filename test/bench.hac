@@ -101,8 +101,8 @@ procedure Bench is
     T1 := Clock;
     Shell_Execute (command);
     T2 := Clock;
-    Put_Line ("____");
-    Put_Line ("Time elapsed: " & Image (T2 - T1) & " second(s)");
+    Put_Line ("Command . . . . . . : " & command);
+    Put_Line ("Time elapsed  . . . : " & Image (T2 - T1) & " second(s)");
     New_Line;
   end Timing;
 
@@ -142,8 +142,8 @@ begin
     Shell_Execute (+"advzip -a -4 ../bench_" & bn & "_zopfli.zip *");
   end if;
   if cat_set (BZip2_External) then
-    Timing (+"zip -9 -Z bzip2                          ../bench_" & bn & "_iz_bzip2_9 *");
-    Timing (+"7z a -tzip -mmt1 -mm=BZip2:d=900k:pass=7 ../bench_" & bn & "_7z_bzip2_9 *");
+    Timing (+"zip -9 -Z bzip2                    ../bench_" & bn & "_iz_bzip2_9 *");
+    Timing (+"7z a -tzip -mm=BZip2:d=900k:pass=7 ../bench_" & bn & "_7z_bzip2_9 *");
   end if;
   if cat_set (BZip2) then
     Shell_Execute (za & " -eb1 ../bench_" & bn & "_bzip2_1 *");

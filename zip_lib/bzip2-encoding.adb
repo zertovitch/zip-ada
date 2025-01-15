@@ -972,13 +972,23 @@ package body BZip2.Encoding is
           (case option is
              when block_100k => (1 => 16),
              when block_400k => (1 => 16),
-             when block_900k => (9, 11, 13, 15, 16, 17));
+             when block_900k => (15, 17));
+
+          coder_choices : constant Value_Array :=
+          (case option is
+             when block_100k => (1 => 6),
+             when block_400k => (1 => 6),
+             when block_900k => (2, 4, 6));
 
           sample_width_choices : constant Value_Array :=
           (case option is
              when block_100k => (1 => 4),
              when block_400k => (1 => 4),
-             when block_900k => (use_slicing_method, 2, 3, 4, 6, 9, 12));
+             when block_900k => (3, 4));
+
+          --  In a former version we had 210 combinations of
+          --  brute-force choices for option block_900k, making
+          --  that option run 13x longer that with only 1 combination!
 
         begin
           --  Test some max code lengths (no all, not to make
@@ -987,7 +997,7 @@ package body BZip2.Encoding is
           for max_code_len_test of max_code_len_choices loop
             max_code_len := max_code_len_test;
             --  Test each possible number of entropy coders:
-            for ec_test in 2 .. max_entropy_coders loop
+            for ec_test of coder_choices loop
               entropy_coder_count := ec_test;
               --  Test some sample widths:
               for sample_width_test of sample_width_choices loop
