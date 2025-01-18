@@ -7,7 +7,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2024 Gautier de Montmollin
+--  Copyright (c) 2024 .. 2025 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -968,6 +968,10 @@ package body BZip2.Encoding is
 
           type Value_Array is array (Positive range <>) of Natural;
 
+          -----------------------------------------------------------------
+          --  Choices for brute-force search of the best entropy coding  --
+          -----------------------------------------------------------------
+
           max_code_len_choices : constant Value_Array :=
           (case option is
              when block_100k => (1 => 16),
@@ -986,20 +990,19 @@ package body BZip2.Encoding is
              when block_400k => (1 => 4),
              when block_900k => (3, 4));
 
-          --  In a former version we had 210 combinations of
+          --  In a former version, we had 210 combinations of
           --  brute-force choices for option block_900k, making
           --  that option run 13x longer that with only 1 combination!
+          --  See also timings in doc/za_work.xls, sheet BZip2.
 
         begin
-          --  Test some max code lengths (no all, not to make
-          --  the run time explode too much):
-          --
+          --  Brute-force: test some max code lengths:
           for max_code_len_test of max_code_len_choices loop
             max_code_len := max_code_len_test;
-            --  Test each possible number of entropy coders:
+            --  Brute-force: test some amounts of entropy coders:
             for ec_test of coder_choices loop
               entropy_coder_count := ec_test;
-              --  Test some sample widths:
+              --  Brute-force: test some sample widths:
               for sample_width_test of sample_width_choices loop
                 Construct (sample_width_test);
                 cost := Compute_Total_Cost;
@@ -1012,6 +1015,7 @@ package body BZip2.Encoding is
               end loop;
             end loop;
           end loop;
+
           max_code_len        := best_max_code_len;
           entropy_coder_count := best_ec_count;
           Trace
