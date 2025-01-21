@@ -378,7 +378,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String := "61, preview 1";
-  reference : constant String := "15-Jan-2025";
+  reference : constant String := "21-Jan-2025";
   --  Hopefully the latest version can be acquired from one of those URLs:
   web       : constant String := "https://unzip-ada.sourceforge.io/";
   web2      : constant String := "https://sourceforge.net/projects/unzip-ada/";

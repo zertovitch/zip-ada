@@ -111,7 +111,7 @@ package body BZip2.Encoding is
 
     procedure Unchecked_Free is new Ada.Unchecked_Deallocation (Buffer, Buffer_Access);
 
-    data : Buffer_Access;
+    data : Buffer_Access := new Buffer (1 .. block_capacity);
 
     combined_crc : Unsigned_32 := 0;
 
@@ -310,6 +310,8 @@ package body BZip2.Encoding is
       type MTF_Array is array (Positive_32 range <>) of Max_Alphabet;
       type MTF_Array_Access is access MTF_Array;
 
+      procedure Unchecked_Free is new Ada.Unchecked_Deallocation (MTF_Array, MTF_Array_Access);
+
       mtf_data : MTF_Array_Access;
       mtf_last : Natural_32 := 0;
 
@@ -330,10 +332,11 @@ package body BZip2.Encoding is
               normal_symbols_in_use := normal_symbols_in_use + 1;
             end if;
           end loop;
+          
           last_symbol_in_use := normal_symbols_in_use + 3 - 1 - 1;
-          --  + 3 : the special symbols RUN_A, RUN_B, EOB
-          --  - 1 : value 0 has no symbol (RUN_A and RUN_B are used for the runs of 0)
-          --  - 1 : zero-based
+          --  ^ + 3 : the special symbols RUN_A, RUN_B, EOB
+          --    - 1 : value 0 has no symbol (RUN_A and RUN_B are used for the runs of 0)
+          --    - 1 : zero-based
 
           EOB := last_symbol_in_use;
 
@@ -352,12 +355,15 @@ package body BZip2.Encoding is
           rc : Unsigned_32;
         begin
           if run > 0 then
+            --  Output a binary representation of `run`
+            --  using RUN_A for 0's RUN_B for 1's.
             rc := Unsigned_32 (run + 1);
             loop
-              Store (Max_Alphabet (rc and 1));  --  Emit run_a or run_b.
+              Store (Max_Alphabet (rc and 1));
               rc := Shift_Right (rc, 1);
               exit when rc < 2;
             end loop;
+            --  Reset the run count.
             run := 0;
           end if;
         end Store_Run;
@@ -365,11 +371,11 @@ package body BZip2.Encoding is
         mtf_symbol : array (0 .. 255) of Byte;
         idx : Natural;
         bt_seq : Byte;
+        
       begin
         Prepare_Mapping;
 
         mtf_data := new MTF_Array (1 .. 1 + 2 * block_size);
-        --  ^ Check real worst-case capacity !!
 
         for i in mtf_symbol'Range loop
           mtf_symbol (i) := Byte (i);
@@ -401,7 +407,7 @@ package body BZip2.Encoding is
             run := run + 1;
           else
             Store_Run;
-            Store (1 + idx);  --  Value stored is >= 2.
+            Store (1 + idx);  --  Value stored is >= 2. Values 0 and 1 are RUN_A, RUN_B.
           end if;
 
         end loop Big_MTF_RLE_2_Loop;
@@ -1171,6 +1177,8 @@ package body BZip2.Encoding is
             sel_idx := sel_idx + 1;
           end if;
         end loop;
+
+        Unchecked_Free (mtf_data);
       end Entropy_Output;
 
     begin
@@ -1212,7 +1220,6 @@ package body BZip2.Encoding is
 
   begin
     Write_Stream_Header;
-    data := new Buffer (1 .. block_capacity);
     loop
       if Float (stream_rest) in
         Float (block_capacity) * (1.0 + small_block_prop_min) ..
