@@ -106,12 +106,18 @@ package body BZip2.Encoding is
 
     block_capacity : constant Natural_32 := sub_block_size * level;
 
+    --  We use in this package 4 large heap-allocated arrays.
+    --  It is possible to use Ada.Containers.Vectors but the run time
+    --  is longer, possibly due to indirect access to data and various
+    --  checks. For instance, replacing Buffer below with a Vector makes
+    --  the encoding ~26% slower.
+
     type Buffer is array (Natural_32 range <>) of Byte;
     type Buffer_Access is access Buffer;
 
     procedure Unchecked_Free is new Ada.Unchecked_Deallocation (Buffer, Buffer_Access);
 
-    data : Buffer_Access := new Buffer (1 .. block_capacity);
+    raw_data : Buffer_Access := new Buffer (1 .. block_capacity);
 
     combined_crc : Unsigned_32 := 0;
 
@@ -172,7 +178,7 @@ package body BZip2.Encoding is
         procedure Store (x : Byte) with Inline is
         begin
           block_size := block_size + 1;
-          data (block_size) := x;
+          raw_data (block_size) := x;
           in_use (x) := True;
         end Store;
 
@@ -216,7 +222,7 @@ package body BZip2.Encoding is
         end loop;
         Store_Run;
         if verbosity_level >= super_detailed then
-          Trace ("RLE_1: ", data (1 .. block_size), super_detailed);
+          Trace ("RLE_1: ", raw_data (1 .. block_size), super_detailed);
         end if;
       end RLE_1;
 
@@ -241,12 +247,12 @@ package body BZip2.Encoding is
           il, ir : Integer_32;
           l, r : Byte;
         begin
-          pragma Assert (data'First = 1);
+          pragma Assert (raw_data'First = 1);
           il := 1 + (if left  = 0 then 0 else block_size - left);
           ir := 1 + (if right = 0 then 0 else block_size - right);
           for i in Offset_Range loop
-            l := data (il);
-            r := data (ir);
+            l := raw_data (il);
+            r := raw_data (ir);
             if l < r then
               return True;
             elsif l > r then
@@ -283,7 +289,7 @@ package body BZip2.Encoding is
         bwt_data := new Buffer (1 .. block_size);
         for i in Offset_Range loop
           --  Copy last column of the matrix into transformed message:
-          bwt_data (1 + i) := data (1 + (block_size - 1 - offset (i)) mod block_size);
+          bwt_data (1 + i) := raw_data (1 + (block_size - 1 - offset (i)) mod block_size);
           if offset (i) = 0 then
             --  Found the row index of the original message.
             bwt_index := i;
@@ -299,6 +305,10 @@ package body BZip2.Encoding is
           end if;
         end if;
         Unchecked_Free (offset);
+      exception
+        when others =>
+          Unchecked_Free (offset);
+          raise;
       end BWT;
 
       ----------------------------------------------------
@@ -332,7 +342,7 @@ package body BZip2.Encoding is
               normal_symbols_in_use := normal_symbols_in_use + 1;
             end if;
           end loop;
-          
+
           last_symbol_in_use := normal_symbols_in_use + 3 - 1 - 1;
           --  ^ + 3 : the special symbols RUN_A, RUN_B, EOB
           --    - 1 : value 0 has no symbol (RUN_A and RUN_B are used for the runs of 0)
@@ -371,7 +381,7 @@ package body BZip2.Encoding is
         mtf_symbol : array (0 .. 255) of Byte;
         idx : Natural;
         bt_seq : Byte;
-        
+
       begin
         Prepare_Mapping;
 
@@ -1196,6 +1206,11 @@ package body BZip2.Encoding is
       Put_Block_Trees_Descriptors;
       Entropy_Output;
 
+    exception
+      when others =>
+        Unchecked_Free (bwt_data);
+        Unchecked_Free (mtf_data);
+        raise;
     end Encode_Block;
 
     procedure Write_Stream_Header is
@@ -1235,8 +1250,12 @@ package body BZip2.Encoding is
       end if;
       exit when not More_Bytes;
     end loop;
-    Unchecked_Free (data);
+    Unchecked_Free (raw_data);
     Write_Stream_Footer;
+  exception
+    when others =>
+      Unchecked_Free (raw_data);
+      raise;
   end Encode;
 
 end BZip2.Encoding;
