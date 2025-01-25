@@ -137,9 +137,8 @@ Contents
 * You may wish to force text-mode and lower case names (Unix)
   by using unzip's "-aa" and "-L" options: "unzip -aa -L zipada*.zip".
 
-* The Zip format specification is as always in a file called appnote.txt.
-  You find a copy within the Zip-Ada pack ("doc" directory) but might
-  find a fresher version here:
+* The Zip format specification is in a file called appnote.txt published by PKWARE.
+  The latest version of appnote.txt is usually located here:
   http://www.pkware.com/business_and_developers/developer/appnote/
 
 * A version of the LZMA specification and an unofficial BZip2
