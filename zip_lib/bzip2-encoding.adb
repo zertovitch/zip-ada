@@ -42,6 +42,9 @@
 --        look for the blog post: "Lempel-Ziv factorisation for file type detection"
 --    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in
 --        7-Zip's BZip2Encoder.cpp .
+--    - Clustering: try mixing few steps of some data clustering technique like k-means
+--        after the initial cluster allocation and before, or interleaved with, the
+--        steps with re-allocation through cost analysis.
 --    - Use tasking to parallelize the block compression jobs.
 --    - For squeezing a few more bytes: use the optimal permutation of
 --        entropy coders (already tested but not worth the extra complication).
@@ -578,7 +581,8 @@ package body BZip2.Encoding is
               cost : Natural;
             begin
               --  At this point we have computed the costs in bits for
-              --  the whole group of data.
+              --  the whole group of data. Now we look at the cost of using
+              --  each entropy coder.
               for cl in 1 .. entropy_coder_count loop
                 cost := bits (cl);
                 --  Here we account the mtf encoding of the selectors.
@@ -591,6 +595,7 @@ package body BZip2.Encoding is
                 cost := cost + mtf_cluster_idx;
                 --
                 if cost < min_bits then
+                  --  Encoder #cl is cheaper.
                   min_bits := cost;
                   best := cl;
                 end if;
@@ -598,7 +603,7 @@ package body BZip2.Encoding is
 
               if best /= cluster then
                 --  We have found a cheaper encoding.
-                --  -> the group #sel_idx changes party.
+                --  -> the group #sel_idx changes party (re-allocation).
                 selector (sel_idx) := best;
                 defectors := defectors + 1;
               end if;
@@ -640,6 +645,7 @@ package body BZip2.Encoding is
             end loop;
 
             --  Cost analysis by simulation and re-classification
+            --  (or re-allocation).
             --
             for w in mtf_cluster_value'Range loop
               --  We start with 1, 2, 3, ...:
