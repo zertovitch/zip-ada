@@ -92,8 +92,10 @@ private
   --         "data integrity (CRC) error in data"
   --    for all kinds of data errors, most of them unrelated to CRC checks!
 
-  --  Each group of data comprises 50 symbols and can use one of up
+  --  Each "group" of data comprises 50 symbols and can use one of up
   --  to 6 different entropy coders (for BZip2: Huffman tables).
+  --  NB: the use of the word "group" stems from the original bzip2 code and
+  --  has nothing to do with algebraic groups.
 
   min_entropy_coders : constant := 2;    --  Magic number found in a check in decompress.c ...
   max_entropy_coders : constant := 6;    --  BZ_N_GROUPS (this name is very confusing!)

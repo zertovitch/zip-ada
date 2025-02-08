@@ -559,129 +559,11 @@ package body BZip2.Encoding is
 
           subtype Selector_Range is Positive_32 range 1 .. selector_count;
 
-          --  Frequencies, grouped by cluster (i.e. by selected entropy coder).
-          freq_cluster : array (Entropy_Coder_Range) of Count_Array;
-
-          defectors : Natural;
-
-          procedure Define_Simulate_and_Reclassify is
-            pos_countdown : Natural := group_size;
-            sel_idx : Positive_32 := 1;
-            symbol : Alphabet_in_Use;
-            cluster : Entropy_Coder_Range;
-            bits : array (1 .. entropy_coder_count) of Natural := (others => 0);
-
-            --  We simulate the encoding of selectors (for its cost),
-            mtf_cluster_value : array (1 .. entropy_coder_count) of Positive;
-            mtf_cluster_idx : Positive;
-
-            procedure Optimize_Group is
-              min_bits : Natural := Natural'Last;
-              best : Entropy_Coder_Range := cluster;
-              cost : Natural;
-            begin
-              --  At this point we have computed the costs in bits for
-              --  the whole group of data. Now we look at the cost of using
-              --  each entropy coder.
-              for cl in 1 .. entropy_coder_count loop
-                cost := bits (cl);
-                --  Here we account the mtf encoding of the selectors.
-                for search in mtf_cluster_value'Range loop
-                  if mtf_cluster_value (search) = cl then
-                    mtf_cluster_idx := search;
-                    exit;
-                  end if;
-                end loop;
-                cost := cost + mtf_cluster_idx;
-                --
-                if cost < min_bits then
-                  --  Encoder #cl is cheaper.
-                  min_bits := cost;
-                  best := cl;
-                end if;
-              end loop;
-
-              if best /= cluster then
-                --  We have found a cheaper encoding.
-                --  -> the group #sel_idx changes party (re-allocation).
-                selector (sel_idx) := best;
-                defectors := defectors + 1;
-              end if;
-
-              --  Now do the "definitive" (but still simulated)
-              --  mtf for the chosen cluster index.
-              for search in mtf_cluster_value'Range loop
-                if mtf_cluster_value (search) = selector (sel_idx) then
-                  mtf_cluster_idx := search;
-                  exit;
-                end if;
-              end loop;
-              --  Move the value to the first place.
-              for j in reverse 2 .. mtf_cluster_idx loop
-                mtf_cluster_value (j) := mtf_cluster_value (j - 1);
-              end loop;
-              mtf_cluster_value (1) := selector (sel_idx);
-            end Optimize_Group;
-
-          begin
-            --  Populate the frequency stats, grouped by cluster (entropy coder choice).
-            --
-            freq_cluster := (others => (others => 0));
-            for mtf_idx in 1 .. mtf_last loop
-              cluster := selector (sel_idx);
-              symbol := mtf_data (mtf_idx);
-              freq_cluster (cluster)(symbol) := freq_cluster (cluster)(symbol) + 1;
-              pos_countdown := pos_countdown - 1;
-              if pos_countdown = 0 then
-                pos_countdown := group_size;
-                sel_idx := sel_idx + 1;
-              end if;
-            end loop;
-
-            --  Create Huffman codes based on the said frequencies.
-            --
-            for cl in 1 .. entropy_coder_count loop
-              Define_Descriptor (freq_cluster (cl), cl);
-            end loop;
-
-            --  Cost analysis by simulation and re-classification
-            --  (or re-allocation).
-            --
-            for w in mtf_cluster_value'Range loop
-              --  We start with 1, 2, 3, ...:
-              mtf_cluster_value (w) := w;
-            end loop;
-
-            defectors := 0;
-            pos_countdown := group_size;
-            sel_idx := 1;
-            for mtf_idx in 1 .. mtf_last loop
-              cluster := selector (sel_idx);
-              symbol := mtf_data (mtf_idx);
-              for cl in 1 .. entropy_coder_count loop
-                 --  Simulate output assuming the current group
-                 --  belongs to cluster cl.
-                 bits (cl) := bits (cl) + descr (cl) (symbol).bit_length;
-              end loop;
-              pos_countdown := pos_countdown - 1;
-              if pos_countdown = 0 then
-                Optimize_Group;
-                bits := (others => 0);
-                pos_countdown := group_size;
-                sel_idx := sel_idx + 1;
-              end if;
-            end loop;
-            if pos_countdown < group_size then
-              --  Optimize last, incomplete group.
-              Optimize_Group;
-            end if;
-          end Define_Simulate_and_Reclassify;
-
-          --  Create an initial clustering depending on a ranking computed on a
-          --  subset of the alphabet (a mix of RUN_A, RUN_B, low-index MTF values).
-          --  Look at the first few columns of some output of Output_Frequency_Matrix
-          --  to find why. This initial clustering method matches the statistics
-          --  used to build it.
+          --  Create an initial clustering depending on a ranking using a key
+          --  computed on a subset of the alphabet (a mix of RUN_A, RUN_B,
+          --  low-index MTF values).
+          --  Look at the first few columns of some output
+          --  of Output_Frequency_Matrix to find why.
           --
           procedure Initial_Clustering_Ranking_Method (sample_width : Positive) is
 
@@ -706,7 +588,7 @@ package body BZip2.Encoding is
 
             procedure Initial_Clustering_by_Rank (attr : Cluster_Attribution) is
               na : constant Positive_32 := attr'Length;
-              ns : constant Positive_32 := selector_count;
+              ns : constant Selector_Range := selector_count;
               a32 : Positive_32;
             begin
               for attr_idx in attr'Range loop
@@ -852,28 +734,144 @@ package body BZip2.Encoding is
             end if;
           end Initial_Clustering_Slicing_Method;
 
-          type Cluster_Statistics is array (Entropy_Coder_Range) of Natural;
-
-          procedure Compute (stat_cluster : out Cluster_Statistics) is
-            cl : Entropy_Coder_Range;
+          procedure Define_Descriptors is
+            pos_countdown : Natural := group_size;
+            selector_idx : Positive_32 := 1;
+            freq_cluster : array (Entropy_Coder_Range) of Count_Array :=  (others => (others => 0));
+            cluster : Entropy_Coder_Range;
+            symbol : Alphabet_in_Use;
           begin
-            stat_cluster := (others => 0);
-            for i in 1 .. selector_count loop
-              cl := selector (i);
-              stat_cluster (cl) := stat_cluster (cl) + 1;
+            --  Populate the frequency stats, grouped by cluster (= entropy coder choice):
+            freq_cluster := (others => (others => 0));
+            for mtf_idx in 1 .. mtf_last loop
+              cluster := selector (selector_idx);
+              symbol := mtf_data (mtf_idx);
+              freq_cluster (cluster)(symbol) := freq_cluster (cluster)(symbol) + 1;
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
+                pos_countdown := group_size;
+                selector_idx := selector_idx + 1;
+              end if;
             end loop;
-          end Compute;
+            --  Create Huffman codes based on the said frequencies:
+            for cl in 1 .. entropy_coder_count loop
+              Define_Descriptor (freq_cluster (cl), cl);
+            end loop;
+          end Define_Descriptors;
 
-          procedure Show_Cluster_Statistics with Inline is
-            stat_cluster : Cluster_Statistics;
+          defector_groups : Natural;
+
+          procedure Simulate_Entropy_Coding_Variants_and_Reclassify is
+            pos_countdown : Natural := group_size;
+            sel_idx : Positive_32 := 1;
+            symbol : Alphabet_in_Use;
+            cluster : Entropy_Coder_Range;
+            bits : array (1 .. entropy_coder_count) of Natural := (others => 0);
+
+            --  We simulate the encoding of selectors (for its cost),
+            mtf_cluster_value : array (1 .. entropy_coder_count) of Positive;
+            mtf_cluster_idx : Positive;
+
+            procedure Optimize_Group is
+              min_bits : Natural := Natural'Last;
+              best : Entropy_Coder_Range := cluster;
+              cost : Natural;
+            begin
+              --  At this point we have computed the costs in bits for
+              --  encoding the current group of data using various entropy coders.
+              --  Now we look at the extra cost of switching entropy coders.
+              for cl in 1 .. entropy_coder_count loop
+                cost := bits (cl);
+                --  Here we account the mtf encoding of the selectors.
+                for search in mtf_cluster_value'Range loop
+                  if mtf_cluster_value (search) = cl then
+                    mtf_cluster_idx := search;
+                    exit;
+                  end if;
+                end loop;
+                cost := cost + mtf_cluster_idx;
+                --
+                if cost < min_bits then
+                  --  Encoder #cl is cheaper.
+                  min_bits := cost;
+                  best := cl;
+                end if;
+              end loop;
+
+              if best /= cluster then
+                --  We have found a cheaper encoding.
+                --  -> the group #sel_idx changes party (re-allocation).
+                selector (sel_idx) := best;
+                defector_groups := defector_groups + 1;
+              end if;
+
+              --  Now do the "definitive" (but still simulated)
+              --  mtf for the chosen cluster index.
+              for search in mtf_cluster_value'Range loop
+                if mtf_cluster_value (search) = selector (sel_idx) then
+                  mtf_cluster_idx := search;
+                  exit;
+                end if;
+              end loop;
+              --  Move the value to the first place.
+              for j in reverse 2 .. mtf_cluster_idx loop
+                mtf_cluster_value (j) := mtf_cluster_value (j - 1);
+              end loop;
+              mtf_cluster_value (1) := selector (sel_idx);
+            end Optimize_Group;
+
+          begin
+            --  Cost analysis by simulation and re-classification
+            --  (or re-allocation).
+            --
+            for w in mtf_cluster_value'Range loop
+              --  We start with 1, 2, 3, ...:
+              mtf_cluster_value (w) := w;
+            end loop;
+
+            defector_groups := 0;
+            pos_countdown := group_size;
+            sel_idx := 1;
+            for mtf_idx in 1 .. mtf_last loop
+              cluster := selector (sel_idx);
+              symbol := mtf_data (mtf_idx);
+              for cl in 1 .. entropy_coder_count loop
+                 --  For each cluster cl, simulate output assuming
+                 --  the current group belongs to cluster cl.
+                 bits (cl) := bits (cl) + descr (cl) (symbol).bit_length;
+              end loop;
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
+                Optimize_Group;
+                bits := (others => 0);
+                pos_countdown := group_size;
+                sel_idx := sel_idx + 1;
+              end if;
+            end loop;
+            if pos_countdown < group_size then
+              --  Optimize last, incomplete group.
+              Optimize_Group;
+            end if;
+          end Simulate_Entropy_Coding_Variants_and_Reclassify;
+
+          procedure Show_Cluster_Statistics is
           begin
             if verbosity_level >= detailed then
-              Compute (stat_cluster);
-              for c in 1 .. entropy_coder_count loop
-                Trace
-                  ("          Cluster" & c'Image & " is used by" &
-                   stat_cluster (c)'Image & " groups.", detailed);
-              end loop;
+              declare
+                stat_cluster : array (Entropy_Coder_Range) of Natural := (others => 0);
+                cl : Entropy_Coder_Range;
+              begin
+                --  Compute cluster usage.
+                for i in Selector_Range loop
+                  cl := selector (i);
+                  stat_cluster (cl) := stat_cluster (cl) + 1;
+                end loop;
+                for c in 1 .. entropy_coder_count loop
+                  Trace
+                    ("          Cluster" & c'Image & " is used by" &
+                       stat_cluster (c)'Image & " groups.", detailed);
+                end loop;
+              end;
             end if;
           end Show_Cluster_Statistics;
 
@@ -887,7 +885,8 @@ package body BZip2.Encoding is
             else
               Initial_Clustering_Ranking_Method (sample_width);
             end if;
-            Trace ("   Coders:" & entropy_coder_count'Image, detailed);
+            Trace
+              ("   Construct with" & entropy_coder_count'Image & " coders", detailed);
 
             --  Compute the entropy coders based on the initial
             --  clustering, then refine the (group -> cluster) attribution.
@@ -897,70 +896,78 @@ package body BZip2.Encoding is
             --
             for iteration in 1 .. reclassification_iteration_limit loop
               Show_Cluster_Statistics;
-              Define_Simulate_and_Reclassify;
+              Define_Descriptors;
+              Simulate_Entropy_Coding_Variants_and_Reclassify;
               Trace
                 ("   Iteration" & iteration'Image &
-                 ". Defector groups:" & defectors'Image,
+                 ". Defector groups:" & defector_groups'Image,
                  detailed);
-              exit when defectors = 0;
+              exit when defector_groups = 0;
             end loop;
+            if defector_groups > 0 then
+              --  The cluster optimization loop has exited before
+              --  full stabilization (clusters have changed).
+              Define_Descriptors;
+            end if;
             Show_Cluster_Statistics;
           end Construct;
 
-          function Compute_Selectors_Cost return Natural_32 is
-            value : array (1 .. entropy_coder_count) of Positive;
-            mtf_idx : Positive;
-            bits : Natural_32 := 0;
-          begin
-            for w in value'Range loop
-              value (w) := w;
-            end loop;
-            for i in 1 .. selector_count loop
-              for search in value'Range loop
-                if value (search) = selector (i) then
-                  mtf_idx := search;
-                  exit;
-                end if;
-              end loop;
-              for j in reverse 2 .. mtf_idx loop
-                value (j) := value (j - 1);
-              end loop;
-              value (1) := selector (i);
-              bits := bits + Integer_32 (mtf_idx);
-            end loop;
-            return bits;
-          end Compute_Selectors_Cost;
+          function Compute_Total_Entropy_Cost return Natural_32 is
+            --  We simulate the sending of the whole block and
+            --  look at the costs related to the entropy coding.
 
-          function Compute_Huffman_Bit_Lengths_Cost return Natural_32 is
-            current_bit_length, new_bit_length : Natural;
-            bits : Natural_32 := 0;
-          begin
-            for coder in 1 .. entropy_coder_count loop
-              current_bit_length := descr (coder)(0).bit_length;
-              bits := bits +  5;
-              for i in 0 .. last_symbol_in_use loop
-                new_bit_length := descr (coder)(i).bit_length;
-                Adjust_Bit_length :
-                loop
-                  if current_bit_length = new_bit_length then
-                    bits := bits + 1;
-                    exit Adjust_Bit_length;
-                  else
-                    bits := bits + 2;
-                    if current_bit_length < new_bit_length then
-                      current_bit_length := current_bit_length + 1;
-                    else
-                      current_bit_length := current_bit_length - 1;
-                    end if;
+            function Compute_Selectors_Cost return Natural_32 is
+              value : array (1 .. entropy_coder_count) of Positive;
+              mtf_idx : Positive;
+              bits : Natural_32 := 0;
+            begin
+              for w in value'Range loop
+                value (w) := w;
+              end loop;
+              for i in Selector_Range loop
+                for search in value'Range loop
+                  if value (search) = selector (i) then
+                    mtf_idx := search;
+                    exit;
                   end if;
-                end loop Adjust_Bit_length;
+                end loop;
+                for j in reverse 2 .. mtf_idx loop
+                  value (j) := value (j - 1);
+                end loop;
+                value (1) := selector (i);
+                bits := bits + Integer_32 (mtf_idx);
               end loop;
-            end loop;
-            return bits;
-          end Compute_Huffman_Bit_Lengths_Cost;
+              return bits;
+            end Compute_Selectors_Cost;
 
-          function Compute_Total_Cost return Natural_32 is
-            --  We simulate the sending of the whole block, except the fixed costs.
+            function Compute_Huffman_Bit_Lengths_Cost return Natural_32 is
+              current_bit_length, new_bit_length : Natural;
+              bits : Natural_32 := 0;
+            begin
+              for coder in 1 .. entropy_coder_count loop
+                current_bit_length := descr (coder)(0).bit_length;
+                bits := bits +  5;
+                for i in 0 .. last_symbol_in_use loop
+                  new_bit_length := descr (coder)(i).bit_length;
+                  Adjust_Bit_length :
+                  loop
+                    if current_bit_length = new_bit_length then
+                      bits := bits + 1;
+                      exit Adjust_Bit_length;
+                    else
+                      bits := bits + 2;
+                      if current_bit_length < new_bit_length then
+                        current_bit_length := current_bit_length + 1;
+                      else
+                        current_bit_length := current_bit_length - 1;
+                      end if;
+                    end if;
+                  end loop Adjust_Bit_length;
+                end loop;
+              end loop;
+              return bits;
+            end Compute_Huffman_Bit_Lengths_Cost;
+
             pos_countdown : Natural := group_size;
             sel_idx : Positive_32 := 1;
             cluster : Entropy_Coder_Range := selector (sel_idx);
@@ -978,9 +985,12 @@ package body BZip2.Encoding is
                 end if;
               end if;
             end loop;
+            --  We add to the compressed data cost, the cost of switching coders
+            --  over the whole block and the cost of sending the compression
+            --  structures of the coders.
             bits := bits + Compute_Selectors_Cost + Compute_Huffman_Bit_Lengths_Cost;
             return bits;
-          end Compute_Total_Cost;
+          end Compute_Total_Entropy_Cost;
 
           cost              : Natural_32;
           best_cost         : Natural_32 := Natural_32'Last;
@@ -1027,7 +1037,7 @@ package body BZip2.Encoding is
               --  Brute-force: test some sample widths:
               for sample_width_test of sample_width_choices loop
                 Construct (sample_width_test);
-                cost := Compute_Total_Cost;
+                cost := Compute_Total_Entropy_Cost;
                 if cost < best_cost then
                   best_cost         := cost;
                   best_ec_count     := ec_test;
