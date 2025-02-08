@@ -649,90 +649,12 @@ package body BZip2.Encoding is
           --  histogram "horizontally" (on the symbol axis) to create artificial
           --  truncated histograms and allocate them to the data groups, in order
           --  to form the initial clusters.
-          --  It works better than the ranking only in rare cases.
           --  Since this initial setup is unlikely to appear in the data,
           --  reclassification rounds are likely to trap the model into a suboptimal
           --  local optimum in that 258-dimensional space.
+          --  This method works very rarely better than the ranking method.
           --
-          procedure Initial_Clustering_Slicing_Method is
-            global_freq, group_freq : Count_Array := (others => 0);
-            symbol : Alphabet_in_Use;
-            cluster : Entropy_Coder_Range := 1;
-            cluster_by_symbol : array (Alphabet_in_Use) of Entropy_Coder_Range;
-            pos_countdown : Natural := group_size;
-            sel_idx : Positive_32 := 1;
-
-            procedure Allocate_Group is
-              score : array (1 .. entropy_coder_count) of Natural_32 := (others => 0);
-              best_score : Integer_32 := -1;
-              best_cluster : Entropy_Coder_Range;
-            begin
-              for s in Alphabet_in_Use loop
-                cluster := cluster_by_symbol (s);
-                score (cluster) := score (cluster) + group_freq (s);
-              end loop;
-              for cl in 1 .. entropy_coder_count loop
-                if score (cluster) > best_score then
-                  best_score := score (cluster);
-                  best_cluster := cl;
-                end if;
-              end loop;
-              selector (sel_idx) := best_cluster;
-            end Allocate_Group;
-
-            n : Natural;
-            pop_per_cluster : Natural_32;
-            rest : Natural_32;
-            total_in_cluster : Natural_32 := 0;
-
-          begin
-            --  Populate the global frequency stats.
-            --
-            for mtf_idx in 1 .. mtf_last loop
-              symbol := mtf_data (mtf_idx);
-              global_freq (symbol) := global_freq (symbol) + 1;
-            end loop;
-
-            --  Slice the histogram on the symbol axis in n clusters of +/- equal population.
-            --
-            n := entropy_coder_count;
-            rest := mtf_last;
-            pop_per_cluster := rest / Natural_32 (n);
-            for s in Alphabet_in_Use loop
-              rest := rest - global_freq (s);
-              total_in_cluster := total_in_cluster + global_freq (s);
-              if total_in_cluster >= pop_per_cluster then
-                --  In case clusters are very crowded
-                --  (especially when total_in_cluster >= 2 * pop_per_cluster),
-                --  we need to recompute the population-per-cluster for the
-                --  rest of the symbols, otherwise we will use less than the
-                --  defined amount of clusters (= entropy_coder_count).
-                pop_per_cluster := rest / Natural_32 (n);
-                total_in_cluster := 0;
-                cluster := Integer'Min (entropy_coder_count, cluster + 1);
-                n := Integer'Max (1, n - 1);
-              end if;
-              cluster_by_symbol (s) := cluster;
-            end loop;
-
-            --  Allocate each data group to the frequency slice with the most affinity.
-            --
-            for mtf_idx in 1 .. mtf_last loop
-              symbol := mtf_data (mtf_idx);
-              group_freq (symbol) := group_freq (symbol) + 1;
-              pos_countdown := pos_countdown - 1;
-              if pos_countdown = 0 then
-                Allocate_Group;
-                pos_countdown := group_size;
-                sel_idx := sel_idx + 1;
-                group_freq := (others => 0);
-              end if;
-            end loop;
-            if pos_countdown < group_size then
-              --  Finish last, incomplete group.
-              Allocate_Group;
-            end if;
-          end Initial_Clustering_Slicing_Method;
+          --  procedure Initial_Clustering_Slicing_Method (removed from code).
 
           procedure Define_Descriptors is
             pos_countdown : Natural := group_size;
@@ -763,7 +685,7 @@ package body BZip2.Encoding is
 
           procedure Simulate_Entropy_Coding_Variants_and_Reclassify is
             pos_countdown : Natural := group_size;
-            sel_idx : Positive_32 := 1;
+            selector_idx : Positive_32 := 1;
             symbol : Alphabet_in_Use;
             cluster : Entropy_Coder_Range;
             bits : array (1 .. entropy_coder_count) of Natural := (others => 0);
@@ -801,14 +723,14 @@ package body BZip2.Encoding is
               if best /= cluster then
                 --  We have found a cheaper encoding.
                 --  -> the group #sel_idx changes party (re-allocation).
-                selector (sel_idx) := best;
+                selector (selector_idx) := best;
                 defector_groups := defector_groups + 1;
               end if;
 
               --  Now do the "definitive" (but still simulated)
               --  mtf for the chosen cluster index.
               for search in mtf_cluster_value'Range loop
-                if mtf_cluster_value (search) = selector (sel_idx) then
+                if mtf_cluster_value (search) = selector (selector_idx) then
                   mtf_cluster_idx := search;
                   exit;
                 end if;
@@ -817,7 +739,7 @@ package body BZip2.Encoding is
               for j in reverse 2 .. mtf_cluster_idx loop
                 mtf_cluster_value (j) := mtf_cluster_value (j - 1);
               end loop;
-              mtf_cluster_value (1) := selector (sel_idx);
+              mtf_cluster_value (1) := selector (selector_idx);
             end Optimize_Group;
 
           begin
@@ -831,9 +753,9 @@ package body BZip2.Encoding is
 
             defector_groups := 0;
             pos_countdown := group_size;
-            sel_idx := 1;
+            selector_idx := 1;
             for mtf_idx in 1 .. mtf_last loop
-              cluster := selector (sel_idx);
+              cluster := selector (selector_idx);
               symbol := mtf_data (mtf_idx);
               for cl in 1 .. entropy_coder_count loop
                  --  For each cluster cl, simulate output assuming
@@ -845,7 +767,7 @@ package body BZip2.Encoding is
                 Optimize_Group;
                 bits := (others => 0);
                 pos_countdown := group_size;
-                sel_idx := sel_idx + 1;
+                selector_idx := selector_idx + 1;
               end if;
             end loop;
             if pos_countdown < group_size then
@@ -875,16 +797,10 @@ package body BZip2.Encoding is
             end if;
           end Show_Cluster_Statistics;
 
-          use_slicing_method : constant := 0;
-
           procedure Construct (sample_width : Natural) is
             reclassification_iteration_limit : constant := 10;
           begin
-            if sample_width = use_slicing_method then
-              Initial_Clustering_Slicing_Method;
-            else
-              Initial_Clustering_Ranking_Method (sample_width);
-            end if;
+            Initial_Clustering_Ranking_Method (sample_width);
             Trace
               ("   Construct with" & entropy_coder_count'Image & " coders", detailed);
 
@@ -969,8 +885,8 @@ package body BZip2.Encoding is
             end Compute_Huffman_Bit_Lengths_Cost;
 
             pos_countdown : Natural := group_size;
-            sel_idx : Positive_32 := 1;
-            cluster : Entropy_Coder_Range := selector (sel_idx);
+            selector_idx : Positive_32 := 1;
+            cluster : Entropy_Coder_Range := selector (selector_idx);
             bits : Natural_32 := 0;
           begin
             --  Simulate the sending of the data itself:
@@ -979,9 +895,9 @@ package body BZip2.Encoding is
               pos_countdown := pos_countdown - 1;
               if pos_countdown = 0 then
                 pos_countdown := group_size;
-                sel_idx := sel_idx + 1;
+                selector_idx := selector_idx + 1;
                 if mtf_idx < mtf_last then
-                  cluster := selector (sel_idx);
+                  cluster := selector (selector_idx);
                 end if;
               end if;
             end loop;
