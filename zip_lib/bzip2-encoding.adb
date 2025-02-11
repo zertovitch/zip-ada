@@ -38,16 +38,18 @@
 --    - Performance: use Suffix-Array-Induced-Sorting for the BWT.
 --        See https://github.com/dsnet/compress/blob/master/bzip2/bwt.go
 --            https://sites.google.com/site/yuta256/sais
---    - Segmentation: do segment (or not) large blocks. An idea for that:
---        look for the blog post: "Lempel-Ziv factorisation for file type detection"
+--    - Segmentation: do segment (or not) large blocks. Some ideas for that:
+--        look for the blog post: "Lempel-Ziv factorisation for file type detection".
+--        Idea 1) Segmentation using the data entropy function.
+--        Idea 2) Segmentation using LZ match information.
 --    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in
 --        7-Zip's BZip2Encoder.cpp .
---    - Clustering: try mixing few steps of some data clustering technique like k-means
---        after the initial cluster allocation and before, or interleaved with, the
---        steps with re-allocation through cost analysis.
 --    - Use tasking to parallelize the block compression jobs.
---    - For squeezing a few more bytes: use the optimal permutation of
---        entropy coders (already tested but not worth the extra complication).
+--
+--  Already tried without significant success:
+--
+--    - Find the optimal permutation of entropy coders.
+--    - Use k-means machine learning method to re-allocate clusters to entropy coders.
 
 with Huffman.Encoding.Length_Limited_Coding;
 
@@ -450,8 +452,6 @@ package body BZip2.Encoding is
 
         subtype Alphabet_in_Use is Integer range 0 .. last_symbol_in_use;
 
-        type Huffman_Length_Array is array (Alphabet_in_Use) of Natural;
-
         type Count_Array is array (Alphabet_in_Use) of Natural_32;
 
         procedure Avoid_Zeros (freq : in out Count_Array) is
@@ -462,7 +462,7 @@ package body BZip2.Encoding is
               --  Tweak the stats to avoid zeros
               --  (the canonical BZip2 wants that)...
               for aa in Alphabet_in_Use loop
-                --  Inrease each count by 1 to avoid 0 lengths
+                --  Increase each count by 1 to avoid 0 lengths
                 freq (aa) := freq (aa) + 1;
 
                 --  Alternative idea: turn the "0"'s into actual "1/factor".
@@ -508,6 +508,8 @@ package body BZip2.Encoding is
           end loop;
           Close (f);
         end Output_Frequency_Matrix;
+
+        type Huffman_Length_Array is array (Alphabet_in_Use) of Natural;
 
         procedure Define_Descriptor (freq : in out Count_Array; des : Entropy_Coder_Range) is
           procedure LLHCL is new
@@ -592,7 +594,7 @@ package body BZip2.Encoding is
               a32 : Positive_32;
             begin
               for attr_idx in attr'Range loop
-                a32 := Integer_32 (attr_idx) - Integer_32 (attr'First) + 1;
+                a32 := Integer_32 (attr_idx) - Integer_32 (attr'First) + 1;  --  a32 = 1, 2, 3, .. na.
                 for i in 1 + (a32 - 1) * ns / na .. a32 * ns / na loop
                   selector (ranking (i).index) := attr (attr_idx);
                 end loop;
@@ -656,15 +658,85 @@ package body BZip2.Encoding is
           --
           --  procedure Initial_Clustering_Slicing_Method (removed from code).
 
+          procedure Reclassify_with_k_Means is
+            --  Code adapted from the `k_means` demo in Ada PDF Writer.
+            type Real is digits 15;
+            type Count_Array_Real is array (Alphabet_in_Use) of Real;
+
+            function Distance (p1 : Count_Array_Real; p2 : Count_Array) return Real is
+            --  Distances tested: L1, L2, L_\inf
+              sum : Real := 0.0;
+            begin
+              for a in Alphabet_in_Use loop
+                sum := sum + abs (p1 (a) - Real (p2 (a)));
+              end loop;
+              return sum;
+            end Distance;
+
+            subtype Cluster_Range is Entropy_Coder_Range range 1 .. entropy_coder_count;
+            centroid     : array (Cluster_Range) of Count_Array_Real  := (others => (others => 0.0));
+            freq_cluster : array (Cluster_Range) of Count_Array       := (others => (others => 0));
+            freq_group   : array (1 .. selector_count) of Count_Array := (others => (others => 0));
+            count : array (Cluster_Range) of Natural := (others => 0);
+            pos_countdown : Natural := group_size;
+            selector_idx : Positive_32 := 1;
+            cluster, cluster_new : Entropy_Coder_Range;
+            symbol : Alphabet_in_Use;
+            inv_denom, current_dist : Real;
+          begin
+            cluster := selector (selector_idx);
+            count (cluster) := count (cluster) + 1;
+            --  Populate the frequency stats, grouped by cluster (= entropy coder choice):
+            for mtf_idx in 1 .. mtf_last loop
+              symbol := mtf_data (mtf_idx);
+              freq_cluster (cluster)(symbol)    := freq_cluster (cluster)(symbol) + 1;
+              freq_group (selector_idx)(symbol) := freq_group (selector_idx)(symbol) + 1;
+              pos_countdown := pos_countdown - 1;
+              if pos_countdown = 0 then
+                pos_countdown := group_size;
+                selector_idx := selector_idx + 1;
+                if selector_idx < selector_count then
+                  cluster := selector (selector_idx);
+                  count (cluster) := count (cluster) + 1;
+                end if;
+              end if;
+            end loop;
+            --  Compute the centroids.
+            for c in Cluster_Range loop
+              if count (c) = 0 then
+                null;  --  The cluster is not used -> centroid is undefined in this case.
+              else
+                inv_denom := 1.0 / Real (count (c));
+                for a in Alphabet_in_Use loop
+                  centroid (c)(a) := Real (freq_cluster (c)(a)) * inv_denom;
+                end loop;
+              end if;
+            end loop;
+            --  Reallocate using the centroids.
+            for i in 1 .. selector_count loop
+              cluster := selector (i);
+              cluster_new := cluster;
+              current_dist := Distance (centroid (cluster), freq_group (i));
+              for c in Cluster_Range loop
+                if c /= cluster
+                  and then count (c) > 0
+                  and then Distance (centroid (c), freq_group (i)) < current_dist
+                then
+                  cluster_new := c;
+                end if;
+              end loop;
+              selector (i) := cluster_new;
+            end loop;
+          end Reclassify_with_k_Means;
+
           procedure Define_Descriptors is
             pos_countdown : Natural := group_size;
             selector_idx : Positive_32 := 1;
-            freq_cluster : array (Entropy_Coder_Range) of Count_Array :=  (others => (others => 0));
+            freq_cluster : array (1 .. entropy_coder_count) of Count_Array :=  (others => (others => 0));
             cluster : Entropy_Coder_Range;
             symbol : Alphabet_in_Use;
           begin
             --  Populate the frequency stats, grouped by cluster (= entropy coder choice):
-            freq_cluster := (others => (others => 0));
             for mtf_idx in 1 .. mtf_last loop
               cluster := selector (selector_idx);
               symbol := mtf_data (mtf_idx);
@@ -799,15 +871,20 @@ package body BZip2.Encoding is
 
           procedure Construct (sample_width : Natural) is
             reclassification_iteration_limit : constant := 10;
+            reclassification_rounds_k_means  : constant := 0;
           begin
             Initial_Clustering_Ranking_Method (sample_width);
+            --  Re-allocate clusters using a geometric method.
+            for iteration in 1 .. reclassification_rounds_k_means loop
+              Reclassify_with_k_Means;
+            end loop;
             Trace
               ("   Construct with" & entropy_coder_count'Image & " coders", detailed);
 
-            --  Compute the entropy coders based on the initial
+            --  Compute the entropy coders based on the current
             --  clustering, then refine the (group -> cluster) attribution.
             --  A group can join another cluster if the number of bits
-            --  in output is smaller. However, it will influence the
+            --  in the output is smaller. However, it will influence the
             --  frequencies of both affected clusters.
             --
             for iteration in 1 .. reclassification_iteration_limit loop
