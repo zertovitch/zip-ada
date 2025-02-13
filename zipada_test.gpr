@@ -4,7 +4,8 @@ project ZipAda_Test extends "zipada" is  --  Check zipada.gpr for details
 
    for Main use
       --  Tests
-     ("lz77_segmentation.adb",
+     ("entropy_segmentation.adb",
+      "lz77_segmentation.adb",
       "fuzzip.adb",
       "lz77_stats.adb",     --  Gather some statistics about LZ77 DLE codes and output it in a matrix form
       "random_data.adb",    --  Produces n bytes of pseudo-random data

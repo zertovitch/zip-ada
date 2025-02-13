@@ -18,17 +18,17 @@ procedure LZ77_Segmentation is
   f_in : BIO.File_Type;
   f_dump : Ada.Text_IO.File_Type;
 
-  function Read_byte return Byte is
+  function Read_Byte return Byte is
     b : Byte;
   begin
     Read (f_in, b);
     return b;
-  end Read_byte;
+  end Read_Byte;
 
-  function More_bytes return Boolean is
+  function More_Bytes return Boolean is
   begin
     return not End_Of_File (f_in);
-  end More_bytes;
+  end More_Bytes;
 
   ----- LZSS Parameters -----
   String_buffer_size : constant := 2**15;  --  2**15 for Deflate
@@ -37,19 +37,19 @@ procedure LZ77_Segmentation is
 
   sep : constant Character := ';';
 
-  procedure Emit_literal (literal : Byte) is
+  procedure Emit_Literal (literal : Byte) is
   begin
     Put (f_dump, '0' & sep & '0' & sep & Byte'Image (literal));
     if literal in 32 .. 126 then
       Put (f_dump, sep & sep & Character'Val (literal));
     end if;
     New_Line (f_dump);
-  end Emit_literal;
+  end Emit_Literal;
 
-  procedure Emit_DL_code (distance, length : Natural) is
+  procedure Emit_DL_Code (distance, length : Natural) is
   begin
     Put_Line (f_dump, distance'Image & sep & length'Image);
-  end Emit_DL_code;
+  end Emit_DL_Code;
 
   procedure Dummy_Estimate_DL_Codes
     (matches          : in out LZ77.Matches_Array;
@@ -68,8 +68,8 @@ procedure LZ77_Segmentation is
     new LZ77.Encode
       (String_buffer_size, Look_Ahead_Test, Threshold,
        m,
-       Read_byte, More_bytes,
-       Emit_literal, Emit_DL_code,
+       Read_Byte, More_Bytes,
+       Emit_Literal, Emit_DL_Code,
        False, Dummy_Estimate_DL_Codes);
 
 begin
