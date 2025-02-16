@@ -38,10 +38,6 @@
 --    - Performance: use Suffix-Array-Induced-Sorting for the BWT.
 --        See https://github.com/dsnet/compress/blob/master/bzip2/bwt.go
 --            https://sites.google.com/site/yuta256/sais
---    - Segmentation: do segment (or not) large blocks. Some ideas for that:
---        look for the blog post: "Lempel-Ziv factorisation for file type detection".
---        Idea 1) Segmentation using the data entropy function.
---        Idea 2) Segmentation using LZ match information.
 --    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in
 --        7-Zip's BZip2Encoder.cpp .
 --    - Use tasking to parallelize the block compression jobs.
@@ -51,6 +47,7 @@
 --    - Find the optimal permutation of entropy coders.
 --    - Use k-means machine learning method to re-allocate clusters to entropy coders.
 
+with Data_Segmentation;
 with Huffman.Encoding.Length_Limited_Coding;
 
 with Ada.Containers.Generic_Constrained_Array_Sort,
@@ -122,76 +119,75 @@ package body BZip2.Encoding is
 
     procedure Unchecked_Free is new Ada.Unchecked_Deallocation (Buffer, Buffer_Access);
 
-    raw_data : Buffer_Access := new Buffer (1 .. block_capacity);
-
     combined_crc : Unsigned_32 := 0;
 
     block_counter : Natural := 0;
-    stream_rest : Stream_Size_Type := size_hint;
+
+    quiet          : constant := 0;
+    headlines      : constant := 1;
+    detailed       : constant := 2;
+    super_detailed : constant := 3;  --  Details down to symbols.
+
+    verbosity_level : constant := quiet;
+
+    procedure Trace (msg : String; verbosity : Natural) with Inline is
+    begin
+      if verbosity_level >= verbosity then
+        Ada.Text_IO.Put_Line ("BZip2: " & msg);
+      end if;
+    end Trace;
+
+    procedure Trace (prefix : String; b : Buffer; verbosity : Natural) with Inline is
+    begin
+      if verbosity_level >= verbosity then
+        declare
+          use Ada.Strings.Unbounded;
+          msg : Unbounded_String;
+        begin
+          for bt of b loop
+            if bt in 32 .. 126 then
+              msg := msg & Character'Val (bt);
+            else
+              msg := msg & '(' & bt'Image & ')';
+            end if;
+          end loop;
+          Trace (prefix & To_String (msg), verbosity);
+        end;
+      end if;
+    end Trace;
 
     --  Each block is limited either by the data available
-    --  (More_Bytes = False) or by the block capacity.
+    --  by the block capacity.
     --  It means that each encoding step has an end and
     --  that we can theoretically go on with the next step,
     --  perhaps at the price of using more memory.
 
-    procedure Encode_Block (dyn_block_capacity : Natural_32) is
-
-      quiet          : constant := 0;
-      headlines      : constant := 1;
-      detailed       : constant := 2;
-      super_detailed : constant := 3;  --  Details down to symbols.
-
-      verbosity_level : constant := quiet;
-
-      procedure Trace (msg : String; verbosity : Natural) with Inline is
-      begin
-        if verbosity_level >= verbosity then
-          Ada.Text_IO.Put_Line ("BZip2: " & msg);
-        end if;
-      end Trace;
-
-      procedure Trace (prefix : String; b : Buffer; verbosity : Natural) with Inline is
-      begin
-        if verbosity_level >= verbosity then
-          declare
-            use Ada.Strings.Unbounded;
-            msg : Unbounded_String;
-          begin
-            for bt of b loop
-              if bt in 32 .. 126 then
-                msg := msg & Character'Val (bt);
-              else
-                msg := msg & '(' & bt'Image & ')';
-              end if;
-            end loop;
-            Trace (prefix & To_String (msg), verbosity);
-          end;
-        end if;
-      end Trace;
+    procedure Encode_Block (raw_buf : Buffer) is
 
       -----------------------------------
       --  Initial Run-Length Encoding  --
       -----------------------------------
 
-      block_size : Natural_32 := 0;
+      rle_1_block_size : Natural_32 := 0;
       block_crc : Unsigned_32;
       in_use : array (Byte) of Boolean := (others => False);
 
-      procedure RLE_1 is
+      rle_1_data : Buffer_Access := new Buffer (1 .. block_capacity * 5 / 4);
+      --  Worst case: all data consist of runs of 4 bytes -> 5 bytes with RLE_1.
 
-        procedure Store (x : Byte) with Inline is
-        begin
-          block_size := block_size + 1;
-          raw_data (block_size) := x;
-          in_use (x) := True;
-        end Store;
+      procedure RLE_1 is
 
         b : Byte;
         b_prev : Byte := 0;  --  Initialization is to reassure the compiler.
         run : Natural := 0;
 
         procedure Store_Run with Inline is
+          procedure Store (x : Byte) with Inline is
+          begin
+            rle_1_block_size := rle_1_block_size + 1;
+            rle_1_data (rle_1_block_size) := x;
+            in_use (x) := True;
+          end Store;
         begin
           for count in 1 .. Integer'Min (4, run) loop
             Store (b_prev);
@@ -206,12 +202,8 @@ package body BZip2.Encoding is
         start : Boolean := True;
       begin
         CRC.Init (block_crc);
-        while block_size + 5 < dyn_block_capacity and then More_Bytes loop
-          --  ^ The +5 is because sometimes a pack of max 5 bytes is sent by Store_Run.
-          b := Read_Byte;
-          if stream_rest /= unknown_size then
-            stream_rest := stream_rest - 1;
-          end if;
+        for i in raw_buf'Range loop
+          b := raw_buf (i);
           CRC.Update (block_crc, b);
           if start or else b /= b_prev then
             --  Startup or Run break:
@@ -226,8 +218,10 @@ package body BZip2.Encoding is
           b_prev := b;
         end loop;
         Store_Run;
+        Trace ("RLE_1: raw buffer length:  " & raw_buf'Length'Image,   headlines);
+        Trace ("RLE_1-processed block size:" & rle_1_block_size'Image, headlines);
         if verbosity_level >= super_detailed then
-          Trace ("RLE_1: ", raw_data (1 .. block_size), super_detailed);
+          Trace ("RLE_1: ", rle_1_data (1 .. rle_1_block_size), super_detailed);
         end if;
       end RLE_1;
 
@@ -240,7 +234,7 @@ package body BZip2.Encoding is
 
       procedure BWT is
 
-        subtype Offset_Range is Integer_32 range 0 .. block_size - 1;
+        subtype Offset_Range is Integer_32 range 0 .. rle_1_block_size - 1;
 
         type Offset_Table is array (Offset_Range) of Offset_Range;
         type Offset_Table_Access is access Offset_Table;
@@ -252,23 +246,23 @@ package body BZip2.Encoding is
           il, ir : Integer_32;
           l, r : Byte;
         begin
-          pragma Assert (raw_data'First = 1);
-          il := 1 + (if left  = 0 then 0 else block_size - left);
-          ir := 1 + (if right = 0 then 0 else block_size - right);
+          pragma Assert (rle_1_data'First = 1);
+          il := 1 + (if left  = 0 then 0 else rle_1_block_size - left);
+          ir := 1 + (if right = 0 then 0 else rle_1_block_size - right);
           for i in Offset_Range loop
-            l := raw_data (il);
-            r := raw_data (ir);
+            l := rle_1_data (il);
+            r := rle_1_data (ir);
             if l < r then
               return True;
             elsif l > r then
               return False;
             end if;
             il := il + 1;
-            if il > block_size then
+            if il > rle_1_block_size then
               il := 1;
             end if;
             ir := ir + 1;
-            if ir > block_size then
+            if ir > rle_1_block_size then
               ir := 1;
             end if;
           end loop;
@@ -291,10 +285,10 @@ package body BZip2.Encoding is
 
         Offset_Sort (offset.all);  --  <--- The BW Transform is done here.
 
-        bwt_data := new Buffer (1 .. block_size);
+        bwt_data := new Buffer (1 .. rle_1_block_size);
         for i in Offset_Range loop
           --  Copy last column of the matrix into transformed message:
-          bwt_data (1 + i) := raw_data (1 + (block_size - 1 - offset (i)) mod block_size);
+          bwt_data (1 + i) := rle_1_data (1 + (rle_1_block_size - 1 - offset (i)) mod rle_1_block_size);
           if offset (i) = 0 then
             --  Found the row index of the original message.
             bwt_index := i;
@@ -302,7 +296,7 @@ package body BZip2.Encoding is
         end loop;
 
         if verbosity_level >= super_detailed then
-          if block_size = 0 then
+          if rle_1_block_size = 0 then
             Trace ("BWT:   (empty block)", super_detailed);
           else
             Trace ("BWT:   ", bwt_data.all, super_detailed);
@@ -310,6 +304,7 @@ package body BZip2.Encoding is
           end if;
         end if;
         Unchecked_Free (offset);
+        Unchecked_Free (rle_1_data);
       exception
         when others =>
           Unchecked_Free (offset);
@@ -390,7 +385,7 @@ package body BZip2.Encoding is
       begin
         Prepare_Mapping;
 
-        mtf_data := new MTF_Array (1 .. 1 + 2 * block_size);
+        mtf_data := new MTF_Array (1 .. 1 + 2 * rle_1_block_size);
 
         for i in mtf_symbol'Range loop
           mtf_symbol (i) := Byte (i);
@@ -1005,9 +1000,13 @@ package body BZip2.Encoding is
 
           coder_choices : constant Value_Array :=
           (case option is
-             when block_100k => (1 => 6),
-             when block_400k => (1 => 6),
-             when block_900k => (2, 4, 6));
+             when block_100k => (4, 6),
+             when block_400k => (4, 6),
+             when block_900k =>
+               (case mtf_last is
+                  when     1 ..  5_000 => (2, 3, 4),
+                  when 5_001 .. 10_000 => (3, 4, 5),
+                  when others          => (3, 4, 5, 6)));
 
           sample_width_choices : constant Value_Array :=
           (case option is
@@ -1204,7 +1203,7 @@ package body BZip2.Encoding is
       block_counter := block_counter + 1;
       Trace ("Block" & block_counter'Image, headlines);
 
-      --  Data acquisition and transformation (no output):
+      --  Data transformation (no output):
       RLE_1;
       BWT;
       MTF_and_RLE_2;
@@ -1217,10 +1216,126 @@ package body BZip2.Encoding is
 
     exception
       when others =>
+        Unchecked_Free (rle_1_data);
         Unchecked_Free (bwt_data);
         Unchecked_Free (mtf_data);
         raise;
     end Encode_Block;
+
+    stream_rest : Stream_Size_Type := size_hint;
+
+    --------------------------------------------
+    --  Data acquisition and block splitting  --
+    --------------------------------------------
+
+    procedure Read_and_Split_Block (dyn_block_capacity : Natural_32) is
+
+      --  In the cases RLE_1 compression is efficient, the
+      --  input buffer can contain much more that the post RLE_1 block.
+      --  Best case: all runs of 259 bytes, factor 259/5 = 51.8.
+      --  The latter has to fit into the agreed capacity (a multiple of 100_000).
+      --  So, we define a conveniently large input buffer.
+
+      multiplier : constant := 10;
+
+      raw_buf : Buffer_Access := new Buffer (1 .. multiplier * dyn_block_capacity);
+
+      package Segmentation_for_BZip2 is
+        new Data_Segmentation
+          (Index                 => Natural_32,
+           Alphabet              => Byte,
+           Buffer_Type           => Buffer,
+           discrepancy_threshold => 2.0,
+           index_threshold       => 80_000,
+           window_size           => 80_000);
+
+      single_segment : constant Boolean := False;
+      seg : Segmentation_for_BZip2.Segmentation;
+
+      raw_buf_index : Natural_32 := 0;
+      index_start   : Natural_32 := 1;
+
+      --  We have to simulate RLE_1 to avoid block size overflows
+      --  in the decoder.
+      --  RLE_1 often expands the data (and sometimes does it
+      --  considerably) when it meets runs of length 4: 5 bytes are
+      --  stored in that case.
+      --  So the worst case expansion is by a factor 5/4.
+
+      rle_1_block_size : Natural_32 := 0;
+      b : Byte;
+      b_prev : Byte := 0;  --  Initialization is to reassure the compiler.
+      run : Natural := 0;
+
+      procedure Simulate_Store_Run with Inline is
+      begin
+        rle_1_block_size := rle_1_block_size + Integer_32 (Integer'Min (4, run));
+        if run >= 4 then
+          pragma Assert (run <= 259);
+          rle_1_block_size := rle_1_block_size + 1;
+        end if;
+        run := 1;
+      end Simulate_Store_Run;
+
+      start : Boolean := True;
+
+    begin
+      --  Data acquisition:
+      while More_Bytes
+        and then rle_1_block_size + 5 < dyn_block_capacity
+        --  ^ The +5 is because sometimes a pack of max 5 bytes is sent by Store_Run.
+        and then raw_buf_index < raw_buf'Last
+      loop
+        b := Read_Byte;
+        raw_buf_index := raw_buf_index + 1;
+        raw_buf (raw_buf_index) := b;
+        if stream_rest /= unknown_size then
+          stream_rest := stream_rest - 1;
+        end if;
+        if start or else b /= b_prev then
+          --  Startup or Run break:
+          Simulate_Store_Run;
+          start := False;
+        elsif run = 259 then
+          --  Force a run break, even though b = b_prev:
+          Simulate_Store_Run;
+        else
+          run := run + 1;
+        end if;
+        b_prev := b;
+      end loop;
+      Simulate_Store_Run;
+
+      if single_segment then
+        --  No segmentation /splitting:
+        Encode_Block (raw_buf (1 .. raw_buf_index));
+      else
+        Segmentation_for_BZip2.Segment_by_Entropy (raw_buf (1 .. raw_buf_index), seg);
+
+        if seg.Is_Empty then
+          Encode_Block (raw_buf (1 .. 0));
+        else
+          for s of seg loop
+            Encode_Block (raw_buf (index_start .. s));
+            index_start := s + 1;
+          end loop;
+        end if;
+
+        if Integer (seg.Length) > 1 then
+          Trace ("Segmentation into" & seg.Length'Image & " segments", headlines);
+          for s of seg loop
+            Trace ("  Segment limit at" & s'Image, headlines);
+          end loop;
+        end if;
+
+      end if;
+
+      Unchecked_Free (raw_buf);
+    exception
+      when others =>
+        Unchecked_Free (raw_buf);
+        raise;
+    end Read_and_Split_Block;
 
     procedure Write_Stream_Header is
       magic : String := stream_header_magic;
@@ -1253,18 +1368,13 @@ package body BZip2.Encoding is
         --  if we can balance the last two blocks.
         --  NB: a more sophisticated balancing using (1.0 - small_block_prop_max)
         --  did not deliver convincing results.
-        Encode_Block (Natural_32 (stream_rest) / 2);
+        Read_and_Split_Block (Natural_32 (stream_rest) / 2);
       else
-        Encode_Block (block_capacity);
+        Read_and_Split_Block (block_capacity);
       end if;
       exit when not More_Bytes;
     end loop;
-    Unchecked_Free (raw_data);
     Write_Stream_Footer;
-  exception
-    when others =>
-      Unchecked_Free (raw_data);
-      raise;
   end Encode;
 
 end BZip2.Encoding;

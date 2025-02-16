@@ -409,7 +409,7 @@ package body BZip2.Decoding is
           n := seq_to_unseq (mtf_a (mtf_base (0)));
           cf_tab (n) := cf_tab (n) + es;
           if t + es > sub_block_size * block_size then
-            raise data_error;
+            raise data_error with "Index out of block's range [1]";
           end if;
           while es > 0 loop
             tt (t) := Unsigned_32 (n);
@@ -458,7 +458,7 @@ package body BZip2.Decoding is
           tt (t) := Unsigned_32 (seq_to_unseq (n));
           t := t + 1;
           if t > sub_block_size * block_size then
-            raise data_error;
+            raise data_error with "Index out of block's range [2]";
           end if;
           next_sym := Get_MTF_Value;
         end if;
