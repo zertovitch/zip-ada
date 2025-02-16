@@ -14,6 +14,9 @@
 --
 --  Documentation pointers:
 --
+--    BZip2 unofficial format specification (2016)
+--      https://github.com/dsnet/compress/blob/master/doc/bzip2-format.pdf
+--
 --    Burrows-Wheeler transform
 --      https://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform
 --
@@ -22,7 +25,7 @@
 --
 --  Legal licensing note:
 --
---  Copyright (c) 2018 .. 2025 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2018 .. 2025 Gautier de Montmollin
 --  SWITZERLAND
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy

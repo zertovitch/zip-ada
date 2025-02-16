@@ -1,7 +1,7 @@
 --  Data_Segmentation
 ---------------------
 --
---  Pure Ada 2012+ code, 100% portable: OS-, CPU- and compiler- independent.
+--  Pure Ada 2005+ code, 100% portable: OS-, CPU- and compiler- independent.
 --
 --  The Data_Segmentation package offers tools for splitting data into more
 --  homogeneous blocks, with the hope of compressing those blocks better.

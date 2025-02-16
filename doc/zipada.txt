@@ -227,14 +227,16 @@ OpenVMS                     Itanium (64 bit)       GNU - GCC - GNAT
 AIX                         Power7 (64 bit)
 MS Windows 95,98;
            NT,2K,XP,7,8,10  Intel x86 (32 bit)
-MS Windows x64              Intel x64 (64 bit)
+MS Windows x64              AMD/Intel x64 (64 bit)
 Linux                       Intel x86 (32 bit)
+Linux                       AMD/Intel x64 (64 bit)
 Linux on Sony PS3           Cell (64 bit)
 Linux on Raspberry Pi       ARM
 Mac OS X                    PowerPC (64 bit)
-Mac OS X                    Intel x64 (64 bit)
+Mac OS X                    AMD/Intel x64 (64 bit)
+Mac OS X                    aarch64
 Solaris                     SPARC (32 or 64 bit)
-Solaris                     Intel x64 (64 bit)
+Solaris                     AMD/Intel x64 (64 bit)
 MS-DOS, DR-DOS (Novell)     Intel x86 (16/32 bit)
 OpenBSD                     (one of several)
 FreeBSD                     Intel x86 (32 bit)
@@ -244,10 +246,10 @@ Android 2.3+                ARM
 MS Windows NT+              Intel x64 (64 bit)     PTC - ObjectAda64
 
 MS Windows NT+              Intel x86 (32 bit)     SofCheck - AdaMagic
-MS Windows NT+              Intel x64 (64 bit)
+MS Windows NT+              AMD/Intel x64 (64 bit)
 Linux                       Intel x86 (32 bit)
 Mac OS X                    PowerPC (64 bit)
-Mac OS X                    Intel x64 (64 bit)
+Mac OS X                    AMD/Intel x64 (64 bit)
 Solaris                     SPARC (32 or 64 bit)
 Solaris                     Intel x64 (64 bit)
 ----------------------------------------------------------------------------
