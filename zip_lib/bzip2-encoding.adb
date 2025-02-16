@@ -176,8 +176,6 @@ package body BZip2.Encoding is
       --  Worst case: all data consist of runs of 4 bytes -> 5 bytes with RLE_1.
 
       procedure RLE_1 is
-
-        b : Byte;
         b_prev : Byte := 0;  --  Initialization is to reassure the compiler.
         run : Natural := 0;
 
@@ -202,8 +200,7 @@ package body BZip2.Encoding is
         start : Boolean := True;
       begin
         CRC.Init (block_crc);
-        for i in raw_buf'Range loop
-          b := raw_buf (i);
+        for b of raw_buf loop
           CRC.Update (block_crc, b);
           if start or else b /= b_prev then
             --  Startup or Run break:

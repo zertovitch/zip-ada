@@ -9,7 +9,7 @@
 --
 --  Library for manipulating archive files in the Zip format
 --
---  Pure Ada 2005+ code, 100% portable: OS-, CPU- and compiler- independent.
+--  Pure Ada 2012+ code, 100% portable: OS-, CPU- and compiler- independent.
 --
 --  Version / date / download info: see the version, reference, web strings
 --   defined at the end of the public part of this package.

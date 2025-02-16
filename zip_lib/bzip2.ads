@@ -1,7 +1,7 @@
 --  BZip2
 ---------
 --
---  Pure Ada 95+ code, 100% portable: OS-, CPU- and compiler- independent.
+--  Pure Ada 2012+ code, 100% portable: OS-, CPU- and compiler- independent.
 --
 --  bzip2 compresses files using the Burrows-Wheeler block-sorting text
 --  compression algorithm, and Huffman coding. Compression is generally
@@ -22,7 +22,7 @@
 --
 --  Legal licensing note:
 --
---  Copyright (c) 2018 .. 2024 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2018 .. 2025 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 --
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
