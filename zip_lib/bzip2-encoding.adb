@@ -46,6 +46,13 @@
 --
 --    - Find the optimal permutation of entropy coders.
 --    - Use k-means machine learning method to re-allocate clusters to entropy coders.
+--        Removed from code on 2025-02-23.
+--    - Set up the initial clustering by slicing the global frequency histogram
+--        "horizontally" (on the symbol axis) to create artificial truncated histograms
+--        and allocate them to the data groups. It obviously traps the model into
+--        a suboptimal local optimum in the 258-dimensional criterion space.
+--        This method is used by the original BZip2 program.
+--        Removed from code on 2025-02-08.
 
 with Data_Segmentation;
 with Huffman.Encoding.Length_Limited_Coding;
@@ -639,88 +646,6 @@ package body BZip2.Encoding is
 
           end Initial_Clustering_Ranking_Method;
 
-          --  Original BZip2 method (reconstructed): slice the global frequency
-          --  histogram "horizontally" (on the symbol axis) to create artificial
-          --  truncated histograms and allocate them to the data groups, in order
-          --  to form the initial clusters.
-          --  Since this initial setup is unlikely to appear in the data,
-          --  reclassification rounds are likely to trap the model into a suboptimal
-          --  local optimum in that 258-dimensional space.
-          --  This method works very rarely better than the ranking method.
-          --
-          --  procedure Initial_Clustering_Slicing_Method (removed from code).
-
-          procedure Reclassify_with_k_Means is
-            --  Code adapted from the `k_means` demo in Ada PDF Writer.
-            type Real is digits 15;
-            type Count_Array_Real is array (Alphabet_in_Use) of Real;
-
-            function Distance (p1 : Count_Array_Real; p2 : Count_Array) return Real is
-            --  Distances tested: L1, L2, L_\inf
-              sum : Real := 0.0;
-            begin
-              for a in Alphabet_in_Use loop
-                sum := sum + abs (p1 (a) - Real (p2 (a)));
-              end loop;
-              return sum;
-            end Distance;
-
-            subtype Cluster_Range is Entropy_Coder_Range range 1 .. entropy_coder_count;
-            centroid     : array (Cluster_Range) of Count_Array_Real  := (others => (others => 0.0));
-            freq_cluster : array (Cluster_Range) of Count_Array       := (others => (others => 0));
-            freq_group   : array (1 .. selector_count) of Count_Array := (others => (others => 0));
-            count : array (Cluster_Range) of Natural := (others => 0);
-            pos_countdown : Natural := group_size;
-            selector_idx : Positive_32 := 1;
-            cluster, cluster_new : Entropy_Coder_Range;
-            symbol : Alphabet_in_Use;
-            inv_denom, current_dist : Real;
-          begin
-            cluster := selector (selector_idx);
-            count (cluster) := count (cluster) + 1;
-            --  Populate the frequency stats, grouped by cluster (= entropy coder choice):
-            for mtf_idx in 1 .. mtf_last loop
-              symbol := mtf_data (mtf_idx);
-              freq_cluster (cluster)(symbol)    := freq_cluster (cluster)(symbol) + 1;
-              freq_group (selector_idx)(symbol) := freq_group (selector_idx)(symbol) + 1;
-              pos_countdown := pos_countdown - 1;
-              if pos_countdown = 0 then
-                pos_countdown := group_size;
-                selector_idx := selector_idx + 1;
-                if selector_idx < selector_count then
-                  cluster := selector (selector_idx);
-                  count (cluster) := count (cluster) + 1;
-                end if;
-              end if;
-            end loop;
-            --  Compute the centroids.
-            for c in Cluster_Range loop
-              if count (c) = 0 then
-                null;  --  The cluster is not used -> centroid is undefined in this case.
-              else
-                inv_denom := 1.0 / Real (count (c));
-                for a in Alphabet_in_Use loop
-                  centroid (c)(a) := Real (freq_cluster (c)(a)) * inv_denom;
-                end loop;
-              end if;
-            end loop;
-            --  Reallocate using the centroids.
-            for i in 1 .. selector_count loop
-              cluster := selector (i);
-              cluster_new := cluster;
-              current_dist := Distance (centroid (cluster), freq_group (i));
-              for c in Cluster_Range loop
-                if c /= cluster
-                  and then count (c) > 0
-                  and then Distance (centroid (c), freq_group (i)) < current_dist
-                then
-                  cluster_new := c;
-                end if;
-              end loop;
-              selector (i) := cluster_new;
-            end loop;
-          end Reclassify_with_k_Means;
-
           procedure Define_Descriptors is
             pos_countdown : Natural := group_size;
             selector_idx : Positive_32 := 1;
@@ -863,13 +788,8 @@ package body BZip2.Encoding is
 
           procedure Construct (sample_width : Natural) is
             reclassification_iteration_limit : constant := 10;
-            reclassification_rounds_k_means  : constant := 0;
           begin
             Initial_Clustering_Ranking_Method (sample_width);
-            --  Re-allocate clusters using a geometric method.
-            for iteration in 1 .. reclassification_rounds_k_means loop
-              Reclassify_with_k_Means;
-            end loop;
             Trace
               ("   Construct with" & entropy_coder_count'Image & " coders", detailed);
 
