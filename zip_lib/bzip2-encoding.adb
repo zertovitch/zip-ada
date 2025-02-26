@@ -44,9 +44,12 @@
 --
 --  Already tried without significant success:
 --
---    - Find the optimal permutation of entropy coders.
+--    - Use the permutation of entropy coders that minimizes the
+--        size of compression structure.
 --    - Use k-means machine learning method to re-allocate clusters to entropy coders.
 --        Removed from code on 2025-02-23.
+--    - Use a "noisiness" function of a group's frequencies in the sorting
+--        key for the initial clustering.
 --    - Set up the initial clustering by slicing the global frequency histogram
 --        "horizontally" (on the symbol axis) to create artificial truncated histograms
 --        and allocate them to the data groups. It obviously traps the model into
@@ -454,29 +457,28 @@ package body BZip2.Encoding is
         type Count_Array is array (Alphabet_in_Use) of Natural_32;
 
         procedure Avoid_Zeros (freq : in out Count_Array) is
-          --  factor : constant := 2;
+          zeroes : Natural := 0;
         begin
-          for a in Alphabet_in_Use loop
-            if freq (a) = 0 then
-              --  Tweak the stats to avoid zeros
-              --  (the canonical BZip2 wants that)...
-              for aa in Alphabet_in_Use loop
-                --  Increase each count by 1 to avoid 0 lengths
-                freq (aa) := freq (aa) + 1;
-
-                --  Alternative idea: turn the "0"'s into actual "1/factor".
-                --  Curiously, the compression is worse despite a tweak
-                --  that is closer to the actual proportions.
-                --
-                --  if freq (aa) = 0 then
-                --    freq (aa) := 1;
-                --  else
-                --    freq (aa) := freq (aa) * factor;
-                --  end if;
-              end loop;
-              return;
+          for stat of freq loop
+            if stat = 0 then
+              zeroes := zeroes + 1;
             end if;
           end loop;
+          case zeroes is
+            when 0 =>
+              --  Zero zeroes, zero problem :-)
+              null;
+            when 1 .. 100 =>
+              --  Turn the "0"'s into "1"'s.
+              for stat of freq loop
+                stat := Natural_32'Max (1, stat);
+              end loop;
+            when others =>
+              --  Turn the "0"'s into an actual "1/2".
+              for stat of freq loop
+                stat := (if stat = 0 then 1 else stat * 2);
+              end loop;
+          end case;
         end Avoid_Zeros;
 
         max_code_len : Positive;
