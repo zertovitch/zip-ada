@@ -1,0 +1,8 @@
+<br><font color=#fef1ef>
+  Zip-Ada: Ada library for zip archive files (.zip).
+  Ada programming.</font>
+  <hr>
+  <img src="../blog_16x16.png" border="0" height="16" width="16" align="absmiddle" />
+  <foNt face="Calibri, Arial">Some news about <b>Zip-Ada</b> and other Ada projects
+  <a target=_blank href=http://gautiersblog.blogspot.com/search/label/Ada>on Gautier's blog</a>.
+  </foNt>

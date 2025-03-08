@@ -3,9 +3,11 @@ cd ..
 gprbuild -Pzipada      -XZip_Build_Mode=Debug
 gprbuild -Pzipada_test -XZip_Build_Mode=Debug
 
-set mains=zipada unzipada rezip comp_zip find_zip demo_zip demo_unzip unzip ziptest zip.ads zip.adb lzma_dec lzma_enc lzhuf.adb bunzip zip_with_many_files
+set mains=zipada.adb unzipada.adb rezip.adb comp_zip.adb find_zip.adb
+set mains=%mains% demo_zip.adb demo_unzip.adb unzip.adb ziptest.adb
+set mains=%mains% zip.ads zip.adb bzip2_dec.adb bzip2_enc.adb lzma_dec.adb lzma_enc.adb lzhuf.adb bunzip.adb zip_with_many_files.adb
 
-perl extras/za_html.pl -Izip_lib -Iobj/dbg -Iobj/dbg/test -Itest -Iextras -Itools -Idemo %mains% -f -d -oza_html
+gnathtml -Izip_lib -Iobj/dbg -Iobj/dbg/test -Itest -Iextras -Itools -Idemo %mains% -f -d -oza_html -b#fffbf4 -iza_head.txt -jza_top.txt -kza_bottom.txt
 
 cd extras
 pause

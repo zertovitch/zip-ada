@@ -1,0 +1,5 @@
+<table border=0><tr><td>
+<b><font face=arial>
+<a target=_top href=../index.htm>Back to...</a></font></b><td>
+<a target=_top href=../index.htm><img border=0 width=212 height=56 alt='Zip-Ada' src=../za_logo.png></a><td>
+<a target=_top href=../index.htm><IMG width=24 height=24 border=0 SRC=../backplat.gif></a></table><HR>
