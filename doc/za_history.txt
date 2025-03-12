@@ -1,6 +1,10 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '61', 8-Mar-2025 [rev. 1052]:
+  - BZip2 encoder: improved performance by reducing possible entropy codings chosen by brute-force
+  - BZip2 encoder: added segmentation of blocks for heterogeneous data
+
 * Changes in '60', 17-Nov-2024 [rev. 1014]:
   - Added compression for the BZip2 format
        for .bz2 and .zip files or streams

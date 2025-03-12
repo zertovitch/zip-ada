@@ -139,7 +139,6 @@ begin
   --  Smuggle some files from the project as test files
   --
   Smuggle (+"doc",     +"za_work.xls");
-  Smuggle (+"doc",     +"appnote.txt");
   Smuggle (+"doc",     +"lzma-specification.txt");
   Smuggle (+"doc",     +"za_history.txt");
   Smuggle (+"doc",     +"za_todo.txt");
