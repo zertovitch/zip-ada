@@ -767,26 +767,30 @@ package body BZip2.Encoding is
             end if;
           end Simulate_Entropy_Coding_Variants_and_Reclassify;
 
-          procedure Show_Cluster_Statistics is
+          low_cluster_usage : Boolean := False;
+
+          procedure Cluster_Statistics is
+            stat_cluster : array (Entropy_Coder_Range) of Natural_32 := (others => 0);
+            cl : Entropy_Coder_Range;
+            uniform_usage : constant Natural_32 := selector_count / Natural_32 (entropy_coder_count);
+            threshold_denominator : constant := 2;
           begin
-            if verbosity_level >= detailed then
-              declare
-                stat_cluster : array (Entropy_Coder_Range) of Natural := (others => 0);
-                cl : Entropy_Coder_Range;
-              begin
-                --  Compute cluster usage.
-                for i in Selector_Range loop
-                  cl := selector (i);
-                  stat_cluster (cl) := stat_cluster (cl) + 1;
-                end loop;
-                for c in 1 .. entropy_coder_count loop
-                  Trace
-                    ("          Cluster" & c'Image & " is used by" &
-                       stat_cluster (c)'Image & " groups.", detailed);
-                end loop;
-              end;
-            end if;
-          end Show_Cluster_Statistics;
+            low_cluster_usage := False;
+            --  Compute cluster usage.
+            for i in Selector_Range loop
+              cl := selector (i);
+              stat_cluster (cl) := stat_cluster (cl) + 1;
+            end loop;
+            for c in 1 .. entropy_coder_count loop
+              Trace
+                 ("          Cluster" & c'Image & " is used by" &
+                  stat_cluster (c)'Image & " groups.", detailed);
+              if stat_cluster (c) < uniform_usage / threshold_denominator then
+                low_cluster_usage := True;
+                Trace ("          ---> Low Cluster Usage!", detailed);
+              end if;
+            end loop;
+          end Cluster_Statistics;
 
           procedure Construct (sample_width : Natural) is
             reclassification_iteration_limit : constant := 10;
@@ -802,7 +806,7 @@ package body BZip2.Encoding is
             --  frequencies of both affected clusters.
             --
             for iteration in 1 .. reclassification_iteration_limit loop
-              Show_Cluster_Statistics;
+              Cluster_Statistics;
               Define_Descriptors;
               Simulate_Entropy_Coding_Variants_and_Reclassify;
               Trace
@@ -816,7 +820,7 @@ package body BZip2.Encoding is
               --  full stabilization (clusters have changed).
               Define_Descriptors;
             end if;
-            Show_Cluster_Statistics;
+            Cluster_Statistics;
           end Construct;
 
           function Compute_Total_Entropy_Cost return Natural_32 is
@@ -923,8 +927,8 @@ package body BZip2.Encoding is
              when block_400k => (4, 6),
              when block_900k =>
                (case mtf_last is
-                  when     1 ..  5_000 => (2, 3, 4),
-                  when 5_001 .. 10_000 => (3, 4, 5),
+                  when     1 ..  5_000 => (2, 3, 6),
+                  when 5_001 .. 10_000 => (3, 4, 6),
                   when others          => (3, 4, 5, 6)));
 
           sample_width_choices : constant Value_Array :=
@@ -942,18 +946,23 @@ package body BZip2.Encoding is
           --  Brute-force: test some max code lengths:
           for max_code_len_test of max_code_len_choices loop
             max_code_len := max_code_len_test;
-            --  Brute-force: test some amounts of entropy coders:
-            for ec_test of coder_choices loop
-              entropy_coder_count := ec_test;
-              --  Brute-force: test some sample widths:
-              for sample_width_test of sample_width_choices loop
-                Construct (sample_width_test);
-                cost := Compute_Total_Entropy_Cost;
-                if cost < best_cost then
-                  best_cost         := cost;
-                  best_ec_count     := ec_test;
-                  best_max_code_len := max_code_len;
-                  best_sample_width := sample_width_test;
+            --  Brute-force: test some sample widths:
+            for sample_width_test of sample_width_choices loop
+              --  Brute-force: test some amounts of entropy coders:
+              for ec_test in reverse min_entropy_coders .. max_entropy_coders loop
+                if low_cluster_usage
+                  --  ^ At least one cluster of previous iteration is not used much.
+                  or else (for some value of coder_choices => value = ec_test)
+                then
+                  entropy_coder_count := ec_test;
+                  Construct (sample_width_test);
+                  cost := Compute_Total_Entropy_Cost;
+                  if cost < best_cost then
+                    best_cost         := cost;
+                    best_ec_count     := ec_test;
+                    best_max_code_len := max_code_len;
+                    best_sample_width := sample_width_test;
+                  end if;
                 end if;
               end loop;
             end loop;
