@@ -166,7 +166,7 @@ package Zip is
 
   type Zip_Name_Encoding is (IBM_437, UTF_8);
 
-  --  Traverse a whole Zip_info directory in sorted order, giving the
+  --  Traverse a whole Zip_Info directory in sorted order, giving the
   --  name for each entry to an user-defined "Action" procedure.
   --  Concretely, you can process a whole Zip file that way, by extracting data
   --  with Extract, or open a reader stream with UnZip.Streams.
@@ -235,7 +235,7 @@ package Zip is
      uncomp_size    :    out Zip_64_Data_Size_Type;
      crc_32         :    out Interfaces.Unsigned_32);
 
-  --  Find offset of a certain compressed file in a pre-loaded Zip_info data
+  --  Find offset of a certain compressed file in a pre-loaded Zip_Info data
 
   procedure Find_Offset
     (info           : in     Zip_Info;
@@ -246,7 +246,7 @@ package Zip is
      uncomp_size    :    out Zip_64_Data_Size_Type;
      crc_32         :    out Interfaces.Unsigned_32);
 
-  --  Find offset of a certain compressed file in a pre-loaded Zip_info data.
+  --  Find offset of a certain compressed file in a pre-loaded Zip_Info data.
   --  This version scans the whole catalogue and returns the index of the first
   --  entry with a matching name, ignoring directory information.
   --  For instance, if the Zip archive contains "zip-ada/zip_lib/zip.ads",
@@ -391,7 +391,7 @@ package Zip is
 
 private
 
-  --  Zip_info, 23.VI.1999.
+  --  Zip_Info, 23.VI.1999.
   --
   --  The PKZIP central directory is coded here as a binary tree
   --  to allow a fast retrieval of the searched offset in zip file.
@@ -439,7 +439,7 @@ private
 
   type p_String is access String;
 
-  type Zip_info is new Ada.Finalization.Controlled with record
+  type Zip_Info is new Ada.Finalization.Controlled with record
     loaded             : Boolean := False;
     case_sensitive     : Boolean;
     zip_file_name      : p_String;                            --  a file name...
@@ -452,9 +452,10 @@ private
   end record;
 
   --  After a copy, need to clone a few things.
-  overriding procedure Adjust   (info : in out Zip_info);
+  overriding procedure Adjust   (info : in out Zip_Info);
+
   --  Free heap-allocated memory.
-  overriding procedure Finalize (info : in out Zip_info);
+  overriding procedure Finalize (info : in out Zip_Info);
 
   --  System.Word_Size: 13.3(8): A word is the largest amount of storage
   --  that can be conveniently and efficiently manipulated by the hardware,
