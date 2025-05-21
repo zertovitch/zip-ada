@@ -649,21 +649,21 @@ package body BZip2.Encoding is
           end Initial_Clustering_Ranking_Method;
 
           procedure Define_Descriptors is
-            pos_countdown : Natural := group_size;
-            selector_idx : Positive_32 := 1;
+            pos_countdown : Natural             := group_size;
+            selector_idx  : Positive_32         := 1;
+            cluster       : Entropy_Coder_Range := selector (1);
+            symbol        : Alphabet_in_Use;
             freq_cluster : array (1 .. entropy_coder_count) of Count_Array :=  (others => (others => 0));
-            cluster : Entropy_Coder_Range;
-            symbol : Alphabet_in_Use;
           begin
             --  Populate the frequency stats, grouped by cluster (= entropy coder choice):
             for mtf_idx in 1 .. mtf_last loop
-              cluster := selector (selector_idx);
               symbol := mtf_data (mtf_idx);
               freq_cluster (cluster)(symbol) := freq_cluster (cluster)(symbol) + 1;
               pos_countdown := pos_countdown - 1;
-              if pos_countdown = 0 then
+              if pos_countdown = 0 and then mtf_idx < mtf_last then
                 pos_countdown := group_size;
                 selector_idx := selector_idx + 1;
+                cluster := selector (selector_idx);
               end if;
             end loop;
             --  Create Huffman codes based on the said frequencies:
@@ -675,15 +675,15 @@ package body BZip2.Encoding is
           defector_groups : Natural;
 
           procedure Simulate_Entropy_Coding_Variants_and_Reclassify is
-            pos_countdown : Natural := group_size;
-            selector_idx : Positive_32 := 1;
-            symbol : Alphabet_in_Use;
-            cluster : Entropy_Coder_Range;
-            bits : array (1 .. entropy_coder_count) of Natural := (others => 0);
+            pos_countdown : Natural             := group_size;
+            selector_idx  : Positive_32         := 1;
+            cluster       : Entropy_Coder_Range := selector (1);
+            symbol        : Alphabet_in_Use;
+            bit_count     : array (1 .. entropy_coder_count) of Natural := (others => 0);
 
-            --  We simulate the encoding of selectors (for its cost),
+            --  We simulate the encoding of selectors (for its cost).
             mtf_cluster_value : array (1 .. entropy_coder_count) of Positive;
-            mtf_cluster_idx : Positive;
+            mtf_cluster_idx   : Positive;
 
             procedure Optimize_Group is
               min_bits : Natural := Natural'Last;
@@ -694,7 +694,7 @@ package body BZip2.Encoding is
               --  encoding the current group of data using various entropy coders.
               --  Now we look at the extra cost of switching entropy coders.
               for cl in 1 .. entropy_coder_count loop
-                cost := bits (cl);
+                cost := bit_count (cl);
                 --  Here we account the mtf encoding of the selectors.
                 for search in mtf_cluster_value'Range loop
                   if mtf_cluster_value (search) = cl then
@@ -712,7 +712,7 @@ package body BZip2.Encoding is
               end loop;
 
               if best /= cluster then
-                --  We have found a cheaper encoding.
+                --  We have found a cheaper encoding by switching to another cluster.
                 --  -> the group #sel_idx changes party (re-allocation).
                 selector (selector_idx) := best;
                 defector_groups := defector_groups + 1;
@@ -735,7 +735,7 @@ package body BZip2.Encoding is
 
           begin
             --  Cost analysis by simulation and re-classification
-            --  (or re-allocation).
+            --  (or said otherwise, re-allocation).
             --
             for w in mtf_cluster_value'Range loop
               --  We start with 1, 2, 3, ...:
@@ -744,21 +744,22 @@ package body BZip2.Encoding is
 
             defector_groups := 0;
             pos_countdown := group_size;
-            selector_idx := 1;
             for mtf_idx in 1 .. mtf_last loop
-              cluster := selector (selector_idx);
               symbol := mtf_data (mtf_idx);
               for cl in 1 .. entropy_coder_count loop
                  --  For each cluster cl, simulate output assuming
                  --  the current group belongs to cluster cl.
-                 bits (cl) := bits (cl) + descr (cl) (symbol).bit_length;
+                 bit_count (cl) := bit_count (cl) + descr (cl) (symbol).bit_length;
               end loop;
               pos_countdown := pos_countdown - 1;
               if pos_countdown = 0 then
                 Optimize_Group;
-                bits := (others => 0);
                 pos_countdown := group_size;
-                selector_idx := selector_idx + 1;
+                if mtf_idx < mtf_last then
+                  bit_count := (others => 0);
+                  selector_idx := selector_idx + 1;
+                  cluster := selector (selector_idx);
+                end if;
               end if;
             end loop;
             if pos_countdown < group_size then
@@ -879,21 +880,19 @@ package body BZip2.Encoding is
               return bits;
             end Compute_Huffman_Bit_Lengths_Cost;
 
-            pos_countdown : Natural := group_size;
-            selector_idx : Positive_32 := 1;
-            cluster : Entropy_Coder_Range := selector (selector_idx);
-            bits : Natural_32 := 0;
+            pos_countdown : Natural             := group_size;
+            selector_idx  : Positive_32         := 1;
+            cluster       : Entropy_Coder_Range := selector (1);
+            bits          : Natural_32 := 0;
           begin
             --  Simulate the sending of the data itself:
             for mtf_idx in 1 .. mtf_last loop
               bits := bits + Natural_32 (descr (cluster)(mtf_data (mtf_idx)).bit_length);
               pos_countdown := pos_countdown - 1;
-              if pos_countdown = 0 then
+              if pos_countdown = 0 and then mtf_idx < mtf_last then
                 pos_countdown := group_size;
                 selector_idx := selector_idx + 1;
-                if mtf_idx < mtf_last then
-                  cluster := selector (selector_idx);
-                end if;
+                cluster := selector (selector_idx);
               end if;
             end loop;
             --  We add to the compressed data cost, the cost of switching coders
@@ -1103,13 +1102,12 @@ package body BZip2.Encoding is
       end Put_Block_Trees_Descriptors;
 
       procedure Entropy_Output is
-        pos_countdown : Natural := group_size;
-        sel_idx : Positive_32 := 1;
-        cluster : Positive;
-        symbol : Max_Alphabet;
+        pos_countdown : Natural             := group_size;
+        selector_idx  : Positive_32         := 1;
+        cluster       : Entropy_Coder_Range := selector (1);
+        symbol        : Max_Alphabet;
       begin
         for mtf_idx in 1 .. mtf_last loop
-          cluster := selector (sel_idx);
           symbol := mtf_data (mtf_idx);
 
           Put_Bits
@@ -1118,9 +1116,10 @@ package body BZip2.Encoding is
                descr (cluster) (symbol).bit_length);
 
           pos_countdown := pos_countdown - 1;
-          if pos_countdown = 0 then
+          if pos_countdown = 0 and then mtf_idx < mtf_last then
             pos_countdown := group_size;
-            sel_idx := sel_idx + 1;
+            selector_idx := selector_idx + 1;
+            cluster := selector (selector_idx);
           end if;
         end loop;
 
