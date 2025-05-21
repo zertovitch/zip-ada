@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2023 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2025 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -172,27 +172,25 @@ package body Zip is
   -- Load Zip_info from a stream containing the .zip archive --
   -------------------------------------------------------------
 
-  procedure Load (
-    info            :    out Zip_info;
-    from            : in out Zip_Streams.Root_Zipstream_Type'Class;
-    case_sensitive  : in     Boolean := False;
-    duplicate_names : in     Duplicate_name_policy := error_on_duplicate
-  )
+  procedure Load
+    (info            :    out Zip_Info;
+     from            : in out Zip_Streams.Root_Zipstream_Type'Class;
+     case_sensitive  : in     Boolean := False;
+     duplicate_names : in     Duplicate_name_policy := error_on_duplicate)
   is
-    procedure Insert (
-      dico_name        : String; -- UPPER if case-insensitive search
-      file_name        : String;
-      file_index       : Zip_Streams.ZS_Index_Type;
-      comp_size,
-      uncomp_size      : Zip_64_Data_Size_Type;
-      crc_32           : Unsigned_32;
-      date_time        : Time;
-      method           : PKZip_method;
-      name_encoding    : Zip_Name_Encoding;
-      read_only        : Boolean;
-      encrypted_2_x    : Boolean;
-      root_node        : in out p_Dir_node
-      )
+    procedure Insert
+      (dico_name        : String; -- UPPER if case-insensitive search
+       file_name        : String;
+       file_index       : Zip_Streams.ZS_Index_Type;
+       comp_size,
+       uncomp_size      : Zip_64_Data_Size_Type;
+       crc_32           : Unsigned_32;
+       date_time        : Time;
+       method           : PKZip_method;
+       name_encoding    : Zip_Name_Encoding;
+       read_only        : Boolean;
+       encrypted_2_x    : Boolean;
+       root_node        : in out p_Dir_node)
     is
       procedure Insert_into_tree (node : in out p_Dir_node) is
       begin
@@ -336,12 +334,11 @@ package body Zip is
   -- Load Zip_info from a file containing the .zip archive --
   -----------------------------------------------------------
 
-  procedure Load (
-    info            : out Zip_info;
-    from            : in  String;  --  Zip file name
-    case_sensitive  : in  Boolean := False;
-    duplicate_names : in  Duplicate_name_policy := error_on_duplicate
-  )
+  procedure Load
+    (info            : out Zip_Info;
+     from            : in  String;  --  Zip file name
+     case_sensitive  : in  Boolean := False;
+     duplicate_names : in  Duplicate_name_policy := error_on_duplicate)
   is
     my_stream : aliased Zip_Streams.File_Zipstream;
   begin
@@ -371,12 +368,12 @@ package body Zip is
       raise;
   end Load;
 
-  function Is_loaded (info : in Zip_info) return Boolean is
+  function Is_loaded (info : in Zip_Info) return Boolean is
   begin
     return info.loaded;
   end Is_loaded;
 
-  function Zip_Name (info : in Zip_info) return String is
+  function Zip_Name (info : in Zip_Info) return String is
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
@@ -384,7 +381,7 @@ package body Zip is
     return info.zip_file_name.all;
   end Zip_Name;
 
-  function Zip_Comment (info : in Zip_info) return String is
+  function Zip_Comment (info : in Zip_Info) return String is
   begin
     if not info.loaded then
       raise Forgot_to_load_zip_info;
@@ -392,7 +389,7 @@ package body Zip is
     return info.zip_file_comment.all;
   end Zip_Comment;
 
-  function Zip_Stream (info : in Zip_info) return Zip_Streams.Zipstream_Class_Access
+  function Zip_Stream (info : in Zip_Info) return Zip_Streams.Zipstream_Class_Access
   is
   begin
     if not info.loaded then
@@ -401,7 +398,7 @@ package body Zip is
     return info.zip_input_stream;
   end Zip_Stream;
 
-  function Entries (info : in Zip_info) return Natural is
+  function Entries (info : in Zip_Info) return Natural is
   begin
     return info.total_entries;
   end Entries;
@@ -410,7 +407,7 @@ package body Zip is
   -- Delete --
   ------------
 
-  procedure Delete (info : in out Zip_info) is
+  procedure Delete (info : in out Zip_Info) is
 
     procedure Delete (p : in out p_Dir_node) is
     begin
@@ -435,9 +432,9 @@ package body Zip is
   generic
     with procedure Action_private (dn : in out Dir_node);
     --  Dir_node is private: only known to us, contents subject to change
-  procedure Traverse_private (z : Zip_info);
+  procedure Traverse_private (z : Zip_Info);
 
-  procedure Traverse_private (z : Zip_info) is
+  procedure Traverse_private (z : Zip_Info) is
 
     procedure Traverse_tree (p : p_Dir_node) is
     begin
@@ -456,7 +453,7 @@ package body Zip is
   --  Public versions  --
   -----------------------
 
-  procedure Traverse (z : Zip_info) is
+  procedure Traverse (z : Zip_Info) is
     procedure My_Action_private (dn : in out Dir_node) is
     pragma Inline (My_Action_private);
     begin
@@ -467,7 +464,7 @@ package body Zip is
     My_Traverse_private (z);
   end Traverse;
 
-  procedure Traverse_Unicode (z : Zip_info) is
+  procedure Traverse_Unicode (z : Zip_Info) is
     procedure My_Action_private (dn : in out Dir_node) is
     pragma Inline (My_Action_private);
     begin
@@ -478,7 +475,7 @@ package body Zip is
     My_Traverse_private (z);
   end Traverse_Unicode;
 
-  procedure Traverse_verbose (z : Zip_info) is
+  procedure Traverse_verbose (z : Zip_Info) is
     procedure My_Action_private (dn : in out Dir_node) is
     pragma Inline (My_Action_private);
     begin
@@ -502,7 +499,7 @@ package body Zip is
   end Traverse_verbose;
 
   procedure Tree_Stat
-    (z         : in     Zip_info;
+    (z         : in     Zip_Info;
      total     :    out Natural;
      max_depth :    out Natural;
      avg_depth :    out Float)
@@ -667,7 +664,7 @@ package body Zip is
   --  Internal: find offset of a zipped file using the zip_info tree 8-)
 
   procedure Find_Offset
-    (info           : in     Zip_info;
+    (info           : in     Zip_Info;
      name           : in     String;
      name_encoding  :    out Zip_Name_Encoding;
      file_index     :    out Zip_Streams.ZS_Index_Type;
@@ -699,7 +696,7 @@ package body Zip is
   end Find_Offset;
 
   procedure Find_Offset_without_Directory
-    (info           : in     Zip_info;
+    (info           : in     Zip_Info;
      name           : in     String;
      name_encoding  :    out Zip_Name_Encoding;
      file_index     :    out Zip_Streams.ZS_Index_Type;
@@ -761,7 +758,7 @@ package body Zip is
     raise Entry_name_not_found with "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']';
   end Find_Offset_without_Directory;
 
-  function Exists (info : Zip_info; name : String) return Boolean
+  function Exists (info : Zip_Info; name : String) return Boolean
   is
     aux : p_Dir_node := info.dir_binary_tree;
     up_name : constant String := Normalize (name, info.case_sensitive);
@@ -781,7 +778,7 @@ package body Zip is
     return False;
   end Exists;
 
-  procedure Set_User_Code (info : Zip_info; name : String; code : Integer) is
+  procedure Set_User_Code (info : Zip_Info; name : String; code : Integer) is
     aux : p_Dir_node := info.dir_binary_tree;
     up_name : constant String := Normalize (name, info.case_sensitive);
   begin
@@ -801,7 +798,7 @@ package body Zip is
     raise Entry_name_not_found with "Archive: [" & info.zip_file_name.all & "], entry: [" & name & ']';
   end Set_User_Code;
 
-  function User_Code (info : Zip_info; name : String) return Integer
+  function User_Code (info : Zip_Info; name : String) return Integer
   is
     aux : p_Dir_node := info.dir_binary_tree;
     up_name : constant String := Normalize (name, info.case_sensitive);
@@ -823,7 +820,7 @@ package body Zip is
   end User_Code;
 
   procedure Get_Sizes
-    (info           : in     Zip_info;
+    (info           : in     Zip_Info;
      name           : in     String;
      comp_size      :    out Zip_64_Data_Size_Type;
      uncomp_size    :    out Zip_64_Data_Size_Type)
@@ -1118,7 +1115,7 @@ package body Zip is
     return str (Index (str, "#") + 1 .. 11);
   end Hexadecimal;
 
-  overriding procedure Adjust (info : in out Zip_info) is
+  overriding procedure Adjust (info : in out Zip_Info) is
 
     function Tree_Clone (p : in p_Dir_node) return p_Dir_node is
       q : p_Dir_node;
@@ -1139,7 +1136,7 @@ package body Zip is
     info.zip_file_comment := new String'(info.zip_file_comment.all);
   end Adjust;
 
-  overriding procedure Finalize (info : in out Zip_info) is
+  overriding procedure Finalize (info : in out Zip_Info) is
   begin
     Delete (info);
   end Finalize;
