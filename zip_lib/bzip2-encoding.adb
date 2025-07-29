@@ -46,10 +46,13 @@
 --
 --    - Use the permutation of entropy coders that minimizes the
 --        size of compression structure.
+--    - Brute-force over different strategies to tweak frequencies for avoiding
+--        zero occurrences (see Avoid_Zeros). Unfortunately, the gains are offset by larger
+--        compression structures (the Huffman trees descriptors take more room).
 --    - Use k-means machine learning method to re-allocate clusters to entropy coders.
 --        Removed from code on 2025-02-23.
---    - Use a "noisiness" function of a group's frequencies in the sorting
---        key for the initial clustering.
+--    - Use a "noisiness" (instead of a "bumpiness") function of a group's frequencies
+--        in the sorting key for the initial clustering.
 --    - Set up the initial clustering by slicing the global frequency histogram
 --        "horizontally" (on the symbol axis) to create artificial truncated histograms
 --        and allocate them to the data groups. It obviously traps the model into
