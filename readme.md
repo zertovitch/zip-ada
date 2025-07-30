@@ -1,5 +1,4 @@
-Zip-Ada
-=======
+# Zip-Ada
 
 Zip-Ada is a library for dealing with
 the Zip compressed archive file format.
@@ -8,9 +7,7 @@ the Zip compressed archive file format.
  - Fully in Ada - no interfacing headaches
  - Fully portable - no preprocessing, no conditionals
 
-====
-Complete description in: doc/zipada.txt
-====
+**Complete description in: `doc/zipada.txt`**
 
 If you are impatient: in Alire (https://alire.ada.dev/),
 do "alr get zipada", then "alr run" from the zip* directory.
@@ -23,5 +20,9 @@ GNAT Studio or, on your preferred command-line interpreter, type:
 
 (if `gnatmake` doesn't work, try `gprbuild`)
 
-Bonus: the file zipada.gpr is a text file,
+Bonus: the file `zipada.gpr` is a text file,
 with some comments.
+
+### License
+
+Zip-Ada is free, open-source and released under the MIT license.
