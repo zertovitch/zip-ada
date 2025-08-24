@@ -53,6 +53,8 @@
 --        Removed from code on 2025-02-23.
 --    - Use a "noisiness" (instead of a "bumpiness") function of a group's frequencies
 --        in the sorting key for the initial clustering.
+--    - Use a "mid-bumpiness" score, subtracted from the "left-bumpiness" (times a factor),
+--        in the sorting key for the initial clustering.
 --    - Set up the initial clustering by slicing the global frequency histogram
 --        "horizontally" (on the symbol axis) to create artificial truncated histograms
 --        and allocate them to the data groups. It obviously traps the model into
