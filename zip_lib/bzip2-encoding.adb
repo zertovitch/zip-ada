@@ -34,15 +34,23 @@
 -----------------
 
 --  To do:
+--  -----
 --
---    - Performance: use Suffix-Array-Induced-Sorting for the BWT.
---        See https://github.com/dsnet/compress/blob/master/bzip2/bwt.go
+--    - BWT performance: consider a specialized sorting algorithm to solve the
+--        slowness of compressing very redundant data.
+--        For seeing the issue: try compressing a text with 50000 lines of the
+--        same short text, and see what happens.
+--    - BWT performance: consider Suffix-Array-Induced-Sorting.
+--        See the Suffix_Arrays package in ./extras and
+--            https://github.com/dsnet/compress/blob/master/bzip2/bwt.go
 --            https://sites.google.com/site/yuta256/sais
+--        Note that J. Seward kept a sorting algorithm.
 --    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in
 --        7-Zip's BZip2Encoder.cpp .
 --    - Use tasking to parallelize the block compression jobs.
 --
 --  Already tried without significant success:
+--  -----------------------------------------
 --
 --    - Use the permutation of entropy coders that minimizes the
 --        size of compression structure.
