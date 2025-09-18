@@ -605,13 +605,18 @@ package body BZip2.Encoding is
             procedure Initial_Clustering_by_Rank (attr : Cluster_Attribution) is
               na : constant Positive_32 := attr'Length;
               ns : constant Selector_Range := selector_count;
-              a32 : Positive_32;
+              a32, low, high : Natural_32;
             begin
+              low := 1;
               for attr_idx in attr'Range loop
                 a32 := Integer_32 (attr_idx) - Integer_32 (attr'First) + 1;  --  a32 = 1, 2, 3, .. na.
-                for i in 1 + (a32 - 1) * ns / na .. a32 * ns / na loop
+                high := a32 * ns / na;
+                for i in low .. high loop
+                  --  When ns < na, it will happen that this loop's range
+                  --  is empty for some values of a32. It is expected.
                   selector (ranking (i).index) := attr (attr_idx);
                 end loop;
+                low := 1 + high;
               end loop;
             end Initial_Clustering_by_Rank;
 
