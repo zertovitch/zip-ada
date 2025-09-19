@@ -63,10 +63,13 @@
 --        in the sorting key for the initial clustering.
 --    - Use a "mid-bumpiness" score, subtracted from the "left-bumpiness" (times a factor),
 --        in the sorting key for the initial clustering.
+--    - Initial clustering: try an uneven distribution of the number of members per
+--        cluster. Formulas used: first cluster with half the number of strings of last
+--        cluster, linear inbetween; or vice-versa.
 --    - Set up the initial clustering by slicing the global frequency histogram
 --        "horizontally" (on the symbol axis) to create artificial truncated histograms
---        and allocate them to the data groups. It obviously traps the model into
---        a suboptimal local optimum in the 258-dimensional criterion space.
+--        and allocate them to the data groups. It obviously traps the model most of the time
+--        into a suboptimal local optimum in the 258-dimensional criterion space.
 --        This method is used by the original BZip2 program.
 --        Removed from code on 2025-02-08.
 
@@ -458,7 +461,10 @@ package body BZip2.Encoding is
         array (Entropy_Coder_Range) of
           Huffman.Encoding.Descriptor (Max_Alphabet);
 
-      entropy_coder_count : Entropy_Coder_Range;
+      entropy_coder_count : Entropy_Coder_Range
+        range 2 .. Entropy_Coder_Range'Last;
+      --      ^ count = 1 is rejected by the canonical BZip2 decoder.
+
       selector_count : Integer_32;
 
       selector : array (1 .. 1 + block_capacity / group_size) of Entropy_Coder_Range;
@@ -656,7 +662,6 @@ package body BZip2.Encoding is
             --   - High values (more redundant data) for #1.
             --
             case entropy_coder_count is
-              when 1 => null;  --  Not supported by canonical BZip2.
               when 2 => Initial_Clustering_by_Rank ((2, 1));
               when 3 => Initial_Clustering_by_Rank ((3, 1, 2));
               when 4 => Initial_Clustering_by_Rank ((4, 2, 1, 3));
