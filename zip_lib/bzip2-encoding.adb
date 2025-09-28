@@ -455,7 +455,7 @@ package body BZip2.Encoding is
       --  Entropy Coding  --
       ----------------------
 
-      subtype Entropy_Coder_Range is Integer range 1 .. max_entropy_coders;
+      type Entropy_Coder_Range is range 1 .. max_entropy_coders;
 
       descr :
         array (Entropy_Coder_Range) of
@@ -705,8 +705,8 @@ package body BZip2.Encoding is
             bit_count     : array (1 .. entropy_coder_count) of Natural := (others => 0);
 
             --  We simulate the encoding of selectors (for its cost).
-            mtf_cluster_value : array (1 .. entropy_coder_count) of Positive;
-            mtf_cluster_idx   : Positive;
+            mtf_cluster_value : array (1 .. entropy_coder_count) of Entropy_Coder_Range;
+            mtf_cluster_index : Entropy_Coder_Range;
 
             procedure Optimize_Group is
               min_bits : Natural := Natural'Last;
@@ -721,11 +721,11 @@ package body BZip2.Encoding is
                 --  Here we account the mtf encoding of the selectors.
                 for search in mtf_cluster_value'Range loop
                   if mtf_cluster_value (search) = cl then
-                    mtf_cluster_idx := search;
+                    mtf_cluster_index := search;
                     exit;
                   end if;
                 end loop;
-                cost := cost + mtf_cluster_idx;
+                cost := cost + Natural (mtf_cluster_index);
                 --
                 if cost < min_bits then
                   --  Encoder #cl is cheaper.
@@ -745,12 +745,12 @@ package body BZip2.Encoding is
               --  mtf for the chosen cluster index.
               for search in mtf_cluster_value'Range loop
                 if mtf_cluster_value (search) = selector (selector_idx) then
-                  mtf_cluster_idx := search;
+                  mtf_cluster_index := search;
                   exit;
                 end if;
               end loop;
               --  Move the value to the first place.
-              for j in reverse 2 .. mtf_cluster_idx loop
+              for j in reverse 2 .. mtf_cluster_index loop
                 mtf_cluster_value (j) := mtf_cluster_value (j - 1);
               end loop;
               mtf_cluster_value (1) := selector (selector_idx);
@@ -852,25 +852,25 @@ package body BZip2.Encoding is
             --  look at the costs related to the entropy coding.
 
             function Compute_Selectors_Cost return Natural_32 is
-              value : array (1 .. entropy_coder_count) of Positive;
-              mtf_idx : Positive;
+              mtf_cluster_value : array (1 .. entropy_coder_count) of Entropy_Coder_Range;
+              mtf_cluster_index : Entropy_Coder_Range;
               bits : Natural_32 := 0;
             begin
-              for w in value'Range loop
-                value (w) := w;
+              for w in mtf_cluster_value'Range loop
+                mtf_cluster_value (w) := w;
               end loop;
               for i in Selector_Range loop
-                for search in value'Range loop
-                  if value (search) = selector (i) then
-                    mtf_idx := search;
+                for search in mtf_cluster_value'Range loop
+                  if mtf_cluster_value (search) = selector (i) then
+                    mtf_cluster_index := search;
                     exit;
                   end if;
                 end loop;
-                for j in reverse 2 .. mtf_idx loop
-                  value (j) := value (j - 1);
+                for j in reverse 2 .. mtf_cluster_index loop
+                  mtf_cluster_value (j) := mtf_cluster_value (j - 1);
                 end loop;
-                value (1) := selector (i);
-                bits := bits + Integer_32 (mtf_idx);
+                mtf_cluster_value (1) := selector (i);
+                bits := bits + Integer_32 (mtf_cluster_index);
               end loop;
               return bits;
             end Compute_Selectors_Cost;
@@ -971,10 +971,10 @@ package body BZip2.Encoding is
             --  Brute-force: test some sample widths:
             for sample_width_test of sample_width_choices loop
               --  Brute-force: test some amounts of entropy coders:
-              for ec_test in reverse min_entropy_coders .. max_entropy_coders loop
+              for ec_test in reverse Entropy_Coder_Range range min_entropy_coders .. max_entropy_coders loop
                 if low_cluster_usage
                   --  ^ At least one cluster of previous iteration is not used much.
-                  or else (for some value of coder_choices => value = ec_test)
+                  or else (for some value of coder_choices => Entropy_Coder_Range (value) = ec_test)
                 then
                   entropy_coder_count := ec_test;
                   Construct (sample_width_test);
@@ -1060,28 +1060,28 @@ package body BZip2.Encoding is
         end Put_Mapping_Table;
 
         procedure Put_Selectors is
-          value : array (1 .. entropy_coder_count) of Positive;
-          mtf_idx : Positive;
+          mtf_cluster_value : array (1 .. entropy_coder_count) of Entropy_Coder_Range;
+          mtf_cluster_index : Entropy_Coder_Range;
         begin
           Put_Bits (Unsigned_32 (selector_count), 15);
-          for w in value'Range loop
+          for w in mtf_cluster_value'Range loop
             --  We start with 1, 2, 3, ...:
-            value (w) := w;
+            mtf_cluster_value (w) := w;
           end loop;
           for i in 1 .. selector_count loop
-            for search in value'Range loop
-              if value (search) = selector (i) then
-                mtf_idx := search;
+            for search in mtf_cluster_value'Range loop
+              if mtf_cluster_value (search) = selector (i) then
+                mtf_cluster_index := search;
                 exit;
               end if;
             end loop;
             --  Move the value to the first place.
-            for j in reverse 2 .. mtf_idx loop
-              value (j) := value (j - 1);
+            for j in reverse 2 .. mtf_cluster_index loop
+              mtf_cluster_value (j) := mtf_cluster_value (j - 1);
             end loop;
-            value (1) := selector (i);
+            mtf_cluster_value (1) := selector (i);
             --  MTF-transformed index for the selected entropy coder.
-            for bar in 1 .. mtf_idx  - 1 loop
+            for bar in 1 .. mtf_cluster_index  - 1 loop
               --  Output as many '1' bit as the value of mtf_idx - 1:
               Put_Bits (1, 1);
             end loop;
