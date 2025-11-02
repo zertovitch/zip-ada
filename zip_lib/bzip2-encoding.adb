@@ -1181,13 +1181,21 @@ package body BZip2.Encoding is
     procedure Read_and_Split_Block (dyn_block_capacity : Natural_32) is
 
       --  In the cases RLE_1 compression is efficient, the
-      --  input buffer can contain much more that the post RLE_1 block.
-      --  Best case: all runs of 259 bytes, factor 259/5 = 51.8.
-      --  The latter has to fit into the agreed capacity (a multiple of 100_000).
-      --  So, we define a conveniently large input buffer.
+      --  input buffer may contain much more that the post-RLE_1 block.
+      --  Best case: all runs of 259 bytes, reduction factor 259/5 = 51.8.
+      --  RLE_1 expands the data when it meets runs of length 4:
+      --  5 bytes are stored in that case.
+      --  So the worst case expansion is by a factor 5/4.
+      
+      --  The post-RLE_1 block has to fit into the agreed capacity,
+      --  a multiple of 100_000.
+      --  Thus, we have to simulate RLE_1 to avoid block size overflows
+      --  in a decoder.
 
+      --  Define an arbitrarily larger buffer for fitting very redundant
+      --  data. Beyond that limit, we will just do another block.
+      --
       multiplier : constant := 10;
-
       raw_buf : Buffer_Access := new Buffer (1 .. multiplier * dyn_block_capacity);
 
       package Segmentation_for_BZip2 is
@@ -1204,13 +1212,6 @@ package body BZip2.Encoding is
 
       raw_buf_index : Natural_32 := 0;
       index_start   : Natural_32 := 1;
-
-      --  We have to simulate RLE_1 to avoid block size overflows
-      --  in the decoder.
-      --  RLE_1 often expands the data (and sometimes does it
-      --  considerably) when it meets runs of length 4: 5 bytes are
-      --  stored in that case.
-      --  So the worst case expansion is by a factor 5/4.
 
       rle_1_block_size : Natural_32 := 0;
       b : Byte;
