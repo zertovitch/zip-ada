@@ -73,6 +73,7 @@
 --        This method is used by the original BZip2 program.
 --        Removed from code on 2025-02-08.
 
+with BZip2.Buffers;
 with Data_Segmentation;
 with Huffman.Encoding.Length_Limited_Coding;
 
@@ -89,43 +90,6 @@ package body BZip2.Encoding is
   is
     use Interfaces;
 
-    subtype Bit_Pos_Type is Natural range 0 .. 7;
-    bit_buffer : Byte := 0;
-    bit_pos : Bit_Pos_Type := 7;
-
-    procedure Flush_Bit_Buffer is
-    begin
-      Write_Byte (bit_buffer);
-      bit_buffer := 0;
-      bit_pos := 7;
-    end Flush_Bit_Buffer;
-
-    procedure Put_Bits (data : Unsigned_32; amount : Positive) is
-    begin
-      for count in reverse 1 .. amount loop
-        if (data and Shift_Left (Unsigned_32'(1), count - 1)) /= 0 then
-          bit_buffer := bit_buffer or Shift_Left (Unsigned_8'(1), bit_pos);
-        end if;
-        if bit_pos = 0 then
-          Flush_Bit_Buffer;
-        else
-          bit_pos := bit_pos - 1;
-        end if;
-      end loop;
-    end Put_Bits;
-
-    procedure Put_Bits (b : Boolean) is
-    begin
-      Put_Bits (Boolean'Pos (b), 1);
-    end Put_Bits;
-
-    procedure Put_Bits (s : String) is
-    begin
-      for c of s loop
-        Put_Bits (Character'Pos (c), 8);
-      end loop;
-    end Put_Bits;
-
     level : constant Natural_32 :=
       (case option is
          when block_100k => 1,
@@ -139,11 +103,6 @@ package body BZip2.Encoding is
     --  is longer, possibly due to indirect access to data and various
     --  checks. For instance, replacing Buffer below with a Vector makes
     --  the encoding ~26% slower.
-
-    type Buffer is array (Natural_32 range <>) of Byte;
-    type Buffer_Access is access Buffer;
-
-    procedure Unchecked_Free is new Ada.Unchecked_Deallocation (Buffer, Buffer_Access);
 
     combined_crc : Unsigned_32 := 0;
 
@@ -163,7 +122,7 @@ package body BZip2.Encoding is
       end if;
     end Trace;
 
-    procedure Trace (prefix : String; b : Buffer; verbosity : Natural) with Inline is
+    procedure Trace (prefix : String; b : Buffers.Buffer_Array; verbosity : Natural) with Inline is
     begin
       if verbosity_level >= verbosity then
         declare
@@ -188,7 +147,7 @@ package body BZip2.Encoding is
     --  that we can theoretically go on with the next step,
     --  perhaps at the price of using more memory.
 
-    procedure Encode_Block (raw_buf : Buffer) is
+    procedure Encode_Block (raw_buf : in Buffers.Buffer_Array; out_bit_buf : in out Buffers.Bit_Buffer_Type) is
 
       -----------------------------------
       --  Initial Run-Length Encoding  --
@@ -198,7 +157,7 @@ package body BZip2.Encoding is
       block_crc : Unsigned_32;
       in_use : array (Byte) of Boolean := (others => False);
 
-      rle_1_data : Buffer_Access := new Buffer (1 .. block_capacity * 5 / 4);
+      rle_1_data : Buffers.Buffer_Access := new Buffers.Buffer_Array (1 .. block_capacity * 5 / 4);
       --  Worst case: all data consist of runs of 4 bytes -> 5 bytes with RLE_1.
 
       procedure RLE_1 is
@@ -252,7 +211,7 @@ package body BZip2.Encoding is
       --  Burrows-Wheeler Transform  --
       ---------------------------------
 
-      bwt_data : Buffer_Access;
+      bwt_data : Buffers.Buffer_Access;
       bwt_index : Natural_32 := 0;  --  0-based.
 
       procedure BWT is
@@ -308,7 +267,7 @@ package body BZip2.Encoding is
 
         Offset_Sort (offset.all);  --  <--- The BW Transform is done here.
 
-        bwt_data := new Buffer (1 .. rle_1_block_size);
+        bwt_data := new Buffers.Buffer_Array (1 .. rle_1_block_size);
         for i in Offset_Range loop
           --  Copy last column of the matrix into transformed message:
           bwt_data (1 + i) := rle_1_data (1 + (rle_1_block_size - 1 - offset (i)) mod rle_1_block_size);
@@ -327,7 +286,7 @@ package body BZip2.Encoding is
           end if;
         end if;
         Unchecked_Free (offset);
-        Unchecked_Free (rle_1_data);
+        Buffers.Unchecked_Free (rle_1_data);
       exception
         when others =>
           Unchecked_Free (offset);
@@ -448,7 +407,7 @@ package body BZip2.Encoding is
         Store_Run;
         Store (EOB);
 
-        Unchecked_Free (bwt_data);
+        Buffers.Unchecked_Free (bwt_data);
       end MTF_and_RLE_2;
 
       ----------------------
@@ -1022,14 +981,14 @@ package body BZip2.Encoding is
 
       procedure Put_Block_Header is
       begin
-        Put_Bits (block_header_magic);
+        Buffers.Put_Bits (out_bit_buf, block_header_magic);
         block_crc := CRC.Final (block_crc);
-        Put_Bits (block_crc, 32);
+        Buffers.Put_Bits (out_bit_buf, block_crc, 32);
         Trace ("Block CRC:   " & block_crc'Image, detailed);
         combined_crc := Rotate_Left (combined_crc, 1) xor block_crc;
         Trace ("Combined CRC:" & combined_crc'Image, detailed);
-        Put_Bits (0, 1);  --  Randomized flag, always False.
-        Put_Bits (Unsigned_32 (bwt_index), 24);
+        Buffers.Put_Bits (out_bit_buf, 0, 1);  --  Randomized flag, always False.
+        Buffers.Put_Bits (out_bit_buf, Unsigned_32 (bwt_index), 24);
       end Put_Block_Header;
 
       procedure Put_Block_Trees_Descriptors is
@@ -1047,13 +1006,13 @@ package body BZip2.Encoding is
 
           --  Send the first 16 bits which tell which pieces are stored.
           for i in in_use_16'Range loop
-            Put_Bits (in_use_16 (i));
+            Buffers.Put_Bits (out_bit_buf, in_use_16 (i));
           end loop;
           --  Send detail of the used pieces.
           for i in in_use_16'Range loop
             if in_use_16 (i) then
               for j in in_use_16'Range loop
-                Put_Bits (in_use (i * 16 + j));
+                Buffers.Put_Bits (out_bit_buf, in_use (i * 16 + j));
               end loop;
             end if;
           end loop;
@@ -1063,7 +1022,7 @@ package body BZip2.Encoding is
           mtf_cluster_value : array (1 .. entropy_coder_count) of Entropy_Coder_Range;
           mtf_cluster_index : Entropy_Coder_Range;
         begin
-          Put_Bits (Unsigned_32 (selector_count), 15);
+          Buffers.Put_Bits (out_bit_buf, Unsigned_32 (selector_count), 15);
           for w in mtf_cluster_value'Range loop
             --  We start with 1, 2, 3, ...:
             mtf_cluster_value (w) := w;
@@ -1083,9 +1042,9 @@ package body BZip2.Encoding is
             --  MTF-transformed index for the selected entropy coder.
             for bar in 1 .. mtf_cluster_index  - 1 loop
               --  Output as many '1' bit as the value of mtf_idx - 1:
-              Put_Bits (1, 1);
+              Buffers.Put_Bits (out_bit_buf, 1, 1);
             end loop;
-            Put_Bits (0, 1);
+            Buffers.Put_Bits (out_bit_buf, 0, 1);
           end loop;
         end Put_Selectors;
 
@@ -1094,22 +1053,22 @@ package body BZip2.Encoding is
         begin
           for coder in 1 .. entropy_coder_count loop
             current_bit_length := descr (coder)(0).bit_length;
-            Put_Bits (Unsigned_32 (current_bit_length), 5);
+            Buffers.Put_Bits (out_bit_buf, Unsigned_32 (current_bit_length), 5);
             for i in 0 .. last_symbol_in_use loop
               new_bit_length := descr (coder)(i).bit_length;
               Adjust_Bit_length :
               loop
                 if current_bit_length = new_bit_length then
-                  Put_Bits (0, 1);
+                  Buffers.Put_Bits (out_bit_buf, 0, 1);
                   exit Adjust_Bit_length;
                 else
-                  Put_Bits (1, 1);
+                  Buffers.Put_Bits (out_bit_buf, 1, 1);
                   if current_bit_length < new_bit_length then
                     current_bit_length := current_bit_length + 1;
-                    Put_Bits (0, 1);
+                    Buffers.Put_Bits (out_bit_buf, 0, 1);
                   else
                     current_bit_length := current_bit_length - 1;
-                    Put_Bits (1, 1);
+                    Buffers.Put_Bits (out_bit_buf, 1, 1);
                   end if;
                 end if;
               end loop Adjust_Bit_length;
@@ -1119,7 +1078,7 @@ package body BZip2.Encoding is
 
       begin
         Put_Mapping_Table;
-        Put_Bits (Unsigned_32 (entropy_coder_count), 3);
+        Buffers.Put_Bits (out_bit_buf, Unsigned_32 (entropy_coder_count), 3);
         Put_Selectors;
         Put_Huffman_Bit_Lengths;
       end Put_Block_Trees_Descriptors;
@@ -1133,8 +1092,9 @@ package body BZip2.Encoding is
         for mtf_idx in 1 .. mtf_last loop
           symbol := mtf_data (mtf_idx);
 
-          Put_Bits
-            (Unsigned_32
+          Buffers.Put_Bits
+            (out_bit_buf,
+             Unsigned_32
               (descr (cluster) (symbol).code),
                descr (cluster) (symbol).bit_length);
 
@@ -1166,8 +1126,8 @@ package body BZip2.Encoding is
 
     exception
       when others =>
-        Unchecked_Free (rle_1_data);
-        Unchecked_Free (bwt_data);
+        Buffers.Unchecked_Free (rle_1_data);
+        Buffers.Unchecked_Free (bwt_data);
         Unchecked_Free (mtf_data);
         raise;
     end Encode_Block;
@@ -1178,7 +1138,7 @@ package body BZip2.Encoding is
     --  Data acquisition and block splitting  --
     --------------------------------------------
 
-    procedure Read_and_Split_Block (dyn_block_capacity : Natural_32) is
+    procedure Read_and_Split_Block (out_bit_buf : in out Buffers.Bit_Buffer_Type; dyn_block_capacity : Natural_32) is
 
       --  In the cases RLE_1 compression is efficient, the
       --  input buffer may contain much more that the post-RLE_1 block.
@@ -1191,7 +1151,7 @@ package body BZip2.Encoding is
       --  data. Beyond that limit, we will just do another block.
       --
       multiplier : constant := 10;
-      raw_buf : Buffer_Access := new Buffer (1 .. multiplier * dyn_block_capacity);
+      raw_buf : Buffers.Buffer_Access := new Buffers.Buffer_Array (1 .. multiplier * dyn_block_capacity);
       raw_buf_index : Natural_32 := 0;
 
       procedure Data_Acquisition is
@@ -1250,7 +1210,7 @@ package body BZip2.Encoding is
         new Data_Segmentation
           (Index                 => Natural_32,
            Alphabet              => Byte,
-           Buffer_Type           => Buffer,
+           Buffer_Type           => Buffers.Buffer_Array,
            discrepancy_threshold => 2.0,
            index_threshold       => 80_000,
            window_size           => 80_000);
@@ -1258,20 +1218,27 @@ package body BZip2.Encoding is
       single_segment : constant Boolean := False;
       seg : Segmentation_for_BZip2.Segmentation;
 
+      out_buf : Buffers.Buffer_Access;
+
+      fixed_costs_estimate : constant := 1_000_000;  --  Ridiculous overestimation.
+
     begin
       Data_Acquisition;
 
+      out_buf := new Buffers.Buffer_Array (1 .. raw_buf_index * 2 + fixed_costs_estimate);
+      out_bit_buf.destination := (out_buf, 0);
+
       if single_segment then
         --  No segmentation /splitting:
-        Encode_Block (raw_buf (1 .. raw_buf_index));
+        Encode_Block (raw_buf (1 .. raw_buf_index), out_bit_buf);
       else
         Segmentation_for_BZip2.Segment_by_Entropy (raw_buf (1 .. raw_buf_index), seg);
 
         if seg.Is_Empty then
-          Encode_Block (raw_buf (1 .. 0));
+          Encode_Block (raw_buf (1 .. 0), out_bit_buf);
         else
           for s of seg loop
-            Encode_Block (raw_buf (index_start .. s));
+            Encode_Block (raw_buf (index_start .. s), out_bit_buf);
             index_start := s + 1;
           end loop;
         end if;
@@ -1285,10 +1252,16 @@ package body BZip2.Encoding is
 
       end if;
 
-      Unchecked_Free (raw_buf);
+      for i in 1 .. out_bit_buf.destination.pos loop
+        Write_Byte (out_bit_buf.destination.data (i));
+      end loop;
+
+      Buffers.Unchecked_Free (raw_buf);
+      Buffers.Unchecked_Free (out_buf);
     exception
       when others =>
-        Unchecked_Free (raw_buf);
+        Buffers.Unchecked_Free (raw_buf);
+        Buffers.Unchecked_Free (out_buf);
         raise;
     end Read_and_Split_Block;
 
@@ -1296,16 +1269,26 @@ package body BZip2.Encoding is
       magic : String := stream_header_magic;
     begin
       magic (magic'Last) := Character'Val (Character'Pos ('0') + level);
-      Put_Bits (magic);
+      for i in magic'Range loop
+        Write_Byte (Character'Pos (magic (i)));
+      end loop;
     end Write_Stream_Header;
 
+    main_bit_buffer : Buffers.Bit_Buffer_Type;
+
     procedure Write_Stream_Footer is
+      footer_out : Buffers.Buffer_Access := new Buffers.Buffer_Array (1 .. 11);
     begin
-      Put_Bits (stream_footer_magic);
-      Put_Bits (combined_crc, 32);
-      if bit_pos < 7 then
-        Flush_Bit_Buffer;
+      main_bit_buffer.destination := (footer_out, 0);
+      Buffers.Put_Bits (main_bit_buffer, stream_footer_magic);
+      Buffers.Put_Bits (main_bit_buffer, combined_crc, 32);
+      if main_bit_buffer.pos < 7 then
+        Buffers.Flush_Bit_Buffer (main_bit_buffer);
       end if;
+      for i in 1 .. main_bit_buffer.destination.pos loop
+        Write_Byte (main_bit_buffer.destination.data (i));
+      end loop;
+      Buffers.Unchecked_Free (footer_out);
     end Write_Stream_Footer;
 
     --  Vertically challenged blocks.
@@ -1323,9 +1306,9 @@ package body BZip2.Encoding is
         --  if we can balance the last two blocks.
         --  NB: a more sophisticated balancing using (1.0 - small_block_prop_max)
         --  did not deliver convincing results.
-        Read_and_Split_Block (Natural_32 (stream_rest) / 2);
+        Read_and_Split_Block (main_bit_buffer, Natural_32 (stream_rest) / 2);
       else
-        Read_and_Split_Block (block_capacity);
+        Read_and_Split_Block (main_bit_buffer, block_capacity);
       end if;
       exit when not More_Bytes;
     end loop;
