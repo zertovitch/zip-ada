@@ -1186,17 +1186,65 @@ package body BZip2.Encoding is
       --  RLE_1 expands the data when it meets runs of length 4:
       --  5 bytes are stored in that case.
       --  So the worst case expansion is by a factor 5/4.
-      
-      --  The post-RLE_1 block has to fit into the agreed capacity,
-      --  a multiple of 100_000.
-      --  Thus, we have to simulate RLE_1 to avoid block size overflows
-      --  in a decoder.
 
       --  Define an arbitrarily larger buffer for fitting very redundant
       --  data. Beyond that limit, we will just do another block.
       --
       multiplier : constant := 10;
       raw_buf : Buffer_Access := new Buffer (1 .. multiplier * dyn_block_capacity);
+      raw_buf_index : Natural_32 := 0;
+
+      procedure Data_Acquisition is
+        --  The post-RLE_1 block has to fit into the agreed capacity,
+        --  a multiple of 100_000.
+        --  Thus, we have to simulate RLE_1 to avoid block size overflows
+        --  in a decoder.
+
+        rle_1_block_size : Natural_32 := 0;
+        b : Byte;
+        b_prev : Byte := 0;  --  Initialization is to reassure the compiler.
+        run : Natural := 0;
+
+        procedure Simulate_Store_Run with Inline is
+        begin
+          rle_1_block_size := rle_1_block_size + Integer_32 (Integer'Min (4, run));
+          if run >= 4 then
+            pragma Assert (run <= 259);
+            rle_1_block_size := rle_1_block_size + 1;
+          end if;
+          run := 1;
+        end Simulate_Store_Run;
+
+        start : Boolean := True;
+
+      begin
+        while More_Bytes
+           and then rle_1_block_size + 5 < dyn_block_capacity
+           --  ^ The +5 is because sometimes a pack of max 5 bytes is sent by Store_Run.
+           and then raw_buf_index < raw_buf'Last
+        loop
+          b := Read_Byte;
+          raw_buf_index := raw_buf_index + 1;
+          raw_buf (raw_buf_index) := b;
+          if stream_rest /= unknown_size then
+            stream_rest := stream_rest - 1;
+          end if;
+          if start or else b /= b_prev then
+            --  Startup or Run break:
+            Simulate_Store_Run;
+            start := False;
+          elsif run = 259 then
+            --  Force a run break, even though b = b_prev:
+            Simulate_Store_Run;
+          else
+            run := run + 1;
+          end if;
+          b_prev := b;
+        end loop;
+        Simulate_Store_Run;
+      end Data_Acquisition;
+
+      index_start : Natural_32 := 1;
 
       package Segmentation_for_BZip2 is
         new Data_Segmentation
@@ -1210,52 +1258,8 @@ package body BZip2.Encoding is
       single_segment : constant Boolean := False;
       seg : Segmentation_for_BZip2.Segmentation;
 
-      raw_buf_index : Natural_32 := 0;
-      index_start   : Natural_32 := 1;
-
-      rle_1_block_size : Natural_32 := 0;
-      b : Byte;
-      b_prev : Byte := 0;  --  Initialization is to reassure the compiler.
-      run : Natural := 0;
-
-      procedure Simulate_Store_Run with Inline is
-      begin
-        rle_1_block_size := rle_1_block_size + Integer_32 (Integer'Min (4, run));
-        if run >= 4 then
-          pragma Assert (run <= 259);
-          rle_1_block_size := rle_1_block_size + 1;
-        end if;
-        run := 1;
-      end Simulate_Store_Run;
-
-      start : Boolean := True;
-
     begin
-      --  Data acquisition:
-      while More_Bytes
-        and then rle_1_block_size + 5 < dyn_block_capacity
-        --  ^ The +5 is because sometimes a pack of max 5 bytes is sent by Store_Run.
-        and then raw_buf_index < raw_buf'Last
-      loop
-        b := Read_Byte;
-        raw_buf_index := raw_buf_index + 1;
-        raw_buf (raw_buf_index) := b;
-        if stream_rest /= unknown_size then
-          stream_rest := stream_rest - 1;
-        end if;
-        if start or else b /= b_prev then
-          --  Startup or Run break:
-          Simulate_Store_Run;
-          start := False;
-        elsif run = 259 then
-          --  Force a run break, even though b = b_prev:
-          Simulate_Store_Run;
-        else
-          run := run + 1;
-        end if;
-        b_prev := b;
-      end loop;
-      Simulate_Store_Run;
+      Data_Acquisition;
 
       if single_segment then
         --  No segmentation /splitting:
