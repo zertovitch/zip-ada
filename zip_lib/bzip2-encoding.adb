@@ -1249,16 +1249,16 @@ package body BZip2.Encoding is
 
       end if;
 
-      for i in 1 .. out_bit_buf.destination.pos loop
-        Write_Byte (out_bit_buf.destination.data (i));
+      for i in 1 .. out_bit_buf.destination_index loop
+        Write_Byte (out_bit_buf.destination_data (i));
       end loop;
 
       Buffers.Unchecked_Free (raw_buf);
-      Buffers.Unchecked_Free (out_bit_buf.destination.data);
+      Buffers.Unchecked_Free (out_bit_buf.destination_data);
     exception
       when others =>
         Buffers.Unchecked_Free (raw_buf);
-        Buffers.Unchecked_Free (out_bit_buf.destination.data);
+        Buffers.Unchecked_Free (out_bit_buf.destination_data);
         raise;
     end Read_and_Split_Block;
 
@@ -1278,13 +1278,13 @@ package body BZip2.Encoding is
       Buffers.Attach_New_Byte_Buffer (main_bit_buffer, 11);
       Buffers.Put_Bits (main_bit_buffer, stream_footer_magic);
       Buffers.Put_Bits (main_bit_buffer, combined_crc, 32);
-      if main_bit_buffer.pos < 7 then
+      if main_bit_buffer.bit_index < 7 then
         Buffers.Flush_Bit_Buffer (main_bit_buffer);
       end if;
-      for i in 1 .. main_bit_buffer.destination.pos loop
-        Write_Byte (main_bit_buffer.destination.data (i));
+      for i in 1 .. main_bit_buffer.destination_index loop
+        Write_Byte (main_bit_buffer.destination_data (i));
       end loop;
-      Buffers.Unchecked_Free (main_bit_buffer.destination.data);
+      Buffers.Unchecked_Free (main_bit_buffer.destination_data);
     end Write_Stream_Footer;
 
     --  Vertically challenged blocks.
