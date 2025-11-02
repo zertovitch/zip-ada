@@ -1218,15 +1218,12 @@ package body BZip2.Encoding is
       single_segment : constant Boolean := False;
       seg : Segmentation_for_BZip2.Segmentation;
 
-      out_buf : Buffers.Buffer_Access;
-
       fixed_costs_estimate : constant := 1_000_000;  --  Ridiculous overestimation.
 
     begin
       Data_Acquisition;
 
-      out_buf := new Buffers.Buffer_Array (1 .. raw_buf_index * 2 + fixed_costs_estimate);
-      out_bit_buf.destination := (out_buf, 0);
+      Buffers.Attach_New_Byte_Buffer (out_bit_buf, raw_buf_index * 2 + fixed_costs_estimate);
 
       if single_segment then
         --  No segmentation /splitting:
@@ -1257,11 +1254,11 @@ package body BZip2.Encoding is
       end loop;
 
       Buffers.Unchecked_Free (raw_buf);
-      Buffers.Unchecked_Free (out_buf);
+      Buffers.Unchecked_Free (out_bit_buf.destination.data);
     exception
       when others =>
         Buffers.Unchecked_Free (raw_buf);
-        Buffers.Unchecked_Free (out_buf);
+        Buffers.Unchecked_Free (out_bit_buf.destination.data);
         raise;
     end Read_and_Split_Block;
 
@@ -1277,9 +1274,8 @@ package body BZip2.Encoding is
     main_bit_buffer : Buffers.Bit_Buffer_Type;
 
     procedure Write_Stream_Footer is
-      footer_out : Buffers.Buffer_Access := new Buffers.Buffer_Array (1 .. 11);
     begin
-      main_bit_buffer.destination := (footer_out, 0);
+      Buffers.Attach_New_Byte_Buffer (main_bit_buffer, 11);
       Buffers.Put_Bits (main_bit_buffer, stream_footer_magic);
       Buffers.Put_Bits (main_bit_buffer, combined_crc, 32);
       if main_bit_buffer.pos < 7 then
@@ -1288,7 +1284,7 @@ package body BZip2.Encoding is
       for i in 1 .. main_bit_buffer.destination.pos loop
         Write_Byte (main_bit_buffer.destination.data (i));
       end loop;
-      Buffers.Unchecked_Free (footer_out);
+      Buffers.Unchecked_Free (main_bit_buffer.destination.data);
     end Write_Stream_Footer;
 
     --  Vertically challenged blocks.

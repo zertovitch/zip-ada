@@ -1,5 +1,10 @@
 package body BZip2.Buffers is
 
+  procedure Attach_New_Byte_Buffer (bit_buffer : in out Bit_Buffer_Type; size : Natural_32) is
+  begin
+    bit_buffer.destination := (data => new Buffer_Array (1 .. size), pos => 0);
+  end Attach_New_Byte_Buffer;
+
   procedure Flush_Bit_Buffer (bit_buffer : in out Bit_Buffer_Type) is
     use Interfaces;
   begin
