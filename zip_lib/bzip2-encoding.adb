@@ -104,10 +104,6 @@ package body BZip2.Encoding is
     --  checks. For instance, replacing Buffer below with a Vector makes
     --  the encoding ~26% slower.
 
-    combined_crc : Unsigned_32 := 0;
-
-    block_counter : Natural := 0;
-
     quiet          : constant := 0;
     headlines      : constant := 1;
     detailed       : constant := 2;
@@ -142,12 +138,16 @@ package body BZip2.Encoding is
     end Trace;
 
     --  Each block is limited either by the data available
-    --  by the block capacity.
+    --  or by the block capacity.
     --  It means that each encoding step has an end and
     --  that we can theoretically go on with the next step,
     --  perhaps at the price of using more memory.
 
-    procedure Encode_Block (raw_buf : in Buffers.Buffer_Array; out_bit_buf : in out Buffers.Bit_Buffer_Type) is
+    procedure Encode_Block
+      (raw_buf      : in     Buffers.Buffer_Array;
+       out_bit_buf  : in out Buffers.Bit_Buffer_Type;
+       combined_crc : in out Unsigned_32)
+    is
 
       -----------------------------------
       --  Initial Run-Length Encoding  --
@@ -464,7 +464,7 @@ package body BZip2.Encoding is
         procedure Output_Frequency_Matrix is
           use Ada.Text_IO;
           f : File_Type;
-          file_name : String := "freq" & block_counter'Image & ".csv";
+          file_name : String := "freq.csv";
           freq : Count_Array := (others => 0);
           symbol : Alphabet_in_Use;
           sep : constant Character := ';';
@@ -1110,8 +1110,7 @@ package body BZip2.Encoding is
       end Entropy_Output;
 
     begin
-      block_counter := block_counter + 1;
-      Trace ("Block" & block_counter'Image, headlines);
+      Trace ("Block start", headlines);
 
       --  Data transformation (no output):
       RLE_1;
@@ -1133,6 +1132,8 @@ package body BZip2.Encoding is
     end Encode_Block;
 
     stream_rest : Stream_Size_Type := size_hint;
+
+    combined_crc : Unsigned_32 := 0;
 
     --------------------------------------------
     --  Data acquisition and block splitting  --
@@ -1215,43 +1216,161 @@ package body BZip2.Encoding is
            index_threshold       => 80_000,
            window_size           => 80_000);
 
-      single_segment : constant Boolean := False;
       seg : Segmentation_for_BZip2.Segmentation;
 
       fixed_costs_estimate : constant := 1_000_000;  --  Ridiculous overestimation.
 
+      out_size : constant Natural_32 := raw_buf_index * 2 + fixed_costs_estimate;
+
+      procedure Block_Split_Parallel is
+
+        --  Clones of bit buffer in its current state.
+        out_bit_buf_single    : Buffers.Bit_Buffer_Type := out_bit_buf;
+        out_bit_buf_halved    : Buffers.Bit_Buffer_Type := out_bit_buf;
+        out_bit_buf_segmented : Buffers.Bit_Buffer_Type := out_bit_buf;
+
+        combined_crc_single    : Unsigned_32 := combined_crc;
+        combined_crc_halved    : Unsigned_32 := combined_crc;
+        combined_crc_segmented : Unsigned_32 := combined_crc;
+
+        procedure Execute_Tasks is
+
+          task Do_Single_Block;
+          task Do_Halved_Block;
+          task Do_Segmented_Block;
+
+          task body Do_Single_Block is
+          begin
+            Encode_Block (raw_buf (1 .. raw_buf_index), out_bit_buf_single, combined_crc_single);
+          end Do_Single_Block;
+
+          task body Do_Halved_Block is
+            half : constant Natural_32 := raw_buf_index / 2;
+          begin
+            Encode_Block (raw_buf (1 .. half), out_bit_buf_halved, combined_crc_halved);
+            Encode_Block (raw_buf (half + 1 .. raw_buf_index), out_bit_buf_halved, combined_crc_halved);
+          end Do_Halved_Block;
+
+          task body Do_Segmented_Block is
+          begin
+            Segmentation_for_BZip2.Segment_by_Entropy (raw_buf (1 .. raw_buf_index), seg);
+
+            if seg.Is_Empty then
+              Encode_Block (raw_buf (1 .. 0), out_bit_buf_segmented, combined_crc_segmented);
+            else
+              for s of seg loop
+                Encode_Block (raw_buf (index_start .. s), out_bit_buf_segmented, combined_crc_segmented);
+                index_start := s + 1;
+              end loop;
+            end if;
+
+            if Integer (seg.Length) > 1 then
+              Trace ("Segmentation into" & seg.Length'Image & " segments", headlines);
+              for s of seg loop
+                Trace ("  Segment limit at" & s'Image, headlines);
+              end loop;
+            end if;
+          end Do_Segmented_Block;
+
+        begin
+          null;
+        end Execute_Tasks;
+
+      begin
+
+        Buffers.Attach_New_Byte_Buffer (out_bit_buf_single, out_size);
+        Buffers.Attach_New_Byte_Buffer (out_bit_buf_halved, out_size);
+        Buffers.Attach_New_Byte_Buffer (out_bit_buf_segmented, out_size);
+
+        Trace ("Launching tasks", headlines);
+        Execute_Tasks;
+        Trace ("Tasks are completed", headlines);
+
+        if out_bit_buf_single.destination_index <=
+             Natural_32'Min
+               (out_bit_buf_halved.destination_index,
+                out_bit_buf_segmented.destination_index)
+        then
+
+          Trace ("Choice: single block", headlines);
+
+          for i in 1 .. out_bit_buf_single.destination_index loop
+            Write_Byte (out_bit_buf_single.destination_data (i));
+          end loop;
+
+          out_bit_buf :=
+            (bit_index => out_bit_buf_single.bit_index,
+             buffer    => out_bit_buf_single.buffer,
+             destination_data  => null,
+             destination_index => 0);
+
+          combined_crc := combined_crc_single;
+
+        elsif out_bit_buf_halved.destination_index <=
+             Natural_32'Min
+               (out_bit_buf_single.destination_index,
+                out_bit_buf_segmented.destination_index)
+        then
+
+          Trace ("Choice: halved block", headlines);
+
+          for i in 1 .. out_bit_buf_halved.destination_index loop
+            Write_Byte (out_bit_buf_halved.destination_data (i));
+          end loop;
+
+          out_bit_buf :=
+            (bit_index => out_bit_buf_halved.bit_index,
+             buffer    => out_bit_buf_halved.buffer,
+             destination_data  => null,
+             destination_index => 0);
+
+          combined_crc := combined_crc_halved;
+
+        else
+
+          Trace ("Choice: segmented block", headlines);
+
+          for i in 1 .. out_bit_buf_segmented.destination_index loop
+            Write_Byte (out_bit_buf_segmented.destination_data (i));
+          end loop;
+
+          out_bit_buf :=
+            (bit_index => out_bit_buf_segmented.bit_index,
+             buffer    => out_bit_buf_segmented.buffer,
+             destination_data  => null,
+             destination_index => 0);
+
+          combined_crc := combined_crc_segmented;
+
+        end if;
+
+        Buffers.Unchecked_Free (out_bit_buf_single.destination_data);
+        Buffers.Unchecked_Free (out_bit_buf_halved.destination_data);
+        Buffers.Unchecked_Free (out_bit_buf_segmented.destination_data);
+
+      exception
+
+        when others =>
+          Buffers.Unchecked_Free (out_bit_buf_single.destination_data);
+          Buffers.Unchecked_Free (out_bit_buf_halved.destination_data);
+          Buffers.Unchecked_Free (out_bit_buf_segmented.destination_data);
+          raise;
+
+      end Block_Split_Parallel;
+
     begin
       Data_Acquisition;
 
-      Buffers.Attach_New_Byte_Buffer (out_bit_buf, raw_buf_index * 2 + fixed_costs_estimate);
-
-      if single_segment then
-        --  No segmentation /splitting:
-        Encode_Block (raw_buf (1 .. raw_buf_index), out_bit_buf);
+      if option /= block_900k then
+        --  No segmentation / splitting:
+        Buffers.Attach_New_Byte_Buffer (out_bit_buf, out_size);
+        Encode_Block (raw_buf (1 .. raw_buf_index), out_bit_buf, combined_crc);
+        for i in 1 .. out_bit_buf.destination_index loop
+          Write_Byte (out_bit_buf.destination_data (i));
+        end loop;
       else
-        Segmentation_for_BZip2.Segment_by_Entropy (raw_buf (1 .. raw_buf_index), seg);
-
-        if seg.Is_Empty then
-          Encode_Block (raw_buf (1 .. 0), out_bit_buf);
-        else
-          for s of seg loop
-            Encode_Block (raw_buf (index_start .. s), out_bit_buf);
-            index_start := s + 1;
-          end loop;
-        end if;
-
-        if Integer (seg.Length) > 1 then
-          Trace ("Segmentation into" & seg.Length'Image & " segments", headlines);
-          for s of seg loop
-            Trace ("  Segment limit at" & s'Image, headlines);
-          end loop;
-        end if;
-
+        Block_Split_Parallel;
       end if;
-
-      for i in 1 .. out_bit_buf.destination_index loop
-        Write_Byte (out_bit_buf.destination_data (i));
-      end loop;
 
       Buffers.Unchecked_Free (raw_buf);
       Buffers.Unchecked_Free (out_bit_buf.destination_data);
