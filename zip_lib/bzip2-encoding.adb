@@ -45,14 +45,16 @@
 --            https://github.com/dsnet/compress/blob/master/bzip2/bwt.go
 --            https://sites.google.com/site/yuta256/sais
 --        Note that J. Seward kept a sorting algorithm.
---    - Segmentation: brute-force recursive binary segmentation as in EncodeBlock2 in
---        7-Zip's BZip2Encoder.cpp .
---    - Use tasking to parallelize the block compression jobs.
+--    - Recursive splitting as in EncodeBlock2 in
+--        7-Zip's BZip2Encoder.cpp.
+--    - Use tasking to parallelize the block compression jobs for
+--        successive blocks.
+--        But joining the bit buffer from block to block is tricky...
 --
 --  Already tried without significant success:
 --  -----------------------------------------
 --
---    - Use the permutation of entropy coders that minimizes the
+--    - Find by brute-force the permutation of entropy coders that minimizes the
 --        size of compression structure.
 --    - Brute-force over different strategies to tweak frequencies for avoiding
 --        zero occurrences (see Avoid_Zeros). Unfortunately, the gains are offset by larger
@@ -98,7 +100,7 @@ package body BZip2.Encoding is
 
     block_capacity : constant Natural_32 := sub_block_size * level;
 
-    --  We use in this package 4 large heap-allocated arrays.
+    --  We use in this package some large heap-allocated arrays.
     --  It is possible to use Ada.Containers.Vectors but the run time
     --  is longer, possibly due to indirect access to data and various
     --  checks. For instance, replacing Buffer below with a Vector makes
@@ -1205,61 +1207,89 @@ package body BZip2.Encoding is
         Simulate_Store_Run;
       end Data_Acquisition;
 
-      index_start : Natural_32 := 1;
-
-      package Segmentation_for_BZip2 is
-        new Data_Segmentation
-          (Index                 => Natural_32,
-           Alphabet              => Byte,
-           Buffer_Type           => Buffers.Buffer_Array,
-           discrepancy_threshold => 2.0,
-           index_threshold       => 80_000,
-           window_size           => 80_000);
-
-      seg : Segmentation_for_BZip2.Segmentation;
-
       fixed_costs_estimate : constant := 1_000_000;  --  Ridiculous overestimation.
 
       out_size : constant Natural_32 := raw_buf_index * 2 + fixed_costs_estimate;
 
       procedure Block_Split_Parallel is
 
-        --  Clones of bit buffer in its current state.
-        out_bit_buf_single    : Buffers.Bit_Buffer_Type := out_bit_buf;
-        out_bit_buf_halved    : Buffers.Bit_Buffer_Type := out_bit_buf;
-        out_bit_buf_segmented : Buffers.Bit_Buffer_Type := out_bit_buf;
+        type Any_Splitting_Tactic is (single, halved, three, segmented_1, segmented_2, segmented_3);
 
-        combined_crc_single    : Unsigned_32 := combined_crc;
-        combined_crc_halved    : Unsigned_32 := combined_crc;
-        combined_crc_segmented : Unsigned_32 := combined_crc;
+        subtype Segmentation_Tactic is Any_Splitting_Tactic range segmented_1 .. segmented_3;
+
+        --  Clones of bit buffer and of combined CRC in their current states.
+        out_bit_buf_variant : array (Any_Splitting_Tactic) of Buffers.Bit_Buffer_Type := (others => out_bit_buf);
+        combined_crc_variant : array (Any_Splitting_Tactic) of Unsigned_32 := (others => combined_crc);
 
         procedure Execute_Tasks is
 
           task Do_Single_Block;
           task Do_Halved_Block;
-          task Do_Segmented_Block;
+          task Do_Block_Cut_In_Three;
+          task type Do_Segmented_Block_Type (tactic : Segmentation_Tactic);
+          Do_Segmented_Block_1 : Do_Segmented_Block_Type (segmented_1);
+          Do_Segmented_Block_2 : Do_Segmented_Block_Type (segmented_2);
+          Do_Segmented_Block_3 : Do_Segmented_Block_Type (segmented_3);
 
           task body Do_Single_Block is
           begin
-            Encode_Block (raw_buf (1 .. raw_buf_index), out_bit_buf_single, combined_crc_single);
+            Encode_Block (raw_buf (1 .. raw_buf_index), out_bit_buf_variant (single), combined_crc_variant (single));
           end Do_Single_Block;
 
           task body Do_Halved_Block is
             half : constant Natural_32 := raw_buf_index / 2;
           begin
-            Encode_Block (raw_buf (1 .. half), out_bit_buf_halved, combined_crc_halved);
-            Encode_Block (raw_buf (half + 1 .. raw_buf_index), out_bit_buf_halved, combined_crc_halved);
+            Encode_Block
+              (raw_buf (1 .. half),                 out_bit_buf_variant (halved), combined_crc_variant (halved));
+            Encode_Block
+              (raw_buf (half + 1 .. raw_buf_index), out_bit_buf_variant (halved), combined_crc_variant (halved));
           end Do_Halved_Block;
 
-          task body Do_Segmented_Block is
+          task body Do_Block_Cut_In_Three is
+            third : constant Natural_32 := raw_buf_index / 3;
+          begin
+            Encode_Block
+              (raw_buf (1 .. third),                     out_bit_buf_variant (three), combined_crc_variant (three));
+            Encode_Block
+              (raw_buf (third + 1 .. 2 * third),         out_bit_buf_variant (three), combined_crc_variant (three));
+            Encode_Block
+              (raw_buf (2 * third + 1 .. raw_buf_index), out_bit_buf_variant (three), combined_crc_variant (three));
+          end Do_Block_Cut_In_Three;
+
+          type Segmentation_Profile is record
+            discrepancy_threshold : Float;
+            index_threshold       : Natural_32;
+            window_size           : Natural_32;
+          end record;
+
+          profile : constant array (Segmentation_Tactic) of Segmentation_Profile :=
+            (segmented_1 => (discrepancy_threshold => 0.5, index_threshold =>  2_000, window_size =>  8_000),
+             segmented_2 => (discrepancy_threshold => 0.6, index_threshold =>  4_000, window_size => 16_000),
+             segmented_3 => (discrepancy_threshold => 0.4, index_threshold =>  8_000, window_size => 16_000));
+
+          task body Do_Segmented_Block_Type is
+
+            package Segmentation_for_BZip2 is
+              new Data_Segmentation
+                (Index                 => Natural_32,
+                 Alphabet              => Byte,
+                 Buffer_Type           => Buffers.Buffer_Array,
+                 discrepancy_threshold => profile (tactic).discrepancy_threshold,
+                 index_threshold       => profile (tactic).index_threshold,
+                 window_size           => profile (tactic).window_size);
+
+            seg : Segmentation_for_BZip2.Segmentation;
+            index_start : Natural_32 := 1;
+
           begin
             Segmentation_for_BZip2.Segment_by_Entropy (raw_buf (1 .. raw_buf_index), seg);
 
             if seg.Is_Empty then
-              Encode_Block (raw_buf (1 .. 0), out_bit_buf_segmented, combined_crc_segmented);
+              Encode_Block (raw_buf (1 .. 0), out_bit_buf_variant (tactic), combined_crc_variant (tactic));
             else
               for s of seg loop
-                Encode_Block (raw_buf (index_start .. s), out_bit_buf_segmented, combined_crc_segmented);
+                Encode_Block
+                  (raw_buf (index_start .. s), out_bit_buf_variant (tactic), combined_crc_variant (tactic));
                 index_start := s + 1;
               end loop;
             end if;
@@ -1270,90 +1300,54 @@ package body BZip2.Encoding is
                 Trace ("  Segment limit at" & s'Image, headlines);
               end loop;
             end if;
-          end Do_Segmented_Block;
+          end Do_Segmented_Block_Type;
 
         begin
           null;
         end Execute_Tasks;
 
-      begin
+        best : Any_Splitting_Tactic := single;
 
-        Buffers.Attach_New_Byte_Buffer (out_bit_buf_single, out_size);
-        Buffers.Attach_New_Byte_Buffer (out_bit_buf_halved, out_size);
-        Buffers.Attach_New_Byte_Buffer (out_bit_buf_segmented, out_size);
+      begin
+        for t in Any_Splitting_Tactic loop
+          Buffers.Attach_New_Byte_Buffer (out_bit_buf_variant (t), out_size);
+        end loop;
 
         Trace ("Launching tasks", headlines);
         Execute_Tasks;
         Trace ("Tasks are completed", headlines);
 
-        if out_bit_buf_single.destination_index <=
-             Natural_32'Min
-               (out_bit_buf_halved.destination_index,
-                out_bit_buf_segmented.destination_index)
-        then
+        for t in Any_Splitting_Tactic loop
+          if out_bit_buf_variant (t).destination_index <
+             out_bit_buf_variant (best).destination_index
+          then
+            best := t;
+          end if;
+        end loop;
 
-          Trace ("Choice: single block", headlines);
+        Trace ("Choice for splitting block: " & best'Image, headlines);
+        for i in 1 .. out_bit_buf_variant (best).destination_index loop
+          Write_Byte (out_bit_buf_variant (best).destination_data (i));
+        end loop;
 
-          for i in 1 .. out_bit_buf_single.destination_index loop
-            Write_Byte (out_bit_buf_single.destination_data (i));
-          end loop;
+        out_bit_buf :=
+          (bit_index         => out_bit_buf_variant (best).bit_index,
+           buffer            => out_bit_buf_variant (best).buffer,
+           destination_data  => null,
+           destination_index => 0);
 
-          out_bit_buf :=
-            (bit_index => out_bit_buf_single.bit_index,
-             buffer    => out_bit_buf_single.buffer,
-             destination_data  => null,
-             destination_index => 0);
+        combined_crc := combined_crc_variant (best);
 
-          combined_crc := combined_crc_single;
-
-        elsif out_bit_buf_halved.destination_index <=
-             Natural_32'Min
-               (out_bit_buf_single.destination_index,
-                out_bit_buf_segmented.destination_index)
-        then
-
-          Trace ("Choice: halved block", headlines);
-
-          for i in 1 .. out_bit_buf_halved.destination_index loop
-            Write_Byte (out_bit_buf_halved.destination_data (i));
-          end loop;
-
-          out_bit_buf :=
-            (bit_index => out_bit_buf_halved.bit_index,
-             buffer    => out_bit_buf_halved.buffer,
-             destination_data  => null,
-             destination_index => 0);
-
-          combined_crc := combined_crc_halved;
-
-        else
-
-          Trace ("Choice: segmented block", headlines);
-
-          for i in 1 .. out_bit_buf_segmented.destination_index loop
-            Write_Byte (out_bit_buf_segmented.destination_data (i));
-          end loop;
-
-          out_bit_buf :=
-            (bit_index => out_bit_buf_segmented.bit_index,
-             buffer    => out_bit_buf_segmented.buffer,
-             destination_data  => null,
-             destination_index => 0);
-
-          combined_crc := combined_crc_segmented;
-
-        end if;
-
-        Buffers.Unchecked_Free (out_bit_buf_single.destination_data);
-        Buffers.Unchecked_Free (out_bit_buf_halved.destination_data);
-        Buffers.Unchecked_Free (out_bit_buf_segmented.destination_data);
+        for t in Any_Splitting_Tactic loop
+          Buffers.Unchecked_Free (out_bit_buf_variant (t).destination_data);
+        end loop;
 
       exception
 
         when others =>
-          Buffers.Unchecked_Free (out_bit_buf_single.destination_data);
-          Buffers.Unchecked_Free (out_bit_buf_halved.destination_data);
-          Buffers.Unchecked_Free (out_bit_buf_segmented.destination_data);
+          for t in Any_Splitting_Tactic loop
+            Buffers.Unchecked_Free (out_bit_buf_variant (t).destination_data);
+          end loop;
           raise;
 
       end Block_Split_Parallel;
@@ -1373,11 +1367,11 @@ package body BZip2.Encoding is
       end if;
 
       Buffers.Unchecked_Free (raw_buf);
-      Buffers.Unchecked_Free (out_bit_buf.destination_data);
+      Buffers.Unchecked_Free (out_bit_buf.destination_data);  --  OK if already null.
     exception
       when others =>
         Buffers.Unchecked_Free (raw_buf);
-        Buffers.Unchecked_Free (out_bit_buf.destination_data);
+        Buffers.Unchecked_Free (out_bit_buf.destination_data);  --  OK if already null.
         raise;
     end Read_and_Split_Block;
 
