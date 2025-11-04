@@ -34,7 +34,8 @@ procedure Bench is
     Put_Line ("     lzma3   : test Zip-Ada's LZMA level 3 (default)");
     Put_Line ("     deflate : test Deflate");
     Put_Line ("     ppmd    : test PPMd");
-    Put_Line ("     bzip2   : test BZip2");
+    Put_Line ("     bzip2   : test BZip2, all encoders");
+    Put_Line ("     bzip2_3 : test BZip2 level 3");
     Put_Line ("     ps      : test Zip-Ada's Preselection");
     Put_Line ("     tar     : test tar + various one-file compressors");
   end Blurb;
@@ -43,7 +44,8 @@ procedure Bench is
     (Reduce_Shrink,
      Deflate,
      Deflate_External,
-     BZip2,
+     BZip2_1_2,
+     BZip2_3,
      BZip2_External,
      PPMd_External,
      LZMA_7z,
@@ -82,8 +84,11 @@ procedure Bench is
         cat_set (Deflate) := True;
         cat_set (Deflate_External) := True;
       elsif Argument (a) = "bzip2" then
-        cat_set (BZip2) := True;
+        cat_set (BZip2_1_2) := True;
+        cat_set (BZip2_3) := True;
         cat_set (BZip2_External) := True;
+      elsif Argument (a) = "bzip2_3" then
+        cat_set (BZip2_3) := True;
       elsif Argument (a) = "ps" then
         cat_set (Preselection) := True;
       end if;
@@ -145,9 +150,11 @@ begin
     Timing (+"zip -9 -Z bzip2                    ../bench_" & bn & "_iz_bzip2_9 *");
     Timing (+"7z a -tzip -mm=BZip2:d=900k:pass=7 ../bench_" & bn & "_7z_bzip2_9 *");
   end if;
-  if cat_set (BZip2) then
+  if cat_set (BZip2_1_2) then
     Shell_Execute (za & " -eb1 ../bench_" & bn & "_bzip2_1 *");
     Shell_Execute (za & " -eb2 ../bench_" & bn & "_bzip2_2 *");
+  end if;
+  if cat_set (BZip2_3) then
     Shell_Execute (za & " -eb3 ../bench_" & bn & "_bzip2_3 *");
   end if;
   if cat_set (PPMd_External) then

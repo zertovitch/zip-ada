@@ -1213,9 +1213,11 @@ package body BZip2.Encoding is
 
       procedure Block_Split_Parallel is
 
-        type Any_Splitting_Tactic is (single, halved, three, segmented_1, segmented_2, segmented_3);
+        --  Various splitting tactic. TBD: complete with recursion!
+        type Any_Splitting_Tactic is (single, parts_4, segmented_1, segmented_2);
 
-        subtype Segmentation_Tactic is Any_Splitting_Tactic range segmented_1 .. segmented_3;
+        subtype Simple_Cut_Tactic is Any_Splitting_Tactic range single .. parts_4;
+        subtype Segmentation_Tactic is Any_Splitting_Tactic range segmented_1 .. segmented_2;
 
         --  Clones of bit buffer and of combined CRC in their current states.
         out_bit_buf_variant : array (Any_Splitting_Tactic) of Buffers.Bit_Buffer_Type := (others => out_bit_buf);
@@ -1223,38 +1225,33 @@ package body BZip2.Encoding is
 
         procedure Execute_Tasks is
 
-          task Do_Single_Block;
-          task Do_Halved_Block;
-          task Do_Block_Cut_In_Three;
+          task type Do_Simple_Cut_Type (tactic : Simple_Cut_Tactic);
+          Do_Single_Block       : Do_Simple_Cut_Type (single);
+          Do_Block_Cut_Parts_4  : Do_Simple_Cut_Type (parts_4);
+
           task type Do_Segmented_Block_Type (tactic : Segmentation_Tactic);
           Do_Segmented_Block_1 : Do_Segmented_Block_Type (segmented_1);
           Do_Segmented_Block_2 : Do_Segmented_Block_Type (segmented_2);
-          Do_Segmented_Block_3 : Do_Segmented_Block_Type (segmented_3);
 
-          task body Do_Single_Block is
-          begin
-            Encode_Block (raw_buf (1 .. raw_buf_index), out_bit_buf_variant (single), combined_crc_variant (single));
-          end Do_Single_Block;
+          slice_choice : constant array (Simple_Cut_Tactic) of Positive_32 := (1, 4);
 
-          task body Do_Halved_Block is
-            half : constant Natural_32 := raw_buf_index / 2;
+          task body Do_Simple_Cut_Type is
+            slices : constant Natural_32 := slice_choice (tactic);
+            size   : constant Natural_32 := raw_buf_index / slices;
+            start  : Natural_32;
+            stop   : Natural_32 := 0;
           begin
-            Encode_Block
-              (raw_buf (1 .. half),                 out_bit_buf_variant (halved), combined_crc_variant (halved));
-            Encode_Block
-              (raw_buf (half + 1 .. raw_buf_index), out_bit_buf_variant (halved), combined_crc_variant (halved));
-          end Do_Halved_Block;
-
-          task body Do_Block_Cut_In_Three is
-            third : constant Natural_32 := raw_buf_index / 3;
-          begin
-            Encode_Block
-              (raw_buf (1 .. third),                     out_bit_buf_variant (three), combined_crc_variant (three));
-            Encode_Block
-              (raw_buf (third + 1 .. 2 * third),         out_bit_buf_variant (three), combined_crc_variant (three));
-            Encode_Block
-              (raw_buf (2 * third + 1 .. raw_buf_index), out_bit_buf_variant (three), combined_crc_variant (three));
-          end Do_Block_Cut_In_Three;
+            for count in 1 .. slices loop
+              start := stop + 1;
+              if count = slices then
+                --  Be sure the last slice catches all contents.
+                stop := raw_buf_index;
+              else
+                stop := count * size;
+              end if;
+              Encode_Block (raw_buf (start .. stop), out_bit_buf_variant (tactic), combined_crc_variant (tactic));
+            end loop;
+          end Do_Simple_Cut_Type;
 
           type Segmentation_Profile is record
             discrepancy_threshold : Float;
@@ -1263,9 +1260,8 @@ package body BZip2.Encoding is
           end record;
 
           profile : constant array (Segmentation_Tactic) of Segmentation_Profile :=
-            (segmented_1 => (discrepancy_threshold => 0.5, index_threshold =>  2_000, window_size =>  8_000),
-             segmented_2 => (discrepancy_threshold => 0.6, index_threshold =>  4_000, window_size => 16_000),
-             segmented_3 => (discrepancy_threshold => 0.4, index_threshold =>  8_000, window_size => 16_000));
+            (segmented_1 => (discrepancy_threshold => 0.6, index_threshold =>  4_000, window_size => 16_000),
+             segmented_2 => (discrepancy_threshold => 0.4, index_threshold =>  8_000, window_size => 16_000));
 
           task body Do_Segmented_Block_Type is
 
@@ -1307,6 +1303,7 @@ package body BZip2.Encoding is
         end Execute_Tasks;
 
         best : Any_Splitting_Tactic := single;
+        gain : Integer_32;
 
       begin
         for t in Any_Splitting_Tactic loop
@@ -1314,9 +1311,11 @@ package body BZip2.Encoding is
         end loop;
 
         Trace ("Launching tasks", headlines);
+        --  Do brute-force block splitting and compression.
         Execute_Tasks;
         Trace ("Tasks are completed", headlines);
 
+        --  Pick the splitting with the best compression.
         for t in Any_Splitting_Tactic loop
           if out_bit_buf_variant (t).destination_index <
              out_bit_buf_variant (best).destination_index
@@ -1325,7 +1324,14 @@ package body BZip2.Encoding is
           end if;
         end loop;
 
-        Trace ("Choice for splitting block: " & best'Image, headlines);
+        gain :=
+          out_bit_buf_variant (single).destination_index -
+          out_bit_buf_variant (best).destination_index;
+
+        if gain > 0 then
+          Trace ("Block splitting: " & best'Image & ", gain = " & gain'Image & " bytes", headlines);
+        end if;
+
         for i in 1 .. out_bit_buf_variant (best).destination_index loop
           Write_Byte (out_bit_buf_variant (best).destination_data (i));
         end loop;
