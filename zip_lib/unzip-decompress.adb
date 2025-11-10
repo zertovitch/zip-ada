@@ -534,10 +534,8 @@ package body UnZip.Decompress is
 
       --  Original in Pascal written by Christian Ghisler.
 
-      Initial_Code_Size : constant := 9;
-      Maximum_Code_Size : constant := 13;
-      Max_Code          : constant := 2 ** Maximum_Code_Size;
-      Max_Stack         : constant := 2 ** Maximum_Code_Size;
+      Max_Code  : constant := 2 ** Shrink.Maximum_Code_Bit_Size;
+      Max_Stack : constant := 2 ** Shrink.Maximum_Code_Bit_Size;
 
       --  Rest of slide=write buffer =766 bytes
 
@@ -594,7 +592,7 @@ package body UnZip.Decompress is
 
         Last_Incode     : Integer;
         Last_Outcode    : Zip.Byte;
-        Code_Size       : Integer := Initial_Code_Size;  --  Actual code size [9 .. 13]
+        Code_Size       : Integer := Shrink.Minimum_Code_Bit_Size;  --  Actual code size [9 .. 13]
         Actual_Max_Code : Integer;  --  Max code to be searched for leaf nodes
         Previous_Code   : array (Shrink.First_Entry .. Max_Code) of Integer;
         Stored_Literal  : array (Shrink.First_Entry .. Max_Code) of Zip.Byte;
@@ -726,7 +724,7 @@ package body UnZip.Decompress is
                     " bits @ pos" & Zip.Zip_64_Data_Size_Type'Image (UnZ_Glob.uncompsize - S) & ']'
                   );
                 end if;
-                if Code_Size > Maximum_Code_Size then
+                if Code_Size > Shrink.Maximum_Code_Bit_Size then
                   raise Zip.Archive_corrupted with "Wrong LZW (Shrink) code size";
                 end if;
               when Shrink.Code_for_clearing_table =>

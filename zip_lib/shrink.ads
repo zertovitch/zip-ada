@@ -68,4 +68,7 @@ package Shrink is
   Code_for_increasing_code_size : constant := 1;
   Code_for_clearing_table       : constant := 2;
 
+  Minimum_Code_Bit_Size : constant := 9;
+  Maximum_Code_Bit_Size : constant := 13;
+
 end Shrink;
