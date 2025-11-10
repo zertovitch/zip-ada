@@ -71,4 +71,6 @@ package Shrink is
   Minimum_Code_Bit_Size : constant := 9;
   Maximum_Code_Bit_Size : constant := 13;
 
+  Unused : constant := -1;  --  Indicates an unused code table entry
+
 end Shrink;

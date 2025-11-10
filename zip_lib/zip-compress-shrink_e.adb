@@ -46,21 +46,21 @@ is
 
   IO_buffers : IO_Buffers_Type;
 
-  procedure Put_byte (B : Unsigned_8) is
+  procedure Put_Byte (B : Unsigned_8) is
   begin
     IO_buffers.OutBuf (IO_buffers.OutBufIdx) := B;
     IO_buffers.OutBufIdx := IO_buffers.OutBufIdx + 1;
     if IO_buffers.OutBufIdx > IO_buffers.OutBuf.all'Last then
       Write_Block (IO_buffers, input_size_known, input_size, output, output_size, crypto);
     end if;
-  end Put_byte;
+  end Put_Byte;
 
-  procedure Flush_output is
+  procedure Flush_Output is
   begin
     if IO_buffers.OutBufIdx > 1 then
       Write_Block (IO_buffers, input_size_known, input_size, output, output_size, crypto);
     end if;
-  end Flush_output;
+  end Flush_Output;
 
   --------------------------------------------------------------------------
 
@@ -75,22 +75,22 @@ is
   --  Number of valid bits in bit_buffer.  All bits above the last valid bit are always zero.
   valid_bits : Integer := 0;
 
-  procedure Flush_bit_buffer is
+  procedure Flush_Bit_Buffer is
   begin
     while valid_bits > 0 loop
-      Put_byte (Byte (bit_buffer and 16#FF#));
+      Put_Byte (Byte (bit_buffer and 16#FF#));
       bit_buffer := Shift_Right (bit_buffer, 8);
       valid_bits := Integer'Max (0, valid_bits - 8);
     end loop;
     bit_buffer := 0;
-  end Flush_bit_buffer;
+  end Flush_Bit_Buffer;
 
-  subtype Code_size_type is Integer range 1 .. Shrink.Maximum_Code_Bit_Size;
-  code_size : Code_size_type;     --  Size of codes (in bits) currently being written
+  subtype Code_Size_Type is Integer range 1 .. Shrink.Maximum_Code_Bit_Size;
+  code_size : Code_Size_Type;     --  Size of codes (in bits) currently being written
 
   --  Send a value on a given number of bits.
-  procedure Put_code (code : Natural) is
-  pragma Inline (Put_code);
+  procedure Put_Code (code : Natural) is
+  pragma Inline (Put_Code);
   begin
     --  Put bits from code at the left of existing ones. They might be shifted away
     --  partially on the left side (or even entirely if valid_bits is already = 32).
@@ -98,36 +98,34 @@ is
     valid_bits := valid_bits + code_size;
     if valid_bits > 32 then
       --  Flush 32 bits to output as 4 bytes
-      Put_byte (Byte (bit_buffer and 16#FF#));
-      Put_byte (Byte (Shift_Right (bit_buffer,  8) and 16#FF#));
-      Put_byte (Byte (Shift_Right (bit_buffer, 16) and 16#FF#));
-      Put_byte (Byte (Shift_Right (bit_buffer, 24) and 16#FF#));
+      Put_Byte (Byte (bit_buffer and 16#FF#));
+      Put_Byte (Byte (Shift_Right (bit_buffer,  8) and 16#FF#));
+      Put_Byte (Byte (Shift_Right (bit_buffer, 16) and 16#FF#));
+      Put_Byte (Byte (Shift_Right (bit_buffer, 24) and 16#FF#));
       valid_bits := valid_bits - 32;
       --  Empty buffer and put on it the rest of the code
       bit_buffer := Shift_Right (U32 (code), code_size - valid_bits);
     end if;
-  end Put_code;
+  end Put_Code;
 
-  Table_full : Boolean; -- Flag indicating a full symbol table
+  is_table_full : Boolean;  --  Flag indicating a full symbol table
 
   --  Define data types needed to implement a code table for LZW compression
-  type CodeRec is record  --  Code Table record format...
-    Child   : Integer;       --  Index of 1st suffix for this prefix
-    Sibling : Integer;       --  Index of next suffix in chain
-    Suffix  : Natural;       --  Suffix
+  type Code_Rec is record
+    child   : Integer;       --  Index of 1st suffix for this prefix
+    sibling : Integer;       --  Index of next suffix in chain
+    suffix  : Natural;       --  Suffix
   end record;
 
   Table_Last : constant := 2 ** Shrink.Maximum_Code_Bit_Size - 1;
 
-  UNUSED : constant := -1;       --  Prefix indicating an unused code table entry
-
-  type Code_array is array (0 .. Table_Last) of CodeRec;
+  type Code_Array is array (0 .. Table_Last) of Code_Rec;
   --  Define the code table
 
-  type Table_access is access Code_array;
-  procedure Dispose is new Ada.Unchecked_Deallocation (Code_array, Table_access);
+  type Table_Access is access Code_Array;
+  procedure Dispose is new Ada.Unchecked_Deallocation (Code_Array, Table_Access);
 
-  Code_table : Table_access := null;  --  Points to code table for LZW compression
+  Code_table : Table_Access := null;  --  Points to code table for LZW compression
 
   --  Define data types needed to implement a free node list
   type Free_list_array is array (Shrink.First_Entry .. Table_Last) of Natural;
@@ -146,7 +144,7 @@ is
 
   procedure Build_Data_Structures is
   begin
-    Code_table := new Code_array;
+    Code_table := new Code_Array;
     Free_list  := new Free_list_array;
   end Build_Data_Structures;
 
@@ -162,64 +160,64 @@ is
   procedure Initialize_Data_Structures is
   begin
     for I in 0 .. Table_Last loop
-      Code_table (I).Child   := UNUSED;
-      Code_table (I).Sibling := UNUSED;
+      Code_table (I).child   := Shrink.Unused;
+      Code_table (I).sibling := Shrink.Unused;
       if I <= 255 then
-        Code_table (I).Suffix := I;
+        Code_table (I).suffix := I;
       end if;
       if I >= 257 then
         Free_list (I) := I;
       end if;
     end loop;
     Next_free := Shrink.First_Entry;
-    Table_full := False;
+    is_table_full := False;
   end Initialize_Data_Structures;
 
   ---------------------------------------------------------------------------
   --  The following routines handle manipulation of the LZW Code Table
   ---------------------------------------------------------------------------
 
-  ClearList : array (0 .. 1023) of Unsigned_8;
+  clear_list : array (0 .. 1023) of Unsigned_8;
   --  Bit mapped structure used in during adaptive resets
 
   procedure Prune (Parent : Integer) is
     --  Prune leaves from a subtree - Note: this is a recursive procedure
-    CurrChild : Integer;
-    NextSibling : Integer;
+    current_child : Integer;
+    next_sibling : Integer;
   begin
-    CurrChild := Code_table (Parent).Child;
+    current_child := Code_table (Parent).child;
     --  Find first Child that has descendants .. clear any that don't
 
-    while CurrChild /= UNUSED and then
-          Code_table (CurrChild).Child = UNUSED
+    while current_child /= Shrink.Unused and then
+          Code_table (current_child).child = Shrink.Unused
     loop
-      Code_table (Parent).Child := Code_table (CurrChild).Sibling;
-      Code_table (CurrChild).Sibling := UNUSED;
-      --  Turn on ClearList bit to indicate a cleared entry
-      ClearList (CurrChild / 8) :=
-          ClearList (CurrChild / 8)  or
-          (Shift_Left (1, CurrChild  mod  8));
-      CurrChild := Code_table (Parent).Child;
+      Code_table (Parent).child := Code_table (current_child).sibling;
+      Code_table (current_child).sibling := Shrink.Unused;
+      --  Turn on clear_list bit to indicate a cleared entry
+      clear_list (current_child / 8) :=
+          clear_list (current_child / 8)  or
+          (Shift_Left (1, current_child  mod  8));
+      current_child := Code_table (Parent).child;
     end loop;
 
-    if CurrChild /= UNUSED then    --  If there are any children left ...
-      Prune (CurrChild);
-      NextSibling := Code_table (CurrChild).Sibling;
-      while NextSibling /= UNUSED loop
-        if  Code_table (NextSibling).Child = UNUSED then
-          Code_table (CurrChild).Sibling :=
-            Code_table (NextSibling).Sibling;
-          Code_table (NextSibling).Sibling := UNUSED;
-          --  Turn on ClearList bit to indicate a cleared entry
+    if current_child /= Shrink.Unused then    --  If there are any children left ...
+      Prune (current_child);
+      next_sibling := Code_table (current_child).sibling;
+      while next_sibling /= Shrink.Unused loop
+        if  Code_table (next_sibling).child = Shrink.Unused then
+          Code_table (current_child).sibling :=
+            Code_table (next_sibling).sibling;
+          Code_table (next_sibling).sibling := Shrink.Unused;
+          --  Turn on clear_list bit to indicate a cleared entry
 
-          ClearList (NextSibling / 8) :=
-            ClearList (NextSibling / 8)  or
-            (Shift_Left (1, NextSibling  mod  8));
-          NextSibling := Code_table (CurrChild).Sibling;
+          clear_list (next_sibling / 8) :=
+            clear_list (next_sibling / 8)  or
+            (Shift_Left (1, next_sibling  mod  8));
+          next_sibling := Code_table (current_child).sibling;
         else
-          CurrChild := NextSibling;
-          Prune (CurrChild);
-          NextSibling := Code_table (CurrChild).Sibling;
+          current_child := next_sibling;
+          Prune (current_child);
+          next_sibling := Code_table (current_child).sibling;
         end if;
       end loop;
     end if;
@@ -229,7 +227,7 @@ is
 
   procedure Clear_Table is
   begin
-    ClearList := (others => 0);
+    clear_list := (others => 0);
     --  Remove all leaf nodes by recursively pruning subtrees
     for Node in  0 .. 255 loop
       Prune (Node);
@@ -237,39 +235,39 @@ is
     --  Next, re-initialize our list of free table entries
     Next_free := Table_Last + 1;
     for Node in reverse Shrink.First_Entry .. Table_Last loop
-      if (ClearList (Node / 8)  and  (Shift_Left (1, Node  mod  8))) /= 0 then
+      if (clear_list (Node / 8)  and  (Shift_Left (1, Node  mod  8))) /= 0 then
         Next_free := Next_free - 1;
         Free_list (Next_free) := Node;
       end if;
     end loop;
     --
-    Table_full := Next_free > Table_Last;
+    is_table_full := Next_free > Table_Last;
   end Clear_Table;
 
   ---------------------------------------------------------------------------
 
-  procedure Table_Add (Prefix_0 : Natural; Suffix : Natural) is
-    FreeNode : Natural;
-    Prefix : Natural := Prefix_0;
+  procedure Table_Add (prefix_initially : Natural; suffix : Natural) is
+    free_node : Natural;
+    prefix : Natural := prefix_initially;
   begin
     if Next_free <= Table_Last then
-      FreeNode := Free_list (Next_free);
+      free_node := Free_list (Next_free);
       Next_free := Next_free + 1;
-      Code_table (FreeNode).Child := UNUSED;
-      Code_table (FreeNode).Sibling := UNUSED;
-      Code_table (FreeNode).Suffix := Suffix;
-      if Code_table (Prefix).Child = UNUSED then
-        Code_table (Prefix).Child := FreeNode;
+      Code_table (free_node).child := Shrink.Unused;
+      Code_table (free_node).sibling := Shrink.Unused;
+      Code_table (free_node).suffix := suffix;
+      if Code_table (prefix).child = Shrink.Unused then
+        Code_table (prefix).child := free_node;
       else
-        Prefix := Code_table (Prefix).Child;
-        while Code_table (Prefix).Sibling /= UNUSED loop
-          Prefix := Code_table (Prefix).Sibling;
+        prefix := Code_table (prefix).child;
+        while Code_table (prefix).sibling /= Shrink.Unused loop
+          prefix := Code_table (prefix).sibling;
         end loop;
-        Code_table (Prefix).Sibling := FreeNode;
+        Code_table (prefix).sibling := free_node;
       end if;
     end if;
     --
-    Table_full := Next_free > Table_Last;
+    is_table_full := Next_free > Table_Last;
   end Table_Add;
 
   ---------------------------------------------------------------------------
@@ -280,33 +278,33 @@ is
   --  Found_at to UNUSED.
   ---------------------------------------------------------------------------
   procedure Table_Lookup
-    (TargetPrefix : in     Integer;
-     TargetSuffix : in     Natural;
-     Found_at     :    out Integer;
-     Found        :    out Boolean)
+    (target_prefix : in     Integer;
+     target_suffix : in     Natural;
+     found_at      :    out Integer;
+     found         :    out Boolean)
   is
     --  Was in 16-bit ASM
-    idx : Natural := TargetPrefix;
+    idx : Natural := target_prefix;
   begin
     --  Lookup an entry in the Hash Table. If found, return TRUE and set
     --  parameter Found_at with the index of the entry at which the match
     --  was found. If not found, return False and plug an UNUSED into Found_at.
-    if Code_table (idx).Child = UNUSED then
-      Found_at := UNUSED;
-      Found := False;
+    if Code_table (idx).child = Shrink.Unused then
+      found_at := Shrink.Unused;
+      found := False;
     else
-      idx := Code_table (idx).Child;
+      idx := Code_table (idx).child;
       loop
-        if Code_table (idx).Suffix = TargetSuffix then
-          Found_at := idx;
-          Found := True;
+        if Code_table (idx).suffix = target_suffix then
+          found_at := idx;
+          found := True;
           return;
-        elsif Code_table (idx).Sibling = UNUSED then
-          Found_at := UNUSED;
-          Found := False;
+        elsif Code_table (idx).sibling = Shrink.Unused then
+          found_at := Shrink.Unused;
+          found := False;
           return;
         else
-          idx := Code_table (idx).Sibling;
+          idx := Code_table (idx).sibling;
         end if;
       end loop;
     end if;
@@ -317,46 +315,47 @@ is
   ---------------------------------------------------------------------------
 
   Last_code : Integer := 0;
-  First_atom : Boolean;  --  Flag indicating the START of a shrink operation
-  Max_code : Natural;    --  Largest code that can be written in Code_size bits
+  is_first_atom : Boolean;     --  Flag indicating the START of a shrink operation
+  current_max_code : Natural;  --  Largest code that can be written in code_size bits
 
   procedure Shrink_Atom (Suffix : Integer) is
-    WhereFound : Integer;
-    lookup_ok : Boolean;
+    where_found  : Integer;
+    is_lookup_ok : Boolean;
   begin
-    if First_atom then            --  If just getting started ...
+    if is_first_atom then            --  If just getting started ...
       bit_buffer := 0;
       valid_bits := 0;
       code_size  := Shrink.Minimum_Code_Bit_Size;
-      Max_code   := 2 ** code_size - 1;
+      current_max_code   := 2 ** code_size - 1;
       Last_code  := Suffix;      --    get first character from input,
-      First_atom := False;       --    and reset the first char flag.
-    elsif Suffix = UNUSED then  --  Nothing to crunch... must be EOF on input
-      Put_code (Last_code);         --  Write last prefix code
-      Flush_bit_buffer;
-      Flush_output;                 --  Flush our output buffer
-    elsif Table_full then
-      Put_code (Last_code);
+      is_first_atom := False;    --    and reset the first char flag.
+    elsif Suffix = Shrink.Unused then
+      --  Nothing to crunch... must be EOF on input
+      Put_Code (Last_code);         --  Write last prefix code
+      Flush_Bit_Buffer;
+      Flush_Output;
+    elsif is_table_full then
+      Put_Code (Last_code);
       --  NB: PKZip does not necessarily clear the table when
       --  it is full. Hence the need for the special code below.
-      Put_code (Shrink.Special_Code);
-      Put_code (Shrink.Code_for_clearing_table);
+      Put_Code (Shrink.Special_Code);
+      Put_Code (Shrink.Code_for_clearing_table);
       Clear_Table;
       Table_Add (Last_code, Suffix);
       Last_code := Suffix;
     else
-      Table_Lookup (Last_code, Suffix, WhereFound, lookup_ok);
-      if lookup_ok then
+      Table_Lookup (Last_code, Suffix, where_found, is_lookup_ok);
+      if is_lookup_ok then
         --  If Last_code:Suffix pair is found in the code table, then ...
         --  ... set Last_code to the entry where the pair is located
-        Last_code := WhereFound;
+        Last_code := where_found;
       else
         --  Not in table
-        Put_code (Last_code);           --  Write current Last_code code
+        Put_Code (Last_code);           --  Write current Last_code code
         Table_Add (Last_code, Suffix);  --  Attempt to add to code table
         Last_code := Suffix;            --  Reset Last_code code for new char
 
-        if (code_size < Shrink.Maximum_Code_Bit_Size and not Table_full)
+        if (code_size < Shrink.Maximum_Code_Bit_Size and not is_table_full)
             --  12-Dec-2007: the Pascal code had an out-of-range access
             --    with Free_list(Next_free) below when the table was full!
             --    NB: according to tests, and surely it can be proven,
@@ -366,13 +365,13 @@ is
             --    could be sufficient. But until it is proven, I prefer to
             --    keep the "and not Table_Full"
           and then
-            Free_list (Next_free) > Max_code
+            Free_list (Next_free) > current_max_code
         then
           --  Time to increase the code size and change the max. code
-          Put_code (Shrink.Special_Code);
-          Put_code (Shrink.Code_for_increasing_code_size);
+          Put_Code (Shrink.Special_Code);
+          Put_Code (Shrink.Code_for_increasing_code_size);
           code_size := code_size + 1;
-          Max_code := 2 **  code_size - 1;
+          current_max_code := 2 **  code_size - 1;
         end if;
       end if;
     end if;
@@ -388,7 +387,7 @@ is
     use Zip_Streams;
   begin
     if Source'Length < 1 then
-      Shrink_Atom (UNUSED);
+      Shrink_Atom (Shrink.Unused);
     else
       for I in Source'Range loop
         Bytes_in := Bytes_in + 1;
@@ -439,7 +438,7 @@ begin
   --
   begin
     Read_Block (IO_buffers, input);                --  Prime the input buffer
-    First_atom   := True;         --  1st character flag for Crunch procedure
+    is_first_atom   := True;         --  1st character flag for Crunch procedure
     if input_size_known then
       feedback_milestone := Zip_Streams.ZS_Size_Type (input_size / feedback_steps);
     end if;

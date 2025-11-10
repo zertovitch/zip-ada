@@ -615,13 +615,13 @@ package body UnZip.Decompress is
           end loop;
 
           --  Build new free list
-          Pc := -1;
-          Next_Free := -1;
+          Pc := Shrink.Unused;
+          Next_Free := Shrink.Unused;
           for I in Shrink.First_Entry .. Actual_Max_Code loop
             --  Either free before, or marked now as leaf
             if Previous_Code (I) < 0 or Is_Leaf (I) then
               --  Link last item to this item
-              if Pc = -1 then
+              if Pc = Shrink.Unused then
                 Next_Free := I;
               else
                 --  Next free node from Pc is I.
@@ -631,11 +631,11 @@ package body UnZip.Decompress is
             end if;
           end loop;
 
-          if Pc /= -1 then
+          if Pc /= Shrink.Unused then
             --  Last (old or new) free node points to the first "never used".
             Previous_Code (Pc) := -(Actual_Max_Code + 1);
           end if;
-          if Next_Free = -1 then
+          if Next_Free = Shrink.Unused then
             --  Unlikely but possible case:
             --     - no previously free or leaf node found, or
             --     - table clearing is ordered when the table is still empty.
