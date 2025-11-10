@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2006 .. 2022 Gautier de Montmollin (see spec. for credits)
+--  Copyright (c) 2006 .. 2025 Gautier de Montmollin (see spec. for credits)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
