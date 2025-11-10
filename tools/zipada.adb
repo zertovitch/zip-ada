@@ -94,10 +94,10 @@ procedure ZipAda is
     end if;
     Put (' ');
     declare
-      meth : constant String := Zip.Image (Zip.Method_from_Code (Final_Method));
+      meth : constant String := Zip.Image (Zip.Format_from_Code (Final_Method));
       use Ada.Strings.Fixed;
     begin
-      Put (meth & (Zip.PKZip_method'Width - meth'Length) * ' ');
+      Put (meth & (Zip.PKZip_Format'Width - meth'Length) * ' ');
     end;
     if Size (Stream) > 0 then
       Put (", to ");
@@ -230,7 +230,7 @@ procedure ZipAda is
             when others => method := Reduce_4;
           end case;
         elsif eX = "es" then
-          method := Shrink;
+          method := Shrink_1;
         elsif eX = "ed" then
           case opt (opt'First + 2) is
             when 'f'    => method := Deflate_Fixed;

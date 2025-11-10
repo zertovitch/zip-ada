@@ -43,14 +43,14 @@ package Rezip_lib is
 
 private
 
-  type Zip_format_set is array (Zip.PKZip_method) of Boolean;
+  type Zip_format_set is array (Zip.PKZip_Format) of Boolean;
 
   all_formats        : constant Zip_format_set := (others => True);
   deflate_or_store   : constant Zip_format_set :=
     (Zip.store | Zip.deflate => True, others => False);
   fast_decompression : constant Zip_format_set :=
-    (Zip.store .. Zip.deflate_e | Zip.lzma_meth => True,
-     Zip.bzip2_meth => False,
+    (Zip.store .. Zip.deflate_e | Zip.lzma_fmt => True,
+     Zip.bzip2_fmt => False,
      others => False);
 
 end Rezip_lib;

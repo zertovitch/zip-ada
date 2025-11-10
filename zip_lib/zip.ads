@@ -113,25 +113,25 @@ package Zip is
 
   ---------
 
-  --  Compression "methods" - actually, *formats* - in the "official" PKWARE Zip format.
+  --  Compression formats - called "methods" in the "official" PKWARE Zip archive documentation.
   --  Details in appnote.txt, part V.J
   --
   --     C : supported by Zip-Ada for compressing
   --     D : supported by Zip-Ada for decompressing
 
-  type PKZip_method is
-    (store,       --  C, D
-     shrink,      --  C, D
-     reduce_1,    --  C, D
-     reduce_2,    --  C, D
-     reduce_3,    --  C, D
-     reduce_4,    --  C, D
-     implode,     --     D
+  type PKZip_Format is
+    (store,        --  C, D
+     shrink_fmt,   --  C, D
+     reduce_1,     --  C, D
+     reduce_2,     --  C, D
+     reduce_3,     --  C, D
+     reduce_4,     --  C, D
+     implode,      --     D
      tokenize,
-     deflate,     --  C, D
-     deflate_e,   --     D  -  "Enhanced deflate" or "Deflate64"
-     bzip2_meth,  --  C, D
-     lzma_meth,   --  C, D
+     deflate,      --  C, D
+     deflate_e,    --     D  -  "Enhanced deflate" or "Deflate64"
+     bzip2_fmt,    --  C, D
+     lzma_fmt,     --  C, D
      zstandard,
      mp3_recomp,
      xz_recomp,
@@ -140,14 +140,25 @@ package Zip is
      ppmd,
      unknown);
 
-  subtype Reduce_Format is PKZip_method range reduce_1 .. reduce_4;
+  subtype PKZip_Method is PKZip_Format;
+  pragma Obsolescent (PKZip_Method, "Better use the name: PKZip_Format");
+
+  subtype Reduce_Format is PKZip_Format range reduce_1 .. reduce_4;
 
   --  Return a String image, nicer than the 'Image attribute.
-  function Image (m : PKZip_method) return String;
+  function Image (m : PKZip_Format) return String;
 
-  --  Technical: translates the method code as set in zip archives
-  function Method_from_Code (x : Interfaces.Unsigned_16) return PKZip_method;
-  function Method_from_Code (x : Natural) return PKZip_method;
+  --  Technical: translates the format ("method") code as set in zip archives
+  function Format_from_Code (x : Interfaces.Unsigned_16) return PKZip_Format;
+  function Format_from_Code (x : Natural) return PKZip_Format;
+
+  function Method_from_Code (x : Interfaces.Unsigned_16) return PKZip_Format renames
+    Format_from_Code;
+  pragma Obsolescent (Method_from_Code, "Better use the name: Format_from_Code");
+
+  function Method_from_Code (x : Natural) return PKZip_Format renames
+    Format_from_Code;
+  pragma Obsolescent (Method_from_Code, "Better use the name: Format_from_Code");
 
   --  Internal time definition
   subtype Time is Zip_Streams.Time;
@@ -195,7 +206,7 @@ package Zip is
        uncomp_size      : Zip_64_Data_Size_Type;
        crc_32           : Interfaces.Unsigned_32;
        date_time        : Time;
-       method           : PKZip_method;
+       method           : PKZip_Format;
        name_encoding    : Zip_Name_Encoding;
        read_only        : Boolean;
        encrypted_2_x    : Boolean;  --  PKZip 2.x encryption
@@ -428,7 +439,7 @@ private
     uncomp_size      : Zip_64_Data_Size_Type;
     crc_32           : Interfaces.Unsigned_32;
     date_time        : Time;
-    method           : PKZip_method;
+    method           : PKZip_Format;
     name_encoding    : Zip_Name_Encoding;
     read_only        : Boolean;  --  TBD: attributes of most supported systems
     encrypted_2_x    : Boolean;

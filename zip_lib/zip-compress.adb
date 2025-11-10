@@ -25,7 +25,7 @@
 --  http://www.opensource.org/licenses/mit-license.php
 
 with Zip.Create,
-     Zip.Compress.Shrink,
+     Zip.Compress.Shrink_E,
      Zip.Compress.Reduce,
      Zip.Compress.Deflate,
      Zip.Compress.BZip2_E,
@@ -178,8 +178,8 @@ package body Zip.Compress is
         when Store =>
           Store_data (do_write => True);
 
-        when Shrink =>
-          Zip.Compress.Shrink
+        when Shrink_1 =>
+          Zip.Compress.Shrink_E
             (input, output, input_size_known, input_size, feedback,
              CRC, encrypt_pack, output_size, compression_ok);
           zip_type := Compression_format_code.shrink_code;

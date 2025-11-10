@@ -62,7 +62,7 @@ package Zip.Compress is
      --------------------------------------------------
      --  Shrink = LZW algorithm, as in GIF pictures  --
      --------------------------------------------------
-     Shrink,
+     Shrink_1,
 
      --------------------------------------------------------------------------
      --  Reduce - combines LZ and a Markov predictor; 4 strengths available  --
@@ -121,7 +121,7 @@ package Zip.Compress is
      Preselection_1,   --  Not too slow; selects Deflate_3 or LZMA_2*
      Preselection_2);  --  Can be very slow on large data; selects Deflate_3, LZMA_2*, LZMA_3* or BZip2.
 
-  type Method_to_Format_Type is array (Compression_Method) of PKZip_method;
+  type Method_to_Format_Type is array (Compression_Method) of PKZip_Format;
   Method_to_Format : constant Method_to_Format_Type;
 
   subtype Reduction_Method is Compression_Method range Reduce_1 .. Reduce_4;
@@ -188,14 +188,14 @@ private
 
   Method_to_Format : constant Method_to_Format_Type :=
     (Store            => store,
-     Shrink           => shrink,
+     Shrink_1         => shrink_fmt,
      Reduce_1         => reduce_1,
      Reduce_2         => reduce_2,
      Reduce_3         => reduce_3,
      Reduce_4         => reduce_4,
      Deflation_Method => deflate,
-     BZip2_Method     => bzip2_meth,
-     LZMA_Method      => lzma_meth,
+     BZip2_Method     => bzip2_fmt,
+     LZMA_Method      => lzma_fmt,
      Multi_Method     => unknown);
 
   -----------------------------------

@@ -61,7 +61,7 @@ package body Rezip_lib is
     expanded_options    : Unbounded_String;
     --  ^ Options with dynamically expanded tokens
     made_by_version     : Unsigned_16;
-    pkzm                : Zip.PKZip_method;
+    pkzm                : Zip.PKZip_Format;
     limit               : Zip.Zip_64_Data_Size_Type;
     --  ^ Compression is considered too slow or unefficient beyond limit (if not 0).
     --    E.g., kzip's algorithm might be O(N^2) or worse; on large files,
@@ -115,23 +115,23 @@ package body Rezip_lib is
          U ("/rn /b#RAND_EXP#(1,2048)"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),
       --  Zip 3.0 or later; BZip2:
       (U ("zip"), U ("Zip"), NN,
-         U ("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2_meth, 0, True),
+         U ("-#RAND#(1,9) -Z bzip2"), NN, 46, Zip.bzip2_fmt, 0, True),
       --  7z:
       (U ("7z"), U ("7-Zip"), NN,
-         U ("a -tzip -mm=BZip2:d=#RAND#(1,9)00k:pass=7"), NN, 46, Zip.bzip2_meth, 0, True),
+         U ("a -tzip -mm=BZip2:d=#RAND#(1,9)00k:pass=7"), NN, 46, Zip.bzip2_fmt, 0, True),
       --  7-Zip 9.20 or later; LZMA:
       (U ("7z"), U ("7-Zip"), NN,
-         U ("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma_meth, 0, False),
+         U ("a -tzip -mm=LZMA -mx=9"), NN, 63, Zip.lzma_fmt, 0, False),
       (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**19 = 512 KiB
-         U ("a -tzip -mm=LZMA:a=2:d=19:mf=bt#RAND#(3,5):fb=273:lc=0:lp=2"), NN, 63, Zip.lzma_meth, 0, False),
+         U ("a -tzip -mm=LZMA:a=2:d=19:mf=bt#RAND#(3,5):fb=273:lc=0:lp=2"), NN, 63, Zip.lzma_fmt, 0, False),
       (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**25 = 32 MiB
-         U ("a -tzip -mm=LZMA:a=2:d=25:mf=bt#RAND#(3,5):fb=273:lc=7"), NN, 63, Zip.lzma_meth, 0, False),
+         U ("a -tzip -mm=LZMA:a=2:d=25:mf=bt#RAND#(3,5):fb=273:lc=7"), NN, 63, Zip.lzma_fmt, 0, False),
       (U ("7z"), U ("7-Zip"), NN, --  LZ77: BT3 or BT4, dictionary size 2**26 = 64 MiB
-         U ("a -tzip -mm=LZMA:a=2:d=26:mf=bt#RAND#(3,5):fb=273:lc=8:lp0:pb1"), NN, 63, Zip.lzma_meth, 0, False),
+         U ("a -tzip -mm=LZMA:a=2:d=26:mf=bt#RAND#(3,5):fb=273:lc=8:lp0:pb1"), NN, 63, Zip.lzma_fmt, 0, False),
       (U ("7z"), U ("7-Zip"), NN, --  Super-randomized version
          U ("a -tzip -mm=LZMA:a=2:d=#RAND_EXP#(1,65535)k:mf=bt#RAND#(2,5):fb=#RAND#(128,273):" &
             "lc=#RAND#(0,8):lp#RAND#(0,4):pb#RAND#(0,4)"),
-         NN, 63, Zip.lzma_meth, 0, True),
+         NN, 63, Zip.lzma_fmt, 0, True),
       --  AdvZip: advancecomp v1.19+ interesting for the Zopfli algorithm
       (U ("advzip"), U ("AdvZip"), U ("http://advancemame.sf.net/comp-readme.html"),
          U ("-a -2"), NN, 20, Zip.deflate, 0, False),
@@ -236,7 +236,7 @@ package body Rezip_lib is
     end Rip_data;
 
     Approach_to_Method : constant array (Internal) of Zip.Compress.Compression_Method :=
-      (shrink    => Zip.Compress.Shrink,
+      (shrink    => Zip.Compress.Shrink_1,
        reduce_4  => Zip.Compress.Reduce_4,
        deflate_3 => Zip.Compress.Deflate_3,
        deflate_r => Zip.Compress.Deflate_R,
@@ -717,7 +717,7 @@ package body Rezip_lib is
         uncomp_size :  Zip.Zip_64_Data_Size_Type;
         choice : Approach := original;
         deco : constant String := "-->-->-->" & (20 + unique_name'Length) * '-';
-        mth : Zip.PKZip_method;
+        mth : Zip.PKZip_Format;
         consider : Approach_Filtering;
         gain, gain_a : Integer_64;
         --
@@ -847,7 +847,7 @@ package body Rezip_lib is
                 e.info (a).LZMA_EOS :=
                   (e.info (a).zfm = 14) and
                   (e.head.short_info.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0;
-                mth := Zip.Method_from_Code (e.info (a).zfm);
+                mth := Zip.Format_from_Code (e.info (a).zfm);
                 --
               when Internal =>
                 if Approach_to_Method (a) in Zip.Compress.Deflation_Method
@@ -962,12 +962,12 @@ package body Rezip_lib is
               " bgcolor=" & lightred
             else
               "") &
-           '>' & Zip.Image (Zip.Method_from_Code (e.info (choice).zfm)) & "</td>");
+           '>' & Zip.Image (Zip.Format_from_Code (e.info (choice).zfm)) & "</td>");
         --  Recall original format:
         Put
           (summary,
            "<td bgcolor=" & color_for_original & '>' &
-           Zip.Image (Zip.Method_from_Code (e.info (original).zfm)) & "</td>");
+           Zip.Image (Zip.Format_from_Code (e.info (original).zfm)) & "</td>");
         --  Recall winner size:
         Winner_Color;
         Put (summary, Image_1000 (e.info (choice).size));

@@ -11,12 +11,12 @@ package Zip_Console_IO is
   package Summary is
     total_uncompressed, total_compressed : Zip.Zip_64_Data_Size_Type;
     total_entries                        : Natural;
-    files_per_method                     : array (Zip.PKZip_method) of Natural;
+    files_per_method                     : array (Zip.PKZip_Format) of Natural;
     uncompressed_per_method,
-    compressed_per_method                : array (Zip.PKZip_method) of Zip.Zip_64_Data_Size_Type;
+    compressed_per_method                : array (Zip.PKZip_Format) of Zip.Zip_64_Data_Size_Type;
     --
     procedure Reset;
-    function Nice_image (format : Zip.PKZip_method) return String;
+    function Nice_image (format : Zip.PKZip_Format) return String;
   end Summary;
 
   procedure My_feedback
@@ -28,7 +28,7 @@ package Zip_Console_IO is
    (file_name          : String;
     compressed_bytes   : Zip.Zip_64_Data_Size_Type;
     uncompressed_bytes : Zip.Zip_64_Data_Size_Type;
-    method             : Zip.PKZip_method);
+    method             : Zip.PKZip_Format);
 
   procedure My_resolve_conflict
    (file_name       :  in String;

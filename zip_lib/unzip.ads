@@ -158,8 +158,8 @@ package UnZip is
                      password             : String           := "";
                      file_system_routines : FS_Routines_Type := null_routines);
 
-  subtype PKZip_Method is Zip.PKZip_method;
-  pragma Obsolescent (PKZip_method, "Better use the type: Zip.PKZip_method");
+  subtype PKZip_Method is Zip.PKZip_Format;
+  pragma Obsolescent (PKZip_method, "Better use the type: Zip.PKZip_Format");
 
   ----------------------------------------------
   -- Extraction procedures for user interface --

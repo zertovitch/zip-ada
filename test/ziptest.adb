@@ -33,8 +33,8 @@ procedure ZipTest is
    MyStream2 : aliased File_Zipstream;
 
 begin
-   Create_Archive (Info2, MyStream_file'Unchecked_Access,   "to_file.zip", Zip.Compress.Shrink);
-   Create_Archive (Info1, MyStream_memory'Unchecked_Access, "to_memo.zip", Zip.Compress.Shrink);
+   Create_Archive (Info2, MyStream_file'Unchecked_Access,   "to_file.zip", Zip.Compress.Shrink_1);
+   Create_Archive (Info1, MyStream_memory'Unchecked_Access, "to_memo.zip", Zip.Compress.Shrink_1);
 
    --  Read the file1.txt in unbounded string (see also the specific Zip.Create.Add_String)
    RW_File.Read_File ("file1.txt", UnbFile1);

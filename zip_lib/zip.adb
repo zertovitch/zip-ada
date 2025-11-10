@@ -186,7 +186,7 @@ package body Zip is
        uncomp_size      : Zip_64_Data_Size_Type;
        crc_32           : Unsigned_32;
        date_time        : Time;
-       method           : PKZip_method;
+       method           : PKZip_Format;
        name_encoding    : Zip_Name_Encoding;
        read_only        : Boolean;
        encrypted_2_x    : Boolean;
@@ -294,7 +294,7 @@ package body Zip is
                 uncomp_size => header.short_info.dd.uncompressed_size,
                 crc_32      => header.short_info.dd.crc_32,
                 date_time   => header.short_info.file_timedate,
-                method      => Method_from_Code (header.short_info.zip_type),
+                method      => Format_from_Code (header.short_info.zip_type),
                 name_encoding =>
                   boolean_to_encoding (
                    (header.short_info.bit_flag and
@@ -727,7 +727,7 @@ package body Zip is
       entry_uncomp_size   : Zip_64_Data_Size_Type;
       entry_crc_32        : Interfaces.Unsigned_32;
       date_time           : Time;
-      method              : PKZip_method;
+      method              : PKZip_Format;
       entry_name_encoding : Zip_Name_Encoding;
       read_only           : Boolean;
       encrypted_2_x       : Boolean; -- PKZip 2.x encryption
@@ -934,11 +934,11 @@ package body Zip is
     end if;
   end Block_Write;
 
-  function Image (m : PKZip_method) return String is
+  function Image (m : PKZip_Format) return String is
   begin
     case m is
       when store       => return "Store";
-      when shrink      => return "Shrink";
+      when shrink_fmt  => return "Shrink";
       when reduce_1    => return "Reduce 1";
       when reduce_2    => return "Reduce 2";
       when reduce_3    => return "Reduce 3";
@@ -947,8 +947,8 @@ package body Zip is
       when tokenize    => return "Tokenize";
       when deflate     => return "Deflate";
       when deflate_e   => return "Deflate64";
-      when bzip2_meth       => return "BZip2";
-      when lzma_meth   => return "LZMA";
+      when bzip2_fmt   => return "BZip2";
+      when lzma_fmt    => return "LZMA";
       when zstandard   => return "Zstandard";
       when mp3_recomp  => return "MP3 recompression";
       when xz_recomp   => return "XZ recompression";
@@ -959,14 +959,14 @@ package body Zip is
     end case;
   end Image;
 
-  function Method_from_Code (x : Natural) return PKZip_method is
+  function Format_from_Code (x : Natural) return PKZip_Format is
     --  An enumeration clause might be more elegant instead of this function,
     --  but would need curiously an Unchecked_Conversion... (RM 13.4)
     use Compression_format_code;
   begin
     case x is
       when store_code      => return store;
-      when shrink_code     => return shrink;
+      when shrink_code     => return shrink_fmt;
       when reduce_code     => return reduce_1;
       when reduce_code + 1 => return reduce_2;
       when reduce_code + 2 => return reduce_3;
@@ -975,8 +975,8 @@ package body Zip is
       when tokenize_code   => return tokenize;
       when deflate_code    => return deflate;
       when deflate_e_code  => return deflate_e;
-      when bzip2_code      => return bzip2_meth;
-      when lzma_code       => return lzma_meth;
+      when bzip2_code      => return bzip2_fmt;
+      when lzma_code       => return lzma_fmt;
       when zstandard_code  => return zstandard;
       when mp3_code        => return mp3_recomp;
       when xz_code         => return xz_recomp;
@@ -985,12 +985,12 @@ package body Zip is
       when ppmd_code       => return ppmd;
       when others          => return unknown;
     end case;
-  end Method_from_Code;
+  end Format_from_Code;
 
-  function Method_from_Code (x : Interfaces.Unsigned_16) return PKZip_method is
+  function Format_from_Code (x : Interfaces.Unsigned_16) return PKZip_Format is
   begin
-    return Method_from_Code (Natural (x));
-  end Method_from_Code;
+    return Format_from_Code (Natural (x));
+  end Format_from_Code;
 
   --  Copy a chunk from a stream into another one, using a temporary buffer
   procedure Copy_Chunk

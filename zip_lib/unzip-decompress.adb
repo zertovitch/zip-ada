@@ -28,7 +28,7 @@
 --  NB: this is the MIT License, as found on the site
 --  http://www.opensource.org/licenses/mit-license.php
 
-with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2.Decoding, LZMA.Decoding;
+with Zip.CRC_Crypto, UnZip.Decompress.Huffman, BZip2.Decoding, LZMA.Decoding, Shrink;
 
 with Ada.Exceptions, Ada.Streams.Stream_IO, Ada.Text_IO, Interfaces;
 
@@ -38,7 +38,7 @@ package body UnZip.Decompress is
     (zip_file                   : in out Zip_Streams.Root_Zipstream_Type'Class;
      --  zip_file must be open and its index is meant
      --  to point to the beginning of compressed data
-     format                     : in     Zip.PKZip_method;
+     format                     : in     Zip.PKZip_Format;
      write_mode                 : in     Write_Mode_Type;
      output_file_name           : in     String;  --  relevant only if mode = write_to_file
      output_memory_access       :    out p_Stream_Element_Array;  -- \ = write_to_memory
@@ -596,12 +596,11 @@ package body UnZip.Decompress is
         Last_Outcode    : Zip.Byte;
         Code_Size       : Integer := Initial_Code_Size;  --  Actual code size [9 .. 13]
         Actual_Max_Code : Integer;  --  Max code to be searched for leaf nodes
-        First_Entry     : constant := 257;
-        Previous_Code   : array (First_Entry .. Max_Code) of Integer;
-        Stored_Literal  : array (First_Entry .. Max_Code) of Zip.Byte;
+        Previous_Code   : array (Shrink.First_Entry .. Max_Code) of Integer;
+        Stored_Literal  : array (Shrink.First_Entry .. Max_Code) of Zip.Byte;
 
         procedure Clear_Leaf_Nodes is
-          Is_Leaf : array (First_Entry .. Max_Code) of Boolean := (others => True);
+          Is_Leaf : array (Shrink.First_Entry .. Max_Code) of Boolean := (others => True);
           Pc : Integer;  --  Previous code
         begin
           if full_trace then
@@ -609,7 +608,7 @@ package body UnZip.Decompress is
               Zip.Zip_64_Data_Size_Type'Image (UnZ_Glob.uncompsize - S) &
               "; old Next_Free =" & Integer'Image (Next_Free));
           end if;
-          for I in First_Entry .. Actual_Max_Code loop
+          for I in Shrink.First_Entry .. Actual_Max_Code loop
             Pc := Previous_Code (I);
             if  Pc > 256 then
               --  Pc is in a tree as well
@@ -620,7 +619,7 @@ package body UnZip.Decompress is
           --  Build new free list
           Pc := -1;
           Next_Free := -1;
-          for I in First_Entry .. Actual_Max_Code loop
+          for I in Shrink.First_Entry .. Actual_Max_Code loop
             --  Either free before, or marked now as leaf
             if Previous_Code (I) < 0 or Is_Leaf (I) then
               --  Link last item to this item
@@ -677,13 +676,6 @@ package body UnZip.Decompress is
         Stack     : Zip.Byte_Buffer (0 .. Max_Stack);  --  Stack for output
         Stack_Ptr : Integer := Max_Stack;
 
-        --  PKZip's Shrink is a variant of the LZW algorithm in that the
-        --  compressor controls the code increase and the table clearing.
-        --  See appnote.txt, section 5.1.
-        Special_Code : constant := 256;
-        Code_for_increasing_code_size : constant := 1;
-        Code_for_clearing_table       : constant := 2;
-
         procedure Read_Code is
           pragma Inline (Read_Code);
         begin
@@ -707,8 +699,8 @@ package body UnZip.Decompress is
           return;  --  compression of a 0-file with Shrink.pas
         end if;
 
-        Next_Free := First_Entry;
-        Actual_Max_Code := First_Entry - 1;
+        Next_Free := Shrink.First_Entry;
+        Actual_Max_Code := Shrink.First_Entry - 1;
         Write_Ptr := 0;
 
         Read_Code;
@@ -723,10 +715,10 @@ package body UnZip.Decompress is
         Main_Unshrink_Loop :
         while S > 0 and then not Zip_EOF loop
           Read_Code;
-          if Incode = Special_Code then  --  Code = 256
+          if Incode = Shrink.Special_Code then  --  Code = 256
             Read_Code;
             case Incode is
-              when Code_for_increasing_code_size =>
+              when Shrink.Code_for_increasing_code_size =>
                 Code_Size := Code_Size + 1;
                 if some_trace then
                   Ada.Text_IO.Put (
@@ -737,7 +729,7 @@ package body UnZip.Decompress is
                 if Code_Size > Maximum_Code_Size then
                   raise Zip.Archive_corrupted with "Wrong LZW (Shrink) code size";
                 end if;
-              when Code_for_clearing_table =>
+              when Shrink.Code_for_clearing_table =>
                 Clear_Leaf_Nodes;
               when others =>
                 raise Zip.Archive_corrupted with
@@ -2016,15 +2008,15 @@ package body UnZip.Decompress is
     begin
       case format is
         when store          => Copy_stored;
-        when shrink         => Unshrink;
+        when shrink_fmt     => Unshrink;
         when Reduce_Format  => Unreduce (1 + Reduce_Format'Pos (format) - Reduce_Format'Pos (reduce_1));
         when implode        =>
           UnZ_Meth.Explode (explode_literal_tree, explode_slide_8KB_LZMA_EOS);
         when deflate | deflate_e =>
           UnZ_Meth.deflate_e_mode := format = deflate_e;
           UnZ_Meth.Inflate;
-        when Zip.bzip2_meth => UnZ_Meth.Bunzip2;
-        when Zip.lzma_meth  => UnZ_Meth.LZMA_Decode;
+        when Zip.bzip2_fmt  => UnZ_Meth.Bunzip2;
+        when Zip.lzma_fmt  => UnZ_Meth.LZMA_Decode;
         when others =>
           raise Unsupported_method with
             "Format/method " & Image (format) &

@@ -67,8 +67,8 @@ package body UnZip.Streams is
     local_header : Zip.Headers.Local_File_Header;
     data_descriptor_after_data : Boolean;
     encrypted : Boolean;
-    method : Zip.PKZip_method;
-    use type Zip.PKZip_method;
+    method : Zip.PKZip_Format;
+    use type Zip.PKZip_Format;
     mode : Write_Mode_Type;
   begin
     begin
@@ -81,7 +81,7 @@ package body UnZip.Streams is
         raise Zip.Archive_corrupted;
     end;
 
-    method := Zip.Method_from_Code (local_header.zip_type);
+    method := Zip.Format_from_Code (local_header.zip_type);
     if method = Zip.unknown then
       raise Unsupported_method;
     end if;
@@ -366,8 +366,8 @@ package body UnZip.Streams is
         Last := Item'First - 1;
         return;
       else
-        --  Well, we cannot return Item'First - 1...
-        raise Constraint_Error; -- RM 13.13.1(11) requires this.
+        --  Well, (Item'First - 1) would be less that the smallest integer, so we cannot return it...
+        raise Constraint_Error;  --  RM 13.13.1(11) requires this.
       end if;
     end if;
     if Item'Length = 0 then

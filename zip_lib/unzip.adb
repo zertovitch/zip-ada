@@ -233,7 +233,7 @@ package body UnZip is
     the_name     : String (1 .. 65_535);  --  Seems overkill, but Zip entry names can be that long!
     the_name_len : Natural;
     use Zip_Streams;
-    use type Zip.PKZip_method;
+    use type Zip.PKZip_Format;
     use type Zip.Feedback_Proc;
 
     actual_feedback : Zip.Feedback_Proc;
@@ -253,7 +253,7 @@ package body UnZip is
         raise Zip.Archive_corrupted;
     end;
 
-    method := Zip.Method_from_Code (local_header.zip_type);
+    method := Zip.Format_from_Code (local_header.zip_type);
     if method = Zip.unknown then
       raise UnZip.Unsupported_method with
          "Format (method) #" & Unsigned_16'Image (local_header.zip_type) &

@@ -17,8 +17,8 @@ package body Zip_Console_IO is
       compressed_per_method   := (others => 0);
     end Reset;
 
-    function Nice_image (format : Zip.PKZip_method) return String is
-      img_stuffed : String (1 .. Zip.PKZip_method'Width) := (others => ' ');
+    function Nice_image (format : Zip.PKZip_Format) return String is
+      img_stuffed : String (1 .. Zip.PKZip_Format'Width) := (others => ' ');
       img : constant String := Zip.Image (format);
     begin
       img_stuffed (1 .. img'Length) := img;
@@ -59,7 +59,7 @@ package body Zip_Console_IO is
    (file_name          : String;
     compressed_bytes   : Zip.Zip_64_Data_Size_Type;
     uncompressed_bytes : Zip.Zip_64_Data_Size_Type;
-    method             : Zip.PKZip_method)
+    method             : Zip.PKZip_Format)
   is
     use Ada.Text_IO;
 

@@ -25,8 +25,9 @@
 --  http://www.opensource.org/licenses/mit-license.php
 
 with Ada.Unchecked_Deallocation;
+with Shrink;
 
-procedure Zip.Compress.Shrink
+procedure Zip.Compress.Shrink_E
   (input,
    output           : in out Zip_Streams.Root_Zipstream_Type'Class;
    input_size_known :        Boolean;
@@ -121,14 +122,6 @@ is
 
   TABLESIZE : constant := 8191;  --  We'll need 4K entries in table
 
-  --  PKZip's Shrink is a variant of the LZW algorithm in that the
-  --  compressor controls the code increase and the table clearing.
-  --  See appnote.txt, section 5.1.
-  Special_Code : constant := 256;
-  Code_for_increasing_code_size : constant := 1;
-  Code_for_clearing_table       : constant := 2;
-
-  FIRSTENTRY : constant := 257;  --  First available table entry
   UNUSED : constant := -1;       --  Prefix indicating an unused code table entry
 
   type Code_array is array (0 .. TABLESIZE) of CodeRec;
@@ -140,7 +133,7 @@ is
   Code_table : Table_access := null;  --  Points to code table for LZW compression
 
   --  Define data types needed to implement a free node list
-  type Free_list_array is array (FIRSTENTRY .. TABLESIZE) of Natural;
+  type Free_list_array is array (Shrink.First_Entry .. TABLESIZE) of Natural;
   type Free_list_access is access Free_list_array;
 
   procedure Dispose is
@@ -181,7 +174,7 @@ is
         Free_list (I) := I;
       end if;
     end loop;
-    Next_free := FIRSTENTRY;
+    Next_free := Shrink.First_Entry;
     Table_full := False;
   end Initialize_Data_Structures;
 
@@ -246,7 +239,7 @@ is
     end loop;
     --  Next, re-initialize our list of free table entries
     Next_free := TABLESIZE + 1;
-    for Node in reverse FIRSTENTRY .. TABLESIZE loop
+    for Node in reverse Shrink.First_Entry .. TABLESIZE loop
       if (ClearList (Node / 8)  and  (Shift_Left (1, Node  mod  8))) /= 0 then
         Next_free := Next_free - 1;
         Free_list (Next_free) := Node;
@@ -350,8 +343,8 @@ is
       Put_code (Last_code);
       --  NB: PKZip does not necessarily clear the table when
       --  it is full. Hence the need for the special code below.
-      Put_code (Special_Code);
-      Put_code (Code_for_clearing_table);
+      Put_code (Shrink.Special_Code);
+      Put_code (Shrink.Code_for_clearing_table);
       Clear_Table;
       Table_Add (Last_code, Suffix);
       Last_code := Suffix;
@@ -382,8 +375,8 @@ is
            Free_list (Next_free) > Max_code
         then
           --  Time to increase the code size and change the max. code
-          Put_code (Special_Code);
-          Put_code (Code_for_increasing_code_size);
+          Put_code (Shrink.Special_Code);
+          Put_code (Shrink.Code_for_increasing_code_size);
           code_size := code_size + 1;
           Max_code := 2 **  code_size - 1;
         end if;
@@ -477,4 +470,4 @@ exception
   when others =>
     Deallocation;
     raise;
-end Zip.Compress.Shrink;
+end Zip.Compress.Shrink_E;
