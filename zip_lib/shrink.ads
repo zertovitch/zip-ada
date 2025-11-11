@@ -62,15 +62,15 @@
 
 package Shrink is
 
-  Special_Code : constant := 256;
-  First_Entry  : constant := 257;
+  special_code : constant := 256;
+  first_entry  : constant := 257;
 
-  Code_for_increasing_code_size : constant := 1;
-  Code_for_clearing_table       : constant := 2;
+  code_for_increasing_code_size : constant := 1;
+  code_for_clearing_table       : constant := 2;
 
-  Minimum_Code_Bit_Size : constant := 9;
-  Maximum_Code_Bit_Size : constant := 13;
+  minimum_code_bit_size : constant := 9;
+  maximum_code_bit_size : constant := 13;
 
-  Unused : constant := -1;  --  Indicates an unused code table entry
+  unused : constant := -1;  --  Indicates an unused code table entry
 
 end Shrink;
