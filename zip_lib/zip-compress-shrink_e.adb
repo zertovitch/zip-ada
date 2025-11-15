@@ -164,13 +164,12 @@ is
 
   procedure Prune (parent : Integer) is
     --  Prune leaves from a subtree.
-    --  Note:  - this is a recursive procedure
-    --         - !! can be simplified !!
-    current_child : Integer;
-    next_sibling : Integer;
+    --  Note: this is a recursive procedure.
+    current_child : Integer := table (parent).child;
+    current_sibling : Integer;
   begin
-    current_child := table (parent).child;
-    --  Find first Child that has descendants .. clear any that don't
+    --  Find first child that has descendants, set it as first child.
+    --  On the way, clear any that hasn't descendants.
 
     while current_child /= Shrink.unused and then
           table (current_child).child = Shrink.unused
@@ -181,21 +180,29 @@ is
       current_child := table (parent).child;
     end loop;
 
-    if current_child /= Shrink.unused then    --  If there are any children left ...
+    --  If there are any children left, the first child,
+    --  current_child, has descendants.
+    --
+    if current_child /= Shrink.unused then
+      --  Invariant from this point: the node current_child exists and
+      --  has descendants.
       Prune (current_child);
-      next_sibling := table (current_child).sibling;
+      current_sibling := table (current_child).sibling;
 
-      while next_sibling /= Shrink.unused loop
-        if table (next_sibling).child = Shrink.unused then
-          table (current_child).sibling := table (next_sibling).sibling;
-          table (next_sibling).sibling := Shrink.unused;
-          clear_list (next_sibling) := True;
-          next_sibling := table (current_child).sibling;
+      while current_sibling /= Shrink.unused loop
+        if table (current_sibling).child = Shrink.unused then
+          --  Sibling hasn't descendants.
+          --  Keep focus on current child but forget and
+          --  clear the childless sibling.
+          table (current_child).sibling := table (current_sibling).sibling;
+          table (current_sibling).sibling := Shrink.unused;
+          clear_list (current_sibling) := True;
         else
-          current_child := next_sibling;
+          --  Sibling has descendants.
+          current_child := current_sibling;
           Prune (current_child);
-          next_sibling := table (current_child).sibling;
         end if;
+        current_sibling := table (current_child).sibling;
       end loop;
 
     end if;
@@ -210,6 +217,7 @@ is
     for node in 0 .. 255 loop
       Prune (node);
     end loop;
+
     --  Next, re-initialize our list of free table entries
     next_free := table_last + 1;  --  !! Assumes a full table !!
     for node in reverse Shrink.first_entry .. table_last loop
