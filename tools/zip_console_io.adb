@@ -1,5 +1,5 @@
---  Console I/O for ZipAda, UnZipAda and ReZip tools
---  It's not nice code (global variables), so please don't use it elsewhere.
+--  Console I/O for the ZipAda, UnZipAda and ReZip tools
+--  It's not nice code (global variables), so please don't use it elsewhere!
 
 with Ada.Text_IO;
 
@@ -17,20 +17,20 @@ package body Zip_Console_IO is
       compressed_per_method   := (others => 0);
     end Reset;
 
-    function Nice_image (format : Zip.PKZip_Format) return String is
+    function Nice_Image (format : Zip.PKZip_Format) return String is
       img_stuffed : String (1 .. Zip.PKZip_Format'Width) := (others => ' ');
       img : constant String := Zip.Image (format);
     begin
       img_stuffed (1 .. img'Length) := img;
       return img_stuffed;
-    end Nice_image;
+    end Nice_Image;
 
   end Summary;
 
   dots : constant := 8;
   done_dots : Natural := 0;
 
-  procedure My_feedback
+  procedure My_Feedback
    (percents_done :  in Natural;
     entry_skipped :  in Boolean;
     user_abort    : out Boolean)
@@ -53,9 +53,9 @@ package body Zip_Console_IO is
       done_dots := new_done_dots;
     end if;
     user_abort := False; -- pointless in this command-line version (Ctrl-C is ok)
-  end My_feedback;
+  end My_Feedback;
 
-  procedure My_tell_data
+  procedure My_Tell_Data
    (file_name          : String;
     compressed_bytes   : Zip.Zip_64_Data_Size_Type;
     uncompressed_bytes : Zip.Zip_64_Data_Size_Type;
@@ -80,7 +80,7 @@ package body Zip_Console_IO is
   begin
     New_Line;
     if Summary.total_entries = 0 then
-      Put_Line (" Name                      Method    Compressed size      Uncompressed size");
+      Put_Line (" Name                      Format    Compressed size      Uncompressed size");
       Put_Line (" ------------------------- --------- ---------------      -----------------");
     end if;
     Put (' ');
@@ -94,16 +94,15 @@ package body Zip_Console_IO is
         Put (' ');
       end loop;
     end;
-    Put (' ' & Summary.Nice_image (method));
+    Put (' ' & Summary.Nice_Image (method));
     MIO.Put (compressed_bytes, 10);
     if uncompressed_bytes = 0 then
       Put (" :         ");
     else
       Put (" :");
-      MIO.Put (
-        Zip.Zip_64_Data_Size_Type (
-          (100.0 * Long_Float (compressed_bytes)) / Long_Float (uncompressed_bytes)
-        ), 4);
+      MIO.Put
+        (Zip.Zip_64_Data_Size_Type (
+           (100.0 * Long_Float (compressed_bytes)) / Long_Float (uncompressed_bytes)), 4);
       Put ("% of ");
     end if;
     MIO.Put (uncompressed_bytes, 10);
@@ -118,9 +117,9 @@ package body Zip_Console_IO is
     Summary.files_per_method (method) := Summary.files_per_method (method) + 1;
     Summary.uncompressed_per_method (method) := Summary.uncompressed_per_method (method) + uncompressed_bytes;
     Summary.compressed_per_method (method) := Summary.compressed_per_method (method) + compressed_bytes;
-  end My_tell_data;
+  end My_Tell_Data;
 
-  procedure My_resolve_conflict
+  procedure My_Resolve_Conflict
    (file_name       :  in String;
     name_encoding   :  in Zip.Zip_Name_Encoding;
     action          : out UnZip.Name_Conflict_Intervention;
@@ -152,9 +151,9 @@ package body Zip_Console_IO is
 
     --  Cosmetic : position for the [.....]
     Put ("                                                                    ");
-  end My_resolve_conflict;
+  end My_Resolve_Conflict;
 
-  procedure My_get_password
+  procedure My_Get_Password
    (password : out Ada.Strings.Unbounded.Unbounded_String)
   is
     c : Character;
@@ -180,6 +179,6 @@ package body Zip_Console_IO is
 
     --  Cosmetic : position for the [.....]
     Put ("                                                                    ");
-  end My_get_password;
+  end My_Get_Password;
 
 end Zip_Console_IO;

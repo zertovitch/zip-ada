@@ -49,10 +49,10 @@ procedure UnZipAda is
 
   use UnZip;
 
-  fda :          Zip.Feedback_Proc     := Zip_Console_IO.My_feedback'Access;
-  rca :          Resolve_Conflict_Proc := Zip_Console_IO.My_resolve_conflict'Access;
-  tda :          Tell_Data_Proc        := Zip_Console_IO.My_tell_data'Access;
-  gpw : constant Get_Password_Proc     := Zip_Console_IO.My_get_password'Access;
+  fda :          Zip.Feedback_Proc     := Zip_Console_IO.My_Feedback'Access;
+  rca :          Resolve_Conflict_Proc := Zip_Console_IO.My_Resolve_Conflict'Access;
+  tda :          Tell_Data_Proc        := Zip_Console_IO.My_Tell_Data'Access;
+  gpw : constant Get_Password_Proc     := Zip_Console_IO.My_Get_Password'Access;
 
   last_option : Natural := 0;
 
@@ -313,7 +313,7 @@ begin
       Put_Line ("Statistics per Zip sub-format (""method""):");
       for m in Summary.files_per_method'Range loop
         if Summary.files_per_method (m) > 0 then
-          Put ("  " & Summary.Nice_image (m) & "... ");
+          Put ("  " & Summary.Nice_Image (m) & "... ");
           IIO.Put (Summary.files_per_method (m), 5);
           Put (" files");
           if Summary.uncompressed_per_method (m) > 0 then

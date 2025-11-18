@@ -86,7 +86,7 @@ procedure ZipAda is
     --
     Add_Stream
       (Info, Stream,
-       Zip_Console_IO.My_feedback'Access,
+       Zip_Console_IO.My_Feedback'Access,
        To_String (password), Compressed_Size, Final_Method);
     --
     if Size (Stream) = 0 then

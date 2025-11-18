@@ -629,7 +629,7 @@ package body Rezip_lib is
         input_size_known => True,
         input_size       => e.head.short_info.dd.uncompressed_size,
         method           => Approach_to_Method (a),
-        feedback         => Zip_Console_IO.My_feedback'Access,
+        feedback         => Zip_Console_IO.My_Feedback'Access,
         password         => "",
         content_hint     => Zip.Compress.Guess_Type_from_Name (S (e.name)),
         CRC              => e.head.short_info.dd.crc_32,
