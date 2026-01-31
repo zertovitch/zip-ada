@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2025 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -946,7 +946,7 @@ package body Zip is
       when implode     => return "Implode";
       when tokenize    => return "Tokenize";
       when deflate     => return "Deflate";
-      when deflate_e   => return "Deflate64";
+      when deflate_64  => return "Deflate64";
       when bzip2_fmt   => return "BZip2";
       when lzma_fmt    => return "LZMA";
       when zstandard   => return "Zstandard";
@@ -974,7 +974,7 @@ package body Zip is
       when implode_code    => return implode;
       when tokenize_code   => return tokenize;
       when deflate_code    => return deflate;
-      when deflate_e_code  => return deflate_e;
+      when deflate_64_code => return deflate_64;
       when bzip2_code      => return bzip2_fmt;
       when lzma_code       => return lzma_fmt;
       when zstandard_code  => return zstandard;

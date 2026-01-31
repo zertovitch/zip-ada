@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2025 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -129,7 +129,7 @@ package Zip is
      implode,      --     D
      tokenize,
      deflate,      --  C, D
-     deflate_e,    --     D  -  "Enhanced deflate" or "Deflate64"
+     deflate_64,   --     D  -  "Enhanced deflate" or "Deflate64"
      bzip2_fmt,    --  C, D
      lzma_fmt,     --  C, D
      zstandard,
@@ -389,7 +389,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String := "62, preview 1";
-  reference : constant String := "10-Nov-2025";
+  reference : constant String := "31-Jan-2026";
   --  Hopefully the latest version can be acquired from one of those URLs:
   web       : constant String := "https://unzip-ada.sourceforge.io/";
   web2      : constant String := "https://sourceforge.net/projects/unzip-ada/";
@@ -496,7 +496,7 @@ private
     implode_code      : constant :=  6;
     tokenize_code     : constant :=  7;
     deflate_code      : constant :=  8;
-    deflate_e_code    : constant :=  9;
+    deflate_64_code   : constant :=  9;
     bzip2_code        : constant := 12;
     lzma_code         : constant := 14;
     zstandard_code    : constant := 93;

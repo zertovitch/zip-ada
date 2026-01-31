@@ -5,7 +5,7 @@
 --                     Uses brute force and pick-and-choose among compression
 --                     tools and methods. Typically the optimal archive will
 --                     contain some entries compressed with the LZMA format,
---                     and others with the Deflate, Deflate_e or BZip2.
+--                     and others with the Deflate, Deflate_64 or BZip2.
 --                     Compression speed doesn't matter (except extreme cases),
 --                     only the final size does.
 --  Author:          Gautier de Montmollin
@@ -49,7 +49,7 @@ private
   deflate_or_store   : constant Zip_format_set :=
     (Zip.store | Zip.deflate => True, others => False);
   fast_decompression : constant Zip_format_set :=
-    (Zip.store .. Zip.deflate_e | Zip.lzma_fmt => True,
+    (Zip.store .. Zip.deflate_64 | Zip.lzma_fmt => True,
      Zip.bzip2_fmt => False,
      others => False);
 

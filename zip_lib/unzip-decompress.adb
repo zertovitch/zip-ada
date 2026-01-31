@@ -4,7 +4,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2007 .. 2025 Gautier de Montmollin
+--  Copyright (c) 2007 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -145,7 +145,7 @@ package body UnZip.Decompress is
       subtype Reduction_factor is Integer range 1 .. 4;
       procedure Unreduce (factor : Reduction_factor);
       procedure Explode (literal_tree, slide_8_KB : Boolean);
-      deflate_e_mode : Boolean := False;
+      deflate_64_mode : Boolean := False;
       procedure Inflate;
       procedure Bunzip2;      --  Nov-2009
       procedure LZMA_Decode;  --  Jun-2014
@@ -1604,7 +1604,7 @@ package body UnZip.Decompress is
               (0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
                3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, invalid, invalid);
 
-      --  Copy offsets for distance codes 0..29 (30..31: deflate_e)
+      --  Copy offsets for distance codes 0..29 (30..31: deflate_64)
 
       copy_offset_distance : constant Length_array (0 .. 31) :=
             (1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
@@ -1617,7 +1617,7 @@ package body UnZip.Decompress is
             (0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
              7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14);
 
-      max_dist : Integer := 29;  --  changed to 31 for deflate_e
+      max_dist : Integer := 29;  --  changed to 31 for deflate_64
 
       length_list_for_fixed_block_literals : constant Length_array (0 .. 287) :=
           (0 .. 143 => 8, 144 .. 255 => 9, 256 .. 279 => 7, 280 .. 287 => 8);
@@ -1856,7 +1856,7 @@ package body UnZip.Decompress is
         is_last_block : Boolean;
         blocks, blocks_fix, blocks_dyn : Long_Integer := 0;
       begin
-        if deflate_e_mode then
+        if deflate_64_mode then
           copy_lengths_literal (28) := 3;  --  instead of 258
           extra_bits_literal (28) := 16;   --  instead of 0
           max_dist := 31;
@@ -2031,8 +2031,8 @@ package body UnZip.Decompress is
         when Reduce_Format  => Unreduce (1 + Reduce_Format'Pos (format) - Reduce_Format'Pos (reduce_1));
         when implode        =>
           UnZ_Meth.Explode (explode_literal_tree, explode_slide_8KB_LZMA_EOS);
-        when deflate | deflate_e =>
-          UnZ_Meth.deflate_e_mode := format = deflate_e;
+        when deflate | deflate_64 =>
+          UnZ_Meth.deflate_64_mode := format = deflate_64;
           UnZ_Meth.Inflate;
         when Zip.bzip2_fmt  => UnZ_Meth.Bunzip2;
         when Zip.lzma_fmt  => UnZ_Meth.LZMA_Decode;

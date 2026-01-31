@@ -65,7 +65,7 @@ package body Rezip_lib is
     limit               : Zip.Zip_64_Data_Size_Type;
     --  ^ Compression is considered too slow or unefficient beyond limit (if not 0).
     --    E.g., kzip's algorithm might be O(N^2) or worse; on large files,
-    --    deflate_e or other methods are better anyway
+    --    deflate_64 or other methods are better anyway
     randomized          : Boolean;
   end record;
 
@@ -107,7 +107,7 @@ package body Rezip_lib is
       (U ("7z"),
          U ("7-Zip"), NN,
          U ("a -tzip -mm=deflate64 -mfb=257 -mpass=15 -mmc=10000"),
-         NN, 21, Zip.deflate_e, 0, False),
+         NN, 21, Zip.deflate_64, 0, False),
       --  KZip:
       (U ("kzip"), U ("KZIP"), U ("http://www.advsys.net/ken/utils.htm"),
          U ("/rn /b0"), NN, 20, Zip.deflate, kzip_zopfli_limit, True),

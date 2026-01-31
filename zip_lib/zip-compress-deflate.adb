@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2009 .. 2024 Gautier de Montmollin
+--  Copyright (c) 2009 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1504,7 +1504,7 @@ is
 
     --  LZ77 parameters
     Look_Ahead_LZ77    : constant Integer := 258;
-    String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_e
+    String_buffer_size : constant := 2**15;  --  Required: 2**15 for Deflate, 2**16 for Deflate_64
     type Text_buffer_index is mod String_buffer_size;
     type Text_buffer is array (Text_buffer_index) of Byte;
     Text_Buf : Text_buffer;
@@ -1588,8 +1588,7 @@ is
           More_Bytes         => More_bytes,
           Write_Literal      => LZ77_emits_literal_byte,
           Write_DL_Code      => LZ77_emits_DL_code,
-          Estimate_DL_Codes  => Dummy_Estimate_DL_Codes
-        );
+          Estimate_DL_Codes  => Dummy_Estimate_DL_Codes);
 
   begin  --  Encode
     Read_Block (IO_buffers, input);
@@ -1605,10 +1604,12 @@ is
       when Taillaule_Deflation_Method =>
         null;  --  No start data sent, all is delayed
     end case;
+    
     ----------------------------------------------------------------
     --  The whole compression is happening in the following line: --
     ----------------------------------------------------------------
     My_LZ77;
+    
     --  Done. Send the code signaling the end of compressed data block:
     case method is
       when Deflate_Fixed =>
