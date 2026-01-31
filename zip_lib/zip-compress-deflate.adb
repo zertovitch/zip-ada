@@ -1604,12 +1604,12 @@ is
       when Taillaule_Deflation_Method =>
         null;  --  No start data sent, all is delayed
     end case;
-    
+
     ----------------------------------------------------------------
     --  The whole compression is happening in the following line: --
     ----------------------------------------------------------------
     My_LZ77;
-    
+
     --  Done. Send the code signaling the end of compressed data block:
     case method is
       when Deflate_Fixed =>

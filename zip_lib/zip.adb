@@ -934,6 +934,9 @@ package body Zip is
     end if;
   end Block_Write;
 
+  function Supported_for_Decompression (f : PKZip_Format) return Boolean is
+  (f in store | shrink_fmt | Reduce_Format | implode | deflate | deflate_64 | bzip2_fmt | lzma_fmt);
+
   function Image (m : PKZip_Format) return String is
   begin
     case m is

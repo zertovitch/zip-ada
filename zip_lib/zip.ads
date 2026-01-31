@@ -145,6 +145,8 @@ package Zip is
 
   subtype Reduce_Format is PKZip_Format range reduce_1 .. reduce_4;
 
+  function Supported_for_Decompression (f : PKZip_Format) return Boolean;
+
   --  Return a String image, nicer than the 'Image attribute.
   function Image (m : PKZip_Format) return String;
 
