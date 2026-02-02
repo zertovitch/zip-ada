@@ -601,10 +601,10 @@ package body UnZip.Decompress is
           Is_Leaf : array (Shrink.first_entry .. Max_Code) of Boolean := (others => True);
           Pc : Integer;  --  Previous code
         begin
-          if full_trace then
+          if some_trace then
             Ada.Text_IO.Put ("[Clear leaf nodes @ pos" &
               Zip.Zip_64_Data_Size_Type'Image (UnZ_Glob.uncompsize - S) &
-              "; old Next_Free =" & Integer'Image (Next_Free));
+              "; old Next_Free =" & Next_Free'Image);
           end if;
 
           for I in Shrink.first_entry .. Actual_Max_Code loop
