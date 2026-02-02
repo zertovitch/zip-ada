@@ -5,7 +5,7 @@
 --                     Uses brute force and pick-and-choose among compression
 --                     tools and methods. Typically the optimal archive will
 --                     contain some entries compressed with the LZMA format,
---                     and others with the Deflate, Deflate_64 or BZip2.
+--                     and others with the Deflate, Deflate_64 or BZip2 formats.
 --                     Compression speed doesn't matter (except extreme cases),
 --                     only the final size does.
 --  Author:          Gautier de Montmollin
