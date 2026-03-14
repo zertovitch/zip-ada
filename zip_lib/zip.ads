@@ -390,8 +390,8 @@ package Zip is
   --  Information about this package - e.g., for an "about" box  --
   -----------------------------------------------------------------
 
-  version   : constant String := "62, preview 1";
-  reference : constant String := "31-Jan-2026";
+  version   : constant String := "62";
+  reference : constant String := "14-Mar-2026";
   --  Hopefully the latest version can be acquired from one of those URLs:
   web       : constant String := "https://unzip-ada.sourceforge.io/";
   web2      : constant String := "https://sourceforge.net/projects/unzip-ada/";

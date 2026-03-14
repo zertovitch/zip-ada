@@ -7,7 +7,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2024 .. 2025 Gautier de Montmollin
+--  Copyright (c) 2024 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1213,7 +1213,7 @@ package body BZip2.Encoding is
 
       procedure Block_Split_Parallel is
 
-        --  Various splitting tactic. TBD: complete with recursion!
+        --  Various splitting tactics. TBD: complete with recursion!
         type Any_Splitting_Tactic is (single, parts_4, segmented_1, segmented_2);
 
         subtype Simple_Cut_Tactic is Any_Splitting_Tactic range single .. parts_4;

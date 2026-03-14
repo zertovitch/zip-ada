@@ -1,6 +1,9 @@
 Latest changes (-!- marks an improvement which brings an incompatibility)
 =========================================================================
 
+* Changes in '62', 14-Mar-2026 [rev. 1087]:
+  - BZip2 encoder: added brute-force block splitting, first use of multi-tasking in the library.
+
 * Changes in '61', 8-Mar-2025 [rev. 1052]:
   - BZip2 encoder: improved performance by reducing possible entropy codings chosen by brute-force
   - BZip2 encoder: added segmentation of blocks for heterogeneous data
