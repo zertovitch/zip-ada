@@ -1,3 +1,5 @@
+- Remove access types in UnZip.Decompress.Huffman; replace by fixed tables.
+
 - LZMA.Encoding & Zip.Compress.LZMA_E: tune performance with well
      placed Inline pragmata
 
