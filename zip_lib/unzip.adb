@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2025 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,6 +28,7 @@ with Zip.Headers, UnZip.Decompress;
 with Zip_Streams;
 
 with Ada.IO_Exceptions;
+with Ada.Strings.Fixed;
 with Interfaces;
 
 package body UnZip is
@@ -48,6 +49,7 @@ package body UnZip is
     (zip_file                 : in out Zip_Streams.Root_Zipstream_Type'Class;
      out_name                 : String;
      out_name_encoding        : Zip.Zip_Name_Encoding;
+     out_name_from_archive    : Boolean;
      name_from_header         : Boolean;
      header_index             : in out Zip_Streams.ZS_Index_Type;
      hint_comp_size           : Zip.Zip_64_Data_Size_Type; -- Added 2007 for .ODS files
@@ -78,23 +80,51 @@ package body UnZip is
 
     --  27-Jun-2001 : possibility of trashing directory part of a name
     --                e.g. :  zipada/uza_src/unzip.ads -> unzip.ads
-    function Maybe_trash_dir (n : String) return String is
+    --
+    function Maybe_Trash_Dir (n : String) return String is
       idx : Integer := n'First - 1;
+      vulnerability_message : constant String :=
+        " in an archive entry name was detected -> security issue"; --  & '[' & n & ']';
     begin
       if options (junk_directories) then
+
         for i in n'Range loop
           if n (i) in '/' | '\' then
             idx := i;
           end if;
         end loop;
-        --  idx points on the index just before the interesting part
+        --  idx is the index just before the interesting part
         return n (idx + 1 .. n'Last);
-      else
-        return n;
-      end if;
-    end Maybe_trash_dir;
 
-    procedure Set_definitively_named_outfile (composed_name : String) is
+      else
+        --  We will keep the directory as stored in the out_file string.
+
+        if out_name_from_archive then
+          --  Full output file name stems from the archive.
+          --  We do security checks about possible "Zip slip" attacks.
+          --
+          --  Vulnerability was reported by Jon Hood (https://github.com/squinky86,
+          --  http://www.hoodsecurity.com/ ) in May 2026.
+          --
+          --  Report: https://pragmaticscanner.com/disclosures/PVD-20260518-C7D8.html
+          --
+          if n'Length >= 1 and then n (n'First) in '/' | '\' then
+            raise Zip.Zip_Slip_Attempt with "Absolute path" & vulnerability_message;
+          elsif n'Length >= 2 and then n (n'First + 1) = ':' and then n (n'First) in 'a' .. 'z' | 'A' .. 'Z' then
+            raise Zip.Zip_Slip_Attempt with "Windows drive letter" & vulnerability_message;
+          elsif Ada.Strings.Fixed.Index (n, "..") > 0 then
+            raise Zip.Zip_Slip_Attempt with "Path containing ""directory up"" ("".."")" & vulnerability_message;
+          elsif Ada.Strings.Fixed.Index (n, (1 => ASCII.NUL)) > 0 then
+            raise Zip.Zip_Slip_Attempt with "Path with a NUL character" & vulnerability_message;
+          end if;
+        end if;
+
+        return n;
+
+      end if;
+    end Maybe_Trash_Dir;
+
+    procedure Set_Definitively_Named_Outfile (composed_name : String) is
       idx : Integer := composed_name'First - 1;
       first_in_name : Integer;
     begin
@@ -128,7 +158,7 @@ package body UnZip is
           if path = "" then
             null;
           elsif path (path'Last) = ':' then
-            null; -- We are on Windows and cannot create drives (like "D:")
+            null;  --  We are on Windows and cannot create drives (like "D:")
           else
             file_system_routines.Create_Path (path);
           end if;
@@ -139,11 +169,11 @@ package body UnZip is
       --
       the_output_name :=
         To_Unbounded_String (composed_name (first_in_name .. composed_name'Last));
-    end Set_definitively_named_outfile;
+    end Set_Definitively_Named_Outfile;
 
-    function Full_Path_Name (
-      file_name_in_archive : String;
-      encoding             : Zip.Zip_Name_Encoding)
+    function Full_Path_Name
+      (file_name_in_archive : String;
+       encoding             : Zip.Zip_Name_Encoding)
     return String
     is
     begin
@@ -154,28 +184,26 @@ package body UnZip is
        end if;
     end Full_Path_Name;
 
-    procedure Set_outfile (
-      long_not_composed_name : String;
-      encoding               : Zip.Zip_Name_Encoding
-    )
-    is
-      --  Eventually trash the archived directory structure, then
-      --  eventually add/modify/... another one:
-      name : constant String :=
-        Full_Path_Name (Maybe_trash_dir (long_not_composed_name), encoding);
-    begin
-      Set_definitively_named_outfile (name);
-    end Set_outfile;
+    --  Set_Outfile / Set_Outfile_Interactive:
+    --  possibly trash the archived directory structure, then
+    --  possibly add/modify/... another one via Full_Path_Name, which calls Compose_File_Name.
 
-    procedure Set_outfile_interactive (
-      long_not_composed_possible_name : String;
-      encoding                        : Zip.Zip_Name_Encoding
-    )
+    procedure Set_Outfile
+      (long_not_composed_name : String;
+       encoding               : Zip.Zip_Name_Encoding)
     is
-      --  Eventually trash the archived directory structure, then
-      --  eventually add/modify/... another one:
+      name : constant String :=
+        Full_Path_Name (Maybe_Trash_Dir (long_not_composed_name), encoding);
+    begin
+      Set_Definitively_Named_Outfile (name);
+    end Set_Outfile;
+
+    procedure Set_Outfile_Interactive
+      (long_not_composed_possible_name : String;
+       encoding                        : Zip.Zip_Name_Encoding)
+    is
       possible_name : constant String :=
-        Full_Path_Name (Maybe_trash_dir (long_not_composed_possible_name), encoding);
+        Full_Path_Name (Maybe_Trash_Dir (long_not_composed_possible_name), encoding);
       --  possible_name may have a different encoding depending on Compose_File_Name...
       new_name : String (1 .. 1024);
       new_name_length : Natural;
@@ -183,41 +211,39 @@ package body UnZip is
       if help_the_file_exists /= null and then Zip.Exists (possible_name) then
         loop
           case current_user_attitude is
-            when yes | no | rename_it => -- then ask for this name too
-              help_the_file_exists (
-                long_not_composed_possible_name, encoding,
-                current_user_attitude,
-                new_name, new_name_length
-              );
+            when yes | no | rename_it =>  --  then ask for this name too
+              help_the_file_exists
+                (long_not_composed_possible_name, encoding,
+                 current_user_attitude,
+                 new_name, new_name_length);
             when yes_to_all | none | abort_now =>
-              exit; -- nothing to decide: previous decision was definitive
+              exit;  --  nothing to decide: previous decision was definitive
           end case;
-          exit when not (
-            current_user_attitude = rename_it and then -- new name exists too!
-            Zip.Exists (new_name (1 .. new_name_length))
-          );
+          exit when not
+            (current_user_attitude = rename_it and then  --  new name exists too!
+             Zip.Exists (new_name (1 .. new_name_length)));
         end loop;
 
         --  User has decided.
         case current_user_attitude is
           when yes | yes_to_all =>
             skip_this_file := False;
-            Set_definitively_named_outfile (possible_name);
+            Set_Definitively_Named_Outfile (possible_name);
           when no | none =>
             skip_this_file := True;
           when rename_it =>
             skip_this_file := False;
-            Set_definitively_named_outfile (new_name (1 .. new_name_length));
+            Set_Definitively_Named_Outfile (new_name (1 .. new_name_length));
           when abort_now =>
             raise User_abort;
         end case;
 
-      else -- no name conflict or non-interactive (help_the_file_exists=null)
+      else  --  No name conflict, or non-interactive (help_the_file_exists=null)
 
         skip_this_file := False;
-        Set_definitively_named_outfile (possible_name);
+        Set_Definitively_Named_Outfile (possible_name);
       end if;
-    end Set_outfile_interactive;
+    end Set_Outfile_Interactive;
 
     procedure Inform_User (
       name : String;
@@ -342,32 +368,32 @@ package body UnZip is
         --  This is a directory name (12-feb-2000)
         skip_this_file := True;
       elsif actual_mode in Write_to_file then
-        Set_outfile_interactive (
-          the_name (1 .. the_name_len),
-          boolean_to_encoding ((local_header.bit_flag and
-           Zip.Headers.Language_Encoding_Flag_Bit) /= 0)
-        );
-      else -- only informational, no need for interaction
-        Set_outfile (the_name (1 .. the_name_len),
-          boolean_to_encoding ((local_header.bit_flag and
-           Zip.Headers.Language_Encoding_Flag_Bit) /= 0)
-        );
+        Set_Outfile_Interactive
+          (the_name (1 .. the_name_len),
+           boolean_to_encoding
+             ((local_header.bit_flag and
+              Zip.Headers.Language_Encoding_Flag_Bit) /= 0));
+      else  --  Only informational, no need for interaction.
+        Set_Outfile
+          (the_name (1 .. the_name_len),
+           boolean_to_encoding
+             ((local_header.bit_flag and
+              Zip.Headers.Language_Encoding_Flag_Bit) /= 0));
       end if;
-    else -- Output name is given: out_name
+    else  --  Output name is given: out_name
       if not data_descriptor_after_data then
-        Inform_User (
-          out_name,
-          true_packed_size,
-          local_header.dd.uncompressed_size
-        );
+        Inform_User
+          (out_name,
+           true_packed_size,
+           local_header.dd.uncompressed_size);
       end if;
       if out_name'Length = 0 or else out_name (out_name'Last) in '/' | '\' then
         --  This is a directory name, so do not write anything (30-Jan-2012).
         skip_this_file := True;
       elsif actual_mode in Write_to_file then
-        Set_outfile_interactive (out_name, out_name_encoding);
-      else -- only informational, no need for interaction
-        Set_outfile (out_name, out_name_encoding);
+        Set_Outfile_Interactive (out_name, out_name_encoding);
+      else  --  Only informational, no need for interaction.
+        Set_Outfile (out_name, out_name_encoding);
       end if;
     end if;
 
@@ -572,20 +598,21 @@ package body UnZip is
        crc_32         => crc_32);
     --
     UnZipFile
-      (zip_file             => zip_file,
-       out_name             => what,
-       out_name_encoding    => Zip.IBM_437, -- assumption...
-       name_from_header     => False,
-       header_index         => header_index,
-       hint_comp_size       => comp_size,
-       hint_crc_32          => crc_32,
-       feedback             => feedback,
-       help_the_file_exists => help_the_file_exists,
-       tell_data            => tell_data,
-       get_pwd              => get_pwd,
-       options              => options,
-       password             => work_password,
-       file_system_routines => file_system_routines);
+      (zip_file              => zip_file,
+       out_name              => what,
+       out_name_encoding     => Zip.IBM_437, -- assumption...
+       out_name_from_archive => True,
+       name_from_header      => False,
+       header_index          => header_index,
+       hint_comp_size        => comp_size,
+       hint_crc_32           => crc_32,
+       feedback              => feedback,
+       help_the_file_exists  => help_the_file_exists,
+       tell_data             => tell_data,
+       get_pwd               => get_pwd,
+       options               => options,
+       password              => work_password,
+       file_system_routines  => file_system_routines);
     --
     Close (zip_file);
   exception
@@ -630,20 +657,21 @@ package body UnZip is
        crc_32         => crc_32);
     --
     UnZipFile
-      (zip_file             => zip_file,
-       out_name             => rename,
-       out_name_encoding    => Zip.IBM_437,  --  assumption...
-       name_from_header     => False,
-       header_index         => header_index,
-       hint_comp_size       => comp_size,
-       hint_crc_32          => crc_32,
-       feedback             => feedback,
-       help_the_file_exists => null,
-       tell_data            => tell_data,
-       get_pwd              => get_pwd,
-       options              => options,
-       password             => work_password,
-       file_system_routines => file_system_routines);
+      (zip_file              => zip_file,
+       out_name              => rename,
+       out_name_encoding     => Zip.IBM_437,  --  assumption...
+       out_name_from_archive => False,
+       name_from_header      => False,
+       header_index          => header_index,
+       hint_comp_size        => comp_size,
+       hint_crc_32           => crc_32,
+       feedback              => feedback,
+       help_the_file_exists  => null,
+       tell_data             => tell_data,
+       get_pwd               => get_pwd,
+       options               => options,
+       password              => work_password,
+       file_system_routines  => file_system_routines);
     --
     Close (zip_file);
   exception
@@ -677,21 +705,22 @@ package body UnZip is
     --  We simply unzip everything sequentially, until the end:
     all_files : loop
       UnZipFile
-        (zip_file             => zip_file,
-         out_name             => "",
-         out_name_encoding    => Zip.IBM_437, -- ignored
-         name_from_header     => True,
-         header_index         => header_index,
-         hint_comp_size       => fallback_compressed_size,
-         --                      ^ no better hint available if comp_size is 0 in local header
-         hint_crc_32          => 0, -- 2.0 decryption can fail if data descriptor after data
-         feedback             => feedback,
-         help_the_file_exists => help_the_file_exists,
-         tell_data            => tell_data,
-         get_pwd              => get_pwd,
-         options              => options,
-         password             => work_password,
-         file_system_routines => file_system_routines);
+        (zip_file              => zip_file,
+         out_name              => "",
+         out_name_encoding     => Zip.IBM_437, -- ignored
+         out_name_from_archive => True,
+         name_from_header      => True,
+         header_index          => header_index,
+         hint_comp_size        => fallback_compressed_size,
+         --                       ^ no better hint available if comp_size is 0 in local header
+         hint_crc_32           => 0, -- 2.0 decryption can fail if data descriptor after data
+         feedback              => feedback,
+         help_the_file_exists  => help_the_file_exists,
+         tell_data             => tell_data,
+         get_pwd               => get_pwd,
+         options               => options,
+         password              => work_password,
+         file_system_routines  => file_system_routines);
     end loop all_files;
   exception
     when Zip.Headers.bad_local_header | Zip.Archive_is_empty =>
@@ -736,7 +765,7 @@ package body UnZip is
   end Extract;
 
   --  Extract one precise file (what) from an archive (from)
-  --  Needs Zip.Load(from, ...) prior to the extraction
+  --  Needs Zip.Load (from, ...) prior to the extraction
 
   procedure Extract (from                 : Zip.Zip_Info;
                      what                 : String;
@@ -746,8 +775,8 @@ package body UnZip is
                      get_pwd              : Get_Password_Proc;
                      options              : Option_Set := no_option;
                      password             : String := "";
-                     file_system_routines : FS_Routines_Type := null_routines
-                ) is
+                     file_system_routines : FS_Routines_Type := null_routines)
+  is
 
     header_index  : Zip_Streams.ZS_Index_Type;
     comp_size     : Zip.Zip_64_Data_Size_Type;
@@ -784,6 +813,7 @@ package body UnZip is
       (zip_file              => input_stream.all,
        out_name              => what,
        out_name_encoding     => name_encoding,
+       out_name_from_archive => True,
        name_from_header      => False,
        header_index          => header_index,
        hint_comp_size        => comp_size,
@@ -859,20 +889,21 @@ package body UnZip is
        crc_32        => crc_32);
     --
     UnZipFile
-      (zip_file             => input_stream.all,
-       out_name             => rename,
-       out_name_encoding    => name_encoding, -- assumption: encoding same as name
-       name_from_header     => False,
-       header_index         => header_index,
-       hint_comp_size       => comp_size,
-       hint_crc_32          => crc_32,
-       feedback             => feedback,
-       help_the_file_exists => null,
-       tell_data            => tell_data,
-       get_pwd              => get_pwd,
-       options              => options,
-       password             => work_password,
-       file_system_routines => file_system_routines);
+      (zip_file              => input_stream.all,
+       out_name              => rename,
+       out_name_encoding     => name_encoding, -- assumption: encoding same as name
+       out_name_from_archive => False,
+       name_from_header      => False,
+       header_index          => header_index,
+       hint_comp_size        => comp_size,
+       hint_crc_32           => crc_32,
+       feedback              => feedback,
+       help_the_file_exists  => null,
+       tell_data             => tell_data,
+       get_pwd               => get_pwd,
+       options               => options,
+       password              => work_password,
+       file_system_routines  => file_system_routines);
     --
     if use_a_file then
       Close (zip_file);

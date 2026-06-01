@@ -84,7 +84,8 @@ package Zip is
 
   Archive_corrupted,
   Archive_open_error,
-  Duplicate_name : exception;
+  Duplicate_name,
+  Zip_Slip_Attempt : exception;
 
   Zip_file_open_error : exception renames Archive_open_error;  --  Archive is not always a file!
   pragma Obsolescent (Zip_file_open_error, "Better use the name: Archive_open_error");
@@ -391,7 +392,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String := "62";
-  reference : constant String := "14-Mar-2026";
+  reference : constant String := "01-Jun-2026";
   --  Hopefully the latest version can be acquired from one of those URLs:
   web       : constant String := "https://unzip-ada.sourceforge.io/";
   web2      : constant String := "https://sourceforge.net/projects/unzip-ada/";
