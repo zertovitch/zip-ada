@@ -217,12 +217,11 @@ package body Zip_Streams is
    --------------------------------------------
    procedure Open (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
-      Ada.Streams.Stream_IO.Open (
-        Str.File,
-        Ada.Streams.Stream_IO.File_Mode (Mode),
-        To_String (Str.Name),
-        Form => To_String (Form_For_IO_Open_and_Create)
-      );
+      Ada.Streams.Stream_IO.Open
+        (Str.File,
+         Ada.Streams.Stream_IO.File_Mode (Mode),
+         To_String (Str.Name),
+         Form => To_String (Form_For_IO_Open_and_Create));
       --  NB: we could have here a call to Set_Time using
       --  Ada.Directories.Modification_Time if the latter
       --  was able to accept the Form as above for Open
@@ -231,12 +230,11 @@ package body Zip_Streams is
 
    procedure Create (Str : in out File_Zipstream; Mode : File_Mode) is
    begin
-      Ada.Streams.Stream_IO.Create (
-        Str.File,
-        Ada.Streams.Stream_IO.File_Mode (Mode),
-        To_String (Str.Name),
-        Form => To_String (Form_For_IO_Open_and_Create)
-      );
+      Ada.Streams.Stream_IO.Create
+        (Str.File,
+         Ada.Streams.Stream_IO.File_Mode (Mode),
+         To_String (Str.Name),
+         Form => To_String (Form_For_IO_Open_and_Create));
       --  NB: we could have here a call to Set_Time using
       --  Ada.Directories.Modification_Time if the latter
       --  was able to accept the Form as above for Create
@@ -271,10 +269,9 @@ package body Zip_Streams is
 
    overriding procedure Set_Index (S : in out File_Zipstream; To : ZS_Index_Type) is
    begin
-      Ada.Streams.Stream_IO.Set_Index (
-        S.File,
-        Ada.Streams.Stream_IO.Positive_Count (To)
-      );
+      Ada.Streams.Stream_IO.Set_Index
+        (S.File,
+         Ada.Streams.Stream_IO.Positive_Count (To));
    end Set_Index;
 
    overriding function Size (S : in File_Zipstream) return ZS_Size_Type is

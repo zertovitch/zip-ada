@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 2008 .. 2023 Gautier de Montmollin (maintenance and further development)
+--  Copyright (c) 2008 .. 2026 Gautier de Montmollin (maintenance and further development)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,13 +33,12 @@ package body Zip.Create is
 
    use Interfaces, Zip.Headers;
 
-   procedure Create_Archive (
-      Info            : out Zip_Create_Info;
+   procedure Create_Archive
+     (Info            : out Zip_Create_Info;
       Z_Stream        : in Zip_Streams.Zipstream_Class_Access;
       Archive_Name    : String;
       Compress_Method : Zip.Compress.Compression_Method := Zip.Compress.Deflate_1;
-      Duplicates      : Duplicate_name_policy           := admit_duplicates
-   )
+      Duplicates      : Duplicate_name_policy           := admit_duplicates)
    is
    begin
       Info.Stream   := Z_Stream;
@@ -261,8 +260,8 @@ package body Zip.Create is
            content_hint     => Guess_Type_from_Name (entry_name),
            CRC              => shi.dd.crc_32,
            output_size      => shi.dd.compressed_size,
-           zip_type         => shi.zip_type
-          );
+           zip_type         => shi.zip_type);
+
         if shi.zip_type = Compression_format_code.lzma_code then
           --
           --  For LZMA, we always put an EOS marker. From PKWARE's Appnote:
@@ -320,7 +319,7 @@ package body Zip.Create is
      --  Read the file
      temp_zip_stream.Set_Name (Unixify (File_Name));
      temp_zip_stream.Open (Zip_Streams.In_File);
-     --  Eventually we set a new name for archiving:
+     --  Possibly, we set a new name for archiving:
      if Name_in_archive /= "" then
         temp_zip_stream.Set_Name (Unixify (Name_in_archive));
      end if;
@@ -360,14 +359,13 @@ package body Zip.Create is
    )
    is
    begin
-     Add_String (
-       Info               => Info,
-       Contents           => Ada.Strings.Unbounded.To_Unbounded_String (Contents),
-       Name_in_archive    => Name_in_archive,
-       Name_UTF_8_encoded => Name_UTF_8_encoded,
-       Password           => Password,
-       Creation_time      => Creation_time
-     );
+     Add_String
+       (Info               => Info,
+        Contents           => Ada.Strings.Unbounded.To_Unbounded_String (Contents),
+        Name_in_archive    => Name_in_archive,
+        Name_UTF_8_encoded => Name_UTF_8_encoded,
+        Password           => Password,
+        Creation_time      => Creation_time);
    end Add_String;
 
    procedure Add_String (Info               : in out Zip_Create_Info;
@@ -451,12 +449,11 @@ package body Zip.Create is
         --  Copy extra field to new stream, usually a Zip64 field:
         String'Write (Info.Stream, extra);
       end;
-      Zip.Copy_Chunk (
-        Stream,
-        Info.Stream.all,
-        Integer (lh.dd.compressed_size),
-        Feedback => Feedback
-      );
+      Zip.Copy_Chunk
+        (Stream,
+         Info.Stream.all,
+         Integer (lh.dd.compressed_size),
+         Feedback => Feedback);
       --  Postfixed data descriptor contains the correct values for
       --  CRC and sizes. Example of Zip files using that descriptor: those
       --  created by Microsoft's OneDrive cloud storage (for downloading
@@ -474,9 +471,7 @@ package body Zip.Create is
    use Ada.Streams;
 
    procedure Dispose is new
-     Ada.Unchecked_Deallocation (
-       Stream_Element_Array,
-       Stream_Element_Array_Access);
+     Ada.Unchecked_Deallocation (Stream_Element_Array, Stream_Element_Array_Access);
 
    procedure Resize (A           : in out Stream_Element_Array_Access;
                      A_Last_Used :        Stream_Element_Offset;
@@ -533,28 +528,25 @@ package body Zip.Create is
      end loop;
    end Write;
 
-   procedure Open (
-     Zip_Entry_Stream     :    out Zip_Entry_Stream_Type;
-     Initial_Buffer_Size  : in     Positive := Default_Zip_Entry_Buffer_Size;
-     Buffer_Growth_Factor : in     Positive := Default_Zip_Entry_Buffer_Growth
-   )
+   procedure Open
+     (Zip_Entry_Stream     :    out Zip_Entry_Stream_Type;
+      Initial_Buffer_Size  : in     Positive := Default_Zip_Entry_Buffer_Size;
+      Buffer_Growth_Factor : in     Positive := Default_Zip_Entry_Buffer_Growth)
    is
    begin
      Zip_Entry_Stream.Last_Element := 0;
      Zip_Entry_Stream.Growth := Buffer_Growth_Factor;
-     Resize (
-       Zip_Entry_Stream.Buffer_Access,
-       Zip_Entry_Stream.Last_Element,
-       Stream_Element_Offset (Initial_Buffer_Size)
-     );
+     Resize
+       (Zip_Entry_Stream.Buffer_Access,
+        Zip_Entry_Stream.Last_Element,
+        Stream_Element_Offset (Initial_Buffer_Size));
    end Open;
 
-   procedure Close (
-     Zip_Entry_Stream : in out Zip_Entry_Stream_Type;
-     Entry_Name       : in     String;
-     Creation_Time    : in     Zip.Time := default_creation_time;
-     Info             : in out Zip_Create_Info
-   )
+   procedure Close
+     (Zip_Entry_Stream : in out Zip_Entry_Stream_Type;
+      Entry_Name       : in     String;
+      Creation_Time    : in     Zip.Time := default_creation_time;
+      Info             : in out Zip_Create_Info)
    is
      --  We define a local reader class for reading the contents of
      --  Zip_Entry_Stream as an *input* stream.
@@ -573,8 +565,8 @@ package body Zip.Create is
      overriding function Size (S : in Captive_Type) return Zip_Streams.ZS_Size_Type;
      overriding function End_Of_Stream (S : in Captive_Type) return Boolean;
      --
-     overriding procedure Set_Index (
-        S  : in out Captive_Type;
+     overriding procedure Set_Index
+       (S  : in out Captive_Type;
         To :        Zip_Streams.ZS_Index_Type)
      is
      begin
@@ -603,12 +595,11 @@ package body Zip.Create is
         Last   : out Stream_Element_Offset)
      is
        Available_From_Buffer : constant Stream_Element_Offset :=
-         Stream_Element_Offset'Max (
-           0,
-           1 + Zip_Entry_Stream.Last_Element - Stream.Loc
-           --  When Stream.Loc is equal to Zip_Entry_Stream.Last_Element,
-           --  there is one (last) element to read.
-         );
+         Stream_Element_Offset'Max
+           (0,
+            1 + Zip_Entry_Stream.Last_Element - Stream.Loc);
+            --  When Stream.Loc is equal to Zip_Entry_Stream.Last_Element,
+            --  there is one (last) element to read.
        Copy_Length : constant Stream_Element_Offset :=
          Stream_Element_Offset'Min (Item'Length, Available_From_Buffer);
      begin
@@ -646,10 +637,11 @@ package body Zip.Create is
       ed : Zip.Headers.End_of_Central_Dir;
       procedure Dispose is new Ada.Unchecked_Deallocation (String, p_String);
       current_index : Zip_Streams.ZS_Index_Type;
-      --
+
       --  If the stream is of File_Zipstream type or descendent, close the file too.
       --  Deallocate catalogue entries.
-      procedure Close_eventual_file_and_deallocate is
+      --
+      procedure Close_possible_File_and_Deallocate is
       begin
         if Info.Stream.all in Zip_Streams.File_Zipstream'Class
           and then Zip_Streams.File_Zipstream (Info.Stream.all).Is_Open
@@ -664,7 +656,7 @@ package body Zip.Create is
         end if;
         Info.Last_entry := 0;
         Info.name_dictionary.Clear;
-      end Close_eventual_file_and_deallocate;
+      end Close_possible_File_and_Deallocate;
       --
       needs_local_zip64 : Boolean;
       fh_extra : Local_File_Header_Extension;
@@ -752,7 +744,7 @@ package body Zip.Create is
       end if;
       Write (Info.Stream.all, ed);
       --
-      Close_eventual_file_and_deallocate;
+      Close_possible_File_and_Deallocate;
    end Finish;
 
 end Zip.Create;

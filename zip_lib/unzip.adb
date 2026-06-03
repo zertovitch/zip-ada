@@ -52,8 +52,8 @@ package body UnZip is
      out_name_from_archive    : Boolean;
      name_from_header         : Boolean;
      header_index             : in out Zip_Streams.ZS_Index_Type;
-     hint_comp_size           : Zip.Zip_64_Data_Size_Type; -- Added 2007 for .ODS files
-     hint_crc_32              : Unsigned_32;    -- Added 2012 for decryption
+     hint_comp_size           : Zip.Zip_64_Data_Size_Type; --  Added in 2007 for .ODS files
+     hint_crc_32              : Unsigned_32;    --  Added in 2012 for decryption
      feedback                 : Zip.Feedback_Proc;
      help_the_file_exists     : Resolve_Conflict_Proc;
      tell_data                : Tell_Data_Proc;
@@ -78,13 +78,13 @@ package body UnZip is
 
     the_output_name : Unbounded_String;
 
-    --  27-Jun-2001 : possibility of trashing directory part of a name
+    --  27-Jun-2001 : possibility of trashing the path part of a name
     --                e.g. :  zipada/uza_src/unzip.ads -> unzip.ads
     --
-    function Maybe_Trash_Dir (n : String) return String is
+    function Possibly_Discard_Path (n : String) return String is
       idx : Integer := n'First - 1;
       vulnerability_message : constant String :=
-        " in an archive entry name was detected -> security issue"; --  & '[' & n & ']';
+        " in an archive entry name was detected -> security issue";  --  & '[' & n & ']';
     begin
       if options (junk_directories) then
 
@@ -97,7 +97,7 @@ package body UnZip is
         return n (idx + 1 .. n'Last);
 
       else
-        --  We will keep the directory as stored in the out_file string.
+        --  We will keep the path as stored in the out_file string.
 
         if out_name_from_archive then
           --  Full output file name stems from the archive.
@@ -122,7 +122,7 @@ package body UnZip is
         return n;
 
       end if;
-    end Maybe_Trash_Dir;
+    end Possibly_Discard_Path;
 
     procedure Set_Definitively_Named_Outfile (composed_name : String) is
       idx : Integer := composed_name'First - 1;
@@ -193,7 +193,7 @@ package body UnZip is
        encoding               : Zip.Zip_Name_Encoding)
     is
       name : constant String :=
-        Full_Path_Name (Maybe_Trash_Dir (long_not_composed_name), encoding);
+        Full_Path_Name (Possibly_Discard_Path (long_not_composed_name), encoding);
     begin
       Set_Definitively_Named_Outfile (name);
     end Set_Outfile;
@@ -203,7 +203,7 @@ package body UnZip is
        encoding                        : Zip.Zip_Name_Encoding)
     is
       possible_name : constant String :=
-        Full_Path_Name (Maybe_Trash_Dir (long_not_composed_possible_name), encoding);
+        Full_Path_Name (Possibly_Discard_Path (long_not_composed_possible_name), encoding);
       --  possible_name may have a different encoding depending on Compose_File_Name...
       new_name : String (1 .. 1024);
       new_name_length : Natural;
@@ -245,10 +245,9 @@ package body UnZip is
       end if;
     end Set_Outfile_Interactive;
 
-    procedure Inform_User (
-      name : String;
-      comp, uncomp : Zip.Zip_64_Data_Size_Type
-    )
+    procedure Inform_User
+      (name : String;
+       comp, uncomp : Zip.Zip_64_Data_Size_Type)
     is
     begin
       if tell_data /= null  then
@@ -286,15 +285,14 @@ package body UnZip is
          " is unknown";
     end if;
 
-    --  calculate offset of data
+    --  Calculate offset of data
 
     work_index :=
       work_index +
-      ZS_Size_Type (
-             local_header.filename_length    +
-             local_header.extra_field_length +
-             Zip.Headers.local_header_length
-      );
+      ZS_Size_Type
+        (local_header.filename_length    +
+         local_header.extra_field_length +
+         Zip.Headers.local_header_length);
 
     --
     --  Zip64 extension.
@@ -358,11 +356,10 @@ package body UnZip is
         String'Read (zip_file'Access, the_name (1 .. the_name_len));
       end if;
       if not data_descriptor_after_data then
-        Inform_User (
-          the_name (1 .. the_name_len),
-          true_packed_size,
-          local_header.dd.uncompressed_size
-        );
+        Inform_User
+          (the_name (1 .. the_name_len),
+           true_packed_size,
+           local_header.dd.uncompressed_size);
       end if;
       if the_name_len = 0 or else the_name (the_name_len) in '/' | '\' then
         --  This is a directory name (12-feb-2000)
@@ -402,76 +399,74 @@ package body UnZip is
     end if;
 
     if skip_this_file and not data_descriptor_after_data then
+
       --  We can skip actually since sizes are known.
       if feedback /= null then
-        feedback (
-          percents_done => 0,
-          entry_skipped => True,
-          user_abort    => dummy_bool
-        );
+        feedback
+          (percents_done => 0,
+           entry_skipped => True,
+           user_abort    => dummy_bool);
       end if;
+
     else
+
       begin
-        Set_Index (zip_file, work_index);  --  eventually skips the file name
+        Set_Index (zip_file, work_index);  --  possibly skips the file name
       exception
         when others =>
           raise Zip.Archive_corrupted with
             "End of stream reached (location: between local header and archived data)";
       end;
-      UnZip.Decompress.Decompress_Data (
-        zip_file                   => zip_file,
-        format                     => method,
-        write_mode                 => actual_mode,
-        output_file_name           => To_String (the_output_name),
-        output_memory_access       => dummy_memory,
-        output_stream_access       => dummy_stream,
-        feedback                   => actual_feedback,
-        explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
-        explode_slide_8KB_LZMA_EOS => (local_header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0,
-        data_descriptor_after_data => data_descriptor_after_data,
-        is_encrypted               => encrypted,
-        password                   => password,
-        get_new_password           => get_pwd,
-        hint                       => local_header
-      );
+      UnZip.Decompress.Decompress_Data
+        (zip_file                   => zip_file,
+         format                     => method,
+         write_mode                 => actual_mode,
+         output_file_name           => To_String (the_output_name),
+         output_memory_access       => dummy_memory,
+         output_stream_access       => dummy_stream,
+         feedback                   => actual_feedback,
+         explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
+         explode_slide_8KB_LZMA_EOS => (local_header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0,
+         data_descriptor_after_data => data_descriptor_after_data,
+         is_encrypted               => encrypted,
+         password                   => password,
+         get_new_password           => get_pwd,
+         hint                       => local_header);
 
       if actual_mode /= just_test then
         begin
           if file_system_routines.Set_Time_Stamp /= null then
-            file_system_routines.Set_Time_Stamp (
-              To_String (the_output_name),
-              Zip.Convert (local_header.file_timedate)
-            );
+            file_system_routines.Set_Time_Stamp
+              (To_String (the_output_name),
+               Zip.Convert (local_header.file_timedate));
           elsif file_system_routines.Set_ZTime_Stamp /= null then
-            file_system_routines.Set_ZTime_Stamp (
-              To_String (the_output_name),
-              local_header.file_timedate
-            );
+            file_system_routines.Set_ZTime_Stamp
+              (To_String (the_output_name),
+               local_header.file_timedate);
           end if;
         exception
           when Zip_Streams.Calendar.Time_Error | Ada.Calendar.Time_Error =>
-            null; -- invalid time, we give up setting the time stamp
+            null;  --  Invalid time, we give up setting the time stamp
         end;
       end if;
 
-      if data_descriptor_after_data then -- Sizes and CRC at the end
+      if data_descriptor_after_data then  --  Sizes and CRC at the end
         --  Inform after decompression
-        Inform_User (
-          To_String (the_output_name),
-          local_header.dd.compressed_size,
-          local_header.dd.uncompressed_size
-        );
+        Inform_User
+          (To_String (the_output_name),
+           local_header.dd.compressed_size,
+           local_header.dd.uncompressed_size);
       end if;
 
-    end if; -- not ( skip_this_file and not data_descriptor )
+    end if;  --  not ( skip_this_file and not data_descriptor )
 
     --  Set the offset on the next zipped file
     header_index := header_index +
-        ZS_Size_Type (
-              local_header.filename_length    +
-              local_header.extra_field_length +
-              Zip.Headers.local_header_length
-        ) +
+        ZS_Size_Type
+          (local_header.filename_length    +
+           local_header.extra_field_length +
+           Zip.Headers.local_header_length)
+        +
         ZS_Size_Type (local_header.dd.compressed_size);
 
     if data_descriptor_after_data then
@@ -584,7 +579,7 @@ package body UnZip is
     work_password : Unbounded_String := To_Unbounded_String (password);
   begin
     if feedback = null then
-      current_user_attitude := yes_to_all; -- non-interactive
+      current_user_attitude := yes_to_all;  --  non-interactive
     end if;
     Set_Name (zip_file, from);
     Open (zip_file, In_File);
@@ -600,7 +595,7 @@ package body UnZip is
     UnZipFile
       (zip_file              => zip_file,
        out_name              => what,
-       out_name_encoding     => Zip.IBM_437, -- assumption...
+       out_name_encoding     => Zip.IBM_437,  --  assumption...
        out_name_from_archive => True,
        name_from_header      => False,
        header_index          => header_index,

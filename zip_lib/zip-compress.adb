@@ -118,16 +118,16 @@ package body Zip.Compress is
           (input_size_known and then counted = input_size))
         then
           if input_size_known then
-            feedback (
-              percents_done =>
-                Natural ((100.0 * Float (counted)) / Float (input_size)),
-              entry_skipped => False,
-              user_abort    => user_aborting);
+            feedback
+              (percents_done =>
+                 Natural ((100.0 * Float (counted)) / Float (input_size)),
+               entry_skipped => False,
+               user_abort    => user_aborting);
           else
-            feedback (
-              percents_done => 0,
-              entry_skipped => False,
-              user_abort    => user_aborting);
+            feedback
+              (percents_done => 0,
+               entry_skipped => False,
+               user_abort    => user_aborting);
           end if;
           first_feedback := False;
           if user_aborting then

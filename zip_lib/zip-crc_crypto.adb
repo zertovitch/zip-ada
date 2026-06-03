@@ -92,10 +92,9 @@ package body Zip.CRC_Crypto is
     Update (obj.keys (0), (0 => by));
     obj.keys (1) := obj.keys (1) + (obj.keys (0) and 16#000000ff#);
     obj.keys (1) := obj.keys (1) * 134775813 + 1;
-    Update (
-      obj.keys (2),
-      (0 => Zip.Byte (Shift_Right (obj.keys (1), 24)))
-    );
+    Update
+      (obj.keys (2),
+       (0 => Zip.Byte (Shift_Right (obj.keys (1), 24))));
   end Update_keys;
 
   --  Crypto_code: Pseudo-random byte to be XOR'ed with.

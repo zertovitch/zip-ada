@@ -56,7 +56,7 @@ package body Zip is
     --  Translated by (New) P2Ada v. 15-Nov-2006
 
     procedure Tree_to_vine (root : p_Dir_node; size : out Integer)
-      --  transform the tree with pseudo-root
+      --  Transform the tree with pseudo-root
       --   "root^" into a vine with pseudo-root
       --   node "root^", and store the number of
       --   nodes in "size"
@@ -84,7 +84,7 @@ package body Zip is
     end Tree_to_vine;
 
     procedure Vine_to_tree (root : p_Dir_node; size_given : Integer) is
-      --  convert the vine with "size" nodes and pseudo-root
+      --  Convert the vine with "size" nodes and pseudo-root
       --  node "root^" into a balanced tree
       leaf_count : Integer;
       size : Integer := size_given;
@@ -117,7 +117,7 @@ package body Zip is
         return n mod x;
       end Remove_leading_binary_1;
 
-    begin --  Vine_to_tree
+    begin  --  Vine_to_tree
       leaf_count := Remove_leading_binary_1 (size + 1);
       Compression (root, leaf_count);  --  create deepest leaves
       --  use Perfect_leaves instead for a perfectly balanced tree
@@ -195,6 +195,7 @@ package body Zip is
       procedure Insert_into_tree (node : in out p_Dir_node) is
       begin
         if node = null then
+
           node := new Dir_node'
             ((name_len          => file_name'Length,
                left              => null,
@@ -210,9 +211,8 @@ package body Zip is
                name_encoding     => name_encoding,
                read_only         => read_only,
                encrypted_2_x     => encrypted_2_x,
-               user_code         => 0
-               )
-            );
+               user_code         => 0));
+
         elsif dico_name > node.dico_name then
           Insert_into_tree (node.right);
         elsif dico_name < node.dico_name then
@@ -257,10 +257,9 @@ package body Zip is
     main_comment := new String (1 .. Integer (the_end.main_comment_length));
     String'Read (from'Access, main_comment.all);
     --  Process central directory:
-    Zip_Streams.Set_Index (
-      from,
-      Zip_Streams.ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting
-    );
+    Zip_Streams.Set_Index
+      (from,
+       Zip_Streams.ZS_Index_Type (1 + the_end.central_dir_offset) + the_end.offset_shifting);
 
     for i in 1 .. the_end.total_entries loop
       Zip.Headers.Read_and_Check (from, header);
@@ -279,12 +278,14 @@ package body Zip is
              header.short_info.dd.compressed_size,
              header.local_header_offset);
         end if;
+
         --  Skip extra field and entry comment.
         from.Set_Index
           (mem +
            Zip_Streams.ZS_Size_Type
              (header.short_info.extra_field_length +
               header.comment_length));
+
         --  Now the whole i_th central directory entry is behind
         Insert (dico_name   => Normalize (this_name, case_sensitive),
                 file_name   => Normalize (this_name, True),
@@ -296,12 +297,13 @@ package body Zip is
                 date_time   => header.short_info.file_timedate,
                 method      => Format_from_Code (header.short_info.zip_type),
                 name_encoding =>
-                  boolean_to_encoding (
-                   (header.short_info.bit_flag and
-                    Zip.Headers.Language_Encoding_Flag_Bit) /= 0),
-                read_only   => header.made_by_version / 256 = 0 and -- DOS-like
+                  boolean_to_encoding
+                    ((header.short_info.bit_flag and
+                      Zip.Headers.Language_Encoding_Flag_Bit) /= 0),
+                read_only   => header.made_by_version / 256 = 0 and  --  DOS-like
                                (header.external_attributes and 1) = 1,
-                encrypted_2_x => (header.short_info.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0,
+                encrypted_2_x =>
+                  (header.short_info.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0,
                 root_node     => p);
         --  Since the files are usually well ordered, the tree as inserted
         --  is very unbalanced; we need to rebalance it from time to time
@@ -313,6 +315,7 @@ package body Zip is
         end if;
       end;
     end loop;
+
     Binary_tree_rebalancing.Rebalance (p);
     info.loaded             := True;
     info.case_sensitive     := case_sensitive;
@@ -350,12 +353,11 @@ package body Zip is
         raise Archive_open_error with "Archive: [" & from & ']';
     end;
     --  Call the stream version of Load(...)
-    Load (
-      info,
-      my_stream,
-      case_sensitive,
-      duplicate_names
-    );
+    Load
+      (info,
+       my_stream,
+       case_sensitive,
+       duplicate_names);
     my_stream.Close;
     Dispose (info.zip_file_name);
     info.zip_file_name := new String'(from);
@@ -454,14 +456,14 @@ package body Zip is
   -----------------------
 
   procedure Traverse (z : Zip_Info) is
-    procedure My_Action_private (dn : in out Dir_node) is
-    pragma Inline (My_Action_private);
+    procedure My_Action_Private (dn : in out Dir_node) is
+    pragma Inline (My_Action_Private);
     begin
       Action (dn.file_name);
-    end My_Action_private;
-    procedure My_Traverse_private is new Traverse_private (My_Action_private);
+    end My_Action_Private;
+    procedure My_Traverse_Private is new Traverse_private (My_Action_Private);
   begin
-    My_Traverse_private (z);
+    My_Traverse_Private (z);
   end Traverse;
 
   procedure Traverse_Unicode (z : Zip_Info) is
@@ -475,28 +477,29 @@ package body Zip is
     My_Traverse_private (z);
   end Traverse_Unicode;
 
-  procedure Traverse_verbose (z : Zip_Info) is
-    procedure My_Action_private (dn : in out Dir_node) is
-    pragma Inline (My_Action_private);
+  procedure Traverse_Verbose (z : Zip_Info) is
+    procedure My_Action_Private (dn : in out Dir_node) is
+    pragma Inline (My_Action_Private);
     begin
-      Action (
-        dn.file_name,
-        dn.file_index,
-        dn.comp_size,
-        dn.uncomp_size,
-        dn.crc_32,
-        dn.date_time,
-        dn.method,
-        dn.name_encoding,
-        dn.read_only,
-        dn.encrypted_2_x,
-        dn.user_code
-      );
-    end My_Action_private;
-    procedure My_Traverse_private is new Traverse_private (My_Action_private);
+      Action
+        (dn.file_name,
+         dn.file_index,
+         dn.comp_size,
+         dn.uncomp_size,
+         dn.crc_32,
+         dn.date_time,
+         dn.method,
+         dn.name_encoding,
+         dn.read_only,
+         dn.encrypted_2_x,
+         dn.user_code);
+    end My_Action_Private;
+
+    procedure My_Traverse_Private is new Traverse_private (My_Action_Private);
+
   begin
-    My_Traverse_private (z);
-  end Traverse_verbose;
+    My_Traverse_Private (z);
+  end Traverse_Verbose;
 
   procedure Tree_Stat
     (z         : in     Zip_Info;
@@ -541,10 +544,9 @@ package body Zip is
   --  "   4)  The entries in the central directory may not necessarily
   --          be in the same order that files appear in the zipfile.    "
 
-  procedure Find_first_Offset (
-    file           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    file_index     :    out Zip_Streams.ZS_Index_Type
-  )
+  procedure Find_first_Offset
+    (file           : in out Zip_Streams.Root_Zipstream_Type'Class;
+     file_index     :    out Zip_Streams.ZS_Index_Type)
   is
     the_end    : Zip.Headers.End_of_Central_Dir;
     header     : Zip.Headers.Central_File_Header;
@@ -602,15 +604,14 @@ package body Zip is
   --  Internal: find offset of a zipped file by reading sequentially the
   --  central directory :-(
 
-  procedure Find_Offset (
-    file           : in out Zip_Streams.Root_Zipstream_Type'Class;
-    name           : in     String;
-    case_sensitive : in     Boolean;
-    file_index     :    out Zip_Streams.ZS_Index_Type;
-    comp_size      :    out Zip_64_Data_Size_Type;
-    uncomp_size    :    out Zip_64_Data_Size_Type;
-    crc_32         :    out Interfaces.Unsigned_32
-  )
+  procedure Find_Offset
+    (file           : in out Zip_Streams.Root_Zipstream_Type'Class;
+     name           : in     String;
+     case_sensitive : in     Boolean;
+     file_index     :    out Zip_Streams.ZS_Index_Type;
+     comp_size      :    out Zip_64_Data_Size_Type;
+     uncomp_size    :    out Zip_64_Data_Size_Type;
+     crc_32         :    out Interfaces.Unsigned_32)
   is
     the_end : Zip.Headers.End_of_Central_Dir;
     header  : Zip.Headers.Central_File_Header;
@@ -704,7 +705,7 @@ package body Zip is
      uncomp_size    :    out Zip_64_Data_Size_Type;
      crc_32         :    out Interfaces.Unsigned_32)
   is
-    function Trash_dir (n : String) return String is
+    function Discard_Path (n : String) return String is
       idx : Integer := n'First - 1;
     begin
       for i in n'Range loop
@@ -714,29 +715,28 @@ package body Zip is
       end loop;
       --  idx points on the index just before the interesting part
       return Normalize (n (idx + 1 .. n'Last), info.case_sensitive);
-    end Trash_dir;
+    end Discard_Path;
 
-    simple_name : constant String := Trash_dir (name);
+    simple_name : constant String := Discard_Path (name);
 
     Found : exception;
 
-    procedure Check_entry (
-      entry_name          : String; -- 'name' is compressed entry's name
-      entry_index         : Zip_Streams.ZS_Index_Type;
-      entry_comp_size     : Zip_64_Data_Size_Type;
-      entry_uncomp_size   : Zip_64_Data_Size_Type;
-      entry_crc_32        : Interfaces.Unsigned_32;
-      date_time           : Time;
-      method              : PKZip_Format;
-      entry_name_encoding : Zip_Name_Encoding;
-      read_only           : Boolean;
-      encrypted_2_x       : Boolean; -- PKZip 2.x encryption
-      entry_user_code     : in out Integer
-    )
+    procedure Check_Entry
+      (entry_name          : in     String;  --  'name' is compressed entry's name
+       entry_index         : in     Zip_Streams.ZS_Index_Type;
+       entry_comp_size     : in     Zip_64_Data_Size_Type;
+       entry_uncomp_size   : in     Zip_64_Data_Size_Type;
+       entry_crc_32        : in     Interfaces.Unsigned_32;
+       date_time           : in     Time;
+       method              : in     PKZip_Format;
+       entry_name_encoding : in     Zip_Name_Encoding;
+       read_only           : in     Boolean;
+       encrypted_2_x       : in     Boolean;  --  PKZip 2.x encryption
+       entry_user_code     : in out Integer)
     is
     pragma Unreferenced (date_time, method, read_only, encrypted_2_x, entry_user_code);
     begin
-      if Trash_dir (entry_name) = simple_name then
+      if Discard_Path (entry_name) = simple_name then
         name_encoding := entry_name_encoding;
         file_index    := entry_index;
         comp_size     := entry_comp_size;
@@ -744,10 +744,10 @@ package body Zip is
         crc_32        := entry_crc_32;
         raise Found;
       end if;
-    end Check_entry;
-    --
-    procedure Search is new Traverse_verbose (Check_entry);
-    --
+    end Check_Entry;
+
+    procedure Search is new Traverse_Verbose (Check_Entry);
+
   begin
     begin
       Search (info);
@@ -869,10 +869,9 @@ package body Zip is
       else
         actually_read :=
           Integer'Min (buffer'Length, Integer (Size (file) - Index (file) + 1));
-        Byte_Buffer'Read (
-          Stream (file),
-          buffer (buffer'First .. buffer'First + actually_read - 1)
-        );
+        Byte_Buffer'Read
+          (Stream (file),
+           buffer (buffer'First .. buffer'First + actually_read - 1));
       end if;
     end if;
   end Block_Read;
@@ -897,10 +896,9 @@ package body Zip is
       else
         actually_read :=
           Integer'Min (buffer'Length, Integer (stream.Size - stream.Index + 1));
-        Byte_Buffer'Read (
-          stream'Access,
-          buffer (buffer'First .. buffer'First + actually_read - 1)
-        );
+        Byte_Buffer'Read
+          (stream'Access,
+           buffer (buffer'First .. buffer'First + actually_read - 1));
       end if;
     end if;
   end Block_Read;
@@ -1010,11 +1008,10 @@ package body Zip is
     remains := bytes;
     while remains > 0 loop
       if Feedback /= null then
-        Feedback (
-          100 - Integer (100.0 * Float (remains) / Float (bytes)),
-          False,
-          user_abort
-        );
+        Feedback
+          (100 - Integer (100.0 * Float (remains) / Float (bytes)),
+           False,
+           user_abort);
         --  !! do something if user_abort = True !!
       end if;
       Zip.Block_Read (from, buf (1 .. Integer'Min (remains, buf'Last)), actually_read);

@@ -1395,7 +1395,7 @@ is
           end if;
         end if;
       end loop Browse_step_level;
-      --  Exit before an eventual increment of slide_mid that would loop over (mod n).
+      --  Exit before a possible increment of slide_mid that would loop over (mod n).
       exit Scan_LZ_data when Integer_M32 (slide_mid) + min_step + half_slider_size >= Integer_M32 (to);
       slide_mid := slide_mid + min_step;
     end loop Scan_LZ_data;

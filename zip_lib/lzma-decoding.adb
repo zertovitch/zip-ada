@@ -11,7 +11,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2014 .. 2021 Gautier de Montmollin (maintainer of the Ada version)
+--  Copyright (c) 2014 .. 2026 Gautier de Montmollin (maintainer of the Ada version)
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -301,7 +301,7 @@ package body LZMA.Decoding is
           --  May overlap (len32 > dist), even several times.
           src_from := out_win.pos - dist;
           src_to   := out_win.pos - dist + len32 - 1;
-          --  We copy in forward order, with eventual overlapping(s)..
+          --  We copy in forward order, with possible overlapping(s)..
           for i in src_from .. src_to loop
             b1 := out_win.buf (i);
             out_win.buf (i + dist) := b1;

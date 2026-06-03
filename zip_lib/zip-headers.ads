@@ -16,7 +16,7 @@
 
 --  Legal licensing note:
 
---  Copyright (c) 2000 .. 2024 Gautier de Montmollin
+--  Copyright (c) 2000 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -300,7 +300,7 @@ package Zip.Headers is
 
   --  A bit more elaborated variant of Read:
   --  find the End-of-Central-Dir and load it.
-  --  It includes the processing of an eventual Zip64
+  --  It includes the processing of a possible Zip64
   --  End-of-Central-Dir.
 
   procedure Load

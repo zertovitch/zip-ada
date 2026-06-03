@@ -1,6 +1,6 @@
 --  Legal licensing note:
 
---  Copyright (c) 1999 .. 2025 Gautier de Montmollin
+--  Copyright (c) 1999 .. 2026 Gautier de Montmollin
 --  SWITZERLAND
 
 --  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -51,17 +51,16 @@ package body UnZip.Streams is
   -- Input must be _open_ and won't be _closed_ ! --
   --------------------------------------------------
 
-  procedure UnZipFile (
-    zip_stream      : in out Zip_Streams.Root_Zipstream_Type'Class;
-    header_index    : in out Zip_Streams.ZS_Index_Type;
-    mem_ptr         :    out p_Stream_Element_Array;
-    out_stream_ptr  :        p_Stream;
-    --  if not null, extract to out_stream_ptr, not to memory
-    password        : in out Ada.Strings.Unbounded.Unbounded_String;
-    hint_comp_size  : in     Zip.Zip_64_Data_Size_Type; -- Added 2007 for .ODS files
-    hint_crc_32     : in     Unsigned_32;    -- Added 2012 for decryption
-    cat_uncomp_size : in     Zip.Zip_64_Data_Size_Type
-  )
+  procedure UnZipFile
+    (zip_stream      : in out Zip_Streams.Root_Zipstream_Type'Class;
+     header_index    : in out Zip_Streams.ZS_Index_Type;
+     mem_ptr         :    out p_Stream_Element_Array;
+     out_stream_ptr  :        p_Stream;
+     --  if not null, extract to out_stream_ptr, not to memory
+     password        : in out Ada.Strings.Unbounded.Unbounded_String;
+     hint_comp_size  : in     Zip.Zip_64_Data_Size_Type;  --  Added in 2007 for .ODS files
+     hint_crc_32     : in     Unsigned_32;    --  Added in 2012 for decryption
+     cat_uncomp_size : in     Zip.Zip_64_Data_Size_Type)
   is
     work_index : Zip_Streams.ZS_Index_Type := header_index;
     local_header : Zip.Headers.Local_File_Header;
@@ -135,7 +134,7 @@ package body UnZip.Streams is
     encrypted := (local_header.bit_flag and Zip.Headers.Encryption_Flag_Bit) /= 0;
 
     begin
-      Zip_Streams.Set_Index (zip_stream, work_index);  --  eventually skips the file name
+      Zip_Streams.Set_Index (zip_stream, work_index);  --  possibly skips the file name
     exception
       when others =>
         raise Zip.Archive_corrupted with
@@ -147,34 +146,32 @@ package body UnZip.Streams is
     else
       mode := write_to_stream;
     end if;
-    --  Unzip correct type
-    UnZip.Decompress.Decompress_Data (
-      zip_file                   => zip_stream,
-      format                     => method,
-      write_mode                 => mode,
-      output_file_name           => "",
-      output_memory_access       => mem_ptr,
-      output_stream_access       => out_stream_ptr,
-      feedback                   => null,
-      explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
-      explode_slide_8KB_LZMA_EOS => (local_header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0,
-      data_descriptor_after_data => data_descriptor_after_data,
-      is_encrypted               => encrypted,
-      password                   => password,
-      get_new_password           => null,
-      hint                       => local_header
-    );
+
+    UnZip.Decompress.Decompress_Data
+      (zip_file                   => zip_stream,
+       format                     => method,
+       write_mode                 => mode,
+       output_file_name           => "",
+       output_memory_access       => mem_ptr,
+       output_stream_access       => out_stream_ptr,
+       feedback                   => null,
+       explode_literal_tree       => (local_header.bit_flag and 4) /= 0,
+       explode_slide_8KB_LZMA_EOS => (local_header.bit_flag and Zip.Headers.LZMA_EOS_Flag_Bit) /= 0,
+       data_descriptor_after_data => data_descriptor_after_data,
+       is_encrypted               => encrypted,
+       password                   => password,
+       get_new_password           => null,
+       hint                       => local_header);
 
     --  Set the offset on the next zipped file
     header_index := header_index +
-      Zip_Streams.ZS_Size_Type (
-              local_header.filename_length    +
-              local_header.extra_field_length +
-              Zip.Headers.local_header_length
-      ) +
-      Zip_Streams.ZS_Size_Type (
-        local_header.dd.compressed_size
-      );
+      Zip_Streams.ZS_Size_Type
+        (local_header.filename_length    +
+         local_header.extra_field_length +
+         Zip.Headers.local_header_length)
+      +
+      Zip_Streams.ZS_Size_Type
+        (local_header.dd.compressed_size);
 
     if data_descriptor_after_data then
       header_index := header_index +
@@ -276,8 +273,8 @@ package body UnZip.Streams is
   begin
     if File = null then
       File := new UnZip_Stream_Type;
-    elsif File.state /= uninitialized then  --  forgot to close last time!
-      raise Use_Error;
+    elsif File.state /= uninitialized then
+      raise Use_Error with "Forgot to close on last use";
     end if;
     if use_a_file then
       input_stream := zip_stream'Unchecked_Access;
@@ -290,15 +287,16 @@ package body UnZip.Streams is
     File.archive_info := Archive_Info;  --  Full clone. Now a copy is safely with File.
     File.file_name := new String'(Name);
     begin
-      S_Extract (
-        File.archive_info,
-        input_stream.all,
-        Name,
-        Password,
-        File.uncompressed,
-        null,
-        Ignore_Directory
-      );
+
+      S_Extract
+        (File.archive_info,
+         input_stream.all,
+         Name,
+         Password,
+         File.uncompressed,
+         null,
+         Ignore_Directory);
+
       if use_a_file then
         Close (zip_stream);
       end if;
@@ -463,15 +461,14 @@ package body UnZip.Streams is
     declare
       dummy_mem_ptr : p_Stream_Element_Array;
     begin
-      S_Extract (
-        Archive_Info,
-        input_stream.all,
-        Entry_Name,
-        Password,
-        dummy_mem_ptr,
-        Destination'Unchecked_Access,
-        Ignore_Directory
-      );
+      S_Extract
+        (Archive_Info,
+         input_stream.all,
+         Entry_Name,
+         Password,
+         dummy_mem_ptr,
+         Destination'Unchecked_Access,
+         Ignore_Directory);
       if use_a_file then
         Close (zip_stream);
       end if;

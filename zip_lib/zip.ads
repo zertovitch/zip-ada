@@ -215,7 +215,7 @@ package Zip is
        encrypted_2_x    : Boolean;  --  PKZip 2.x encryption
        user_code        : in out Integer);
   --
-  procedure Traverse_verbose (z : Zip_Info);
+  procedure Traverse_Verbose (z : Zip_Info);
 
   --  Academic: see how well the name tree is balanced
   procedure Tree_Stat
@@ -392,7 +392,7 @@ package Zip is
   -----------------------------------------------------------------
 
   version   : constant String := "62";
-  reference : constant String := "01-Jun-2026";
+  reference : constant String := "02-Jun-2026";
   --  Hopefully the latest version can be acquired from one of those URLs:
   web       : constant String := "https://unzip-ada.sourceforge.io/";
   web2      : constant String := "https://sourceforge.net/projects/unzip-ada/";

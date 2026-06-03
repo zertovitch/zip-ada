@@ -37,12 +37,11 @@ package LZMA.Encoding is
   --  Low level: faster but weaker compression
   --  High level: slower but stronger compression
   --
-  type Compression_Level is (
-    Level_0,  --  no LZ compression
-    Level_1,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 6
-    Level_2,  --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 10
-    Level_3   --  uses LZMA SDK's BT4 match finder, dictionary's size specified in dictionary_size
-  );
+  type Compression_Level is
+    (Level_0,   --  no LZ compression
+     Level_1,   --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 6
+     Level_2,   --  uses Info-Zip's match finder for Deflate (32KB  sliding window), level 10
+     Level_3);  --  uses LZMA SDK's BT4 match finder, dictionary's size specified in dictionary_size
 
   generic
     --  Input of data:

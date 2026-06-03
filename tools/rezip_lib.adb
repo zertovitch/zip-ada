@@ -525,13 +525,12 @@ package body Rezip_lib is
       --  temporary zip file.
       Set_Directory (Containing_Directory (Radix));
       loop
-        Try_deleting_Temp_Zip_File;  --  remove (eventually broken) zip
-        Call_External_Expanded (
-          packer,
-          options,
-          Temp_Zip_Name & ' ' & data_name,
-          info.expanded_options
-        );
+        Try_deleting_Temp_Zip_File;  --  remove (possibly broken) zip
+        Call_External_Expanded
+          (packer,
+           options,
+           Temp_Zip_Name & ' ' & data_name,
+           info.expanded_options);
         if (not Exists (Temp_Zip_Name)) and then Ada.Directories.Size (data_name) = 0 then
           --  ADVZip 1.19 doesn't create a zip file for a 0-size entry; we call Zip instead...
           Call_External_Expanded ("zip", "", Temp_Zip_Name & ' ' & data_name, dummy_exp_opt);
@@ -544,14 +543,13 @@ package body Rezip_lib is
         Set_Name (MyStream, Temp_Zip_Name);
         Open (MyStream, In_File);
         Zip.Load (zi_ext, MyStream, True);
-        Rip_data (
-          archive      => zi_ext,
-          input        => MyStream,
-          data_name    => data_name,
-          rip_rename   => out_name,
-          unzip_rename => "",
-          header       => header
-        );
+        Rip_data
+          (archive      => zi_ext,
+           input        => MyStream,
+           data_name    => data_name,
+           rip_rename   => out_name,
+           unzip_rename => "",
+           header       => header);
         Close (MyStream);
         Try_deleting_Temp_Zip_File;
         --
@@ -622,22 +620,22 @@ package body Rezip_lib is
       Open (File_in, In_File);
       Set_Name (File_out, Temp_name (True, a));
       Create (File_out, Out_File);
+
       Zip.Compress.Compress_Data
-      (
-        input            => File_in,
-        output           => File_out,
-        input_size_known => True,
-        input_size       => e.head.short_info.dd.uncompressed_size,
-        method           => Approach_to_Method (a),
-        feedback         => Zip_Console_IO.My_Feedback'Access,
-        password         => "",
-        content_hint     => Zip.Compress.Guess_Type_from_Name (S (e.name)),
-        CRC              => e.head.short_info.dd.crc_32,
-        --  we take the occasion to compute the CRC if not
-        --  yet available (e.g. JAR)
-        output_size      => e.info (a).size,
-        zip_type         => e.info (a).zfm
-      );
+        (input            => File_in,
+         output           => File_out,
+         input_size_known => True,
+         input_size       => e.head.short_info.dd.uncompressed_size,
+         method           => Approach_to_Method (a),
+         feedback         => Zip_Console_IO.My_Feedback'Access,
+         password         => "",
+         content_hint     => Zip.Compress.Guess_Type_from_Name (S (e.name)),
+         CRC              => e.head.short_info.dd.crc_32,
+         --  we take the occasion to compute the CRC if not
+         --  yet available (e.g. JAR)
+         output_size      => e.info (a).size,
+         zip_type         => e.info (a).zfm);
+
       e.info (a).LZMA_EOS := e.info (a).zfm = 14;
       Close (File_in);
       Close (File_out);
