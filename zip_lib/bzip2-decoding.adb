@@ -515,6 +515,10 @@ package body BZip2.Decoding is
 
     begin
       decode_available := tt_count;
+      if block_origin not in tt'Range then
+         raise data_error with "BZip2: invalid block origin for data output index";
+      end if;
+      
       next_rle_idx := Natural_32 (Shift_Right (tt (block_origin), 8));
 
       while decode_available > 0 loop
